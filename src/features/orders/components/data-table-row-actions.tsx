@@ -29,7 +29,7 @@ interface DataTableRowActionsProps {
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
-  const { setOpen, setCurrentRow } = useOrders()
+  const { } = useOrders()
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean
     title: string

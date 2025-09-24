@@ -4,7 +4,7 @@ import {
   orderStatuses, 
   platformOrderStatuses, 
   platformFulfillmentStatuses, 
-  logisticsStatuses,
+  // logisticsStatuses,
   stores,
   logistics,
   shippingOrigins,
@@ -18,7 +18,7 @@ export const orders: Order[] = Array.from({ length: 100 }, () => {
   const orderStatus = faker.helpers.arrayElement(orderStatuses).value
   const platformOrderStatus = faker.helpers.arrayElement(platformOrderStatuses).value
   const platformFulfillmentStatus = faker.helpers.arrayElement(platformFulfillmentStatuses).value
-  const logisticsStatus = faker.helpers.arrayElement(logisticsStatuses).value
+  // const logisticsStatus = faker.helpers.arrayElement(logisticsStatuses).value
   const store = faker.helpers.arrayElement(stores)
   const logisticsProvider = faker.helpers.arrayElement(logistics)
   const shippingOrigin = faker.helpers.arrayElement(shippingOrigins)

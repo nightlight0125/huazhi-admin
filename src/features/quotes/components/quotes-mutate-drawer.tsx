@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+// import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 import {
   Sheet,
@@ -37,11 +37,11 @@ type QuotesMutateDrawerProps = {
 
 const formSchema = z.object({
   productName: z.string().min(1, '产品名称不能为空'),
-  productUrl: z.string().url('请输入有效的URL').optional().or(z.literal('')),
+  productUrl: z.string().optional(),
   images: z.array(z.string()).min(1, '至少需要上传一张产品图片'),
   budget: z.number().min(0, '预算不能为负数').optional(),
   quality: z.string().min(1, '请选择质量等级'),
-  acceptSimilar: z.boolean().default(false),
+  acceptSimilar: z.boolean(),
   description: z.string().optional(),
   notes: z.string().optional(),
 })

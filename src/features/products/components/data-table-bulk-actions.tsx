@@ -10,7 +10,7 @@ interface DataTableBulkActionsProps<TData> {
 export function DataTableBulkActions<TData>({
   table,
 }: DataTableBulkActionsProps<TData>) {
-  const { setOpen, setCurrentRow } = useProducts()
+  const { setOpen } = useProducts()
   const isFiltered = table.getState().columnFilters.length > 0
   const selectedRows = table.getFilteredSelectedRowModel().rows
 

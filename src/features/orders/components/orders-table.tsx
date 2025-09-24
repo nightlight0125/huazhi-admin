@@ -30,7 +30,6 @@ import {
   stores,
   logistics,
   shippingOrigins,
-  countries
 } from '../data/data'
 import { type Order } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'

@@ -25,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { Badge } from '@/components/ui/badge'
 import { useOrders } from './orders-provider'
-import { stores, logistics, shippingOrigins, countries, orderStatuses } from '../data/data'
+import { stores, countries } from '../data/data'
 
 // 产品变体验证模式
 const productVariantSchema = z.object({
@@ -70,7 +70,7 @@ interface OrdersCreateDialogProps {
 }
 
 export function OrdersCreateDialog({ open, onOpenChange }: OrdersCreateDialogProps) {
-  const { setCurrentRow } = useOrders()
+  const { } = useOrders()
   
   const form = useForm<OrderForm>({
     resolver: zodResolver(formSchema),

@@ -3,7 +3,6 @@ import { type Table } from '@tanstack/react-table'
 import { 
   Trash2, 
   MessageSquare, 
-  RotateCcw, 
   Pause, 
   Play, 
   Package, 

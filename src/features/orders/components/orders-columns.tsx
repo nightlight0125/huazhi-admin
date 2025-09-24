@@ -9,7 +9,6 @@ import {
   orderStatuses, 
   platformOrderStatuses, 
   platformFulfillmentStatuses, 
-  logisticsStatuses 
 } from '../data/data'
 import { type Order } from '../data/schema'
 import { DataTableRowActions } from './data-table-row-actions'
@@ -190,7 +189,7 @@ export const createOrdersColumns = (): ColumnDef<Order>[] => [
               共 {productList.length} 个产品
             </div>
             <div className='space-y-1'>
-              {productList.slice(0, 2).map((product, index) => (
+              {productList.slice(0, 2).map((product) => (
                 <div key={product.id} className='text-xs text-muted-foreground'>
                   {product.productName} x{product.quantity}
                 </div>

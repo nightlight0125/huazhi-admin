@@ -1,4 +1,4 @@
-import { type LucideIcon, CreditCard, FileText, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { CreditCard, FileText, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 
 // 钱包记录类型选项
 export const walletRecordTypes = [

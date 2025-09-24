@@ -9,10 +9,10 @@ export function OrdersDialogs() {
 
   return (
     <>
-      <OrdersCreateDialog open={open === 'create'} onOpenChange={setOpen} />
-      <OrdersUpdateDialog open={open === 'update'} onOpenChange={setOpen} />
-      <OrdersDeleteDialog open={open === 'delete'} onOpenChange={setOpen} />
-      <OrdersImportDialog open={open === 'import'} onOpenChange={setOpen} />
+      <OrdersCreateDialog open={open === 'create'} onOpenChange={(state) => setOpen(state ? 'create' : null)} />
+      <OrdersUpdateDialog open={open === 'update'} onOpenChange={(state) => setOpen(state ? 'update' : null)} />
+      <OrdersDeleteDialog open={open === 'delete'} onOpenChange={(state) => setOpen(state ? 'delete' : null)} />
+      <OrdersImportDialog open={open === 'import'} onOpenChange={(state) => setOpen(state ? 'import' : null)} />
     </>
   )
 }

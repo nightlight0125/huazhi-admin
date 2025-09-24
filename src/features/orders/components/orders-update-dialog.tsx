@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { useOrders } from './orders-provider'
-import { stores, logistics, shippingOrigins, countries, orderStatuses } from '../data/data'
+import { stores, countries } from '../data/data'
 
 // 简化的表单验证模式（编辑时不需要产品列表）
 const updateFormSchema = z.object({

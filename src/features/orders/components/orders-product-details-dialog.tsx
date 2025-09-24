@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink, Package } from 'lucide-react'
-import { type Order, type OrderProduct } from '../data/schema'
+import { type Order } from '../data/schema'
 
 interface OrdersProductDetailsDialogProps {
   open: boolean
@@ -57,7 +57,7 @@ export function OrdersProductDetailsDialog({ open, onOpenChange, order }: Orders
             </h3>
             
             <div className='space-y-3'>
-              {order.productList.map((product, index) => (
+              {order.productList.map((product) => (
                 <div key={product.id} className='border rounded-lg p-4'>
                   <div className='flex gap-4'>
                     {/* 产品图片 */}

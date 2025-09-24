@@ -8,9 +8,6 @@ import {
   Pause,
   DollarSign,
   ShoppingCart,
-  MapPin,
-  Building,
-  Globe,
 } from 'lucide-react'
 
 // 订单状态选项

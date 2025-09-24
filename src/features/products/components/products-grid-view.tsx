@@ -71,7 +71,7 @@ export function ProductsGridView({ products }: ProductsGridViewProps) {
             
             {/* 操作按钮 */}
             <div className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity'>
-              <DataTableRowActions row={{ original: product }} />
+              <DataTableRowActions row={{ original: product } as any} />
             </div>
           </div>
         )

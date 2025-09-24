@@ -1,13 +1,8 @@
 import { useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
-import { type ColumnDef, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from '@tanstack/react-table'
-import { type Table } from '@tanstack/react-table'
+import { flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, type SortingState } from '@tanstack/react-table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { DataTableColumnHeader } from '@/components/data-table'
 import { DataTableToolbar } from '@/components/data-table'
 import { DataTablePagination } from '@/components/data-table'
 import { DataTableBulkActions } from './data-table-bulk-actions'
@@ -24,7 +19,7 @@ interface DataTableProps {
 
 export function WalletTable({ data }: DataTableProps) {
   const [activeTab, setActiveTab] = useState<WalletRecordType>('recharge')
-  const [sorting, setSorting] = useState([])
+  const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState({})
   const [rowSelection, setRowSelection] = useState({})
 
@@ -107,22 +102,22 @@ export function WalletTable({ data }: DataTableProps) {
     onColumnFiltersChange,
   })
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('zh-CN', {
-      style: 'currency',
-      currency: 'CNY',
-    }).format(amount)
-  }
+  // const formatCurrency = (amount: number) => {
+  //   return new Intl.NumberFormat('zh-CN', {
+  //     style: 'currency',
+  //     currency: 'CNY',
+  //   }).format(amount)
+  // }
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date)
-  }
+  // const formatDate = (date: Date) => {
+  //   return new Intl.DateTimeFormat('zh-CN', {
+  //     year: 'numeric',
+  //     month: '2-digit',
+  //     day: '2-digit',
+  //     hour: '2-digit',
+  //     minute: '2-digit',
+  //   }).format(date)
+  // }
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
@@ -144,12 +139,12 @@ export function WalletTable({ data }: DataTableProps) {
               {
                 columnId: 'status',
                 title: '状态',
-                options: walletRecordStatuses,
+                options: [...walletRecordStatuses],
               },
               {
                 columnId: 'customerName',
                 title: '客户',
-                options: customers,
+                options: [...customers],
               },
             ]}
           />

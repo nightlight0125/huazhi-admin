@@ -1,5 +1,4 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { categories, locations } from '../data/data'
@@ -109,7 +108,7 @@ export const productsColumns: ColumnDef<Product>[] = [
         </div>
       )
     },
-    filterFn: 'priceRange',
+    // filterFn: 'priceRange', // 需要自定义过滤器函数
   },
   {
     accessorKey: 'sku',
