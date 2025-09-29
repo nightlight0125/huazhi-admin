@@ -27,7 +27,7 @@ import { paymentMethods } from '../data/data'
 
 // 充值表单验证模式
 const rechargeFormSchema = z.object({
-  amount: z.number().min(1, '充值金额必须大于0').max(100000, '单次充值金额不能超过100,000元'),
+  amount: z.number().min(1, '充值金额必须大于0').max(100000, '单次充值金额不能超过$100,000'),
   paymentMethod: z.string().min(1, '请选择支付方式'),
   description: z.string().optional(),
 })
@@ -90,7 +90,7 @@ export function WalletRechargeDialog({ open, onOpenChange }: WalletRechargeDialo
               name='amount'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>充值金额 (元)</FormLabel>
+                  <FormLabel>充值金额 ($)</FormLabel>
                   <FormControl>
                     <Input
                       type='number'
@@ -119,7 +119,7 @@ export function WalletRechargeDialog({ open, onOpenChange }: WalletRechargeDialo
                     size='sm'
                     onClick={() => form.setValue('amount', amount)}
                   >
-                    ¥{amount}
+                    ${amount}
                   </Button>
                 ))}
               </div>

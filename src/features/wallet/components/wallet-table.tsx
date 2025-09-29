@@ -7,7 +7,7 @@ import { DataTableToolbar } from '@/components/data-table'
 import { DataTablePagination } from '@/components/data-table'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { type WalletRecord, type WalletRecordType } from '../data/schema'
-import { walletRecordTypes, walletRecordStatuses, customers } from '../data/data'
+import { walletRecordTypes, walletRecordStatuses, paymentMethods } from '../data/data'
 import { createWalletColumns } from './wallet-columns'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 
@@ -84,13 +84,15 @@ export function WalletTable({ data }: DataTableProps) {
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     globalFilterFn: (row, _columnId, filterValue) => {
-      const orderNumber = String(row.getValue('orderNumber')).toLowerCase()
-      const customerName = String(row.getValue('customerName')).toLowerCase()
+      const description = String(row.getValue('description')).toLowerCase()
+      const paymentMethod = String(row.getValue('paymentMethod')).toLowerCase()
+      const notes = String(row.getValue('notes') || '').toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
 
       return (
-        orderNumber.includes(searchValue) ||
-        customerName.includes(searchValue)
+        description.includes(searchValue) ||
+        paymentMethod.includes(searchValue) ||
+        notes.includes(searchValue)
       )
     },
     getCoreRowModel: getCoreRowModel(),
@@ -134,17 +136,17 @@ export function WalletTable({ data }: DataTableProps) {
         <TabsContent value={activeTab} className='space-y-4'>
           <DataTableToolbar
             table={table}
-            searchPlaceholder='搜索客户订单号、客户名称...'
+            searchPlaceholder='搜索描述、充值方式、备注...'
             filters={[
               {
                 columnId: 'status',
-                title: '状态',
+                title: '充值状态',
                 options: [...walletRecordStatuses],
               },
               {
-                columnId: 'customerName',
-                title: '客户',
-                options: [...customers],
+                columnId: 'paymentMethod',
+                title: '充值方式',
+                options: paymentMethods.map(method => ({ label: method.label, value: method.value })),
               },
             ]}
           />

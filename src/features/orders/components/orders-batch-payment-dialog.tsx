@@ -71,7 +71,7 @@ export function OrdersBatchPaymentDialog({ open, onOpenChange, selectedOrders }:
                     <span className='text-sm'>{order.customer}</span>
                   </div>
                   <span className='text-sm font-medium'>
-                    ¥{order.totalCost.toFixed(2)}
+                    ${order.totalCost.toFixed(2)}
                   </span>
                 </div>
               ))}
@@ -104,7 +104,7 @@ export function OrdersBatchPaymentDialog({ open, onOpenChange, selectedOrders }:
                 step='0.01'
                 value={formData.paymentAmount}
                 onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
-                placeholder={`总金额: ¥${totalAmount.toFixed(2)}`}
+                placeholder={`总金额: $${totalAmount.toFixed(2)}`}
                 required
               />
             </div>
@@ -130,7 +130,7 @@ export function OrdersBatchPaymentDialog({ open, onOpenChange, selectedOrders }:
               </div>
               <div className='flex justify-between items-center mt-2'>
                 <span className='text-sm text-muted-foreground'>总金额:</span>
-                <span className='font-bold text-primary text-lg'>¥{totalAmount.toFixed(2)}</span>
+                <span className='font-bold text-primary text-lg'>${totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>

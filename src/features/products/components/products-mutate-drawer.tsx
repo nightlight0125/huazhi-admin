@@ -145,7 +145,7 @@ export function ProductsMutateDrawer({
               name='price'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>价格 (¥)</FormLabel>
+                  <FormLabel>价格 ($)</FormLabel>
                   <FormControl>
                     <Input
                       type='number'

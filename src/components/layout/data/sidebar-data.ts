@@ -10,6 +10,8 @@ import {
   Store,
   ShoppingCart,
   Wallet,
+  Link,
+  Palette,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -54,6 +56,16 @@ export const sidebarData: SidebarData = {
           title: '产品中心',
           url: '/products',
           icon: ShoppingBag,
+        },
+        {
+          title: '产品连接',
+          url: '/product-connections',
+          icon: Link,
+        },
+        {
+          title: '品牌管理',
+          url: '/brands',
+          icon: Palette,
         },
         {
           title: '店铺管理',

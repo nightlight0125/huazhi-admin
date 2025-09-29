@@ -8,6 +8,7 @@ import { OrdersDialogs } from './components/orders-dialogs'
 import { OrdersPrimaryButtons } from './components/orders-primary-buttons'
 import { OrdersProvider } from './components/orders-provider'
 import { OrdersTable } from './components/orders-table'
+import { OrdersStats } from './components/orders-stats'
 import { orders } from './data/orders'
 
 export function Orders() {
@@ -23,6 +24,9 @@ export function Orders() {
       </Header>
 
       <Main>
+        <div className='mb-6'>
+          <OrdersStats orders={orders} />
+        </div>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>订单管理</h2>

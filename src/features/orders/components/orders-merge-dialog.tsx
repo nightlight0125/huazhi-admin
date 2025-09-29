@@ -66,7 +66,7 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
                     <span className='text-sm'>{order.customer}</span>
                   </div>
                   <span className='text-sm font-medium'>
-                    ¥{order.totalCost.toFixed(2)}
+                    ${order.totalCost.toFixed(2)}
                   </span>
                 </div>
               ))}
@@ -113,15 +113,15 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
             <div className='grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg'>
               <div className='text-center'>
                 <div className='text-sm text-muted-foreground'>运费</div>
-                <div className='font-medium'>¥{totalShippingCost.toFixed(2)}</div>
+                <div className='font-medium'>${totalShippingCost.toFixed(2)}</div>
               </div>
               <div className='text-center'>
                 <div className='text-sm text-muted-foreground'>其他费用</div>
-                <div className='font-medium'>¥{totalOtherCosts.toFixed(2)}</div>
+                <div className='font-medium'>${totalOtherCosts.toFixed(2)}</div>
               </div>
               <div className='text-center'>
                 <div className='text-sm text-muted-foreground'>总成本</div>
-                <div className='font-bold text-primary'>¥{totalCost.toFixed(2)}</div>
+                <div className='font-bold text-primary'>${totalCost.toFixed(2)}</div>
               </div>
             </div>
           </div>

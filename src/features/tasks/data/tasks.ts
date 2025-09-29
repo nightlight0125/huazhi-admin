@@ -20,10 +20,8 @@ export const tasks = Array.from({ length: 100 }, () => {
     status: faker.helpers.arrayElement(statuses),
     label: faker.helpers.arrayElement(labels),
     priority: faker.helpers.arrayElement(priorities),
+    description: faker.lorem.paragraph({ min: 1, max: 3 }),
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
-    assignee: faker.person.fullName(),
-    description: faker.lorem.paragraph({ min: 1, max: 3 }),
-    dueDate: faker.date.future(),
   }
 })

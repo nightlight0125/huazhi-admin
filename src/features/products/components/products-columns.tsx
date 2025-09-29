@@ -104,7 +104,7 @@ export const productsColumns: ColumnDef<Product>[] = [
       const price = row.getValue('price') as number
       return (
         <div className='w-24 text-right font-mono font-medium'>
-          ¥{price.toFixed(2)}
+          ${price.toFixed(2)}
         </div>
       )
     },

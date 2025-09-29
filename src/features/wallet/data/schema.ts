@@ -10,17 +10,19 @@ export const walletRecordStatusSchema = z.enum(['pending', 'completed', 'failed'
 export const walletRecordSchema = z.object({
   id: z.string(),
   type: walletRecordTypeSchema, // 记录类型：充值记录或发票记录
-  orderNumber: z.string(), // 客户订单号
-  customerName: z.string(), // 客户名称
-  amount: z.number(), // 金额
-  status: walletRecordStatusSchema, // 状态
   description: z.string(), // 描述
+  paymentMethod: z.string(), // 充值方式
+  date: z.date(), // 日期
+  amount: z.number(), // 金额
+  cashback: z.number().optional(), // 返现
+  notes: z.string().optional(), // 备注
+  status: walletRecordStatusSchema, // 充值状态
   createdAt: z.date(), // 创建时间
   updatedAt: z.date(), // 更新时间
-  // 充值记录特有字段
-  paymentMethod: z.string().optional(), // 支付方式
+  // 其他字段（保持向后兼容）
+  orderNumber: z.string().optional(), // 客户订单号
+  customerName: z.string().optional(), // 客户名称
   transactionId: z.string().optional(), // 交易ID
-  // 发票记录特有字段
   invoiceNumber: z.string().optional(), // 发票号
   invoiceUrl: z.string().optional(), // 发票下载链接
 })

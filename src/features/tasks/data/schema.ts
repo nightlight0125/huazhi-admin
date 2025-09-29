@@ -8,6 +8,9 @@ export const taskSchema = z.object({
   status: z.string(),
   label: z.string(),
   priority: z.string(),
+  description: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 })
 
 export type Task = z.infer<typeof taskSchema>

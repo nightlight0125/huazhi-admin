@@ -8,29 +8,58 @@ export const walletRecords: WalletRecord[] = Array.from({ length: 100 }, () => {
   const status = faker.helpers.arrayElement(walletRecordStatuses)
   const customer = faker.helpers.arrayElement(customers)
   const amount = faker.number.float({ min: 10, max: 10000, fractionDigits: 2 })
+  const date = faker.date.past()
   const createdAt = faker.date.past()
   const updatedAt = faker.date.between({ from: createdAt, to: new Date() })
+
+  // 生成返现金额（30%概率有返现）
+  const hasCashback = faker.datatype.boolean({ probability: 0.3 })
+  const cashback = hasCashback ? faker.number.float({ min: 1, max: amount * 0.1, fractionDigits: 2 }) : undefined
+
+  // 生成备注（50%概率有备注）
+  const hasNotes = faker.datatype.boolean({ probability: 0.5 })
+  const notes = hasNotes ? faker.lorem.sentence() : undefined
 
   const baseRecord = {
     id: `WR-${faker.number.int({ min: 10000, max: 99999 })}`,
     type: type.value,
-    orderNumber: `ORD-${faker.number.int({ min: 100000, max: 999999 })}`,
-    customerName: customer.label,
-    amount,
-    status: status.value,
     description: type.value === 'recharge' 
-      ? `客户 ${customer.label} 充值 ${amount} 元`
-      : `客户 ${customer.label} 发票 ${amount} 元`,
+      ? faker.helpers.arrayElement([
+          '账户充值',
+          '余额充值',
+          '钱包充值',
+          '在线充值',
+          '快速充值',
+          '批量充值',
+          '自动充值',
+          '手动充值'
+        ])
+      : faker.helpers.arrayElement([
+          '发票申请',
+          '发票开具',
+          '发票下载',
+          '发票打印',
+          '发票邮寄'
+        ]),
+    paymentMethod: type.value === 'recharge' 
+      ? faker.helpers.arrayElement(paymentMethods).value
+      : faker.helpers.arrayElement(['支付宝', '微信支付', '银行卡', '信用卡', 'PayPal']),
+    date,
+    amount,
+    cashback,
+    notes,
+    status: status.value,
     createdAt,
     updatedAt,
+    // 保持向后兼容的字段
+    orderNumber: `ORD-${faker.number.int({ min: 100000, max: 999999 })}`,
+    customerName: customer.label,
   }
 
   // 根据类型添加特定字段
   if (type.value === 'recharge') {
-    const paymentMethod = faker.helpers.arrayElement(paymentMethods)
     return {
       ...baseRecord,
-      paymentMethod: paymentMethod.value,
       transactionId: `TXN-${faker.string.alphanumeric(12).toUpperCase()}`,
     }
   } else {

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 // 店铺平台枚举
-export const storePlatforms = ['shopify', 'ebay', 'tiktok', 'amazon'] as const
+export const storePlatforms = ['shopify', 'woocommerce', 'ebay', 'tiktok', 'etsy', 'offline', 'amazon'] as const
 
 // 店铺状态枚举
 export const storeStatuses = ['active', 'inactive', 'suspended', 'pending'] as const
@@ -37,6 +37,13 @@ export const platformConfig = {
     textColor: 'text-green-600',
     borderColor: 'border-green-200',
   },
+  woocommerce: {
+    name: 'WooCommerce',
+    description: '基于WordPress的开源电商插件',
+    color: 'bg-purple-500',
+    textColor: 'text-purple-600',
+    borderColor: 'border-purple-200',
+  },
   ebay: {
     name: 'eBay',
     description: '全球最大的在线拍卖和购物网站',
@@ -45,11 +52,25 @@ export const platformConfig = {
     borderColor: 'border-blue-200',
   },
   tiktok: {
-    name: 'TikTok Shop',
+    name: 'TikTok',
     description: 'TikTok的电商平台，结合短视频和购物体验',
     color: 'bg-pink-500',
     textColor: 'text-pink-600',
     borderColor: 'border-pink-200',
+  },
+  etsy: {
+    name: 'Etsy',
+    description: '专注于手工艺品和独特商品的电商平台',
+    color: 'bg-orange-500',
+    textColor: 'text-orange-600',
+    borderColor: 'border-orange-200',
+  },
+  offline: {
+    name: 'Offline Store',
+    description: '线下实体店铺',
+    color: 'bg-gray-500',
+    textColor: 'text-gray-600',
+    borderColor: 'border-gray-200',
   },
   amazon: {
     name: 'Amazon Store',

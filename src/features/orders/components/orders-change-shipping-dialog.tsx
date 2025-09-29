@@ -66,7 +66,7 @@ export function OrdersChangeShippingDialog({ open, onOpenChange, order }: Orders
                   <span className='text-sm'>{order.customer}</span>
                 </div>
                 <span className='text-sm font-medium'>
-                  ¥{order.totalCost.toFixed(2)}
+                  ${order.totalCost.toFixed(2)}
                 </span>
               </div>
               <div className='mt-2 text-sm text-muted-foreground'>

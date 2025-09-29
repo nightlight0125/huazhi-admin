@@ -67,7 +67,7 @@ export function StoresStats({ stores }: StoresStatsProps) {
           <CardTitle className="text-sm font-medium">总收入</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">¥{totalRevenue.toLocaleString()}</div>
+          <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground">
             所有平台总收入
           </p>

@@ -136,7 +136,7 @@ export const quotesColumns: ColumnDef<Quote>[] = [
       const price = row.getValue('price') as number | undefined
       return (
         <div className='w-20 text-right font-mono'>
-          {price ? `¥${price.toFixed(2)}` : '-'}
+          {price ? `$${price.toFixed(2)}` : '-'}
         </div>
       )
     },

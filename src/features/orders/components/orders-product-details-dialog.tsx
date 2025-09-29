@@ -41,7 +41,7 @@ export function OrdersProductDetailsDialog({ open, onOpenChange, order }: Orders
             </div>
             <div>
               <div className='text-sm text-muted-foreground'>总金额</div>
-              <div className='font-bold text-primary'>¥{order.totalCost.toFixed(2)}</div>
+              <div className='font-bold text-primary'>${order.totalCost.toFixed(2)}</div>
             </div>
             <div>
               <div className='text-sm text-muted-foreground'>产品数量</div>
@@ -78,11 +78,11 @@ export function OrdersProductDetailsDialog({ open, onOpenChange, order }: Orders
                         <div>
                           <h4 className='font-medium text-sm'>{product.productName}</h4>
                           <div className='text-xs text-muted-foreground mt-1'>
-                            数量: {product.quantity} | 单价: ¥{product.price.toFixed(2)}
+                            数量: {product.quantity} | 单价: ${product.price.toFixed(2)}
                           </div>
                         </div>
                         <div className='text-right'>
-                          <div className='font-medium'>¥{product.totalPrice.toFixed(2)}</div>
+                          <div className='font-medium'>${product.totalPrice.toFixed(2)}</div>
                         </div>
                       </div>
                       
@@ -122,15 +122,15 @@ export function OrdersProductDetailsDialog({ open, onOpenChange, order }: Orders
             <div className='grid grid-cols-3 gap-4'>
               <div className='text-center p-3 bg-muted/50 rounded'>
                 <div className='text-sm text-muted-foreground'>运费</div>
-                <div className='font-medium'>¥{order.shippingCost.toFixed(2)}</div>
+                <div className='font-medium'>${order.shippingCost.toFixed(2)}</div>
               </div>
               <div className='text-center p-3 bg-muted/50 rounded'>
                 <div className='text-sm text-muted-foreground'>其他费用</div>
-                <div className='font-medium'>¥{order.otherCosts.toFixed(2)}</div>
+                <div className='font-medium'>${order.otherCosts.toFixed(2)}</div>
               </div>
               <div className='text-center p-3 bg-primary/10 rounded'>
                 <div className='text-sm text-muted-foreground'>总成本</div>
-                <div className='font-bold text-primary'>¥{order.totalCost.toFixed(2)}</div>
+                <div className='font-bold text-primary'>${order.totalCost.toFixed(2)}</div>
               </div>
             </div>
           </div>

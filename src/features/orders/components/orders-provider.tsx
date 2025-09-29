@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import useDialogState from '@/hooks/use-dialog-state'
 import { type Order } from '../data/schema'
 
-type OrdersDialogType = 'create' | 'update' | 'delete' | 'import'
+type OrdersDialogType = 'create' | 'update' | 'delete' | 'import' | 'sync'
 
 type OrdersContextType = {
   open: OrdersDialogType | null

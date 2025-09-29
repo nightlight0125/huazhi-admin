@@ -154,7 +154,7 @@ export function QuotesMutateDrawer({
               name='budget'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>预算 (¥)</FormLabel>
+                  <FormLabel>预算 ($)</FormLabel>
                   <FormControl>
                     <Input
                       type='number'

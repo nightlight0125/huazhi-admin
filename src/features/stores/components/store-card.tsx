@@ -138,7 +138,7 @@ export function StoreCard({
             </div>
             <div>
               <div className="text-2xl font-bold text-primary">
-                ¥{store.revenue.toLocaleString()}
+                ${store.revenue.toLocaleString()}
               </div>
               <div className="text-xs text-muted-foreground">总收入</div>
             </div>

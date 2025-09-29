@@ -4,7 +4,7 @@ import { z } from 'zod'
 export const productCategories = ['electronics', 'clothing', 'home', 'books', 'sports', 'beauty'] as const
 
 // 发货地枚举
-export const shippingLocations = ['beijing', 'shanghai', 'guangzhou', 'shenzhen', 'hangzhou', 'nanjing'] as const
+export const shippingLocations = ['china', 'usa', 'japan', 'germany', 'uk', 'france'] as const
 
 // 产品数据模式
 export const productSchema = z.object({
@@ -16,6 +16,11 @@ export const productSchema = z.object({
   sku: z.string().min(1, 'SKU不能为空'),
   category: z.enum(productCategories),
   sales: z.number().min(0, '销量不能为负数').default(0),
+  // 分类相关字段
+  isPublic: z.boolean().default(true), // 是否在公共目录
+  isRecommended: z.boolean().default(false), // 是否为推荐产品
+  isFavorite: z.boolean().default(false), // 是否为喜欢的产品
+  isMyStore: z.boolean().default(false), // 是否为我的店铺产品
   createdAt: z.date(),
   updatedAt: z.date(),
 })

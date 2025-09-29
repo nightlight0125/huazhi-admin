@@ -44,7 +44,7 @@ export function ProductsGridView({ products }: ProductsGridViewProps) {
               {/* 价格 */}
               <div className='flex items-center justify-between'>
                 <span className='text-2xl font-bold text-primary'>
-                  ¥{product.price.toFixed(2)}
+                  ${product.price.toFixed(2)}
                 </span>
                 <span className='text-sm text-muted-foreground'>
                   销量: {product.sales.toLocaleString()}
