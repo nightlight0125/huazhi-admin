@@ -152,6 +152,20 @@ export const productsColumns: ColumnDef<Product>[] = [
     },
   },
   {
+    id: 'supplier',
+    accessorFn: () => 'supplier-a', // 默认值，实际应该从产品数据中获取
+    header: '供应商',
+    enableHiding: true,
+    enableSorting: false,
+    filterFn: (row, id, value) => {
+      // 这里可以根据实际的产品供应商数据进行筛选
+      // 目前返回 true 表示所有产品都匹配（因为产品数据中没有 supplier 字段）
+      if (!value || value.length === 0) return true
+      // 可以根据实际需求实现筛选逻辑
+      return true
+    },
+  },
+  {
     accessorKey: 'sales',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='销量' />

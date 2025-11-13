@@ -19,6 +19,12 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { type ColumnDef } from '@tanstack/react-table'
 
+type CategoryItem = {
+  label: string
+  value: string
+  children?: CategoryItem[]
+}
+
 interface DataGridTableProps<TData> {
   data: TData[]
   columns: ColumnDef<TData>[]
@@ -26,11 +32,13 @@ interface DataGridTableProps<TData> {
   filters?: {
     columnId: string
     title: string
-    options: {
+    options?: {
       label: string
       value: string
       icon?: React.ComponentType<{ className?: string }>
     }[]
+    categories?: CategoryItem[]
+    useCategoryTree?: boolean
   }[]
   gridCols?: string
   // 路由配置

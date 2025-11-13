@@ -15,7 +15,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { labels } from '../data/data'
+import { labels } from '../../store-management/data/data'
 import { taskSchema } from '../data/schema'
 import { useTasks } from './tasks-provider'
 

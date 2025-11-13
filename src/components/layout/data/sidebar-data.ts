@@ -1,17 +1,20 @@
 import {
-  LayoutDashboard,
-  Users,
-  ShieldCheck,
   AudioWaveform,
+  ChartColumnBig,
+  CircleParking,
+  ClipboardList,
+  ClipboardMinus,
   Command,
   GalleryVerticalEnd,
-  Quote,
+  House,
+  LayoutGrid,
+  Package,
+  Settings,
   ShoppingBag,
-  Store,
   ShoppingCart,
-  Wallet,
-  Link,
-  Palette,
+  Store,
+  Users,
+  Wallet
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -40,162 +43,217 @@ export const sidebarData: SidebarData = {
   ],
   navGroups: [
     {
-      title: 'General',
+      title: '',
       items: [
         {
           title: 'Dashboard',
           url: '/',
-          icon: LayoutDashboard,
+          icon: House,
         },
         {
-          title: '询价管理',
-          url: '/quotes',
-          icon: Quote,
+          title: 'Tasks',
+          url: '/tasks',
         },
         {
-          title: '产品中心',
-          url: '/products',
-          icon: ShoppingBag,
+          title: 'apps',
+          url: '/apps',
         },
         {
-          title: '产品连接',
-          url: '/product-connections',
-          icon: Link,
-        },
-        {
-          title: '品牌管理',
-          url: '/brands',
-          icon: Palette,
-        },
-        {
-          title: '店铺管理',
+          title: 'stores',
           url: '/stores',
-          icon: Store,
         },
         {
-          title: '订单管理',
-          url: '/orders',
-          icon: ShoppingCart,
-        },
-        {
-          title: '钱包管理',
+          title: 'wallet',
           url: '/wallet',
-          icon: Wallet,
         },
         {
-          title: '账号管理',
+          title: 'auth',
+          url: '/auth',
+        },
+        {
+          title: 'chats',
+          url: '/chats',
+        },
+        {
+          title: 'brands',
+          url: '/brands',
+        },
+        {
+          title: 'quotes',
+          url: '/quotes',
+        },
+        {
+          title: 'roles',
+          url: '/roles',
+        },
+        {
+          title: 'Users',
           url: '/users',
           icon: Users,
         },
         {
-          title: '角色管理',
-          url: '/roles',
-          icon: ShieldCheck,
+          title: 'settings',
+          url: '/settings',
         },
+        {
+          title: 'Order',
+          url: '/orders',
+          icon: ClipboardList,
+        },
+        {
+          title: 'Order',
+          url: '/orders',
+          icon: ClipboardList,
+        },
+
+        {
+          title: 'Store Management',
+          url: '/store-management',
+          icon: Store,
+        },
+        {
+          title: 'Find Products',
+          icon: LayoutGrid,
+          items: [
+            {
+              title: 'All Products',
+              url: '/all-products',
+            },
+            {
+              title: 'Winning Products  ',
+              url: '/winning-products',
+            },
+            {
+              title: 'Sourcing',
+              url: '/sourcing',
+            },
+            {
+              title: 'Liked Products',
+              url: '/liked-products',
+            },
+            {
+              title: 'Recommend Products',
+              url: '/recommend-products',
+            },
+          ],
+        },
+        {
+          title: 'Store Products',
+          icon: Package,
+          items: [
+            {
+              title: 'Store Products',
+              url: '/store-products',
+            },
+            {
+              title: 'Bundle Products',
+              url: '/bundle-products',
+            },
+            {
+              title: 'Published products',
+              url: '/published-products',
+            },
+          ],
+        },
+        {
+          title: 'Branding',
+          icon: ShoppingBag,
+          items: [
+            {
+              title: 'Packaging Products',
+              url: '/packaging-products',
+            },
+            {
+              title: 'Packaging Connection',
+              url: '/packaging-connection',
+            }
+          ],
+        },
+        {
+          title: 'Cart',
+          url: '/cart',
+          icon: ShoppingCart,
+        },
+        {
+          title: 'Orders',
+          icon: ClipboardList,
+          items: [
+            {
+              title: 'Store Orders',
+              url: '/store-orders',
+            },
+            {
+              title: 'Sample Orders',
+              url: '/sample-orders',
+            },
+            {
+              title: 'Stock Orders',
+              url: '/stock-orders',
+            },
+          ],
+        },
+        {
+          title: 'pOD',
+          icon: CircleParking,
+          items: [
+            {
+              title: 'POD Products',
+              url: '/pod-products',
+            },
+            {
+              title: 'POD Design',
+              url: '/pod-design',
+            },
+            {
+              title: 'POD Publish',
+              url: '/pod-publish',
+            },
+          ],
+        },
+        {
+          title: 'My Inventory',
+          url: '/my-inventory',
+          icon: ChartColumnBig,
+        },
+        {
+          title: 'Support Tickets',
+          url: '/support-tickets',
+          icon: Users,
+        },
+        {
+          title: 'Affiliate Plan',
+          url: '/affiliate-plan',
+          icon: ClipboardMinus,
+        },
+        {
+          title: 'Wallet',
+          url: '/wallet',
+          icon: Wallet,
+        },
+        {
+          title: 'Settings',
+          icon: Settings,
+          items: [
+            {
+              title: 'Profile',
+              url: '/settings/profile',
+            },
+            {
+              title: 'Logistics',
+              url: '/settings/logistics',
+            },
+            {
+              title: 'Appearance',
+              url: '/settings/appearance',
+            },
+            {
+              title: 'Accounts',
+              url: '/settings/accounts',
+            },
+          ],
+        }
       ],
     },
-    // {
-    //   title: 'Pages',
-    //   items: [
-    //     {
-    //       title: 'Auth',
-    //       icon: ShieldCheck,
-    //       items: [
-    //         {
-    //           title: 'Sign In',
-    //           url: '/sign-in',
-    //         },
-    //         {
-    //           title: 'Sign In (2 Col)',
-    //           url: '/sign-in-2',
-    //         },
-    //         {
-    //           title: 'Sign Up',
-    //           url: '/sign-up',
-    //         },
-    //         {
-    //           title: 'Forgot Password',
-    //           url: '/forgot-password',
-    //         },
-    //         {
-    //           title: 'OTP',
-    //           url: '/otp',
-    //         },
-    //       ],
-    //     },
-    //     {
-    //       title: 'Errors',
-    //       icon: Bug,
-    //       items: [
-    //         {
-    //           title: 'Unauthorized',
-    //           url: '/errors/unauthorized',
-    //           icon: Lock,
-    //         },
-    //         {
-    //           title: 'Forbidden',
-    //           url: '/errors/forbidden',
-    //           icon: UserX,
-    //         },
-    //         {
-    //           title: 'Not Found',
-    //           url: '/errors/not-found',
-    //           icon: FileX,
-    //         },
-    //         {
-    //           title: 'Internal Server Error',
-    //           url: '/errors/internal-server-error',
-    //           icon: ServerOff,
-    //         },
-    //         {
-    //           title: 'Maintenance Error',
-    //           url: '/errors/maintenance-error',
-    //           icon: Construction,
-    //         },
-    //       ],
-    //     },
-    //   ],
-    // },
-    // {
-    //   title: 'Other',
-    //   items: [
-    //     {
-    //       title: 'Settings',
-    //       icon: Settings,
-    //       items: [
-    //         {
-    //           title: 'Profile',
-    //           url: '/settings',
-    //           icon: UserCog,
-    //         },
-    //         {
-    //           title: 'Account',
-    //           url: '/settings/account',
-    //           icon: Wrench,
-    //         },
-    //         {
-    //           title: 'Appearance',
-    //           url: '/settings/appearance',
-    //           icon: Palette,
-    //         },
-    //         {
-    //           title: 'Notifications',
-    //           url: '/settings/notifications',
-    //           icon: Bell,
-    //         },
-    //         {
-    //           title: 'Display',
-    //           url: '/settings/display',
-    //           icon: Monitor,
-    //         },
-    //       ],
-    //     },
-    //     {
-    //       title: 'Help Center',
-    //       url: '/help-center',
-    //       icon: HelpCircle,
-    //     },
-    //   ],
-    // },
+   
   ],
 }
