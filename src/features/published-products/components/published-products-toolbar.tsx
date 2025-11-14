@@ -14,27 +14,11 @@ type PublishedProductsToolbarProps<TData> = {
 }
 
 export function PublishedProductsToolbar<TData>({
-  table,
+  table: _table,
 }: PublishedProductsToolbarProps<TData>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStore, setSelectedStore] = useState<string>('')
 
-  const handleSearch = () => {
-    table.setGlobalFilter(searchTerm)
-    // Apply store filter if needed
-    if (selectedStore) {
-      table.getColumn('storeName')?.setFilterValue(selectedStore)
-    } else {
-      table.getColumn('storeName')?.setFilterValue(undefined)
-    }
-  }
-
-  const handleReset = () => {
-    setSearchTerm('')
-    setSelectedStore('')
-    table.resetColumnFilters()
-    table.setGlobalFilter('')
-  }
 
   return (
     <div className='flex items-center gap-3 border-b p-4'>

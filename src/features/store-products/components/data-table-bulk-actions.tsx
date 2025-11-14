@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
+import { CircleArrowUp, Download, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { sleep } from '@/lib/utils'
 import { Button } from '@/components/ui/button'

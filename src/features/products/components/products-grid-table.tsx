@@ -159,6 +159,7 @@ export function ProductsGridTable({
                 navigate({
                   to: '/products/$productId',
                   params: { productId: item.id },
+                  search: { from: undefined },
                 })
               }
             >

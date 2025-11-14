@@ -1,11 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import {
-  ArrowLeft,
   Image as ImageIcon,
   Type,
   Pencil,
-  Upload,
   Undo2,
   Redo2,
   RotateCw,
@@ -17,7 +15,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { products } from '../data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
@@ -194,7 +191,6 @@ export function ProductDesign() {
     const element = elements.find((el) => el.id === elementId)
     if (!element) return
 
-    const elementRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const container = (e.currentTarget.parentElement?.parentElement as HTMLElement)
     if (!container) return
 
@@ -217,7 +213,6 @@ export function ProductDesign() {
       if (!productImage) return
 
       const imageRect = productImage.getBoundingClientRect()
-      const containerRect = container.getBoundingClientRect()
       const scale = zoom / 100
 
       // 计算相对于图片的位置
