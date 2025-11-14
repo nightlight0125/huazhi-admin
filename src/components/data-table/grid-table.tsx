@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
+  type ColumnDef,
   type SortingState,
   type VisibilityState,
   getCoreRowModel,
@@ -12,12 +13,17 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { DataTableBulkActions } from './bulk-actions'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { type ColumnDef } from '@tanstack/react-table'
+
+type CategoryItem = {
+  label: string
+  value: string
+  children?: CategoryItem[]
+}
 
 interface DataGridTableProps<TData> {
   data: TData[]
@@ -26,11 +32,13 @@ interface DataGridTableProps<TData> {
   filters?: {
     columnId: string
     title: string
-    options: {
+    options?: {
       label: string
       value: string
       icon?: React.ComponentType<{ className?: string }>
     }[]
+    categories?: CategoryItem[]
+    useCategoryTree?: boolean
   }[]
   gridCols?: string
   // 路由配置
@@ -63,7 +71,11 @@ interface DataGridTableProps<TData> {
     // 行操作组件
     rowActions?: React.ComponentType<{ row: { original: TData } }>
     // 自定义渲染函数
-    customRender?: (item: TData, isSelected: boolean, onSelect: (checked: boolean) => void) => React.ReactNode
+    customRender?: (
+      item: TData,
+      isSelected: boolean,
+      onSelect: (checked: boolean) => void
+    ) => React.ReactNode
   }
 }
 
@@ -88,9 +100,9 @@ export function DataGridTable<TData>({
     }
     return getRouteApi('/_authenticated/tasks/')
   }
-  
+
   const route = getRoute()
-  
+
   // Synced with URL states
   const {
     globalFilter,
@@ -105,7 +117,7 @@ export function DataGridTable<TData>({
     navigate: route.useNavigate(),
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
-    columnFilters: filters.map(filter => ({
+    columnFilters: filters.map((filter) => ({
       columnId: filter.columnId,
       searchKey: filter.columnId,
       type: 'array' as const,
@@ -150,7 +162,11 @@ export function DataGridTable<TData>({
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  const renderGridItem = (item: TData, isSelected: boolean, onSelect: (checked: boolean) => void) => {
+  const renderGridItem = (
+    item: TData,
+    isSelected: boolean,
+    onSelect: (checked: boolean) => void
+  ) => {
     // 如果提供了自定义渲染函数，优先使用
     if (renderConfig.customRender) {
       return renderConfig.customRender(item, isSelected, onSelect)
@@ -158,77 +174,87 @@ export function DataGridTable<TData>({
 
     // 默认渲染逻辑
     const title = String(item[renderConfig.titleField] || '')
-    const subtitle = renderConfig.subtitleField ? String(item[renderConfig.subtitleField] || '') : ''
-    const description = renderConfig.descriptionField ? String(item[renderConfig.descriptionField] || '') : ''
+    const subtitle = renderConfig.subtitleField
+      ? String(item[renderConfig.subtitleField] || '')
+      : ''
+    const description = renderConfig.descriptionField
+      ? String(item[renderConfig.descriptionField] || '')
+      : ''
 
     return (
-      <Card className="group relative overflow-hidden">
-        <CardHeader className="p-4">
-          <div className="flex items-start justify-between">
-            <CardTitle className="line-clamp-2 text-sm font-medium">
+      <Card className='group relative overflow-hidden'>
+        <CardHeader className='p-4'>
+          <div className='flex items-start justify-between'>
+            <CardTitle className='line-clamp-2 text-sm font-medium'>
               {title}
             </CardTitle>
-            <div className="flex items-center space-x-2">
+            <div className='flex items-center space-x-2'>
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={onSelect}
-                className="ml-2"
+                className='ml-2'
               />
               {renderConfig.rowActions && (
                 <renderConfig.rowActions row={{ original: item }} />
               )}
             </div>
           </div>
-          
+
           {subtitle && (
-            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+            <div className='text-muted-foreground flex items-center space-x-2 text-xs'>
               <span>{subtitle}</span>
             </div>
           )}
         </CardHeader>
-        
-        <CardContent className="p-4 pt-0">
-          <div className="space-y-2">
+
+        <CardContent className='p-4 pt-0'>
+          <div className='space-y-2'>
             {/* 标签区域 */}
             {renderConfig.badges && renderConfig.badges.length > 0 && (
-              <div className="flex items-center justify-between flex-wrap gap-1">
+              <div className='flex flex-wrap items-center justify-between gap-1'>
                 {renderConfig.badges.map((badgeConfig, index) => {
                   const value = String(item[badgeConfig.field] || '')
-                  const option = badgeConfig.options.find(opt => opt.value === value)
-                  
+                  const option = badgeConfig.options.find(
+                    (opt) => opt.value === value
+                  )
+
                   if (!option) return null
-                  
+
                   return (
-                    <Badge 
+                    <Badge
                       key={index}
-                      variant={option.variant || 'outline'} 
-                      className="text-xs"
+                      variant={option.variant || 'outline'}
+                      className='text-xs'
                     >
-                      {option.icon && <option.icon className="mr-1 h-3 w-3" />}
+                      {option.icon && <option.icon className='mr-1 h-3 w-3' />}
                       {option.label}
                     </Badge>
                   )
                 })}
               </div>
             )}
-            
+
             {/* 日期字段 */}
-            {renderConfig.dateFields && renderConfig.dateFields.map((dateConfig, index) => {
-              const dateValue = item[dateConfig.field]
-              if (!dateValue) return null
-              
-              const date = dateValue instanceof Date ? dateValue : new Date(dateValue as string)
-              
-              return (
-                <div key={index} className="text-xs text-muted-foreground">
-                  {dateConfig.label}: {date.toLocaleDateString('zh-CN')}
-                </div>
-              )
-            })}
-            
+            {renderConfig.dateFields &&
+              renderConfig.dateFields.map((dateConfig, index) => {
+                const dateValue = item[dateConfig.field]
+                if (!dateValue) return null
+
+                const date =
+                  dateValue instanceof Date
+                    ? dateValue
+                    : new Date(dateValue as string)
+
+                return (
+                  <div key={index} className='text-muted-foreground text-xs'>
+                    {dateConfig.label}: {date.toLocaleDateString('zh-CN')}
+                  </div>
+                )
+              })}
+
             {/* 描述字段 */}
             {description && (
-              <div className="text-xs text-muted-foreground line-clamp-2">
+              <div className='text-muted-foreground line-clamp-2 text-xs'>
                 {description}
               </div>
             )}
@@ -245,7 +271,7 @@ export function DataGridTable<TData>({
         searchPlaceholder={searchPlaceholder}
         filters={filters}
       />
-      
+
       {/* 网格视图 */}
       <div className={`grid gap-4 ${gridCols}`}>
         {table.getRowModel().rows?.length ? (
@@ -261,15 +287,15 @@ export function DataGridTable<TData>({
             )
           })
         ) : (
-          <div className="col-span-full flex items-center justify-center h-24 text-muted-foreground">
+          <div className='text-muted-foreground col-span-full flex h-24 items-center justify-center'>
             No results.
           </div>
         )}
       </div>
-      
+
       <DataTablePagination table={table} />
-      <DataTableBulkActions table={table} entityName="项目">
-        <div className="text-sm text-muted-foreground">
+      <DataTableBulkActions table={table} entityName='项目'>
+        <div className='text-muted-foreground text-sm'>
           已选择 {table.getFilteredSelectedRowModel().rows.length} 个项目
         </div>
       </DataTableBulkActions>

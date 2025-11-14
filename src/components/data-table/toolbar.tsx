@@ -2,8 +2,15 @@ import { Cross2Icon } from '@radix-ui/react-icons'
 import { type Table } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { CategoryTreeFacetedFilter } from './category-tree-faceted-filter'
 import { DataTableFacetedFilter } from './faceted-filter'
 import { DataTableViewOptions } from './view-options'
+
+type CategoryItem = {
+  label: string
+  value: string
+  children?: CategoryItem[]
+}
 
 type DataTableToolbarProps<TData> = {
   table: Table<TData>
@@ -12,11 +19,13 @@ type DataTableToolbarProps<TData> = {
   filters?: {
     columnId: string
     title: string
-    options: {
+    options?: {
       label: string
       value: string
       icon?: React.ComponentType<{ className?: string }>
     }[]
+    categories?: CategoryItem[]
+    useCategoryTree?: boolean
   }[]
 }
 
@@ -55,12 +64,24 @@ export function DataTableToolbar<TData>({
           {filters.map((filter) => {
             const column = table.getColumn(filter.columnId)
             if (!column) return null
+
+            if (filter.useCategoryTree && filter.categories) {
+              return (
+                <CategoryTreeFacetedFilter
+                  key={filter.columnId}
+                  column={column}
+                  title={filter.title}
+                  categories={filter.categories}
+                />
+              )
+            }
+
             return (
               <DataTableFacetedFilter
                 key={filter.columnId}
                 column={column}
                 title={filter.title}
-                options={filter.options}
+                options={filter.options || []}
               />
             )
           })}
