@@ -1,18 +1,17 @@
 import { useState } from 'react'
-import { type Table } from '@tanstack/react-table'
 import { format } from 'date-fns'
-import { Calendar as CalendarIcon, RotateCcw, Search } from 'lucide-react'
+import { type Table } from '@tanstack/react-table'
+import { Calendar as CalendarIcon } from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
+import { Input } from '@/components/ui/input'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
 
 type DataTableToolbarProps<TData> = {
   table: Table<TData>
@@ -47,42 +46,43 @@ export function LikedProductsToolbar<TData>({
       {/* Search and Filter Row */}
       <div className='flex w-full items-center gap-3'>
         <div className='flex w-[30%] items-center gap-2'>
-          <Label
+          {/* <Label
             htmlFor='product-name'
             className='shrink-0 text-xs whitespace-nowrap'
           >
             Product Name
-          </Label>
+          </Label> */}
           <Input
             id='product-name'
-            placeholder='Please enter'
+            placeholder='Please enter Product Name'
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
             className='h-8 flex-1 text-xs'
           />
         </div>
         <div className='flex w-[30%] items-center gap-2'>
-          <Label htmlFor='td-spu' className='shrink-0 text-xs whitespace-nowrap'>
+          {/* <Label
+            htmlFor='td-spu'
+            className='shrink-0 text-xs whitespace-nowrap'
+          >
             TD SPU
-          </Label>
+          </Label> */}
           <Input
             id='td-spu'
-            placeholder='Please enter'
+            placeholder='Please enter TD SPU'
             value={tdSpu}
             onChange={(e) => setTdSpu(e.target.value)}
             className='h-8 flex-1 text-xs'
           />
         </div>
         <div className='flex w-[30%] items-center gap-2'>
-          <Label className='shrink-0 text-xs whitespace-nowrap'>
-            Add Date
-          </Label>
+          {/* <Label className='shrink-0 text-xs whitespace-nowrap'>Add Date</Label> */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant='outline'
                 className={cn(
-                  'h-8 flex-1 justify-start text-left font-normal text-xs',
+                  'h-8 flex-1 justify-start text-left text-xs font-normal',
                   !dateRange && 'text-muted-foreground'
                 )}
               >
@@ -97,7 +97,7 @@ export function LikedProductsToolbar<TData>({
                     format(dateRange.from, 'MMM d, yyyy')
                   )
                 ) : (
-                  <span>Start Date - End Date</span>
+                  <span>Add Date - Start Date - End Date</span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -113,7 +113,7 @@ export function LikedProductsToolbar<TData>({
             </PopoverContent>
           </Popover>
         </div>
-        <Button
+        {/* <Button
           onClick={handleSearch}
           variant='outline'
           className='h-8 shrink-0 text-xs hover:bg-purple-700'
@@ -130,9 +130,8 @@ export function LikedProductsToolbar<TData>({
         >
           <RotateCcw className='mr-1 h-3.5 w-3.5' />
           Reset
-        </Button>
+        </Button> */}
       </div>
     </div>
   )
 }
-

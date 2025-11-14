@@ -128,7 +128,7 @@ export const storeProductsColumns: ColumnDef<StoreProduct>[] = [
     header: () => <div className='text-xs font-medium'>Action</div>,
     cell: ({ row }) => {
       return (
-        <div className='flex flex-col gap-1'>
+        <div className='flex gap-1'>
           <Button
             variant='outline'
             size='sm'

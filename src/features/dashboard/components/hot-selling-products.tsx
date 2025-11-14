@@ -1,12 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import {
-  ArrowUpDown,
-  Calendar as CalendarIcon,
-  RotateCcw,
-  Search,
-  Sparkles,
-} from 'lucide-react'
+  type ColumnFiltersState,
+  flexRender,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
+} from '@tanstack/react-table'
+import { Calendar as CalendarIcon, Sparkles } from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -32,6 +39,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { type HotSellingProduct } from '../data/schema'
+import { createHotSellingProductsColumns } from './hot-selling-products-columns'
+
+// Mock data - replace with actual data fetching
+const mockData: HotSellingProduct[] = []
 
 export function HotSellingProducts() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -40,18 +53,76 @@ export function HotSellingProducts() {
   })
   const [selectedStore, setSelectedStore] = useState<string>('')
 
-  const handleSearch = () => {
-    // Handle search logic here
-    console.log('Search:', { dateRange, selectedStore })
-  }
+  // Local UI-only states
+  const [rowSelection, setRowSelection] = useState({})
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [globalFilter, setGlobalFilter] = useState('')
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
-  const handleReset = () => {
-    setDateRange({
-      from: new Date('2025-10-19'),
-      to: new Date('2025-10-26'),
-    })
-    setSelectedStore('')
-  }
+  // Filter data based on date range and store selection
+  const filteredData = useMemo(() => {
+    let data = [...mockData]
+
+    // Apply store filter if selected
+    if (selectedStore) {
+      // TODO: Filter by store when store field is added to schema
+    }
+
+    // Apply date range filter
+    if (dateRange?.from && dateRange?.to) {
+      // TODO: Filter by date range when date field is added to schema
+    }
+
+    return data
+  }, [selectedStore, dateRange])
+
+  const columns = createHotSellingProductsColumns()
+
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+      globalFilter,
+      pagination,
+    },
+    enableRowSelection: false,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnFiltersChange: setColumnFilters,
+    globalFilterFn: (row, _columnId, filterValue) => {
+      const searchValue = String(filterValue).toLowerCase()
+      const productName = String(row.getValue('productName')).toLowerCase()
+      return productName.includes(searchValue)
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+  })
+
+  const pageCount = table.getPageCount()
+  useEffect(() => {
+    if (pagination.pageIndex >= pageCount && pageCount > 0) {
+      setPagination((prev) => ({
+        ...prev,
+        pageIndex: pageCount - 1,
+      }))
+    }
+  }, [pageCount, pagination.pageIndex])
 
   return (
     <div className='mt-8'>
@@ -116,48 +187,70 @@ export function HotSellingProducts() {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Action Buttons */}
-          <div className='ml-auto flex items-center gap-2'>
-            <Button onClick={handleSearch} variant='outline'>
-              <Search className='mr-2 h-4 w-4' />
-              Search
-            </Button>
-            <Button variant='outline' onClick={handleReset}>
-              <RotateCcw className='mr-2 h-4 w-4' />
-              Reset
-            </Button>
-          </div>
-          <div>Hot Selling Products</div>
         </div>
+        <div className='text-lg font-bold'>Hot Selling Products</div>
 
         {/* Table */}
-        <div className='rounded-md border'>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ranking</TableHead>
-                <TableHead>Product Name</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>
-                  <div className='flex items-center gap-2'>
-                    Selling Amount
-                    <ArrowUpDown className='text-muted-foreground h-4 w-4' />
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell colSpan={4} className='h-[400px]'>
-                  <div className='flex h-full flex-col items-center justify-center'>
-                    <Sparkles className='text-muted-foreground mb-4 h-12 w-12' />
-                    <p className='text-muted-foreground text-sm'>No Data</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+        <div className='space-y-4'>
+          <DataTableToolbar
+            table={table}
+            searchPlaceholder='Search by product name...'
+          />
+
+          <div className='overflow-hidden rounded-md border'>
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead key={header.id} colSpan={header.colSpan}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && 'selected'}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className='h-[400px]'>
+                      <div className='flex h-full flex-col items-center justify-center'>
+                        <Sparkles className='text-muted-foreground mb-4 h-12 w-12' />
+                        <p className='text-muted-foreground text-sm'>No Data</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {table.getRowModel().rows?.length > 0 && (
+            <DataTablePagination table={table} />
+          )}
         </div>
       </CardContent>
     </div>

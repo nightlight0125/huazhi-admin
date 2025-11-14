@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { RotateCcw, Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -60,7 +58,7 @@ export function PublishedProductsToolbar<TData>({
         </SelectContent>
       </Select>
 
-      <Button onClick={handleSearch} className='h-9 text-white'>
+      {/* <Button onClick={handleSearch} className='h-9 text-white'>
         <Search className='mr-2 h-4 w-4' />
         Search
       </Button>
@@ -68,7 +66,7 @@ export function PublishedProductsToolbar<TData>({
       <Button variant='outline' className='h-9' onClick={handleReset}>
         <RotateCcw className='mr-2 h-4 w-4' />
         Reset
-      </Button>
+      </Button> */}
     </div>
   )
 }

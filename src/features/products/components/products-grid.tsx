@@ -11,13 +11,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
 import {
-  categories,
   locations,
   priceRanges,
   suppliers,
 } from '@/features/products/data/data'
 import { type Product } from '@/features/products/data/schema'
+
+// Category tree data
+const categoryTree = [
+  {
+    label: 'Animals & Pet Supplies',
+    value: 'animals-pet-supplies',
+    children: [
+      { label: 'Live Animals', value: 'live-animals' },
+      { label: 'Pet Supplies', value: 'pet-supplies' },
+    ],
+  },
+  {
+    label: 'Apparel & Accessories',
+    value: 'apparel-accessories',
+    children: [
+      { label: 'Clothing', value: 'clothing' },
+      { label: 'Accessories', value: 'accessories' },
+    ],
+  },
+  {
+    label: 'Arts & Entertainment',
+    value: 'arts-entertainment',
+    children: [
+      { label: 'Art Supplies', value: 'art-supplies' },
+      { label: 'Entertainment', value: 'entertainment' },
+    ],
+  },
+  {
+    label: 'Baby & Toddler',
+    value: 'baby-toddler',
+    children: [
+      { label: 'Baby Care', value: 'baby-care' },
+      { label: 'Toddler Items', value: 'toddler-items' },
+    ],
+  },
+  {
+    label: 'Business & Industrial',
+    value: 'business-industrial',
+    children: [
+      { label: 'Office Supplies', value: 'office-supplies' },
+      { label: 'Industrial Equipment', value: 'industrial-equipment' },
+    ],
+  },
+  {
+    label: 'Cameras & Optics',
+    value: 'cameras-optics',
+    children: [
+      { label: 'Cameras', value: 'cameras' },
+      { label: 'Optics', value: 'optics' },
+    ],
+  },
+]
 
 type ProductsGridProps = {
   data: Product[]
@@ -28,8 +80,8 @@ type ProductsGridProps = {
 export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   const nav = useNavigate()
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(
-    undefined
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
+    new Set()
   )
   const [selectedPriceRange, setSelectedPriceRange] = useState<
     string | undefined
@@ -66,8 +118,27 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     }
 
     // Apply category filter
-    if (selectedCategory) {
-      result = result.filter((product) => product.category === selectedCategory)
+    if (selectedCategories.size > 0) {
+      result = result.filter((product) => {
+        // Check if product category matches any selected category
+        if (!product.category) return false
+        
+        // Check direct match or parent-child relationship
+        return Array.from(selectedCategories).some((selectedCat) => {
+          if (product.category === selectedCat) return true
+          // Check if product category is a child of selected parent
+          const parentCategory = categoryTree.find((cat) => cat.value === selectedCat)
+          if (parentCategory?.children) {
+            return parentCategory.children.some((child) => child.value === product.category)
+          }
+          // Check if selected category is a child of product's parent
+          const productParent = categoryTree.find((cat) => 
+            cat.children?.some((child) => child.value === product.category)
+          )
+          if (productParent?.value === selectedCat) return true
+          return false
+        })
+      })
     }
 
     // Apply price range filter
@@ -92,7 +163,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   }, [
     data,
     globalFilter,
-    selectedCategory,
+    selectedCategories,
     selectedPriceRange,
     selectedLocation,
   ])
@@ -115,11 +186,17 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     })
   }
 
-  // Prepare dropdown options
-  const categoryOptions = [
-    { label: 'All categories', value: 'all' },
-    ...categories.map((cat) => ({ label: cat.label, value: cat.value })),
-  ]
+  const handleCategoryChange = (value: string, checked: boolean) => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        next.add(value)
+      } else {
+        next.delete(value)
+      }
+      return next
+    })
+  }
 
   const priceRangeOptions = [
     { label: 'Price range', value: 'all' },
@@ -154,23 +231,12 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
 
         {/* Filter Dropdowns */}
         <div className='flex flex-wrap items-center gap-2'>
-          <Select
-            value={selectedCategory || 'all'}
-            onValueChange={(value) =>
-              setSelectedCategory(value === 'all' ? undefined : value)
-            }
-          >
-            <SelectTrigger className='min-w-[140px] border-dashed'>
-              <SelectValue placeholder='All categories' />
-            </SelectTrigger>
-            <SelectContent>
-              {categoryOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CategoryTreeFilterPopover
+            title='All categories'
+            categories={categoryTree}
+            selectedValues={selectedCategories}
+            onValueChange={handleCategoryChange}
+          />
 
           <Select
             value={selectedPriceRange || 'all'}

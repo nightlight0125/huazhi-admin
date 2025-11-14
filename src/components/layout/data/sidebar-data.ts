@@ -50,61 +50,61 @@ export const sidebarData: SidebarData = {
           url: '/',
           icon: House,
         },
-        {
-          title: 'Tasks',
-          url: '/tasks',
-        },
-        {
-          title: 'apps',
-          url: '/apps',
-        },
-        {
-          title: 'stores',
-          url: '/stores',
-        },
-        {
-          title: 'wallet',
-          url: '/wallet',
-        },
-        {
-          title: 'auth',
-          url: '/auth',
-        },
-        {
-          title: 'chats',
-          url: '/chats',
-        },
-        {
-          title: 'brands',
-          url: '/brands',
-        },
-        {
-          title: 'quotes',
-          url: '/quotes',
-        },
-        {
-          title: 'roles',
-          url: '/roles',
-        },
-        {
-          title: 'Users',
-          url: '/users',
-          icon: Users,
-        },
-        {
-          title: 'settings',
-          url: '/settings',
-        },
-        {
-          title: 'Order',
-          url: '/orders',
-          icon: ClipboardList,
-        },
-        {
-          title: 'Order',
-          url: '/orders',
-          icon: ClipboardList,
-        },
+        // {
+        //   title: 'Tasks',
+        //   url: '/tasks',
+        // },
+        // {
+        //   title: 'apps',
+        //   url: '/apps',
+        // },
+        // {
+        //   title: 'stores',
+        //   url: '/stores',
+        // },
+        // {
+        //   title: 'wallet',
+        //   url: '/wallet',
+        // },
+        // {
+        //   title: 'auth',
+        //   url: '/auth',
+        // },
+        // {
+        //   title: 'chats',
+        //   url: '/chats',
+        // },
+        // {
+        //   title: 'brands',
+        //   url: '/brands',
+        // },
+        // {
+        //   title: 'quotes',
+        //   url: '/quotes',
+        // },
+        // {
+        //   title: 'roles',
+        //   url: '/roles',
+        // },
+        // {
+        //   title: 'Users',
+        //   url: '/users',
+        //   icon: Users,
+        // },
+        // {
+        //   title: 'settings',
+        //   url: '/settings',
+        // },
+        // {
+        //   title: 'Order',
+        //   url: '/orders',
+        //   icon: ClipboardList,
+        // },
+        // {
+        //   title: 'Order',
+        //   url: '/orders',
+        //   icon: ClipboardList,
+        // },
 
         {
           title: 'Store Management',

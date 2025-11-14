@@ -10,7 +10,7 @@ import {
   Redo2,
   RotateCw,
   Layers,
-  AlignVerticalCenter,
+  MoveVertical,
   Minus,
   Plus,
   RefreshCw,
@@ -308,7 +308,7 @@ export function ProductDesign() {
             <Layers className='h-4 w-4' />
           </Button>
           <Button variant='ghost' size='icon' title='Align Vertical' className='h-8 w-8'>
-            <AlignVerticalCenter className='h-4 w-4' />
+            <MoveVertical className='h-4 w-4' />
           </Button>
           <Button variant='ghost' size='icon' onClick={handleZoomOut} title='Zoom Out' className='h-8 w-8'>
             <Minus className='h-4 w-4' />
