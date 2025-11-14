@@ -63,7 +63,18 @@ export function DataTableToolbar<TData>({
         <div className='flex gap-x-2'>
           {filters.map((filter) => {
             const column = table.getColumn(filter.columnId)
-            if (!column) return null
+            if (!column || !column.columnDef) return null
+
+            // Ensure column is ready for faceted filtering
+            try {
+              // Test if getFacetedUniqueValues is available and works
+              if (typeof column.getFacetedUniqueValues === 'function') {
+                column.getFacetedUniqueValues()
+              }
+            } catch (error) {
+              console.warn(`Column ${filter.columnId} is not ready for filtering:`, error)
+              return null
+            }
 
             if (filter.useCategoryTree && filter.categories) {
               return (

@@ -35,7 +35,19 @@ export function DataTableFacetedFilter<TData, TValue>({
   title,
   options,
 }: DataTableFacetedFilterProps<TData, TValue>) {
-  const facets = column?.getFacetedUniqueValues()
+  // Safely get faceted values with error handling
+  let facets: Map<string | number, number> = new Map()
+  try {
+    if (column && typeof column.getFacetedUniqueValues === 'function') {
+      const facetedValues = column.getFacetedUniqueValues()
+      if (facetedValues && facetedValues instanceof Map) {
+        facets = facetedValues
+      }
+    }
+  } catch (error) {
+    console.warn('Error getting faceted unique values:', error)
+  }
+  
   const selectedValues = new Set(column?.getFilterValue() as string[])
 
   return (

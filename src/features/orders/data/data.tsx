@@ -1,61 +1,45 @@
 import {
-  Package,
-  Truck,
-  CheckCircle,
-  XCircle,
-  Clock,
   AlertCircle,
-  Pause,
+  CheckCircle,
+  Clock,
   DollarSign,
+  Package,
   ShoppingCart,
+  Truck,
+  XCircle,
 } from 'lucide-react'
 
 // 订单状态选项
 export const orderStatuses = [
   {
-    label: '全部',
+    label: 'AlI',
     value: 'all' as const,
     icon: Package,
   },
   {
-    label: '待报价',
+    label: 'Quoting',
     value: 'pending_quote' as const,
     icon: Clock,
   },
   {
-    label: '待付款',
+    label: 'Pending',
     value: 'pending_payment' as const,
     icon: DollarSign,
   },
   {
-    label: '已付款',
+    label: 'Shipped',
     value: 'paid' as const,
     icon: CheckCircle,
   },
   {
-    label: '处理中',
+    label: 'Completed',
     value: 'processing' as const,
     icon: ShoppingCart,
   },
   {
-    label: '已发货',
+    label: 'Pay In Progress',
     value: 'shipped' as const,
     icon: Truck,
-  },
-  {
-    label: '缺货',
-    value: 'out_of_stock' as const,
-    icon: AlertCircle,
-  },
-  {
-    label: '已取消',
-    value: 'cancelled' as const,
-    icon: XCircle,
-  },
-  {
-    label: '订单搁置',
-    value: 'on_hold' as const,
-    icon: Pause,
   },
 ]
 

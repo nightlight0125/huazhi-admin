@@ -1,129 +1,277 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { DataTableColumnHeader } from '@/components/data-table'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Minus, Plus, ShoppingBag } from 'lucide-react'
 import { type Order } from '../data/schema'
-import { DataTableRowActions } from './data-table-row-actions'
+import { format } from 'date-fns'
 
-export const createOrdersColumns = (): ColumnDef<Order>[] => [
-  {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label='Select all'
-        className='translate-y-[2px]'
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label='Select row'
-        className='translate-y-[2px]'
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: 'storeName',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='店铺名称' />
-    ),
-    cell: ({ row }) => (
-      <div className='font-medium'>{row.getValue('storeName')}</div>
-    ),
-  },
-  {
-    accessorKey: 'orderNumber',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='订单号' />
-    ),
-    cell: ({ row }) => (
-      <div className='font-mono text-sm'>{row.getValue('orderNumber')}</div>
-    ),
-  },
-  {
-    accessorKey: 'customerName',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='客户' />
-    ),
-    cell: ({ row }) => (
-      <div className='font-medium'>{row.getValue('customerName')}</div>
-    ),
-  },
-  {
-    accessorKey: 'trackingNumber',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='跟踪号' />
-    ),
-    cell: ({ row }) => (
-      <div className='font-mono text-sm'>{row.getValue('trackingNumber')}</div>
-    ),
-  },
-  {
-    accessorKey: 'shippingCost',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='运费' />
-    ),
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue('shippingCost'))
-      const formatted = new Intl.NumberFormat('zh-CN', {
-        style: 'currency',
-        currency: 'CNY',
-      }).format(amount)
-      return <div className='font-medium'>{formatted}</div>
+export const createOrdersColumns = (options?: {
+  onExpand?: (rowId: string) => void
+  expandedRows?: Set<string>
+  selectedOrderId?: string
+  onSelectOrder?: (orderId: string) => void
+  onModifyProduct?: (orderId: string) => void
+  onEditAddress?: (orderId: string) => void
+}): ColumnDef<Order>[] => {
+  const { onExpand, expandedRows = new Set(), selectedOrderId, onSelectOrder, onModifyProduct, onEditAddress } = options || {}
+
+  return [
+    {
+      id: 'select-expand',
+      header: '',
+      cell: ({ row }) => {
+        const order = row.original
+        const isExpanded = expandedRows.has(row.id)
+        const hasProducts = order.productList && order.productList.length > 0
+
+        return (
+          <div className='flex items-center gap-2'>
+            <RadioGroup value={selectedOrderId || ''}>
+              <div className='flex items-center space-x-2'>
+                <RadioGroupItem
+                  value={order.id}
+                  id={order.id}
+                  onClick={() => onSelectOrder?.(order.id)}
+                />
+                <Label htmlFor={order.id} className='sr-only'>
+                  Select order
+                </Label>
+              </div>
+            </RadioGroup>
+            {hasProducts && (
+              <Button
+                variant='ghost'
+                size='icon'
+                className='h-6 w-6'
+                onClick={() => onExpand?.(row.id)}
+              >
+                {isExpanded ? (
+                  <Minus className='h-4 w-4' />
+                ) : (
+                  <Plus className='h-4 w-4' />
+                )}
+              </Button>
+            )}
+          </div>
+        )
+      },
+      enableSorting: false,
+      enableHiding: false,
+      size: 80,
     },
-  },
-  {
-    accessorKey: 'otherCosts',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='其他费用' />
-    ),
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue('otherCosts'))
-      const formatted = new Intl.NumberFormat('zh-CN', {
-        style: 'currency',
-        currency: 'CNY',
-      }).format(amount)
-      return <div className='font-medium'>{formatted}</div>
+    {
+      accessorKey: 'storeName',
+      header: 'Store Name',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div className='flex items-center gap-2'>
+            <ShoppingBag className='h-4 w-4 text-green-600' />
+            <span className='font-medium'>{order.storeName}</span>
+          </div>
+        )
+      },
+      size: 150,
     },
-  },
-  {
-    accessorKey: 'totalCost',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='总成本' />
-    ),
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue('totalCost'))
-      const formatted = new Intl.NumberFormat('zh-CN', {
-        style: 'currency',
-        currency: 'CNY',
-      }).format(amount)
-      return <div className='font-bold text-primary'>{formatted}</div>
+    {
+      id: 'orderNumbers',
+      header: 'Store Order Number\nHZ Order Number',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div className='space-y-1 text-sm'>
+            <div>{order.platformOrderNumber || '---'}</div>
+            <div>{order.orderNumber || '---'}</div>
+          </div>
+        )
+      },
+      size: 180,
     },
-  },
-  {
-    accessorKey: 'shippingStock',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Shipping Stock' />
-    ),
-    cell: ({ row }) => {
-      const stock = row.getValue('shippingStock') as string
-      const variant = stock === '有库存' ? 'default' : stock === '缺货' ? 'destructive' : 'secondary'
-      return <Badge variant={variant}>{stock}</Badge>
+    {
+      id: 'orderTimes',
+      header: 'Store Order Time\nHZ Order Time',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div className='space-y-1 text-sm'>
+            <div>{order.createdAt ? format(new Date(order.createdAt), 'MM-dd-yyyy') : '---'}</div>
+            <div>{order.updatedAt ? format(new Date(order.updatedAt), 'MM-dd-yyyy') : '---'}</div>
+          </div>
+        )
+      },
+      size: 150,
     },
-  },
-  {
-    id: 'actions',
-    cell: ({ row }) => <DataTableRowActions row={row} />,
-  },
-]
+    {
+      id: 'cost',
+      header: 'Cost',
+      cell: ({ row }) => {
+        const order = row.original
+        const totalQty = order.productList?.reduce((sum, p) => sum + p.quantity, 0) || 0
+        const productTotal = order.productList?.reduce((sum, p) => sum + p.totalPrice, 0) || 0
+        
+        return (
+          <div className='space-y-1 text-sm'>
+            <div>Total: ${order.totalCost.toFixed(2)}</div>
+            <div>Product: ${productTotal.toFixed(2)}</div>
+            <div>Shipping: ${order.shippingCost.toFixed(2)}</div>
+            <div>Other: ${order.otherCosts.toFixed(2)}</div>
+            <div>Qty: {totalQty}</div>
+          </div>
+        )
+      },
+      size: 150,
+    },
+    {
+      id: 'customer',
+      header: 'Customer',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div className='space-y-1 text-sm'>
+            <div>Name: {order.customerName}</div>
+            <div>Country: {order.country}</div>
+            <div>Address: {order.address}</div>
+          </div>
+        )
+      },
+      size: 200,
+    },
+    {
+      id: 'shipping',
+      header: 'Shipping Method\nTrack ID',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div className='space-y-1 text-sm'>
+            <div>{order.logistics || '---'}</div>
+            <div>{order.trackingNumber || '---'}</div>
+          </div>
+        )
+      },
+      size: 150,
+    },
+    {
+      accessorKey: 'shippingOrigin',
+      header: 'Warehouse',
+      cell: ({ row }) => {
+        return <div className='text-sm'>{row.getValue('shippingOrigin') || '---'}</div>
+      },
+      size: 120,
+    },
+    {
+      accessorKey: 'shippingStock',
+      header: 'Shipping Stock',
+      cell: ({ row }) => {
+        const stock = row.getValue('shippingStock') as string
+        const variant = stock === '有库存' ? 'default' : stock === '缺货' ? 'destructive' : 'secondary'
+        return <Badge variant={variant}>{stock}</Badge>
+      },
+      size: 120,
+    },
+    {
+      id: 'remark',
+      header: 'Remark',
+      cell: () => {
+        return <div className='text-sm'>---</div>
+      },
+      size: 100,
+    },
+    {
+      id: 'status',
+      header: 'Platform/HZ Status',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div className='space-y-1 text-sm'>
+            <div>{order.platformOrderStatus}</div>
+            <div>{order.status}</div>
+          </div>
+        )
+      },
+      size: 150,
+    },
+    {
+      id: 'actions',
+      header: 'Action',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div className='flex flex-col gap-1'>
+            <Button variant='outline' size='sm' className='h-7 text-xs'>
+              Pay
+            </Button>
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-7 text-xs'
+              onClick={(e) => {
+                e.stopPropagation()
+                onModifyProduct?.(order.id)
+              }}
+            >
+              Modify Product
+            </Button>
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-7 text-xs'
+              onClick={(e) => {
+                e.stopPropagation()
+                onEditAddress?.(order.id)
+              }}
+            >
+              Edit Address
+            </Button>
+            <Button variant='outline' size='sm' className='h-7 text-xs'>
+              Add Package
+            </Button>
+          </div>
+        )
+      },
+      enableSorting: false,
+      size: 120,
+    },
+    // Hidden columns for filtering only
+    {
+      id: 'platformOrderStatus',
+      accessorFn: (row) => row.platformOrderStatus || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+    {
+      id: 'platformFulfillmentStatus',
+      accessorFn: (row) => row.platformFulfillmentStatus || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+    {
+      id: 'store',
+      accessorFn: (row) => row.store || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+    {
+      id: 'logistics',
+      accessorFn: (row) => row.logistics || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+  ]
+}
 
 // 为了向后兼容，导出默认的列定义
 export const ordersColumns = createOrdersColumns()
