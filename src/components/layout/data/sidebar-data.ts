@@ -180,7 +180,7 @@ export const sidebarData: SidebarData = {
           items: [
             {
               title: 'Store Orders',
-              url: '/store-orders',
+              url: '/orders',
             },
             {
               title: 'Sample Orders',
