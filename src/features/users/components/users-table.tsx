@@ -41,16 +41,9 @@ type DataTableProps = {
 }
 
 export function UsersTable({ data, search, navigate }: DataTableProps) {
-  // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
-
-  // Local state management for table (uncomment to use local-only state, not synced with URL)
-  // const [columnFilters, onColumnFiltersChange] = useState<ColumnFiltersState>([])
-  // const [pagination, onPaginationChange] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
-
-  // Synced with URL states (keys/defaults mirror users route search schema)
   const {
     columnFilters,
     onColumnFiltersChange,
@@ -63,7 +56,6 @@ export function UsersTable({ data, search, navigate }: DataTableProps) {
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      // username per-column text filter
       { columnId: 'username', searchKey: 'username', type: 'string' },
       { columnId: 'status', searchKey: 'status', type: 'array' },
       { columnId: 'role', searchKey: 'role', type: 'array' },
@@ -102,12 +94,12 @@ export function UsersTable({ data, search, navigate }: DataTableProps) {
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <DataTableToolbar
         table={table}
-        searchPlaceholder='搜索用户...'
+        searchPlaceholder='search'
         searchKey='username'
         filters={[
           {
             columnId: 'status',
-            title: '状态',
+            title: 'status',
             options: [
               { label: '活跃', value: 'active' },
               { label: '非活跃', value: 'inactive' },
@@ -117,7 +109,7 @@ export function UsersTable({ data, search, navigate }: DataTableProps) {
           },
           {
             columnId: 'role',
-            title: '角色',
+            title: 'role',
             options: roles.map((role) => ({ ...role })),
           },
         ]}

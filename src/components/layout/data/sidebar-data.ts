@@ -11,7 +11,6 @@ import {
   Package,
   Settings,
   ShoppingBag,
-  ShoppingCart,
   Store,
   Users,
   Wallet
@@ -169,11 +168,11 @@ export const sidebarData: SidebarData = {
             }
           ],
         },
-        {
-          title: 'Cart',
-          url: '/cart',
-          icon: ShoppingCart,
-        },
+        // {
+        //   title: 'Cart',
+        //   url: '/cart',
+        //   icon: ShoppingCart,
+        // },
         {
           title: 'Orders',
           icon: ClipboardList,
@@ -193,7 +192,7 @@ export const sidebarData: SidebarData = {
           ],
         },
         {
-          title: 'pOD',
+          title: 'POD',
           icon: CircleParking,
           items: [
             {
@@ -230,17 +229,18 @@ export const sidebarData: SidebarData = {
           url: '/wallet',
           icon: Wallet,
         },
+       
         {
           title: 'Settings',
           icon: Settings,
           items: [
             {
               title: 'Profile',
-              url: '/settings/profile',
+              url: '/settings',
             },
             {
               title: 'Logistics',
-              url: '/settings/logistics',
+              url: '/logistics',
             },
             {
               title: 'Appearance',
@@ -248,7 +248,7 @@ export const sidebarData: SidebarData = {
             },
             {
               title: 'Accounts',
-              url: '/settings/accounts',
+              url: '/users',
             },
           ],
         }

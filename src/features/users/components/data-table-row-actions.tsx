@@ -38,7 +38,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               setOpen('edit')
             }}
           >
-            编辑
+            edit
             <DropdownMenuShortcut>
               <UserPen size={16} />
             </DropdownMenuShortcut>
@@ -51,7 +51,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             }}
             className='text-red-500!'
           >
-            删除
+            delete
             <DropdownMenuShortcut>
               <Trash2 size={16} />
             </DropdownMenuShortcut>

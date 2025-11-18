@@ -2,12 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Canvas, Group, Image, Textbox } from 'fabric'
 import {
+  Download,
+  Home,
   Image as ImageIcon,
-  Type,
-  Pencil,
-  Undo2,
-  Redo2,
-  RotateCw,
   Layers,
   Minus,
   MoveVertical,
@@ -21,8 +18,6 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { packagingProducts } from '@/features/packaging-products/data/data'
@@ -545,6 +540,15 @@ export function ProductDesign() {
     }
   }
 
+  const handleDelete = () => {
+    if (!fabricCanvasRef.current) return
+    const activeObject = fabricCanvasRef.current.getActiveObject()
+    if (activeObject) {
+      fabricCanvasRef.current.remove(activeObject)
+      fabricCanvasRef.current.renderAll()
+    }
+  }
+
   const handleRefresh = () => {
     if (!fabricCanvasRef.current || !product) return
     if (!confirm('确定要清除所有设计元素吗？')) return
@@ -560,9 +564,6 @@ export function ProductDesign() {
     setTimeout(() => saveState(), 100)
   }
 
-    const container = (e.currentTarget.parentElement?.parentElement as HTMLElement)
-    if (!container) return
-
   const handleSaveImage = async () => {
     if (!fabricCanvasRef.current || !product) return
 
@@ -570,86 +571,20 @@ export function ProductDesign() {
       const canvas = fabricCanvasRef.current
       const productData = product as Product | PackagingProduct
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!dragging) return
+      // 使用 fabric.js 的 toDataURL 方法导出图片
+      const dataURL = canvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 1,
+      })
 
-      const container = e.currentTarget as HTMLElement
-      const productImage = container.querySelector('img')
-      if (!productImage) return
-
-      const imageRect = productImage.getBoundingClientRect()
-      const scale = zoom / 100
-
-      // 计算相对于图片的位置
-      const x = (e.clientX - imageRect.left) / scale - dragOffset.x
-      const y = (e.clientY - imageRect.top) / scale - dragOffset.y
-
-      const element = elements.find((el) => el.id === dragging)
-      if (!element) return
-
-      const maxX = (imageRect.width / scale) - element.width
-      const maxY = (imageRect.height / scale) - element.height
-
-      setElements((prev) =>
-        prev.map((el) =>
-          el.id === dragging
-            ? {
-                ...el,
-                x: Math.max(0, Math.min(x, maxX)),
-                y: Math.max(0, Math.min(y, maxY)),
-              }
-            : el
-        )
-      )
-    },
-    [dragging, dragOffset, zoom, elements]
-  )
-
-        const img = new window.Image()
-        await new Promise((resolve, reject) => {
-          img.onload = () => {
-            ctx.save()
-            // 应用变换
-            ctx.translate(obj.left || 0, obj.top || 0)
-            if (obj.angle) {
-              ctx.rotate((obj.angle * Math.PI) / 180)
-            }
-            ctx.scale(obj.scaleX || 1, obj.scaleY || 1)
-            ctx.drawImage(
-              img,
-              -((obj.width || 0) / 2),
-              -((obj.height || 0) / 2),
-              obj.width || 0,
-              obj.height || 0
-            )
-            ctx.restore()
-            resolve(null)
-          }
-          img.onerror = reject
-          img.src = objDataURL
-        })
-      }
-
-      // 导出图片
-      exportCanvas.toBlob(
-        (blob: Blob | null) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.download = `${productData.name || 'design'}-${Date.now()}.png`
-            link.href = url
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            URL.revokeObjectURL(url)
-          } else {
-            throw new Error('Failed to create blob')
-          }
-        },
-        'image/png',
-        1
-      )
+      // 创建下载链接
+      const link = document.createElement('a')
+      link.download = `${productData.name || 'design'}-${Date.now()}.png`
+      link.href = dataURL
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     } catch (error) {
       console.error('Failed to save image:', error)
       alert('保存图片失败。请确保所有图片都已正确加载。')

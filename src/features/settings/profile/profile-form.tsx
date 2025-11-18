@@ -1,9 +1,7 @@
 import { z } from 'zod'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
 import { showSubmittedData } from '@/lib/show-submitted-data'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -22,27 +20,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+
+// 国家代码列表
+const countryCodes = [
+  { code: '+86', country: 'China' },
+  { code: '+44', country: 'United Kingdom' },
+  { code: '+1', country: 'United States' },
+  { code: '+33', country: 'France' },
+  { code: '+49', country: 'Germany' },
+  { code: '+81', country: 'Japan' },
+  { code: '+91', country: 'India' },
+  { code: '+61', country: 'Australia' },
+  { code: '+7', country: 'Russia' },
+  { code: '+55', country: 'Brazil' },
+]
 
 const profileFormSchema = z.object({
   username: z
     .string('Please enter your username.')
     .min(2, 'Username must be at least 2 characters.')
     .max(30, 'Username must not be longer than 30 characters.'),
-  email: z.email({
-    error: (iss) =>
-      iss.input === undefined
-        ? 'Please select an email to display.'
-        : undefined,
-  }),
+  email: z.string().email('Please enter a valid email address.'),
   bio: z.string().max(160).min(4),
-  urls: z
-    .array(
-      z.object({
-        value: z.url('Please enter a valid URL.'),
-      })
-    )
-    .optional(),
+  whatsappCountryCode: z.string().optional(),
+  whatsappNumber: z.string().optional(),
+  discord: z.string().optional(),
+  twitter: z.string().optional(),
+  facebook: z.string().optional(),
+  instagram: z.string().optional(),
 })
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
@@ -50,10 +55,13 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>
 // This can come from your database or API.
 const defaultValues: Partial<ProfileFormValues> = {
   bio: 'I own a computer.',
-  urls: [
-    { value: 'https://shadcn.com' },
-    { value: 'http://twitter.com/shadcn' },
-  ],
+  email: '',
+  whatsappCountryCode: '+86',
+  whatsappNumber: '',
+  discord: '',
+  twitter: '',
+  facebook: '',
+  instagram: '',
 }
 
 export function ProfileForm() {
@@ -61,11 +69,6 @@ export function ProfileForm() {
     resolver: zodResolver(profileFormSchema),
     defaultValues,
     mode: 'onChange',
-  })
-
-  const { fields, append } = useFieldArray({
-    name: 'urls',
-    control: form.control,
   })
 
   return (
@@ -91,85 +94,119 @@ export function ProfileForm() {
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name='email'
           render={({ field }) => (
             <FormItem>
               <FormLabel>Email</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select a verified email to display' />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value='m@example.com'>m@example.com</SelectItem>
-                  <SelectItem value='m@google.com'>m@google.com</SelectItem>
-                  <SelectItem value='m@support.com'>m@support.com</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                You can manage verified email addresses in your{' '}
-                <Link to='/'>email settings</Link>.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='bio'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Bio</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder='Tell us a little bit about yourself'
-                  className='resize-none'
-                  {...field}
-                />
+                <Input type='email' placeholder='Enter your email' {...field} />
               </FormControl>
-              <FormDescription>
-                You can <span>@mention</span> other users and organizations to
-                link to them.
-              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div>
-          {fields.map((field, index) => (
+
+        {/* WhatsApp with Country Code */}
+        <FormItem>
+          <FormLabel>Whatsapp</FormLabel>
+          <div className='flex gap-2'>
             <FormField
               control={form.control}
-              key={field.id}
-              name={`urls.${index}.value`}
+              name='whatsappCountryCode'
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel className={cn(index !== 0 && 'sr-only')}>
-                    URLs
-                  </FormLabel>
-                  <FormDescription className={cn(index !== 0 && 'sr-only')}>
-                    Add links to your website, blog, or social media profiles.
-                  </FormDescription>
+                <FormItem className='w-[120px]'>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder='+ 86' />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {countryCodes.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          {item.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='whatsappNumber'
+              render={({ field }) => (
+                <FormItem className='flex-1'>
                   <FormControl>
-                    <Input {...field} />
+                    <Input placeholder='Whatsapp number' {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          ))}
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            className='mt-2'
-            onClick={() => append({ value: '' })}
-          >
-            Add URL
-          </Button>
-        </div>
+          </div>
+        </FormItem>
+
+        <FormField
+          control={form.control}
+          name='discord'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Discord</FormLabel>
+              <FormControl>
+                <Input placeholder='Discord ID' {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name='twitter'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>X(Twitter)</FormLabel>
+              <FormControl>
+                <Input placeholder='X(Twitter) ID' {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name='facebook'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Facebook</FormLabel>
+              <FormControl>
+                <Input placeholder='Facebook ID' {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name='instagram'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Instagram</FormLabel>
+              <FormControl>
+                <Input placeholder='Instagram ID' {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button type='submit'>Update profile</Button>
       </form>
     </Form>

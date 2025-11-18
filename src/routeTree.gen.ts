@@ -47,6 +47,7 @@ import { Route as AuthenticatedPackagingProductsIndexRouteImport } from './route
 import { Route as AuthenticatedPackagingConnectionIndexRouteImport } from './routes/_authenticated/packaging-connection/index'
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders/index'
 import { Route as AuthenticatedMyInventoryIndexRouteImport } from './routes/_authenticated/my-inventory/index'
+import { Route as AuthenticatedLogisticsIndexRouteImport } from './routes/_authenticated/logistics/index'
 import { Route as AuthenticatedLikedProductsIndexRouteImport } from './routes/_authenticated/liked-products/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
@@ -271,6 +272,12 @@ const AuthenticatedMyInventoryIndexRoute =
     path: '/my-inventory/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedLogisticsIndexRoute =
+  AuthenticatedLogisticsIndexRouteImport.update({
+    id: '/logistics/',
+    path: '/logistics/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLikedProductsIndexRoute =
   AuthenticatedLikedProductsIndexRouteImport.update({
     id: '/liked-products/',
@@ -402,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/liked-products': typeof AuthenticatedLikedProductsIndexRoute
+  '/logistics': typeof AuthenticatedLogisticsIndexRoute
   '/my-inventory': typeof AuthenticatedMyInventoryIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
   '/packaging-connection': typeof AuthenticatedPackagingConnectionIndexRoute
@@ -455,6 +463,7 @@ export interface FileRoutesByTo {
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/liked-products': typeof AuthenticatedLikedProductsIndexRoute
+  '/logistics': typeof AuthenticatedLogisticsIndexRoute
   '/my-inventory': typeof AuthenticatedMyInventoryIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
   '/packaging-connection': typeof AuthenticatedPackagingConnectionIndexRoute
@@ -513,6 +522,7 @@ export interface FileRoutesById {
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/liked-products/': typeof AuthenticatedLikedProductsIndexRoute
+  '/_authenticated/logistics/': typeof AuthenticatedLogisticsIndexRoute
   '/_authenticated/my-inventory/': typeof AuthenticatedMyInventoryIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
   '/_authenticated/packaging-connection/': typeof AuthenticatedPackagingConnectionIndexRoute
@@ -569,6 +579,7 @@ export interface FileRouteTypes {
     | '/chats'
     | '/help-center'
     | '/liked-products'
+    | '/logistics'
     | '/my-inventory'
     | '/orders'
     | '/packaging-connection'
@@ -622,6 +633,7 @@ export interface FileRouteTypes {
     | '/chats'
     | '/help-center'
     | '/liked-products'
+    | '/logistics'
     | '/my-inventory'
     | '/orders'
     | '/packaging-connection'
@@ -679,6 +691,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chats/'
     | '/_authenticated/help-center/'
     | '/_authenticated/liked-products/'
+    | '/_authenticated/logistics/'
     | '/_authenticated/my-inventory/'
     | '/_authenticated/orders/'
     | '/_authenticated/packaging-connection/'
@@ -985,6 +998,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMyInventoryIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/logistics/': {
+      id: '/_authenticated/logistics/'
+      path: '/logistics'
+      fullPath: '/logistics'
+      preLoaderRoute: typeof AuthenticatedLogisticsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/liked-products/': {
       id: '/_authenticated/liked-products/'
       path: '/liked-products'
@@ -1162,6 +1182,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedLikedProductsIndexRoute: typeof AuthenticatedLikedProductsIndexRoute
+  AuthenticatedLogisticsIndexRoute: typeof AuthenticatedLogisticsIndexRoute
   AuthenticatedMyInventoryIndexRoute: typeof AuthenticatedMyInventoryIndexRoute
   AuthenticatedOrdersIndexRoute: typeof AuthenticatedOrdersIndexRoute
   AuthenticatedPackagingConnectionIndexRoute: typeof AuthenticatedPackagingConnectionIndexRoute
@@ -1197,6 +1218,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedLikedProductsIndexRoute: AuthenticatedLikedProductsIndexRoute,
+  AuthenticatedLogisticsIndexRoute: AuthenticatedLogisticsIndexRoute,
   AuthenticatedMyInventoryIndexRoute: AuthenticatedMyInventoryIndexRoute,
   AuthenticatedOrdersIndexRoute: AuthenticatedOrdersIndexRoute,
   AuthenticatedPackagingConnectionIndexRoute:
