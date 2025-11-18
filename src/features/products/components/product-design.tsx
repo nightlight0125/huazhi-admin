@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from '@tanstack/react-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate, useParams } from '@tanstack/react-router'
+import { Canvas, Group, Image, Textbox } from 'fabric'
 import {
   Image as ImageIcon,
   Type,
@@ -8,54 +9,300 @@ import {
   Redo2,
   RotateCw,
   Layers,
-  MoveVertical,
   Minus,
+  MoveVertical,
+  Pencil,
   Plus,
+  Redo2,
   RefreshCw,
+  RotateCw,
+  Trash2,
+  Type,
+  Undo2,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { products } from '../data/data'
+import { Button } from '@/components/ui/button'
 import { packagingProducts } from '@/features/packaging-products/data/data'
-import { type Product } from '../data/schema'
 import { type PackagingProduct } from '@/features/packaging-products/data/schema'
-
-type DesignElement = {
-  id: string
-  type: 'logo' | 'text' | 'note'
-  x: number
-  y: number
-  width: number
-  height: number
-  content?: string
-  imageUrl?: string
-  selected?: boolean
-}
+import { products } from '../data/data'
+import { type Product } from '../data/schema'
 
 type ActiveTab = 'logo' | 'text' | 'notes'
 
 export function ProductDesign() {
-  const { productId } = useParams({ from: '/_authenticated/products/$productId/design' } as any)
+  const { productId } = useParams({
+    from: '/_authenticated/products/$productId/design',
+  } as any)
   const navigate = useNavigate()
-  
+
   // 查找产品数据
   const regularProduct = products.find((p) => p.id === productId)
   const packagingProduct = packagingProducts.find((p) => p.id === productId)
   const product = regularProduct || packagingProduct
 
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fabricCanvasRef = useRef<Canvas | null>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('logo')
   const [uploadedLogo, setUploadedLogo] = useState<string | null>(null)
-  const [elements, setElements] = useState<DesignElement[]>([])
   const [zoom, setZoom] = useState(100)
-  const [history, setHistory] = useState<DesignElement[][]>([])
+  const [history, setHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
-  const [dragging, setDragging] = useState<string | null>(null)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const historyIndexRef = useRef(-1)
+
+  // 保存状态函数 - 包含背景图片
+  const saveState = useCallback(() => {
+    if (!fabricCanvasRef.current || !product) return
+    const canvas = fabricCanvasRef.current
+    // 手动构建包含背景图片的 JSON
+    const canvasJson = canvas.toJSON()
+    const productData = product as Product | PackagingProduct
+    // 添加背景图片信息到 JSON
+    const jsonWithBackground = {
+      ...canvasJson,
+      backgroundImage: {
+        src: productData.image,
+        // 保存背景图片的缩放信息
+        scaleX: canvas.backgroundImage?.scaleX || 1,
+        scaleY: canvas.backgroundImage?.scaleY || 1,
+      },
+    }
+    const json = JSON.stringify(jsonWithBackground)
+    const currentIndex = historyIndexRef.current
+    setHistory((prev) => {
+      const newHistory = prev.slice(0, currentIndex + 1)
+      newHistory.push(json)
+      const newIndex = newHistory.length - 1
+      historyIndexRef.current = newIndex
+      setHistoryIndex(newIndex)
+      return newHistory
+    })
+  }, [product])
+
+  // 初始化 Fabric.js Canvas
+  useEffect(() => {
+    if (!canvasRef.current || !product) return
+
+    const canvas = new Canvas(canvasRef.current, {
+      width: 600,
+      height: 600,
+      backgroundColor: '#ffffff',
+    })
+
+    fabricCanvasRef.current = canvas
+
+    // 加载产品图片作为背景
+    // 使用 fetch 获取图片并转换为 base64，避免跨域问题
+    const productData = product as Product | PackagingProduct
+    const loadBackgroundImage = async () => {
+      try {
+        // 尝试通过 fetch 获取图片（支持 CORS）
+        const response = await fetch(productData.image, {
+          mode: 'cors',
+        })
+        if (response.ok) {
+          const blob = await response.blob()
+          const reader = new FileReader()
+          reader.onload = () => {
+            const base64 = reader.result as string
+            Image.fromURL(base64)
+              .then((img) => {
+                const maxSize = 600
+                const scale = Math.min(
+                  maxSize / (img.width || 1),
+                  maxSize / (img.height || 1)
+                )
+                img.set({
+                  left: 0,
+                  top: 0,
+                  selectable: false,
+                  evented: false,
+                  scaleX: scale,
+                  scaleY: scale,
+                })
+                canvas.backgroundImage = img
+                canvas.renderAll()
+                historyIndexRef.current = -1
+                setHistoryIndex(-1)
+                setTimeout(() => saveState(), 100)
+              })
+              .catch((error) => {
+                console.error('Failed to load image from base64:', error)
+                // Fallback: 直接使用 URL
+                loadImageDirectly()
+              })
+          }
+          reader.readAsDataURL(blob)
+        } else {
+          // Fetch 失败，尝试直接加载
+          loadImageDirectly()
+        }
+      } catch (error) {
+        console.warn(
+          'Failed to fetch image with CORS, trying direct load:',
+          error
+        )
+        // Fetch 失败（可能是 CORS 问题），尝试直接加载
+        loadImageDirectly()
+      }
+    }
+
+    // 直接加载图片（可能无法导出）
+    const loadImageDirectly = () => {
+      const imgElement = new window.Image()
+      imgElement.crossOrigin = 'anonymous'
+      imgElement.onload = () => {
+        Image.fromURL(productData.image)
+          .then((img) => {
+            const maxSize = 600
+            const scale = Math.min(
+              maxSize / (img.width || 1),
+              maxSize / (img.height || 1)
+            )
+            img.set({
+              left: 0,
+              top: 0,
+              selectable: false,
+              evented: false,
+              scaleX: scale,
+              scaleY: scale,
+            })
+            canvas.backgroundImage = img
+            canvas.renderAll()
+            historyIndexRef.current = -1
+            setHistoryIndex(-1)
+            setTimeout(() => saveState(), 100)
+          })
+          .catch((error) => {
+            console.error('Failed to load product image:', error)
+          })
+      }
+      imgElement.onerror = () => {
+        // 如果 crossOrigin 失败，尝试不使用 crossOrigin
+        Image.fromURL(productData.image)
+          .then((img) => {
+            const maxSize = 600
+            const scale = Math.min(
+              maxSize / (img.width || 1),
+              maxSize / (img.height || 1)
+            )
+            img.set({
+              left: 0,
+              top: 0,
+              selectable: false,
+              evented: false,
+              scaleX: scale,
+              scaleY: scale,
+            })
+            canvas.backgroundImage = img
+            canvas.renderAll()
+            historyIndexRef.current = -1
+            setHistoryIndex(-1)
+            setTimeout(() => saveState(), 100)
+          })
+          .catch((error) => {
+            console.error('Failed to load product image:', error)
+          })
+      }
+      imgElement.src = productData.image
+    }
+
+    loadBackgroundImage()
+
+    // 监听对象变化，用于撤销/重做
+    const handleObjectAdded = () => {
+      setTimeout(() => saveState(), 100)
+    }
+    const handleObjectModified = () => {
+      setTimeout(() => saveState(), 100)
+    }
+    const handleObjectRemoved = () => {
+      setTimeout(() => saveState(), 100)
+    }
+
+    canvas.on('object:added', handleObjectAdded)
+    canvas.on('object:modified', handleObjectModified)
+    canvas.on('object:removed', handleObjectRemoved)
+
+    // 监听双击事件 - 编辑文本
+    const handleMouseDblClick = (e: any) => {
+      const activeObject = e.target
+      if (!activeObject) return
+
+      // 如果是 Group，查找其中的 Text 对象
+      if (activeObject.type === 'group') {
+        const group = activeObject as unknown as Group
+        const textObj = group
+          .getObjects()
+          .find((obj) => obj.type === 'text' || obj.type === 'textbox')
+        if (textObj) {
+          // 从 Group 中提取 Text，创建可编辑的 Textbox
+          const groupLeft = group.left || 0
+          const groupTop = group.top || 0
+
+          // 获取文本的当前文本内容
+          const currentText = (textObj as any).text || '双击编辑备注'
+          const textLeft = (textObj.left || 0) + groupLeft
+          const textTop = (textObj.top || 0) + groupTop
+
+          // 创建新的 Textbox 来编辑
+          const textbox = new Textbox(currentText, {
+            left: textLeft,
+            top: textTop,
+            width: 150,
+            fontSize: 14,
+            fill: '#78350f',
+            textAlign: 'center',
+            backgroundColor: '#fef3c7',
+            fontFamily: 'Arial',
+          })
+
+          // 删除旧的 Group，添加新的 Textbox
+          canvas.remove(group)
+          canvas.add(textbox)
+          canvas.setActiveObject(textbox)
+          textbox.enterEditing()
+          canvas.renderAll()
+          return
+        }
+      }
+
+      // 如果是 Textbox，直接进入编辑模式
+      if (activeObject.type === 'textbox') {
+        const textbox = activeObject as unknown as Textbox
+        textbox.enterEditing()
+        canvas.renderAll()
+      }
+    }
+    canvas.on('mouse:dblclick', handleMouseDblClick)
+
+    // 监听键盘事件 - 删除键
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.key === 'Delete' || e.key === 'Backspace') &&
+        canvas.getActiveObject()
+      ) {
+        canvas.remove(canvas.getActiveObject()!)
+        canvas.renderAll()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      canvas.off('object:added', handleObjectAdded)
+      canvas.off('object:modified', handleObjectModified)
+      canvas.off('object:removed', handleObjectRemoved)
+      canvas.off('mouse:dblclick', handleMouseDblClick)
+      window.removeEventListener('keydown', handleKeyDown)
+      canvas.dispose()
+    }
+  }, [product, saveState])
 
   const handleFileSelect = useCallback((files: FileList | null) => {
-    if (!files || files.length === 0) return
+    if (!files || files.length === 0 || !fabricCanvasRef.current) return
 
     const file = files[0]
     // 验证文件类型
@@ -76,22 +323,31 @@ export function ProductDesign() {
       const result = e.target?.result as string
       if (result) {
         setUploadedLogo(result)
-        // 添加一个logo元素到画布
-        const newElement: DesignElement = {
-          id: `logo-${Date.now()}`,
-          type: 'logo',
-          x: 100,
-          y: 100,
-          width: 200,
-          height: 100,
-          imageUrl: result,
-          selected: true,
-        }
-        addToHistory()
-        setElements((prev) => {
-          const updated = prev.map((el) => ({ ...el, selected: false }))
-          return [...updated, newElement]
-        })
+        // 添加图片到画布（本地文件不需要 crossOrigin）
+        Image.fromURL(result)
+          .then((img) => {
+            // 自动调整大小以适应画布
+            const maxWidth = 200
+            const maxHeight = 200
+            const scale = Math.min(
+              maxWidth / (img.width || 1),
+              maxHeight / (img.height || 1),
+              1
+            )
+            img.set({
+              left: 100,
+              top: 100,
+              scaleX: scale,
+              scaleY: scale,
+            })
+            fabricCanvasRef.current?.add(img)
+            fabricCanvasRef.current?.setActiveObject(img)
+            fabricCanvasRef.current?.renderAll()
+          })
+          .catch((error) => {
+            console.error('Failed to load image:', error)
+            alert('图片加载失败，请重试')
+          })
       }
     }
     reader.readAsDataURL(file)
@@ -109,100 +365,210 @@ export function ProductDesign() {
     e.preventDefault()
   }, [])
 
-  const addToHistory = useCallback(() => {
-    setHistory((prevHistory) => {
-      const newHistory = prevHistory.slice(0, historyIndex + 1)
-      newHistory.push([...elements])
-      setHistoryIndex(newHistory.length - 1)
-      return newHistory
-    })
-  }, [elements, historyIndex])
+  // 恢复背景图片的辅助函数
+  const restoreBackgroundImage = useCallback(
+    (scaleX?: number, scaleY?: number) => {
+      if (!fabricCanvasRef.current || !product) return Promise.resolve()
+      const productData = product as Product | PackagingProduct
+      return Image.fromURL(productData.image)
+        .then((img) => {
+          const maxSize = 600
+          const defaultScale = Math.min(
+            maxSize / (img.width || 1),
+            maxSize / (img.height || 1)
+          )
+          img.set({
+            left: 0,
+            top: 0,
+            selectable: false,
+            evented: false,
+            scaleX: scaleX || defaultScale,
+            scaleY: scaleY || defaultScale,
+          })
+          if (fabricCanvasRef.current) {
+            fabricCanvasRef.current.backgroundImage = img
+            fabricCanvasRef.current.renderAll()
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to restore background image:', error)
+        })
+    },
+    [product]
+  )
 
   const handleUndo = () => {
-    if (historyIndex > 0) {
-      setHistoryIndex(historyIndex - 1)
-      setElements([...history[historyIndex - 1]])
-    }
+    if (!fabricCanvasRef.current || historyIndex <= 0 || !product) return
+    const prevState = history[historyIndex - 1]
+    const parsedState = JSON.parse(prevState)
+
+    // 保存当前背景图片的引用，避免被覆盖
+    const currentBackground = fabricCanvasRef.current.backgroundImage
+
+    // 恢复画布状态（只恢复对象，不恢复背景）
+    const canvasJson = { ...parsedState }
+    delete canvasJson.backgroundImage // 移除背景图片，避免被覆盖
+
+    fabricCanvasRef.current.loadFromJSON(JSON.stringify(canvasJson), () => {
+      // 恢复背景图片
+      if (parsedState.backgroundImage?.src) {
+        restoreBackgroundImage(
+          parsedState.backgroundImage.scaleX,
+          parsedState.backgroundImage.scaleY
+        ).then(() => {
+          fabricCanvasRef.current?.renderAll()
+        })
+      } else if (currentBackground) {
+        // 如果没有保存的背景信息，保持当前背景
+        fabricCanvasRef.current!.backgroundImage = currentBackground
+        fabricCanvasRef.current?.renderAll()
+      }
+
+      const newIndex = historyIndex - 1
+      setHistoryIndex(newIndex)
+      historyIndexRef.current = newIndex
+    })
   }
 
   const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(historyIndex + 1)
-      setElements([...history[historyIndex + 1]])
-    }
+    if (
+      !fabricCanvasRef.current ||
+      historyIndex >= history.length - 1 ||
+      !product
+    )
+      return
+    const nextState = history[historyIndex + 1]
+    const parsedState = JSON.parse(nextState)
+
+    // 保存当前背景图片的引用，避免被覆盖
+    const currentBackground = fabricCanvasRef.current.backgroundImage
+
+    // 恢复画布状态（只恢复对象，不恢复背景）
+    const canvasJson = { ...parsedState }
+    delete canvasJson.backgroundImage // 移除背景图片，避免被覆盖
+
+    fabricCanvasRef.current.loadFromJSON(JSON.stringify(canvasJson), () => {
+      // 恢复背景图片
+      if (parsedState.backgroundImage?.src) {
+        restoreBackgroundImage(
+          parsedState.backgroundImage.scaleX,
+          parsedState.backgroundImage.scaleY
+        ).then(() => {
+          fabricCanvasRef.current?.renderAll()
+        })
+      } else if (currentBackground) {
+        // 如果没有保存的背景信息，保持当前背景
+        fabricCanvasRef.current!.backgroundImage = currentBackground
+        fabricCanvasRef.current?.renderAll()
+      }
+
+      const newIndex = historyIndex + 1
+      setHistoryIndex(newIndex)
+      historyIndexRef.current = newIndex
+    })
   }
 
   const handleZoomIn = () => {
-    setZoom((prev) => Math.min(prev + 10, 200))
+    if (!fabricCanvasRef.current) return
+    const newZoom = Math.min(zoom + 10, 200)
+    setZoom(newZoom)
+    const canvas = fabricCanvasRef.current
+    canvas.setZoom(newZoom / 100)
+    canvas.renderAll()
   }
 
   const handleZoomOut = () => {
-    setZoom((prev) => Math.max(prev - 10, 50))
+    if (!fabricCanvasRef.current) return
+    const newZoom = Math.max(zoom - 10, 50)
+    setZoom(newZoom)
+    const canvas = fabricCanvasRef.current
+    canvas.setZoom(newZoom / 100)
+    canvas.renderAll()
+  }
+
+  const handleZoomReset = () => {
+    if (!fabricCanvasRef.current) return
+    setZoom(100)
+    const canvas = fabricCanvasRef.current
+    canvas.setZoom(1)
+    canvas.renderAll()
   }
 
   const handleAddText = () => {
-    const newElement: DesignElement = {
-      id: `text-${Date.now()}`,
-      type: 'text',
-      x: 150,
-      y: 150,
+    if (!fabricCanvasRef.current) return
+    const canvas = fabricCanvasRef.current
+    const center = canvas.getCenter()
+    const text = new Textbox('双击编辑文本', {
+      left: (center.left || 0) - 100,
+      top: (center.top || 0) - 15,
       width: 200,
-      height: 50,
-      content: 'Text',
-      selected: true,
-    }
-    addToHistory()
-    setElements((prev) => {
-      const updated = prev.map((el) => ({ ...el, selected: false }))
-      return [...updated, newElement]
+      fontSize: 24,
+      fontFamily: 'Arial',
+      fill: '#000000',
+      textAlign: 'center',
     })
+    canvas.add(text)
+    canvas.setActiveObject(text)
+    canvas.renderAll()
   }
 
   const handleAddNote = () => {
-    const newElement: DesignElement = {
-      id: `note-${Date.now()}`,
-      type: 'note',
-      x: 200,
-      y: 200,
+    if (!fabricCanvasRef.current) return
+    const canvas = fabricCanvasRef.current
+    const center = canvas.getCenter()
+    // 使用 Textbox 替代 Group，支持直接编辑
+    const textbox = new Textbox('双击编辑备注', {
+      left: (center.left || 0) - 75,
+      top: (center.top || 0) - 50,
       width: 150,
       height: 100,
-      content: 'Note',
-      selected: true,
-    }
-    addToHistory()
-    setElements((prev) => {
-      const updated = prev.map((el) => ({ ...el, selected: false }))
-      return [...updated, newElement]
+      fontSize: 14,
+      fill: '#78350f',
+      textAlign: 'center',
+      fontFamily: 'Arial',
+      backgroundColor: '#fef3c7',
+      // 添加边框样式
+      stroke: '#fbbf24',
+      strokeWidth: 2,
     })
+    canvas.add(textbox)
+    canvas.setActiveObject(textbox)
+    canvas.renderAll()
   }
 
-  const handleElementClick = (elementId: string) => {
-    addToHistory()
-    setElements((prev) =>
-      prev.map((el) => ({
-        ...el,
-        selected: el.id === elementId,
-      }))
-    )
+  const handleRotate = () => {
+    if (!fabricCanvasRef.current) return
+    const activeObject = fabricCanvasRef.current.getActiveObject()
+    if (activeObject) {
+      activeObject.rotate((activeObject.angle || 0) + 90)
+      fabricCanvasRef.current.renderAll()
+    }
   }
 
-  const handleElementMouseDown = (e: React.MouseEvent, elementId: string) => {
-    e.stopPropagation()
-    const element = elements.find((el) => el.id === elementId)
-    if (!element) return
+  const handleRefresh = () => {
+    if (!fabricCanvasRef.current || !product) return
+    if (!confirm('确定要清除所有设计元素吗？')) return
+    const canvas = fabricCanvasRef.current
+    // 清除所有对象（保留背景）
+    const objects = canvas.getObjects()
+    objects.forEach((obj) => canvas.remove(obj))
+    canvas.renderAll()
+    setHistory([])
+    setHistoryIndex(-1)
+    historyIndexRef.current = -1
+    // 重新保存状态
+    setTimeout(() => saveState(), 100)
+  }
 
     const container = (e.currentTarget.parentElement?.parentElement as HTMLElement)
     if (!container) return
 
-    const containerRect = container.getBoundingClientRect()
-    const scale = zoom / 100
+  const handleSaveImage = async () => {
+    if (!fabricCanvasRef.current || !product) return
 
-    setDragging(elementId)
-    setDragOffset({
-      x: (e.clientX - containerRect.left) / scale - element.x,
-      y: (e.clientY - containerRect.top) / scale - element.y,
-    })
-  }
+    try {
+      const canvas = fabricCanvasRef.current
+      const productData = product as Product | PackagingProduct
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
@@ -240,17 +606,55 @@ export function ProductDesign() {
     [dragging, dragOffset, zoom, elements]
   )
 
-  const handleMouseUp = useCallback(() => {
-    if (dragging) {
-      setHistory((prevHistory) => {
-        const newHistory = prevHistory.slice(0, historyIndex + 1)
-        newHistory.push([...elements])
-        setHistoryIndex(newHistory.length - 1)
-        return newHistory
-      })
+        const img = new window.Image()
+        await new Promise((resolve, reject) => {
+          img.onload = () => {
+            ctx.save()
+            // 应用变换
+            ctx.translate(obj.left || 0, obj.top || 0)
+            if (obj.angle) {
+              ctx.rotate((obj.angle * Math.PI) / 180)
+            }
+            ctx.scale(obj.scaleX || 1, obj.scaleY || 1)
+            ctx.drawImage(
+              img,
+              -((obj.width || 0) / 2),
+              -((obj.height || 0) / 2),
+              obj.width || 0,
+              obj.height || 0
+            )
+            ctx.restore()
+            resolve(null)
+          }
+          img.onerror = reject
+          img.src = objDataURL
+        })
+      }
+
+      // 导出图片
+      exportCanvas.toBlob(
+        (blob: Blob | null) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.download = `${productData.name || 'design'}-${Date.now()}.png`
+            link.href = url
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+          } else {
+            throw new Error('Failed to create blob')
+          }
+        },
+        'image/png',
+        1
+      )
+    } catch (error) {
+      console.error('Failed to save image:', error)
+      alert('保存图片失败。请确保所有图片都已正确加载。')
     }
-    setDragging(null)
-  }, [dragging, elements, historyIndex])
+  }
 
   if (!product) {
     return (
@@ -265,15 +669,12 @@ export function ProductDesign() {
     )
   }
 
-  const productData = product as Product | PackagingProduct
-
   return (
     <div className='flex h-screen flex-col bg-white'>
       {/* Top Toolbar */}
       <div className='flex items-center justify-between border-b bg-white px-4 py-3'>
         <div className='flex items-center gap-3'>
-          <h2 className='text-sm font-semibold'>Upload</h2>
-          <Switch id='toggle' defaultChecked />
+          <Home className='h-4 w-4' />
         </div>
         <div className='flex items-center gap-1'>
           <Button
@@ -296,22 +697,84 @@ export function ProductDesign() {
           >
             <Redo2 className='h-4 w-4' />
           </Button>
-          <Button variant='ghost' size='icon' title='Rotate' className='h-8 w-8'>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleRotate}
+            title='Rotate'
+            className='h-8 w-8'
+          >
             <RotateCw className='h-4 w-4' />
           </Button>
-          <Button variant='ghost' size='icon' title='Layers' className='h-8 w-8'>
+          <Button
+            variant='ghost'
+            size='icon'
+            title='Layers'
+            className='h-8 w-8'
+          >
             <Layers className='h-4 w-4' />
           </Button>
-          <Button variant='ghost' size='icon' title='Align Vertical' className='h-8 w-8'>
+          <Button
+            variant='ghost'
+            size='icon'
+            title='Align Vertical'
+            className='h-8 w-8'
+          >
             <MoveVertical className='h-4 w-4' />
           </Button>
-          <Button variant='ghost' size='icon' onClick={handleZoomOut} title='Zoom Out' className='h-8 w-8'>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleZoomOut}
+            title='Zoom Out'
+            className='h-8 w-8'
+          >
             <Minus className='h-4 w-4' />
           </Button>
-          <Button variant='ghost' size='icon' onClick={handleZoomIn} title='Zoom In' className='h-8 w-8'>
+          <span className='text-muted-foreground text-xs'>{zoom}%</span>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleZoomIn}
+            title='Zoom In'
+            className='h-8 w-8'
+          >
             <Plus className='h-4 w-4' />
           </Button>
-          <Button variant='ghost' size='icon' title='Refresh' className='h-8 w-8'>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleZoomReset}
+            title='Reset Zoom'
+            className='h-8 w-8'
+          >
+            <X className='h-4 w-4' />
+          </Button>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleDelete}
+            title='Delete Selected'
+            className='h-8 w-8'
+          >
+            <Trash2 className='h-4 w-4' />
+          </Button>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleSaveImage}
+            title='Save Image'
+            className='h-8 w-8'
+          >
+            <Download className='h-4 w-4' />
+          </Button>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleRefresh}
+            title='Clear All'
+            className='h-8 w-8'
+          >
             <RefreshCw className='h-4 w-4' />
           </Button>
         </div>
@@ -371,7 +834,7 @@ export function ProductDesign() {
             <div className='space-y-4'>
               <div
                 className={cn(
-                  'border-2 border-dashed rounded-md p-6 text-center cursor-pointer transition-colors bg-white',
+                  'cursor-pointer rounded-md border-2 border-dashed bg-white p-6 text-center transition-colors',
                   'hover:border-primary/50'
                 )}
                 onDrop={handleDrop}
@@ -379,12 +842,13 @@ export function ProductDesign() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <div className='flex flex-col items-center space-y-2'>
-                  <Plus className='h-6 w-6 text-muted-foreground' />
-                  <p className='text-sm text-muted-foreground'>
+                  <Plus className='text-muted-foreground h-6 w-6' />
+                  <p className='text-muted-foreground text-sm'>
                     Click or drag files here to upload
                   </p>
-                  <p className='text-xs text-muted-foreground mt-1'>
-                    Only png, jpg, JPEG can be uploaded, and the size does not exceed 10MB
+                  <p className='text-muted-foreground mt-1 text-xs'>
+                    Only png, jpg, JPEG can be uploaded, and the size does not
+                    exceed 10MB
                   </p>
                 </div>
                 <input
@@ -396,11 +860,11 @@ export function ProductDesign() {
                 />
               </div>
               {uploadedLogo && (
-                <div className='rounded-md border overflow-hidden bg-white'>
+                <div className='overflow-hidden rounded-md border bg-white'>
                   <img
                     src={uploadedLogo}
                     alt='Uploaded logo'
-                    className='w-full h-auto'
+                    className='h-auto w-full'
                   />
                 </div>
               )}
@@ -409,72 +873,10 @@ export function ProductDesign() {
         </div>
 
         {/* Main Content Area */}
-        <div className='flex-1 flex flex-col overflow-hidden bg-white'>
-          <div
-            className='flex-1 overflow-auto bg-gray-100 p-8 flex items-center justify-center'
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
-            <div
-              className='relative bg-white shadow-lg inline-block'
-              style={{
-                transform: `scale(${zoom / 100})`,
-                transformOrigin: 'center',
-              }}
-            >
-              {/* Product Image */}
-              <img
-                src={productData.image}
-                alt={productData.name}
-                className='max-w-full h-auto block'
-                style={{ maxHeight: '600px', maxWidth: '600px' }}
-              />
-
-              {/* Design Elements Overlay */}
-              <div className='absolute inset-0 pointer-events-none'>
-                {elements.map((element) => (
-                  <div
-                    key={element.id}
-                    className={cn(
-                      'absolute border-2 pointer-events-auto',
-                      dragging === element.id ? 'cursor-grabbing' : 'cursor-move',
-                      element.selected
-                        ? 'border-red-500 border-dashed'
-                        : 'border-transparent hover:border-gray-300'
-                    )}
-                    style={{
-                      left: `${element.x}px`,
-                      top: `${element.y}px`,
-                      width: `${element.width}px`,
-                      height: `${element.height}px`,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleElementClick(element.id)
-                    }}
-                    onMouseDown={(e) => handleElementMouseDown(e, element.id)}
-                  >
-                    {element.type === 'logo' && element.imageUrl && (
-                      <img
-                        src={element.imageUrl}
-                        alt='Logo'
-                        className='w-full h-full object-contain pointer-events-none'
-                      />
-                    )}
-                    {element.type === 'text' && (
-                      <div className='w-full h-full flex items-center justify-center bg-white/90 p-2 pointer-events-none'>
-                        <span className='text-sm font-semibold text-black'>{element.content}</span>
-                      </div>
-                    )}
-                    {element.type === 'note' && (
-                      <div className='w-full h-full flex items-center justify-center bg-yellow-100/90 p-2 border border-yellow-300 rounded pointer-events-none'>
-                        <span className='text-xs text-gray-700'>{element.content}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+        <div className='flex flex-1 flex-col overflow-hidden bg-white'>
+          <div className='flex flex-1 items-center justify-center overflow-auto bg-gray-100 p-8'>
+            <div className='bg-white shadow-lg'>
+              <canvas ref={canvasRef} />
             </div>
           </div>
         </div>
@@ -482,4 +884,3 @@ export function ProductDesign() {
     </div>
   )
 }
-

@@ -28,11 +28,24 @@ export const inventoryColumns: ColumnDef<InventoryItem>[] = [
     },
   },
   {
-    accessorKey: 'inventoryQty',
+    accessorKey: 'QTY',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Inventory QTY' />
+    ),
+    cell: ({ row }) => <div>{row.getValue('inventoryQty')}</div>,
+  },
+  {
+    accessorKey: 'Available Inventory',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Inventory QTY' />
+    ),
+    cell: ({ row }) => <div>{row.getValue('inventoryQty')}</div>,
+  },
+  {
+    accessorKey: 'Under Procurement',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Inventory QTY' />
     ),
     cell: ({ row }) => <div>{row.getValue('inventoryQty')}</div>,
   },
 ]
-

@@ -31,6 +31,7 @@ import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authen
 import { Route as AuthenticatedWinningProductsIndexRouteImport } from './routes/_authenticated/winning-products/index'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
+import { Route as AuthenticatedSupportTicketsIndexRouteImport } from './routes/_authenticated/support-tickets/index'
 import { Route as AuthenticatedStoresIndexRouteImport } from './routes/_authenticated/stores/index'
 import { Route as AuthenticatedStoreProductsIndexRouteImport } from './routes/_authenticated/store-products/index'
 import { Route as AuthenticatedSourcingIndexRouteImport } from './routes/_authenticated/sourcing/index'
@@ -45,6 +46,7 @@ import { Route as AuthenticatedPodDesignIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedPackagingProductsIndexRouteImport } from './routes/_authenticated/packaging-products/index'
 import { Route as AuthenticatedPackagingConnectionIndexRouteImport } from './routes/_authenticated/packaging-connection/index'
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders/index'
+import { Route as AuthenticatedMyInventoryIndexRouteImport } from './routes/_authenticated/my-inventory/index'
 import { Route as AuthenticatedLikedProductsIndexRouteImport } from './routes/_authenticated/liked-products/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
@@ -58,6 +60,7 @@ import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedProductsProductIdRouteImport } from './routes/_authenticated/products/$productId'
+import { Route as AuthenticatedOrdersCreateRouteImport } from './routes/_authenticated/orders/create'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as AuthenticatedProductsProductIdPurchaseRouteImport } from './routes/_authenticated/products/$productId/purchase'
 import { Route as AuthenticatedProductsProductIdDesignRouteImport } from './routes/_authenticated/products/$productId/design'
@@ -173,6 +176,12 @@ const AuthenticatedTasksIndexRoute = AuthenticatedTasksIndexRouteImport.update({
   path: '/tasks/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSupportTicketsIndexRoute =
+  AuthenticatedSupportTicketsIndexRouteImport.update({
+    id: '/support-tickets/',
+    path: '/support-tickets/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedStoresIndexRoute =
   AuthenticatedStoresIndexRouteImport.update({
     id: '/stores/',
@@ -256,6 +265,12 @@ const AuthenticatedOrdersIndexRoute =
     path: '/orders/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMyInventoryIndexRoute =
+  AuthenticatedMyInventoryIndexRouteImport.update({
+    id: '/my-inventory/',
+    path: '/my-inventory/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLikedProductsIndexRoute =
   AuthenticatedLikedProductsIndexRouteImport.update({
     id: '/liked-products/',
@@ -330,6 +345,12 @@ const AuthenticatedProductsProductIdRoute =
     path: '/products/$productId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedOrdersCreateRoute =
+  AuthenticatedOrdersCreateRouteImport.update({
+    id: '/orders/create',
+    path: '/orders/create',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedErrorsErrorRoute =
   AuthenticatedErrorsErrorRouteImport.update({
     id: '/errors/$error',
@@ -367,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof AuthenticatedWalletRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/orders/create': typeof AuthenticatedOrdersCreateRoute
   '/products/$productId': typeof AuthenticatedProductsProductIdRouteWithChildren
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
@@ -380,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/liked-products': typeof AuthenticatedLikedProductsIndexRoute
+  '/my-inventory': typeof AuthenticatedMyInventoryIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
   '/packaging-connection': typeof AuthenticatedPackagingConnectionIndexRoute
   '/packaging-products': typeof AuthenticatedPackagingProductsIndexRoute
@@ -394,6 +417,7 @@ export interface FileRoutesByFullPath {
   '/sourcing': typeof AuthenticatedSourcingIndexRoute
   '/store-products': typeof AuthenticatedStoreProductsIndexRoute
   '/stores': typeof AuthenticatedStoresIndexRoute
+  '/support-tickets': typeof AuthenticatedSupportTicketsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
   '/winning-products': typeof AuthenticatedWinningProductsIndexRoute
@@ -417,6 +441,7 @@ export interface FileRoutesByTo {
   '/wallet': typeof AuthenticatedWalletRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/orders/create': typeof AuthenticatedOrdersCreateRoute
   '/products/$productId': typeof AuthenticatedProductsProductIdRouteWithChildren
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
@@ -430,6 +455,7 @@ export interface FileRoutesByTo {
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/liked-products': typeof AuthenticatedLikedProductsIndexRoute
+  '/my-inventory': typeof AuthenticatedMyInventoryIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
   '/packaging-connection': typeof AuthenticatedPackagingConnectionIndexRoute
   '/packaging-products': typeof AuthenticatedPackagingProductsIndexRoute
@@ -444,6 +470,7 @@ export interface FileRoutesByTo {
   '/sourcing': typeof AuthenticatedSourcingIndexRoute
   '/store-products': typeof AuthenticatedStoreProductsIndexRoute
   '/stores': typeof AuthenticatedStoresIndexRoute
+  '/support-tickets': typeof AuthenticatedSupportTicketsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
   '/winning-products': typeof AuthenticatedWinningProductsIndexRoute
@@ -472,6 +499,7 @@ export interface FileRoutesById {
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/_authenticated/orders/create': typeof AuthenticatedOrdersCreateRoute
   '/_authenticated/products/$productId': typeof AuthenticatedProductsProductIdRouteWithChildren
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
@@ -485,6 +513,7 @@ export interface FileRoutesById {
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/liked-products/': typeof AuthenticatedLikedProductsIndexRoute
+  '/_authenticated/my-inventory/': typeof AuthenticatedMyInventoryIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
   '/_authenticated/packaging-connection/': typeof AuthenticatedPackagingConnectionIndexRoute
   '/_authenticated/packaging-products/': typeof AuthenticatedPackagingProductsIndexRoute
@@ -499,6 +528,7 @@ export interface FileRoutesById {
   '/_authenticated/sourcing/': typeof AuthenticatedSourcingIndexRoute
   '/_authenticated/store-products/': typeof AuthenticatedStoreProductsIndexRoute
   '/_authenticated/stores/': typeof AuthenticatedStoresIndexRoute
+  '/_authenticated/support-tickets/': typeof AuthenticatedSupportTicketsIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/winning-products/': typeof AuthenticatedWinningProductsIndexRoute
@@ -525,6 +555,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/'
     | '/errors/$error'
+    | '/orders/create'
     | '/products/$productId'
     | '/settings/account'
     | '/settings/appearance'
@@ -538,6 +569,7 @@ export interface FileRouteTypes {
     | '/chats'
     | '/help-center'
     | '/liked-products'
+    | '/my-inventory'
     | '/orders'
     | '/packaging-connection'
     | '/packaging-products'
@@ -552,6 +584,7 @@ export interface FileRouteTypes {
     | '/sourcing'
     | '/store-products'
     | '/stores'
+    | '/support-tickets'
     | '/tasks'
     | '/users'
     | '/winning-products'
@@ -575,6 +608,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/'
     | '/errors/$error'
+    | '/orders/create'
     | '/products/$productId'
     | '/settings/account'
     | '/settings/appearance'
@@ -588,6 +622,7 @@ export interface FileRouteTypes {
     | '/chats'
     | '/help-center'
     | '/liked-products'
+    | '/my-inventory'
     | '/orders'
     | '/packaging-connection'
     | '/packaging-products'
@@ -602,6 +637,7 @@ export interface FileRouteTypes {
     | '/sourcing'
     | '/store-products'
     | '/stores'
+    | '/support-tickets'
     | '/tasks'
     | '/users'
     | '/winning-products'
@@ -629,6 +665,7 @@ export interface FileRouteTypes {
     | '/_authenticated/wallet'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
+    | '/_authenticated/orders/create'
     | '/_authenticated/products/$productId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
@@ -642,6 +679,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chats/'
     | '/_authenticated/help-center/'
     | '/_authenticated/liked-products/'
+    | '/_authenticated/my-inventory/'
     | '/_authenticated/orders/'
     | '/_authenticated/packaging-connection/'
     | '/_authenticated/packaging-products/'
@@ -656,6 +694,7 @@ export interface FileRouteTypes {
     | '/_authenticated/sourcing/'
     | '/_authenticated/store-products/'
     | '/_authenticated/stores/'
+    | '/_authenticated/support-tickets/'
     | '/_authenticated/tasks/'
     | '/_authenticated/users/'
     | '/_authenticated/winning-products/'
@@ -834,6 +873,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTasksIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/support-tickets/': {
+      id: '/_authenticated/support-tickets/'
+      path: '/support-tickets'
+      fullPath: '/support-tickets'
+      preLoaderRoute: typeof AuthenticatedSupportTicketsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/stores/': {
       id: '/_authenticated/stores/'
       path: '/stores'
@@ -932,6 +978,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOrdersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/my-inventory/': {
+      id: '/_authenticated/my-inventory/'
+      path: '/my-inventory'
+      fullPath: '/my-inventory'
+      preLoaderRoute: typeof AuthenticatedMyInventoryIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/liked-products/': {
       id: '/_authenticated/liked-products/'
       path: '/liked-products'
@@ -1023,6 +1076,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductsProductIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/orders/create': {
+      id: '/_authenticated/orders/create'
+      path: '/orders/create'
+      fullPath: '/orders/create'
+      preLoaderRoute: typeof AuthenticatedOrdersCreateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/errors/$error': {
       id: '/_authenticated/errors/$error'
       path: '/errors/$error'
@@ -1095,12 +1155,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedOrdersCreateRoute: typeof AuthenticatedOrdersCreateRoute
   AuthenticatedProductsProductIdRoute: typeof AuthenticatedProductsProductIdRouteWithChildren
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedBrandsIndexRoute: typeof AuthenticatedBrandsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedLikedProductsIndexRoute: typeof AuthenticatedLikedProductsIndexRoute
+  AuthenticatedMyInventoryIndexRoute: typeof AuthenticatedMyInventoryIndexRoute
   AuthenticatedOrdersIndexRoute: typeof AuthenticatedOrdersIndexRoute
   AuthenticatedPackagingConnectionIndexRoute: typeof AuthenticatedPackagingConnectionIndexRoute
   AuthenticatedPackagingProductsIndexRoute: typeof AuthenticatedPackagingProductsIndexRoute
@@ -1114,6 +1176,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSourcingIndexRoute: typeof AuthenticatedSourcingIndexRoute
   AuthenticatedStoreProductsIndexRoute: typeof AuthenticatedStoreProductsIndexRoute
   AuthenticatedStoresIndexRoute: typeof AuthenticatedStoresIndexRoute
+  AuthenticatedSupportTicketsIndexRoute: typeof AuthenticatedSupportTicketsIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedWinningProductsIndexRoute: typeof AuthenticatedWinningProductsIndexRoute
@@ -1126,6 +1189,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedOrdersCreateRoute: AuthenticatedOrdersCreateRoute,
   AuthenticatedProductsProductIdRoute:
     AuthenticatedProductsProductIdRouteWithChildren,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
@@ -1133,6 +1197,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedLikedProductsIndexRoute: AuthenticatedLikedProductsIndexRoute,
+  AuthenticatedMyInventoryIndexRoute: AuthenticatedMyInventoryIndexRoute,
   AuthenticatedOrdersIndexRoute: AuthenticatedOrdersIndexRoute,
   AuthenticatedPackagingConnectionIndexRoute:
     AuthenticatedPackagingConnectionIndexRoute,
@@ -1151,6 +1216,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSourcingIndexRoute: AuthenticatedSourcingIndexRoute,
   AuthenticatedStoreProductsIndexRoute: AuthenticatedStoreProductsIndexRoute,
   AuthenticatedStoresIndexRoute: AuthenticatedStoresIndexRoute,
+  AuthenticatedSupportTicketsIndexRoute: AuthenticatedSupportTicketsIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedWinningProductsIndexRoute:
