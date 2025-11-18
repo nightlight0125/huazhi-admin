@@ -5,7 +5,7 @@ const shippingMethods = ['YUNTU', 'DHL', 'FedEx', 'UPS', 'USPS', 'EMS']
 const shippingFromLocations = ['HANGZHOU', 'SHANGHAI', 'GUANGZHOU', 'SHENZHEN', 'BEIJING']
 const shippingToLocations = ['USA', 'UK', 'Canada', 'Australia', 'Germany', 'France', 'Japan']
 
-export const logisticsData: Logistics[] = Array.from({ length: 50 }, (_, i) => {
+export const logisticsData: Logistics[] = Array.from({ length: 50 }, () => {
   return {
     id: `LOG-${faker.string.alphanumeric(8).toUpperCase()}`,
     sku: `SKU:${faker.string.numeric(7)}`,
