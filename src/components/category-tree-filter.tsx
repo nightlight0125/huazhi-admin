@@ -115,7 +115,10 @@ export function CategoryTreeFilter({
                   )}
                   ref={(el) => {
                     if (el) {
-                      el.indeterminate = isIndeterminate
+                      const input = el.querySelector('input[type="checkbox"]') as HTMLInputElement | null
+                      if (input) {
+                        input.indeterminate = isIndeterminate
+                      }
                     }
                   }}
                 />

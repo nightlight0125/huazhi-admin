@@ -17,18 +17,14 @@ type StoreProductsToolbarProps<TData> = {
 }
 
 export function StoreProductsToolbar<TData>({
-  table,
+  table: _table,
 }: StoreProductsToolbarProps<TData>) {
-  const { setOpen } = useStoreProducts()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { setOpen: _setOpen } = useStoreProducts()
   const [productName, setProductName] = useState('')
   const [selectedShop, setSelectedShop] = useState<string>('')
   const [associateStatus, setAssociateStatus] = useState<string>('')
 
-  const handleSearch = () => {
-    table.setGlobalFilter(productName)
-    // Apply shop and status filters if needed
-    // You can add more filtering logic here
-  }
 
   return (
     <div className='flex items-center gap-3 border-b p-4'>

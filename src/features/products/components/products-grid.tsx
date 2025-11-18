@@ -94,7 +94,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   )
 
   // Synced with URL states
-  const { globalFilter, onGlobalFilterChange, pagination, onPaginationChange } =
+  const { globalFilter, onGlobalFilterChange, pagination } =
     useTableUrlState({
       search,
       navigate: navigate as any,
@@ -307,6 +307,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
                 nav({
                   to: '/products/$productId',
                   params: { productId: product.id },
+                  search: { from: undefined },
                 })
               }
             >
