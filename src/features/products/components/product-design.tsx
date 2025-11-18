@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Canvas, Group, Image, Textbox } from 'fabric'
 import {
-  Download,
-  Home,
   Image as ImageIcon,
+  Type,
+  Pencil,
+  Undo2,
+  Redo2,
+  RotateCw,
   Layers,
   Minus,
   MoveVertical,
@@ -18,6 +21,8 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { packagingProducts } from '@/features/packaging-products/data/data'
@@ -555,14 +560,8 @@ export function ProductDesign() {
     setTimeout(() => saveState(), 100)
   }
 
-  const handleDelete = () => {
-    if (!fabricCanvasRef.current) return
-    const activeObject = fabricCanvasRef.current.getActiveObject()
-    if (activeObject) {
-      fabricCanvasRef.current.remove(activeObject)
-      fabricCanvasRef.current.renderAll()
-    }
-  }
+    const container = (e.currentTarget.parentElement?.parentElement as HTMLElement)
+    if (!container) return
 
   const handleSaveImage = async () => {
     if (!fabricCanvasRef.current || !product) return
@@ -571,59 +570,41 @@ export function ProductDesign() {
       const canvas = fabricCanvasRef.current
       const productData = product as Product | PackagingProduct
 
-      // 确保所有图片都已加载完成
-      await new Promise((resolve) => setTimeout(resolve, 100))
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!dragging) return
 
-      // 创建一个新的画布来导出，避免跨域问题
-      const exportCanvas = document.createElement('canvas')
-      exportCanvas.width = canvas.width || 600
-      exportCanvas.height = canvas.height || 600
-      const ctx = exportCanvas.getContext('2d')
+      const container = e.currentTarget as HTMLElement
+      const productImage = container.querySelector('img')
+      if (!productImage) return
 
-      if (!ctx) {
-        throw new Error('Failed to get canvas context')
-      }
+      const imageRect = productImage.getBoundingClientRect()
+      const scale = zoom / 100
 
-      // 先绘制背景色
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+      // 计算相对于图片的位置
+      const x = (e.clientX - imageRect.left) / scale - dragOffset.x
+      const y = (e.clientY - imageRect.top) / scale - dragOffset.y
 
-      // 绘制背景图片（如果存在）
-      if (canvas.backgroundImage) {
-        const bgImg = canvas.backgroundImage as Image
-        const bgElement = bgImg.getElement()
-        if (bgElement) {
-          // 检查是否是 HTMLImageElement
-          if (bgElement instanceof HTMLImageElement) {
-            if (bgElement.complete) {
-              ctx.drawImage(
-                bgElement,
-                bgImg.left || 0,
-                bgImg.top || 0,
-                (bgImg.width || 0) * (bgImg.scaleX || 1),
-                (bgImg.height || 0) * (bgImg.scaleY || 1)
-              )
-            }
-          } else if (bgElement instanceof HTMLCanvasElement) {
-            ctx.drawImage(
-              bgElement,
-              bgImg.left || 0,
-              bgImg.top || 0,
-              (bgImg.width || 0) * (bgImg.scaleX || 1),
-              (bgImg.height || 0) * (bgImg.scaleY || 1)
-            )
-          }
-        }
-      }
+      const element = elements.find((el) => el.id === dragging)
+      if (!element) return
 
-      // 绘制所有对象
-      const objects = canvas.getObjects()
-      for (const obj of objects) {
-        // 将 Fabric.js 对象转换为图片
-        const objDataURL = obj.toDataURL({
-          format: 'png',
-          multiplier: 2,
-        })
+      const maxX = (imageRect.width / scale) - element.width
+      const maxY = (imageRect.height / scale) - element.height
+
+      setElements((prev) =>
+        prev.map((el) =>
+          el.id === dragging
+            ? {
+                ...el,
+                x: Math.max(0, Math.min(x, maxX)),
+                y: Math.max(0, Math.min(y, maxY)),
+              }
+            : el
+        )
+      )
+    },
+    [dragging, dragOffset, zoom, elements]
+  )
 
         const img = new window.Image()
         await new Promise((resolve, reject) => {

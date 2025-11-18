@@ -12,7 +12,8 @@ import { ProductsTable } from './components/products-table'
 import { products } from './data/data'
 
 export function Products() {
-  const [activeCategory, setActiveCategory] =
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [activeCategory, _setActiveCategory] =
     useState<ProductCategory>('public')
 
   // 根据分类过滤数据

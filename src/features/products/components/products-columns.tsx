@@ -157,7 +157,7 @@ export const productsColumns: ColumnDef<Product>[] = [
     header: '供应商',
     enableHiding: true,
     enableSorting: false,
-    filterFn: (row, id, value) => {
+    filterFn: (_row, _id, value) => {
       // 这里可以根据实际的产品供应商数据进行筛选
       // 目前返回 true 表示所有产品都匹配（因为产品数据中没有 supplier 字段）
       if (!value || value.length === 0) return true

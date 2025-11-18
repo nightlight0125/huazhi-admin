@@ -93,7 +93,7 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
   )
 
   // Synced with URL states
-  const { globalFilter, onGlobalFilterChange, pagination, onPaginationChange } =
+  const { globalFilter, onGlobalFilterChange, pagination } =
     useTableUrlState({
       search: route.useSearch(),
       navigate: route.useNavigate(),
@@ -149,29 +149,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
   const startIndex = (pageIndex - 1) * pageSize
   const endIndex = startIndex + pageSize
   const paginatedData = filteredData.slice(startIndex, endIndex)
-
-  // Create a mock table object for pagination component
-  const mockTable = {
-    getPageCount: () => Math.ceil(filteredData.length / pageSize),
-    getCanPreviousPage: () => pageIndex > 1,
-    getCanNextPage: () => pageIndex < Math.ceil(filteredData.length / pageSize),
-    previousPage: () => {
-      if (pageIndex > 1) {
-        onPaginationChange({ pageIndex: pageIndex - 2, pageSize })
-      }
-    },
-    nextPage: () => {
-      if (pageIndex < Math.ceil(filteredData.length / pageSize)) {
-        onPaginationChange({ pageIndex: pageIndex, pageSize })
-      }
-    },
-    setPageIndex: (index: number) => {
-      onPaginationChange({ pageIndex: index - 1, pageSize })
-    },
-    getState: () => ({
-      pagination: { pageIndex: pageIndex - 1, pageSize },
-    }),
-  } as any
 
   const toggleFavorite = (productId: string) => {
     setSelectedItems((prev) => {
@@ -311,6 +288,7 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
                 navigate({
                   to: '/products/$productId',
                   params: { productId: product.id },
+                  search: { from: undefined },
                 })
               }
             >

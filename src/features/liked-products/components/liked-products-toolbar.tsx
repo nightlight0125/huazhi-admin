@@ -18,7 +18,7 @@ type DataTableToolbarProps<TData> = {
 }
 
 export function LikedProductsToolbar<TData>({
-  table,
+  table: _table,
 }: DataTableToolbarProps<TData>) {
   const [productName, setProductName] = useState('')
   const [tdSpu, setTdSpu] = useState('')
@@ -27,19 +27,6 @@ export function LikedProductsToolbar<TData>({
     to: undefined,
   })
 
-  const handleSearch = () => {
-    table.setGlobalFilter(productName || tdSpu)
-    // Apply date range filter if needed
-    // This would need to be implemented based on your filtering logic
-  }
-
-  const handleReset = () => {
-    setProductName('')
-    setTdSpu('')
-    setDateRange({ from: undefined, to: undefined })
-    table.resetColumnFilters()
-    table.setGlobalFilter('')
-  }
 
   return (
     <div className='w-full space-y-3'>
