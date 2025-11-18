@@ -6,6 +6,9 @@ const inventorySearchSchema = z.object({
   page: z.number().optional().catch(1),
   pageSize: z.number().optional().catch(10),
   filter: z.string().optional().catch(''),
+  spu: z.string().optional().catch(''),
+  sku: z.string().optional().catch(''),
+  warehouse: z.string().optional().catch(''),
 })
 
 export const Route = createFileRoute('/_authenticated/my-inventory/')({

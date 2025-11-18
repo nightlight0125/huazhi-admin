@@ -137,14 +137,14 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     console.log('Search filters:', filters)
     // For now, just use global filter
     if (filters.supportTicketNo || filters.hzOrderNo) {
-      onGlobalFilterChange(
+      onGlobalFilterChange?.(
         filters.supportTicketNo || filters.hzOrderNo || ''
       )
     }
   }
 
   const handleReset = () => {
-    onGlobalFilterChange('')
+    onGlobalFilterChange?.('')
     setActiveTab('all')
   }
 

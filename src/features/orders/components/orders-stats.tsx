@@ -24,16 +24,9 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
   )
 
   const unpaidOrders = statusCounts['pending_payment'] || 0
-  const pendingPaymentOrders = statusCounts['pending_quote'] || 0
 
   // 模拟账号余额（实际项目中应该从用户数据获取）
   const accountBalance = 125000.5
-
-  // 模拟趋势数据（实际项目中应该从历史数据计算）
-  const balanceTrend = 8.5 // 模拟8.5%增长
-  const ordersTrend = 12.3 // 模拟12.3%增长
-  const unpaidTrend = -15.2 // 模拟15.2%下降
-  const pendingTrend = 5.7 // 模拟5.7%增长
 
   return (
     <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card -mx-4 grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:grid-cols-4 lg:px-6'>
