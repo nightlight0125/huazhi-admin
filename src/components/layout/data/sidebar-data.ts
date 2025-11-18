@@ -248,7 +248,7 @@ export const sidebarData: SidebarData = {
             },
             {
               title: 'Accounts',
-              url: '/settings/accounts',
+              url: '/users',
             },
           ],
         }
