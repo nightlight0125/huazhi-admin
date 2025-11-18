@@ -1,14 +1,14 @@
-import { CreditCard, FileText, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, Clock, CreditCard, FileText, XCircle } from 'lucide-react'
 
 // 钱包记录类型选项
 export const walletRecordTypes = [
   {
-    label: '充值记录',
+    label: 'Recharge Records',
     value: 'recharge',
     icon: CreditCard,
   },
   {
-    label: '发票记录',
+    label: 'Invoice Records',
     value: 'invoice',
     icon: FileText,
   },

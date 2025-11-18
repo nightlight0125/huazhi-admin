@@ -1,15 +1,29 @@
 import { useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
-import { flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, type SortingState } from '@tanstack/react-table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { DataTableToolbar } from '@/components/data-table'
-import { DataTablePagination } from '@/components/data-table'
-import { DataTableBulkActions } from './data-table-bulk-actions'
-import { type WalletRecord, type WalletRecordType } from '../data/schema'
-import { walletRecordTypes, walletRecordStatuses, paymentMethods } from '../data/data'
-import { createWalletColumns } from './wallet-columns'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import {
+  TableBody,
+  TableCell,
+  Table as TableComponent,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { walletRecordTypes } from '../data/data'
+import { type WalletRecord, type WalletRecordType } from '../data/schema'
+import { DataTableBulkActions } from './data-table-bulk-actions'
+import { createWalletColumns } from './wallet-columns'
 
 const route = getRouteApi('/_authenticated/wallet')
 
@@ -104,29 +118,20 @@ export function WalletTable({ data }: DataTableProps) {
     onColumnFiltersChange,
   })
 
-  // const formatCurrency = (amount: number) => {
-  //   return new Intl.NumberFormat('zh-CN', {
-  //     style: 'currency',
-  //     currency: 'CNY',
-  //   }).format(amount)
-  // }
-
-  // const formatDate = (date: Date) => {
-  //   return new Intl.DateTimeFormat('zh-CN', {
-  //     year: 'numeric',
-  //     month: '2-digit',
-  //     day: '2-digit',
-  //     hour: '2-digit',
-  //     minute: '2-digit',
-  //   }).format(date)
-  // }
-
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
-      <Tabs defaultValue='recharge' className='space-y-4' onValueChange={(value) => setActiveTab(value as WalletRecordType)}>
+      <Tabs
+        defaultValue='recharge'
+        className='space-y-4'
+        onValueChange={(value) => setActiveTab(value as WalletRecordType)}
+      >
         <TabsList>
           {walletRecordTypes.map((type) => (
-            <TabsTrigger key={type.value} value={type.value} className='flex items-center gap-2'>
+            <TabsTrigger
+              key={type.value}
+              value={type.value}
+              className='flex items-center gap-2'
+            >
               <type.icon className='h-4 w-4' />
               {type.label}
             </TabsTrigger>
@@ -136,19 +141,14 @@ export function WalletTable({ data }: DataTableProps) {
         <TabsContent value={activeTab} className='space-y-4'>
           <DataTableToolbar
             table={table}
-            searchPlaceholder='搜索描述、充值方式、备注...'
-            filters={[
-              {
-                columnId: 'status',
-                title: '充值状态',
-                options: [...walletRecordStatuses],
+            searchPlaceholder='Clents Order Number'
+            dateRange={{
+              enabled: true,
+              columnId: 'createdAt',
+              onDateRangeChange: (dateRange) => {
+                console.log(dateRange)
               },
-              {
-                columnId: 'paymentMethod',
-                title: '充值方式',
-                options: paymentMethods.map(method => ({ label: method.label, value: method.value })),
-              },
-            ]}
+            }}
           />
 
           <div className='rounded-md border'>
@@ -160,7 +160,10 @@ export function WalletTable({ data }: DataTableProps) {
                       <TableHead key={header.id}>
                         {header.isPlaceholder
                           ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -169,17 +172,26 @@ export function WalletTable({ data }: DataTableProps) {
               <TableBody>
                 {table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && 'selected'}
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className='h-24 text-center'>
+                    <TableCell
+                      colSpan={columns.length}
+                      className='h-24 text-center'
+                    >
                       没有找到记录
                     </TableCell>
                   </TableRow>

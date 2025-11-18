@@ -11,6 +11,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ import { useOrders } from './orders-provider'
 
 export function OrdersPrimaryButtons() {
   const { setOpen } = useOrders()
+  const navigate = useNavigate()
 
   const handleAction = (action: string) => {
     switch (action) {
@@ -46,7 +48,7 @@ export function OrdersPrimaryButtons() {
         console.log('Merge Order')
         break
       case 'add':
-        setOpen('create')
+        navigate({ to: '/orders/create' })
         break
       case 'upload':
         setOpen('import')
