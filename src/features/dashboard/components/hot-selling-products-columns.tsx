@@ -5,6 +5,20 @@ import { type HotSellingProduct } from '../data/schema'
 export const createHotSellingProductsColumns =
   (): ColumnDef<HotSellingProduct>[] => [
     {
+      id: 'selectedStore',
+      accessorFn: () => '', // 虚拟列，用于过滤
+      header: () => null, // 不显示表头
+      enableHiding: true,
+      enableSorting: false,
+      filterFn: (_row, _id, value) => {
+        // 如果未选择任何值，显示所有数据
+        if (!value || value.length === 0) return true
+        // TODO: 根据实际数据中的 store 字段进行筛选
+        // 目前返回 true 表示所有产品都匹配
+        return true
+      },
+    },
+    {
       accessorKey: 'ranking',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='Ranking' />
