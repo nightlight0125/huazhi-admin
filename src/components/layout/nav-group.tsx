@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   Collapsible,
   CollapsibleContent,
@@ -37,7 +38,13 @@ export function NavGroup({ title, items }: NavGroupProps) {
   const { state, isMobile } = useSidebar()
   const href = useLocation({ select: (location) => location.href })
   return (
-    <SidebarGroup className={title === '' ? 'pt-0 -mt-4' : ''}>
+    <SidebarGroup
+      className={cn(
+        title === '' && 'pt-0',
+        // 展开时保持原来的整体上移，折叠时去掉，避免第一个图标被遮挡
+        title === '' && state !== 'collapsed' && '-mt-4'
+      )}
+    >
       <SidebarGroupLabel>{title}</SidebarGroupLabel>
       <SidebarMenu className={title === '' ? 'mt-0' : ''}>
         {items.map((item) => {
