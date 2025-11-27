@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedStoreManagementRouteImport } from './routes/_authenticated/store-management'
 import { Route as AuthenticatedAllProductsRouteImport } from './routes/_authenticated/all-products'
+import { Route as AuthenticatedAffiliatePlanRouteImport } from './routes/_authenticated/affiliate-plan'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
@@ -97,6 +98,12 @@ const AuthenticatedAllProductsRoute =
   AuthenticatedAllProductsRouteImport.update({
     id: '/all-products',
     path: '/all-products',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAffiliatePlanRoute =
+  AuthenticatedAffiliatePlanRouteImport.update({
+    id: '/affiliate-plan',
+    path: '/affiliate-plan',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const errors503Route = errors503RouteImport.update({
@@ -404,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/affiliate-plan': typeof AuthenticatedAffiliatePlanRoute
   '/all-products': typeof AuthenticatedAllProductsRoute
   '/store-management': typeof AuthenticatedStoreManagementRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -460,6 +468,7 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/affiliate-plan': typeof AuthenticatedAffiliatePlanRoute
   '/all-products': typeof AuthenticatedAllProductsRoute
   '/store-management': typeof AuthenticatedStoreManagementRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -521,6 +530,7 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+  '/_authenticated/affiliate-plan': typeof AuthenticatedAffiliatePlanRoute
   '/_authenticated/all-products': typeof AuthenticatedAllProductsRoute
   '/_authenticated/store-management': typeof AuthenticatedStoreManagementRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
@@ -580,6 +590,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/affiliate-plan'
     | '/all-products'
     | '/store-management'
     | '/wallet'
@@ -636,6 +647,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/affiliate-plan'
     | '/all-products'
     | '/store-management'
     | '/wallet'
@@ -696,6 +708,7 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+    | '/_authenticated/affiliate-plan'
     | '/_authenticated/all-products'
     | '/_authenticated/store-management'
     | '/_authenticated/wallet'
@@ -798,6 +811,13 @@ declare module '@tanstack/react-router' {
       path: '/all-products'
       fullPath: '/all-products'
       preLoaderRoute: typeof AuthenticatedAllProductsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/affiliate-plan': {
+      id: '/_authenticated/affiliate-plan'
+      path: '/affiliate-plan'
+      fullPath: '/affiliate-plan'
+      preLoaderRoute: typeof AuthenticatedAffiliatePlanRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/(errors)/503': {
@@ -1210,6 +1230,7 @@ const AuthenticatedProductsProductIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
+  AuthenticatedAffiliatePlanRoute: typeof AuthenticatedAffiliatePlanRoute
   AuthenticatedAllProductsRoute: typeof AuthenticatedAllProductsRoute
   AuthenticatedStoreManagementRoute: typeof AuthenticatedStoreManagementRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
@@ -1247,6 +1268,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
+  AuthenticatedAffiliatePlanRoute: AuthenticatedAffiliatePlanRoute,
   AuthenticatedAllProductsRoute: AuthenticatedAllProductsRoute,
   AuthenticatedStoreManagementRoute: AuthenticatedStoreManagementRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
