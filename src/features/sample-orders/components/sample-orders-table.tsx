@@ -26,6 +26,7 @@ import { sampleOrderStatuses } from '../data/data'
 import { type SampleOrder } from '../data/schema'
 import { createSampleOrdersColumns } from './sample-orders-columns'
 import { SampleOrdersTableFooter } from './sample-orders-table-footer'
+import { SampleOrdersPayDialog } from './sample-orders-pay-dialog'
 import { SampleOrdersActionsMenu } from './sample-orders-actions-menu'
 
 const route = getRouteApi('/_authenticated/sample-orders/')
@@ -41,6 +42,8 @@ export function SampleOrdersTable({ data }: DataTableProps) {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [activeTab, setActiveTab] = useState('all')
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
+  const [payDialogOpen, setPayDialogOpen] = useState(false)
+  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<SampleOrder | null>(null)
 
   // Synced with URL states
   const {
@@ -68,8 +71,11 @@ export function SampleOrdersTable({ data }: DataTableProps) {
   })
 
   const handlePay = (orderId: string) => {
-    console.log('Pay order:', orderId)
-    // TODO: Implement pay logic
+    const order = data.find((o) => o.id === orderId)
+    if (order) {
+      setSelectedOrderForPayment(order)
+      setPayDialogOpen(true)
+    }
   }
 
   const handleEditAddress = (orderId: string) => {
@@ -216,6 +222,12 @@ export function SampleOrdersTable({ data }: DataTableProps) {
           <SampleOrdersTableFooter table={table} />
         </TabsContent>
       </Tabs>
+
+      <SampleOrdersPayDialog
+        open={payDialogOpen}
+        onOpenChange={setPayDialogOpen}
+        order={selectedOrderForPayment}
+      />
     </div>
   )
 }
