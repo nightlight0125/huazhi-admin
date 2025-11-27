@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { format } from 'date-fns'
 import {
   type ColumnFiltersState,
   flexRender,
@@ -13,24 +12,9 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { Calendar as CalendarIcon, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import { CardContent } from '@/components/ui/card'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -51,7 +35,6 @@ export function HotSellingProducts() {
     from: new Date('2025-10-19'),
     to: new Date('2025-10-26'),
   })
-  const [selectedStore, setSelectedStore] = useState<string>('')
 
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -64,14 +47,9 @@ export function HotSellingProducts() {
     pageSize: 10,
   })
 
-  // Filter data based on date range and store selection
+  // Filter data based on date range
   const filteredData = useMemo(() => {
     let data = [...mockData]
-
-    // Apply store filter if selected
-    if (selectedStore) {
-      // TODO: Filter by store when store field is added to schema
-    }
 
     // Apply date range filter
     if (dateRange?.from && dateRange?.to) {
@@ -79,7 +57,7 @@ export function HotSellingProducts() {
     }
 
     return data
-  }, [selectedStore, dateRange])
+  }, [dateRange])
 
   const columns = createHotSellingProductsColumns()
 
@@ -130,7 +108,7 @@ export function HotSellingProducts() {
         {/* Filter Panel */}
         <div className='flex flex-wrap items-center gap-4'>
           {/* Date Range */}
-          <div className='flex items-center gap-2'>
+          {/* <div className='flex items-center gap-2'>
             <label className='text-sm font-medium whitespace-nowrap'>
               Date
             </label>
@@ -169,10 +147,10 @@ export function HotSellingProducts() {
                 />
               </PopoverContent>
             </Popover>
-          </div>
+          </div> */}
 
           {/* Store Selector */}
-          <div className='flex items-center gap-2'>
+          {/* <div className='flex items-center gap-2'>
             <label className='text-sm font-medium whitespace-nowrap'>
               Store
             </label>
@@ -186,7 +164,7 @@ export function HotSellingProducts() {
                 <SelectItem value='store3'>Store 3</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
         </div>
         <div className='text-lg font-bold'>Hot Selling Products</div>
 
@@ -195,6 +173,23 @@ export function HotSellingProducts() {
           <DataTableToolbar
             table={table}
             searchPlaceholder='Search by product name...'
+            filters={[
+              {
+                columnId: 'selectedStore',
+                title: 'Select Store Name',
+                options: [
+                  { value: 'store1', label: 'Store 1' },
+                  { value: 'store2', label: 'Store 2' },
+                  { value: 'store3', label: 'Store 3' },
+                ],
+              },
+            ]}
+            dateRange={{
+              enabled: true,
+              columnId: 'createdAt',
+              onDateRangeChange: setDateRange,
+              placeholder: 'Select Date Range',
+            }}
           />
 
           <div className='overflow-hidden rounded-md border'>

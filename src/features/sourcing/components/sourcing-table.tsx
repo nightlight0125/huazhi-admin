@@ -102,7 +102,7 @@ export function SourcingTable({ data }: DataTableProps) {
   return (
     <>
       <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
-        <div>
+        <div className='flex justify-end'>
           <Button
             className='h-8 text-xs'
             size='sm'
