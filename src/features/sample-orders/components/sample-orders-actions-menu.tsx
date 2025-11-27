@@ -1,4 +1,11 @@
-import { ChevronDown, Download, FileDown, Merge, X } from 'lucide-react'
+import {
+  ChevronDown,
+  Download,
+  FileDown,
+  Merge,
+  ShoppingBag,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -25,6 +32,10 @@ export function SampleOrdersActionsMenu() {
       case 'merge':
         // TODO: Implement merge order action
         console.log('Merge Order')
+        break
+      case 'after_sales':
+        // TODO: Implement batch payment action
+        console.log('After-SalesBatch')
         break
       default:
         break
@@ -55,6 +66,10 @@ export function SampleOrdersActionsMenu() {
         <DropdownMenuItem onClick={() => handleAction('merge')}>
           <Merge className='mr-2 h-4 w-4' />
           Merge Order
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAction('after_sales')}>
+          <ShoppingBag className='mr-2 h-4 w-4' />
+          After-Sales Batch
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
