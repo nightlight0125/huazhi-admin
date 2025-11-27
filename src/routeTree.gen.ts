@@ -36,6 +36,7 @@ import { Route as AuthenticatedStoresIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedStoreProductsIndexRouteImport } from './routes/_authenticated/store-products/index'
 import { Route as AuthenticatedSourcingIndexRouteImport } from './routes/_authenticated/sourcing/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedSampleOrdersIndexRouteImport } from './routes/_authenticated/sample-orders/index'
 import { Route as AuthenticatedRolesIndexRouteImport } from './routes/_authenticated/roles/index'
 import { Route as AuthenticatedRecommendProductsIndexRouteImport } from './routes/_authenticated/recommend-products/index'
 import { Route as AuthenticatedQuotesIndexRouteImport } from './routes/_authenticated/quotes/index'
@@ -206,6 +207,12 @@ const AuthenticatedSettingsIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
+const AuthenticatedSampleOrdersIndexRoute =
+  AuthenticatedSampleOrdersIndexRouteImport.update({
+    id: '/sample-orders/',
+    path: '/sample-orders/',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedRolesIndexRoute = AuthenticatedRolesIndexRouteImport.update({
   id: '/roles/',
@@ -421,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/quotes': typeof AuthenticatedQuotesIndexRoute
   '/recommend-products': typeof AuthenticatedRecommendProductsIndexRoute
   '/roles': typeof AuthenticatedRolesIndexRoute
+  '/sample-orders': typeof AuthenticatedSampleOrdersIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/sourcing': typeof AuthenticatedSourcingIndexRoute
   '/store-products': typeof AuthenticatedStoreProductsIndexRoute
@@ -475,6 +483,7 @@ export interface FileRoutesByTo {
   '/quotes': typeof AuthenticatedQuotesIndexRoute
   '/recommend-products': typeof AuthenticatedRecommendProductsIndexRoute
   '/roles': typeof AuthenticatedRolesIndexRoute
+  '/sample-orders': typeof AuthenticatedSampleOrdersIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/sourcing': typeof AuthenticatedSourcingIndexRoute
   '/store-products': typeof AuthenticatedStoreProductsIndexRoute
@@ -534,6 +543,7 @@ export interface FileRoutesById {
   '/_authenticated/quotes/': typeof AuthenticatedQuotesIndexRoute
   '/_authenticated/recommend-products/': typeof AuthenticatedRecommendProductsIndexRoute
   '/_authenticated/roles/': typeof AuthenticatedRolesIndexRoute
+  '/_authenticated/sample-orders/': typeof AuthenticatedSampleOrdersIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/sourcing/': typeof AuthenticatedSourcingIndexRoute
   '/_authenticated/store-products/': typeof AuthenticatedStoreProductsIndexRoute
@@ -591,6 +601,7 @@ export interface FileRouteTypes {
     | '/quotes'
     | '/recommend-products'
     | '/roles'
+    | '/sample-orders'
     | '/settings/'
     | '/sourcing'
     | '/store-products'
@@ -645,6 +656,7 @@ export interface FileRouteTypes {
     | '/quotes'
     | '/recommend-products'
     | '/roles'
+    | '/sample-orders'
     | '/settings'
     | '/sourcing'
     | '/store-products'
@@ -703,6 +715,7 @@ export interface FileRouteTypes {
     | '/_authenticated/quotes/'
     | '/_authenticated/recommend-products/'
     | '/_authenticated/roles/'
+    | '/_authenticated/sample-orders/'
     | '/_authenticated/settings/'
     | '/_authenticated/sourcing/'
     | '/_authenticated/store-products/'
@@ -920,6 +933,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/'
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
+    '/_authenticated/sample-orders/': {
+      id: '/_authenticated/sample-orders/'
+      path: '/sample-orders'
+      fullPath: '/sample-orders'
+      preLoaderRoute: typeof AuthenticatedSampleOrdersIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/roles/': {
       id: '/_authenticated/roles/'
@@ -1194,6 +1214,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedQuotesIndexRoute: typeof AuthenticatedQuotesIndexRoute
   AuthenticatedRecommendProductsIndexRoute: typeof AuthenticatedRecommendProductsIndexRoute
   AuthenticatedRolesIndexRoute: typeof AuthenticatedRolesIndexRoute
+  AuthenticatedSampleOrdersIndexRoute: typeof AuthenticatedSampleOrdersIndexRoute
   AuthenticatedSourcingIndexRoute: typeof AuthenticatedSourcingIndexRoute
   AuthenticatedStoreProductsIndexRoute: typeof AuthenticatedStoreProductsIndexRoute
   AuthenticatedStoresIndexRoute: typeof AuthenticatedStoresIndexRoute
@@ -1235,6 +1256,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRecommendProductsIndexRoute:
     AuthenticatedRecommendProductsIndexRoute,
   AuthenticatedRolesIndexRoute: AuthenticatedRolesIndexRoute,
+  AuthenticatedSampleOrdersIndexRoute: AuthenticatedSampleOrdersIndexRoute,
   AuthenticatedSourcingIndexRoute: AuthenticatedSourcingIndexRoute,
   AuthenticatedStoreProductsIndexRoute: AuthenticatedStoreProductsIndexRoute,
   AuthenticatedStoresIndexRoute: AuthenticatedStoresIndexRoute,

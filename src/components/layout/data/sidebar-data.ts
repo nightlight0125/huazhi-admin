@@ -1,7 +1,6 @@
 import {
   AudioWaveform,
   ChartColumnBig,
-  CircleParking,
   ClipboardList,
   ClipboardMinus,
   Command,
@@ -191,24 +190,24 @@ export const sidebarData: SidebarData = {
             },
           ],
         },
-        {
-          title: 'POD',
-          icon: CircleParking,
-          items: [
-            {
-              title: 'POD Products',
-              url: '/pod-products',
-            },
-            {
-              title: 'POD Design',
-              url: '/pod-design',
-            },
-            {
-              title: 'POD Publish',
-              url: '/pod-publish',
-            },
-          ],
-        },
+        // {
+        //   title: 'POD',
+        //   icon: CircleParking,
+        //   items: [
+        //     {
+        //       title: 'POD Products',
+        //       url: '/pod-products',
+        //     },
+        //     {
+        //       title: 'POD Design',
+        //       url: '/pod-design',
+        //     },
+        //     {
+        //       title: 'POD Publish',
+        //       url: '/pod-publish',
+        //     },
+        //   ],
+        // },
         {
           title: 'My Inventory',
           url: '/my-inventory',
