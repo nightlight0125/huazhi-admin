@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,20 +22,34 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
 
-const formSchema = z.object({
-  productName: z.string().min(1, 'Product name is required'),
-  productLink: z.string().min(1, 'Product link is required').url('Please enter a valid URL'),
-  productImage: z.instanceof(File, { message: 'Product image is required' }).optional(),
-  remark: z.string().max(250, 'Remark must be less than 250 characters').optional(),
-}).refine(
-  (data) => data.productImage !== undefined,
-  {
+const formSchema = z
+  .object({
+    productName: z.string().min(1, 'Product name is required'),
+    productLink: z
+      .string()
+      .min(1, 'Product link is required')
+      .url('Please enter a valid URL'),
+    // Price stored as string for easier input handling
+    price: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || (!Number.isNaN(Number(val)) && Number(val) >= 0),
+        { message: 'Price must be a valid number' }
+      ),
+    productImage: z
+      .instanceof(File, { message: 'Product image is required' })
+      .optional(),
+    remark: z
+      .string()
+      .max(250, 'Remark must be less than 250 characters')
+      .optional(),
+  })
+  .refine((data) => data.productImage !== undefined, {
     message: 'Product image is required',
     path: ['productImage'],
-  }
-)
+  })
 
 type FormValues = z.infer<typeof formSchema>
 
@@ -55,6 +70,7 @@ export function NewSourcingDialog({
     defaultValues: {
       productName: '',
       productLink: '',
+      price: '',
       remark: '',
     },
   })
@@ -62,22 +78,25 @@ export function NewSourcingDialog({
   const remarkValue = form.watch('remark') || ''
   const remarkLength = remarkValue.length
 
-  const handleFileSelect = useCallback((files: FileList | null) => {
-    if (!files || files.length === 0) return
+  const handleFileSelect = useCallback(
+    (files: FileList | null) => {
+      if (!files || files.length === 0) return
 
-    const file = files[0]
-    if (file.type.startsWith('image/')) {
-      form.setValue('productImage', file, { shouldValidate: true })
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result as string
-        if (result) {
-          setImagePreview(result)
+      const file = files[0]
+      if (file.type.startsWith('image/')) {
+        form.setValue('productImage', file, { shouldValidate: true })
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const result = e.target?.result as string
+          if (result) {
+            setImagePreview(result)
+          }
         }
+        reader.readAsDataURL(file)
       }
-      reader.readAsDataURL(file)
-    }
-  }, [form])
+    },
+    [form]
+  )
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -167,6 +186,23 @@ export function NewSourcingDialog({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name='price'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Product Price</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder='Please enter your product price...'
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Product Image */}
             <FormField
@@ -181,18 +217,18 @@ export function NewSourcingDialog({
                     <div className='space-y-2'>
                       {imagePreview ? (
                         <div className='relative'>
-                          <div className='border rounded-lg p-3'>
+                          <div className='rounded-lg border p-3'>
                             <img
                               src={imagePreview}
                               alt='Product preview'
-                              className='h-32 w-full object-cover rounded'
+                              className='h-32 w-full rounded object-cover'
                             />
                           </div>
                           <Button
                             type='button'
                             variant='destructive'
                             size='icon'
-                            className='absolute right-2 top-2 h-6 w-6'
+                            className='absolute top-2 right-2 h-6 w-6'
                             onClick={removeImage}
                           >
                             <Plus className='h-4 w-4 rotate-45' />
@@ -201,15 +237,17 @@ export function NewSourcingDialog({
                       ) : (
                         <div
                           className={cn(
-                            'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors',
+                            'cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors',
                             'hover:border-primary/50'
                           )}
                           onDrop={handleDrop}
                           onDragOver={handleDragOver}
                           onClick={() => fileInputRef.current?.click()}
                         >
-                          <Plus className='mx-auto h-8 w-8 text-muted-foreground mb-2' />
-                          <p className='text-sm text-muted-foreground'>Upload</p>
+                          <Plus className='text-muted-foreground mx-auto mb-2 h-8 w-8' />
+                          <p className='text-muted-foreground text-sm'>
+                            Upload
+                          </p>
                           <input
                             ref={fileInputRef}
                             type='file'
@@ -241,7 +279,7 @@ export function NewSourcingDialog({
                         rows={4}
                         {...field}
                       />
-                      <div className='absolute bottom-2 right-2 text-xs text-muted-foreground'>
+                      <div className='text-muted-foreground absolute right-2 bottom-2 text-xs'>
                         {remarkLength}/250
                       </div>
                     </div>
@@ -252,7 +290,7 @@ export function NewSourcingDialog({
             />
 
             {/* Tips */}
-            <p className='text-sm text-muted-foreground'>
+            <p className='text-muted-foreground text-sm'>
               Tips: Sourcing result will be notified to you via email within 48
               hours.
             </p>
@@ -279,4 +317,3 @@ export function NewSourcingDialog({
     </Dialog>
   )
 }
-

@@ -143,10 +143,10 @@ export const sidebarData: SidebarData = {
               title: 'Store Products',
               url: '/store-products',
             },
-            {
-              title: 'Bundle Products',
-              url: '/bundle-products',
-            },
+            // {
+            //   title: 'Bundle Products',
+            //   url: '/bundle-products',
+            // },
             {
               title: 'Published products',
               url: '/published-products',

@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-  type SortingState,
-  type VisibilityState,
-  type ColumnDef,
   flexRender,
   getCoreRowModel,
   getFacetedRowModel,
@@ -11,16 +8,19 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  type ColumnDef,
+  type SortingState,
   type Table,
+  type VisibilityState,
 } from '@tanstack/react-table'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import {
-  Table as UITable,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  Table as UITable,
 } from '@/components/ui/table'
 import { DataTablePagination } from '@/components/data-table'
 import { LikedProductsToolbar } from './liked-products-toolbar'
@@ -77,12 +77,14 @@ export function ProductsTableWithToolbar<TData>({
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
-    globalFilterFn: globalFilterFn || ((row, _columnId, filterValue) => {
-      const name = String((row.original as any).name || '').toLowerCase()
-      const spu = String((row.original as any).spu || '').toLowerCase()
-      const searchValue = String(filterValue).toLowerCase()
-      return name.includes(searchValue) || spu.includes(searchValue)
-    }),
+    globalFilterFn:
+      globalFilterFn ||
+      ((row, _columnId, filterValue) => {
+        const name = String((row.original as any).name || '').toLowerCase()
+        const spu = String((row.original as any).spu || '').toLowerCase()
+        const searchValue = String(filterValue).toLowerCase()
+        return name.includes(searchValue) || spu.includes(searchValue)
+      }),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -128,22 +130,47 @@ export function ProductsTableWithToolbar<TData>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className='text-xs'
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className='py-2'>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const productId = (row.original as any).id
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && 'selected'}
+                    className='hover:bg-muted/50 cursor-pointer text-xs'
+                    onClick={() => {
+                      if (productId) {
+                        navigate({
+                          to: '/products/$productId',
+                          params: { productId },
+                          search: { from: 'liked-products' },
+                        })
+                      }
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className='py-2'
+                        onClick={(e) => {
+                          // Prevent row click when clicking on interactive elements
+                          if (
+                            (e.target as HTMLElement).closest('button') ||
+                            (e.target as HTMLElement).closest('input') ||
+                            (e.target as HTMLElement).closest('a')
+                          ) {
+                            e.stopPropagation()
+                          }
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                )
+              })
             ) : (
               <TableRow>
                 <TableCell
@@ -161,4 +188,3 @@ export function ProductsTableWithToolbar<TData>({
     </div>
   )
 }
-

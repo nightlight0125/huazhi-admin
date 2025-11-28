@@ -4,8 +4,8 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { ProductsProvider } from '../products/components/products-provider'
 import { ProductsGrid } from '../products/components/products-grid'
+import { ProductsProvider } from '../products/components/products-provider'
 import { products } from '../products/data/data'
 
 const route = getRouteApi('/_authenticated/all-products')

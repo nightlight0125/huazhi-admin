@@ -7,8 +7,9 @@ import { type SupportTicket } from '../data/schema'
 export const createSupportTicketsColumns = (options?: {
   onEdit?: (ticket: SupportTicket) => void
   onCancel?: (ticket: SupportTicket) => void
+  onReasonClick?: (ticket: SupportTicket) => void
 }): ColumnDef<SupportTicket>[] => {
-  const { onEdit, onCancel } = options || {}
+  const { onEdit, onCancel, onReasonClick } = options || {}
 
   return [
     {
@@ -48,7 +49,7 @@ export const createSupportTicketsColumns = (options?: {
     {
       accessorKey: 'returnQty',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Return Qty' />
+        <DataTableColumnHeader column={column} title='return amount' />
       ),
       cell: ({ row }) => <div>{row.getValue('returnQty')}</div>,
     },
@@ -95,18 +96,23 @@ export const createSupportTicketsColumns = (options?: {
       cell: ({ row }) => <div>{row.getValue('createTime')}</div>,
     },
     {
-      accessorKey: 'updateTime',
+      accessorKey: 'reason',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Update Time' />
+        <DataTableColumnHeader column={column} title='reason' />
       ),
-      cell: ({ row }) => <div>{row.getValue('updateTime')}</div>,
-    },
-    {
-      accessorKey: 'remarks',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Remarks' />
-      ),
-      cell: ({ row }) => <div>{row.getValue('remarks')}</div>,
+      cell: ({ row }) => {
+        const ticket = row.original
+        return (
+          <div
+            onClick={(e) => {
+              e.stopPropagation()
+              onReasonClick?.(ticket)
+            }}
+          >
+            {row.getValue('reason')}
+          </div>
+        )
+      },
     },
     {
       id: 'actions',

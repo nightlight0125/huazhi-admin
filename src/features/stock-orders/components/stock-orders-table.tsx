@@ -24,10 +24,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { stockOrderStatuses } from '../data/data'
 import { type StockOrder } from '../data/schema'
-import { createStockOrdersColumns } from './stock-orders-columns'
-import { StockOrdersTableFooter } from './stock-orders-table-footer'
-import { StockOrdersPayDialog } from './stock-orders-pay-dialog'
 import { StockOrdersActionsMenu } from './stock-orders-actions-menu'
+import { createStockOrdersColumns } from './stock-orders-columns'
+import { StockOrdersPayDialog } from './stock-orders-pay-dialog'
+import { StockOrdersTableFooter } from './stock-orders-table-footer'
 
 const route = getRouteApi('/_authenticated/stock-orders/')
 
@@ -43,7 +43,8 @@ export function StockOrdersTable({ data }: DataTableProps) {
   const [activeTab, setActiveTab] = useState('all')
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
-  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<StockOrder | null>(null)
+  const [selectedOrderForPayment, setSelectedOrderForPayment] =
+    useState<StockOrder | null>(null)
 
   // Synced with URL states
   const {
@@ -59,9 +60,7 @@ export function StockOrdersTable({ data }: DataTableProps) {
     navigate: route.useNavigate(),
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
-    columnFilters: [
-      { columnId: 'status', searchKey: 'status', type: 'array' },
-    ],
+    columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
   // Filter data based on active tab
@@ -125,10 +124,7 @@ export function StockOrdersTable({ data }: DataTableProps) {
       const sku = String(row.original.sku).toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
 
-      return (
-        orderNumber.includes(searchValue) ||
-        sku.includes(searchValue)
-      )
+      return orderNumber.includes(searchValue) || sku.includes(searchValue)
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -148,11 +144,11 @@ export function StockOrdersTable({ data }: DataTableProps) {
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
-      <div className='flex items-center justify-end mb-2'>
+      <div className='mb-2 flex items-center justify-end'>
         <StockOrdersActionsMenu />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-        <TabsList className='grid w-full grid-cols-9'>
+        <TabsList className='grid w-full grid-cols-4'>
           {stockOrderStatuses.map((status) => (
             <TabsTrigger key={status.value} value={status.value}>
               {status.label}
@@ -231,4 +227,3 @@ export function StockOrdersTable({ data }: DataTableProps) {
     </div>
   )
 }
-

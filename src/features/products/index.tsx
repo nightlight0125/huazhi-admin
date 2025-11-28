@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
+import { HeaderActions } from '@/components/header-actions'
 import { type ProductCategory } from './components/products-category-tabs'
 import { ProductsDialogs } from './components/products-dialogs'
 import { ProductsGridTable } from './components/products-grid-table'
@@ -60,11 +58,7 @@ export function Products() {
     <ProductsProvider>
       <Header fixed>
         {/* <Search /> */}
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
       <Main fluid>

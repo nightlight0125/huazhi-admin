@@ -1,11 +1,10 @@
-import { type ColumnDef } from '@tanstack/react-table'
-import { Badge } from '@/components/ui/badge'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Minus, Plus, ShoppingBag } from 'lucide-react'
-import { type Order } from '../data/schema'
 import { format } from 'date-fns'
+import { type ColumnDef } from '@tanstack/react-table'
+import { Minus, Plus, ShoppingBag } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { type Order } from '../data/schema'
 
 export const createOrdersColumns = (options?: {
   onExpand?: (rowId: string) => void
@@ -15,7 +14,14 @@ export const createOrdersColumns = (options?: {
   onModifyProduct?: (orderId: string) => void
   onEditAddress?: (orderId: string) => void
 }): ColumnDef<Order>[] => {
-  const { onExpand, expandedRows = new Set(), selectedOrderId, onSelectOrder, onModifyProduct, onEditAddress } = options || {}
+  const {
+    onExpand,
+    expandedRows = new Set(),
+    selectedOrderId,
+    onSelectOrder,
+    onModifyProduct,
+    onEditAddress,
+  } = options || {}
 
   return [
     {
@@ -96,8 +102,16 @@ export const createOrdersColumns = (options?: {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.createdAt ? format(new Date(order.createdAt), 'MM-dd-yyyy') : '---'}</div>
-            <div>{order.updatedAt ? format(new Date(order.updatedAt), 'MM-dd-yyyy') : '---'}</div>
+            <div>
+              {order.createdAt
+                ? format(new Date(order.createdAt), 'MM-dd-yyyy')
+                : '---'}
+            </div>
+            <div>
+              {order.updatedAt
+                ? format(new Date(order.updatedAt), 'MM-dd-yyyy')
+                : '---'}
+            </div>
           </div>
         )
       },
@@ -108,15 +122,16 @@ export const createOrdersColumns = (options?: {
       header: 'Cost',
       cell: ({ row }) => {
         const order = row.original
-        const totalQty = order.productList?.reduce((sum, p) => sum + p.quantity, 0) || 0
-        const productTotal = order.productList?.reduce((sum, p) => sum + p.totalPrice, 0) || 0
-        
+        const totalQty =
+          order.productList?.reduce((sum, p) => sum + p.quantity, 0) || 0
+        const productTotal =
+          order.productList?.reduce((sum, p) => sum + p.totalPrice, 0) || 0
+
         return (
           <div className='space-y-1 text-sm'>
             <div>Total: ${order.totalCost.toFixed(2)}</div>
             <div>Product: ${productTotal.toFixed(2)}</div>
             <div>Shipping: ${order.shippingCost.toFixed(2)}</div>
-            <div>Other: ${order.otherCosts.toFixed(2)}</div>
             <div>Qty: {totalQty}</div>
           </div>
         )
@@ -140,7 +155,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'shipping',
-      header: 'Shipping Method\nTrack ID',
+      header: 'Shipping Track ID',
       cell: ({ row }) => {
         const order = row.original
         return (
@@ -153,40 +168,13 @@ export const createOrdersColumns = (options?: {
       size: 150,
     },
     {
-      accessorKey: 'shippingOrigin',
-      header: 'Warehouse',
-      cell: ({ row }) => {
-        return <div className='text-sm'>{row.getValue('shippingOrigin') || '---'}</div>
-      },
-      size: 120,
-    },
-    {
-      accessorKey: 'shippingStock',
-      header: 'Shipping Stock',
-      cell: ({ row }) => {
-        const stock = row.getValue('shippingStock') as string
-        const variant = stock === '有库存' ? 'default' : stock === '缺货' ? 'destructive' : 'secondary'
-        return <Badge variant={variant}>{stock}</Badge>
-      },
-      size: 120,
-    },
-    {
-      id: 'remark',
-      header: 'Remark',
-      cell: () => {
-        return <div className='text-sm'>---</div>
-      },
-      size: 100,
-    },
-    {
-      id: 'status',
+      id: 'platformHZStatus',
       header: 'Platform/HZ Status',
       cell: ({ row }) => {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.platformOrderStatus}</div>
-            <div>{order.status}</div>
+            <div>{order.platformOrderStatus || '---'}</div>
           </div>
         )
       },

@@ -23,5 +23,6 @@ export type SupportTicket = {
   createTime: string
   updateTime: string
   remarks: string
+  reason: string
 }
 

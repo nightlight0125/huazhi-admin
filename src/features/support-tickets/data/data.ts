@@ -16,6 +16,7 @@ export const supportTickets: SupportTicket[] = [
     status: 'processing',
     createTime: '11-1-2025',
     updateTime: '11-1-2025',
+    reason: 'xxxxxxxxx',
     remarks: 'xxxxxxxxx',
   },
   {
@@ -32,6 +33,7 @@ export const supportTickets: SupportTicket[] = [
     status: 'finished',
     createTime: '11-2-2025',
     updateTime: '11-3-2025',
+    reason: 'xxxxxxxxx',
     remarks: 'Return processed successfully',
   },
   {
@@ -48,6 +50,7 @@ export const supportTickets: SupportTicket[] = [
     status: 'refused',
     createTime: '11-3-2025',
     updateTime: '11-4-2025',
+    reason: 'xxxxxxxxx',
     remarks: 'Return request refused - outside return window',
   },
   {
@@ -64,6 +67,7 @@ export const supportTickets: SupportTicket[] = [
     status: 'cancelled',
     createTime: '11-4-2025',
     updateTime: '11-4-2025',
+    reason: 'xxxxxxxxx',
     remarks: 'Cancelled by customer',
   },
   {
@@ -80,6 +84,7 @@ export const supportTickets: SupportTicket[] = [
     status: 'processing',
     createTime: '11-5-2025',
     updateTime: '11-5-2025',
+    reason: 'xxxxxxxxx',
     remarks: 'Processing return request',
   },
 ]
