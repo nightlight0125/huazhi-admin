@@ -25,8 +25,8 @@ export function DisconnectConfirmDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-orange-500" />
+          <AlertDialogTitle className='flex items-center gap-2'>
+            <AlertTriangle className='h-5 w-5 text-orange-500' />
             Disconnect
           </AlertDialogTitle>
           <AlertDialogDescription>
@@ -35,10 +35,7 @@ export function DisconnectConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            className="bg-purple-600 text-white hover:bg-purple-700"
-          >
+          <AlertDialogAction onClick={onConfirm} className='text-white'>
             OK
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -46,4 +43,3 @@ export function DisconnectConfirmDialog({
     </AlertDialog>
   )
 }
-
