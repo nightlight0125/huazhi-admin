@@ -13,6 +13,7 @@ import {
   Redo2,
   RefreshCw,
   RotateCw,
+  Save,
   Trash2,
   Type,
   Undo2,
@@ -20,6 +21,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { products } from '../data/data'
@@ -47,6 +50,8 @@ export function ProductDesign() {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const historyIndexRef = useRef(-1)
+  const [noteName, setNoteName] = useState('')
+  const [noteText, setNoteText] = useState('')
 
   // 保存状态函数 - 包含背景图片
   const saveState = useCallback(() => {
@@ -507,30 +512,6 @@ export function ProductDesign() {
     canvas.renderAll()
   }
 
-  const handleAddNote = () => {
-    if (!fabricCanvasRef.current) return
-    const canvas = fabricCanvasRef.current
-    const center = canvas.getCenter()
-    // 使用 Textbox 替代 Group，支持直接编辑
-    const textbox = new Textbox('双击编辑备注', {
-      left: (center.left || 0) - 75,
-      top: (center.top || 0) - 50,
-      width: 150,
-      height: 100,
-      fontSize: 14,
-      fill: '#78350f',
-      textAlign: 'center',
-      fontFamily: 'Arial',
-      backgroundColor: '#fef3c7',
-      // 添加边框样式
-      stroke: '#fbbf24',
-      strokeWidth: 2,
-    })
-    canvas.add(textbox)
-    canvas.setActiveObject(textbox)
-    canvas.renderAll()
-  }
-
   const handleRotate = () => {
     if (!fabricCanvasRef.current) return
     const activeObject = fabricCanvasRef.current.getActiveObject()
@@ -712,6 +693,23 @@ export function ProductDesign() {
           >
             <RefreshCw className='h-4 w-4' />
           </Button>
+          <Button
+            variant='ghost'
+            size='icon'
+            title='Cancel changes'
+            className='h-8 w-8'
+            // TODO: implement actual cancel/restore logic
+          >
+            <X className='h-4 w-4' />
+          </Button>
+          <Button
+            variant='ghost'
+            size='icon'
+            title='Save design'
+            className='h-8 w-8'
+          >
+            <Save className='h-4 w-4' />
+          </Button>
         </div>
       </div>
 
@@ -750,7 +748,6 @@ export function ProductDesign() {
               <button
                 onClick={() => {
                   setActiveTab('notes')
-                  handleAddNote()
                 }}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
@@ -803,6 +800,40 @@ export function ProductDesign() {
                   />
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'notes' && (
+            <div className='space-y-4'>
+              <div className='space-y-2'>
+                <div className='text-sm font-medium'>Name</div>
+                <Input
+                  placeholder='Enter name'
+                  value={noteName}
+                  onChange={(e) => setNoteName(e.target.value)}
+                  className='h-9'
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <div className='text-sm font-medium'>Notes</div>
+                <div className='relative'>
+                  <Textarea
+                    placeholder='Enter notes'
+                    value={noteText}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (value.length <= 500) {
+                        setNoteText(value)
+                      }
+                    }}
+                    className='min-h-[140px] resize-none pr-12'
+                  />
+                  <span className='text-muted-foreground absolute right-3 bottom-2 text-xs'>
+                    {noteText.length}/500
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </div>
