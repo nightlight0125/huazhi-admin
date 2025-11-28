@@ -12,11 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
-import {
-  locations,
-  priceRanges,
-  suppliers,
-} from '@/features/products/data/data'
+import { PriceRangePopover } from '@/components/price-range-popover'
+import { locations, suppliers } from '@/features/products/data/data'
 import { type Product } from '@/features/products/data/schema'
 
 // Category tree data
@@ -84,7 +81,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     new Set()
   )
   const [selectedPriceRange, setSelectedPriceRange] = useState<
-    string | undefined
+    { min: number; max: number } | undefined
   >(undefined)
   const [selectedLocation, setSelectedLocation] = useState<string | undefined>(
     undefined
@@ -94,14 +91,13 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   )
 
   // Synced with URL states
-  const { globalFilter, onGlobalFilterChange, pagination } =
-    useTableUrlState({
-      search,
-      navigate: navigate as any,
-      pagination: { defaultPage: 1, defaultPageSize: 8 },
-      globalFilter: { enabled: true, key: 'filter' },
-      columnFilters: [],
-    })
+  const { globalFilter, onGlobalFilterChange, pagination } = useTableUrlState({
+    search,
+    navigate: navigate as any,
+    pagination: { defaultPage: 1, defaultPageSize: 8 },
+    globalFilter: { enabled: true, key: 'filter' },
+    columnFilters: [],
+  })
 
   // Filter and paginate data
   const filteredData = useMemo(() => {
@@ -122,17 +118,21 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
       result = result.filter((product) => {
         // Check if product category matches any selected category
         if (!product.category) return false
-        
+
         // Check direct match or parent-child relationship
         return Array.from(selectedCategories).some((selectedCat) => {
           if (product.category === selectedCat) return true
           // Check if product category is a child of selected parent
-          const parentCategory = categoryTree.find((cat) => cat.value === selectedCat)
+          const parentCategory = categoryTree.find(
+            (cat) => cat.value === selectedCat
+          )
           if (parentCategory?.children) {
-            return parentCategory.children.some((child) => child.value === product.category)
+            return parentCategory.children.some(
+              (child) => child.value === product.category
+            )
           }
           // Check if selected category is a child of product's parent
-          const productParent = categoryTree.find((cat) => 
+          const productParent = categoryTree.find((cat) =>
             cat.children?.some((child) => child.value === product.category)
           )
           if (productParent?.value === selectedCat) return true
@@ -143,13 +143,11 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
 
     // Apply price range filter
     if (selectedPriceRange) {
-      result = result.filter((product) => {
-        const [min, max] = selectedPriceRange.split('-').map(Number)
-        if (selectedPriceRange.includes('+')) {
-          return product.price >= Number(selectedPriceRange.replace('+', ''))
-        }
-        return product.price >= min && product.price <= max
-      })
+      result = result.filter(
+        (product) =>
+          product.price >= selectedPriceRange.min &&
+          product.price <= selectedPriceRange.max
+      )
     }
 
     // Apply location filter
@@ -198,11 +196,6 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     })
   }
 
-  const priceRangeOptions = [
-    { label: 'Price range', value: 'all' },
-    ...priceRanges.map((range) => ({ label: range.label, value: range.value })),
-  ]
-
   const locationOptions = [
     { label: ' Ship from anywhere', value: 'all' },
     ...locations.map((loc) => ({ label: loc.label, value: loc.value })),
@@ -238,23 +231,10 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
             onValueChange={handleCategoryChange}
           />
 
-          <Select
-            value={selectedPriceRange || 'all'}
-            onValueChange={(value) =>
-              setSelectedPriceRange(value === 'all' ? undefined : value)
-            }
-          >
-            <SelectTrigger className='min-w-[140px] border-dashed'>
-              <SelectValue placeholder='Price range' />
-            </SelectTrigger>
-            <SelectContent>
-              {priceRangeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <PriceRangePopover
+            value={selectedPriceRange}
+            onChange={setSelectedPriceRange}
+          />
 
           <Select
             value={selectedLocation || 'all'}

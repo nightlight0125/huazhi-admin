@@ -1,10 +1,10 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Button } from '@/components/ui/button'
-import { DataTableColumnHeader } from '@/components/data-table'
 import { Eye } from 'lucide-react'
-import { type Sourcing } from '../data/schema'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { DataTableColumnHeader } from '@/components/data-table'
 import { sourcingStatuses } from '../data/data'
+import { type Sourcing } from '../data/schema'
 
 export const sourcingColumns: ColumnDef<Sourcing>[] = [
   {
@@ -63,12 +63,12 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
               ))}
             </div>
           )}
-          <div className='flex-1 min-w-0'>
+          <div className='min-w-0 flex-1'>
             <div className='flex items-start gap-1'>
-              <p className='text-[10px] leading-tight line-clamp-3'>
+              <p className='line-clamp-3 text-[10px] leading-tight'>
                 {sourcing.productName}
               </p>
-              <Eye className='h-3 w-3 shrink-0 text-gray-400 mt-0.5' />
+              <Eye className='mt-0.5 h-3 w-3 shrink-0 text-gray-400' />
             </div>
           </div>
         </div>
@@ -126,9 +126,7 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
     ),
     cell: ({ row }) => {
       const result = row.getValue('result') as string | undefined
-      return (
-        <div className='text-xs'>{result || '-'}</div>
-      )
+      return <div className='text-xs'>{result || '-'}</div>
     },
     enableSorting: false,
   },
@@ -139,9 +137,7 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
     ),
     cell: ({ row }) => {
       const remark = row.getValue('remark') as string | undefined
-      return (
-        <div className='text-xs'>{remark || ''}</div>
-      )
+      return <div className='text-xs'>{remark || ''}</div>
     },
     enableSorting: false,
   },
@@ -197,19 +193,30 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
     header: () => <div className='text-xs font-medium'>Operation</div>,
     cell: ({ row }) => {
       return (
-        <Button
-          variant='outline'
-          size='sm'
-          className='h-7 text-xs'
-          onClick={() => {
-            // Handle connect HZ product action
-            console.log('Connect HZ Product:', row.original.sourcingId)
-          }}
-        >
-          Connect HZ Product
-        </Button>
+        <>
+          <Button
+            variant='outline'
+            size='sm'
+            className='h-7 text-xs'
+            onClick={() => {
+              // Handle connect HZ product action
+              console.log('Connect HZ Product:', row.original.sourcingId)
+            }}
+          >
+            Connect HZ Product
+          </Button>
+          <Button
+            variant='outline'
+            size='sm'
+            className='h-7 text-xs'
+            onClick={() => {
+              console.log('Delete:', row.original.sourcingId)
+            }}
+          >
+            Delete
+          </Button>
+        </>
       )
     },
   },
 ]
-

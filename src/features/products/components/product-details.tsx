@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { type BrandItem } from '@/features/brands/data/schema'
+import { likedProductsData } from '@/features/liked-products/data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
@@ -44,9 +45,21 @@ export function ProductDetails() {
   const search = useSearch({ from: '/_authenticated/products/$productId' })
   const navigate = useNavigate()
   const isFromPackagingProducts = search.from === 'packaging-products'
+  const isFromLikedProducts = search.from === 'liked-products'
+
   // 查找产品数据 - 先查找普通产品，再查找包装产品
-  const regularProduct = products.find((p) => p.id === productId)
+  let regularProduct = products.find((p) => p.id === productId)
   const packagingProduct = packagingProducts.find((p) => p.id === productId)
+
+  // 如果从 liked-products 跳转过来，尝试通过 SPU 匹配产品
+  if (isFromLikedProducts && !regularProduct) {
+    const likedProduct = likedProductsData.find((p) => p.id === productId)
+    if (likedProduct) {
+      // 通过 SPU 匹配 products 中的产品
+      regularProduct = products.find((p) => p.sku === likedProduct.spu)
+    }
+  }
+
   const product = regularProduct || packagingProduct
 
   // 类型辅助：获取产品的共同属性
@@ -308,9 +321,7 @@ export function ProductDetails() {
                         </div>
                         <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
                           <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
-                            <span className='whitespace-nowrap'>
-                              Selling On
-                            </span>
+                            <span className='whitespace-nowrap'>ship from</span>
                             <ChevronDown className='h-2.5 w-2.5 shrink-0' />
                           </div>
                           <Select
@@ -434,8 +445,8 @@ export function ProductDetails() {
           </div>
         </div>
 
-        {/* 右侧：价格和操作 */}
-        <div className='lg:col-span-1'>
+        {/* 右侧：价格和操作（在桌面端固定在视窗内） */}
+        <div className='lg:sticky lg:top-24 lg:col-span-1 lg:self-start'>
           <Card>
             <CardHeader>
               <CardTitle>Recap</CardTitle>

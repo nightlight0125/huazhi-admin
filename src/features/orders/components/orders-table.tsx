@@ -38,48 +38,50 @@ type DataTableProps = {
 }
 
 // Product detail row component
-function ProductDetailRow({
-  product,
-  onModify,
-}: {
-  product: OrderProduct
-  onModify: (product: OrderProduct) => void
-}) {
+function ProductDetailRow({ product }: { product: OrderProduct }) {
   const variantText =
     product.productVariant?.map((v) => `${v.name}: ${v.value}`).join(', ') ||
     '---'
 
-  // Define cell configurations
+  // Define cell configurations matching the table columns
   const cellConfigs = [
     {
-      colSpan: 2,
+      // Store Name column - shows product image and Store HZ buttons
       content: (
-        <div className='flex items-center gap-6'>
+        <div className='flex items-center gap-3'>
           {product.productImageUrl ? (
             <img
               src={product.productImageUrl}
               alt={product.productName}
-              className='h-16 w-16 rounded object-cover'
+              className='h-12 w-12 rounded object-cover'
             />
           ) : (
-            <div className='bg-muted flex h-16 w-16 items-center justify-center rounded'>
-              <ImageIcon className='text-muted-foreground h-8 w-8' />
+            <div className='bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded'>
+              <ImageIcon className='text-muted-foreground h-6 w-6' />
             </div>
           )}
-          <div className='flex-1 space-y-2'>
-            <div className='flex items-center gap-3'>
-              <span className='text-xs font-medium'>Store</span>
-              <span className='text-xs font-medium'>HZ</span>
-            </div>
-            <div className='text-sm leading-relaxed'>Title: ---</div>
-            <div className='text-sm leading-relaxed'>
-              Title: {product.productName}
-            </div>
+          <div className='flex flex-col gap-1'>
+            <Button variant='outline' size='sm' className='h-6 w-12 text-xs'>
+              Store
+            </Button>
+            <Button variant='outline' size='sm' className='h-6 w-12 text-xs'>
+              HZ
+            </Button>
           </div>
         </div>
       ),
     },
     {
+      // Store Order Number / HZ Order Number - shows Title
+      content: (
+        <div className='space-y-1 text-sm'>
+          <div>Title: ---</div>
+          <div>Title: {product.productName}</div>
+        </div>
+      ),
+    },
+    {
+      // Store Order Time / HZ Order Time - shows SKU
       content: (
         <div className='space-y-1 text-sm'>
           <div>SKU: ---</div>
@@ -88,6 +90,7 @@ function ProductDetailRow({
       ),
     },
     {
+      // Cost - shows Variant
       content: (
         <div className='space-y-1 text-sm'>
           <div>Variant: ---</div>
@@ -96,6 +99,7 @@ function ProductDetailRow({
       ),
     },
     {
+      // Customer - shows Price
       content: (
         <div className='space-y-1 text-sm'>
           <div>Price: ---</div>
@@ -104,47 +108,22 @@ function ProductDetailRow({
       ),
     },
     {
+      // Shipping Track ID - shows Quantity, Variant ID, Weight
       content: (
         <div className='space-y-1 text-sm'>
           <div>Quantity: {product.quantity}</div>
           <div>Quantity: {product.quantity}</div>
+          <div>Variant ID: ---</div>
+          <div>Weight: ---</div>
         </div>
       ),
     },
     {
-      content: <div className='text-sm'>---</div>,
-    },
-    {
-      content: <div className='text-sm'>---</div>,
-    },
-    {
-      content: <div className='text-sm'>---</div>,
-    },
-    {
-      content: <div className='text-sm'>---</div>,
-    },
-    {
-      content: <div className='text-sm'>---</div>,
-    },
-    {
-      content: <div className='text-sm'>---</div>,
-    },
-    {
+      // Action buttons column
       content: (
         <div className='flex flex-col gap-1'>
-          <Button
-            variant='outline'
-            size='sm'
-            className='h-7 text-xs'
-            onClick={(e) => {
-              e.stopPropagation()
-              onModify(product)
-            }}
-          >
-            Modify Product
-          </Button>
           <Button variant='outline' size='sm' className='h-7 text-xs'>
-            Add Package
+            Modify Product
           </Button>
           <Button variant='outline' size='sm' className='h-7 text-xs'>
             Delete
@@ -156,8 +135,9 @@ function ProductDetailRow({
 
   return (
     <TableRow className='bg-muted/30'>
+      <TableCell className='w-[80px]'></TableCell>
       {cellConfigs.map((config, index) => (
-        <TableCell key={index} colSpan={config.colSpan} className='p-4'>
+        <TableCell key={index} className='p-4'>
           {config.content}
         </TableCell>
       ))}
@@ -247,28 +227,6 @@ export function OrdersTable({ data }: DataTableProps) {
       }
       return next
     })
-  }
-
-  const handleModifyProduct = (_product: OrderProduct, orderId: string) => {
-    // Find the order from the original data, not filtered data
-    const order = data.find((o) => o.id === orderId)
-    if (order && order.productList && order.productList.length > 0) {
-      console.log(
-        'Opening modify product dialog for order:',
-        orderId,
-        order.productList
-      )
-      setModifyProductDialog({
-        open: true,
-        products: order.productList,
-        orderId,
-      })
-    } else {
-      console.warn('Order not found or has no products:', orderId, {
-        found: !!order,
-        hasProducts: order?.productList ? order.productList.length > 0 : false,
-      })
-    }
   }
 
   const handleConfirmModify = (updatedProducts: OrderProduct[]) => {
@@ -462,9 +420,6 @@ export function OrdersTable({ data }: DataTableProps) {
                               <ProductDetailRow
                                 key={product.id}
                                 product={product}
-                                onModify={(p) =>
-                                  handleModifyProduct(p, order.id)
-                                }
                               />
                             ))}
                           </>

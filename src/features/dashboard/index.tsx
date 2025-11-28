@@ -1,10 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
+import { HeaderActions } from '@/components/header-actions'
 import { HotSellingProducts } from './components/hot-selling-products'
 import { Overview } from './components/overview'
 
@@ -41,12 +39,7 @@ export function Dashboard() {
       {/* ===== Top Heading ===== */}
       <Header>
         {/* <TopNav links={topNav} /> */}
-        <div className='ms-auto flex items-center space-x-1'>
-          {/* <Search /> */}
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
       <Main fluid>

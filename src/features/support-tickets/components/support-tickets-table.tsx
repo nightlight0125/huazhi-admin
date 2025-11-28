@@ -22,11 +22,12 @@ import {
   TableRow,
   Table as UITable,
 } from '@/components/ui/table'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTablePagination } from '@/components/data-table'
 import { type SupportTicket, type SupportTicketStatus } from '../data/schema'
 import { createSupportTicketsColumns } from './support-tickets-columns'
+import { SupportTicketsReasonDialog } from './support-tickets-reason-dialog'
 import { SupportTicketsToolbar } from './support-tickets-toolbar'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const route = getRouteApi('/_authenticated/support-tickets/')
 
@@ -40,6 +41,7 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [activeTab, setActiveTab] = useState<SupportTicketStatus>('all')
+  const [reasonDialogOpen, setReasonDialogOpen] = useState(false)
 
   // Synced with URL states
   const {
@@ -74,11 +76,16 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     // TODO: Implement cancel functionality
   }
 
+  const handleReasonClick = () => {
+    setReasonDialogOpen(true)
+  }
+
   const columns = useMemo(
     () =>
       createSupportTicketsColumns({
         onEdit: handleEdit,
         onCancel: handleCancel,
+        onReasonClick: handleReasonClick,
       }),
     []
   )
@@ -137,9 +144,7 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     console.log('Search filters:', filters)
     // For now, just use global filter
     if (filters.supportTicketNo || filters.hzOrderNo) {
-      onGlobalFilterChange?.(
-        filters.supportTicketNo || filters.hzOrderNo || ''
-      )
+      onGlobalFilterChange?.(filters.supportTicketNo || filters.hzOrderNo || '')
     }
   }
 
@@ -216,7 +221,11 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
         </UITable>
       </div>
       <DataTablePagination table={table as Table<SupportTicket>} />
+
+      <SupportTicketsReasonDialog
+        open={reasonDialogOpen}
+        onOpenChange={setReasonDialogOpen}
+      />
     </div>
   )
 }
-
