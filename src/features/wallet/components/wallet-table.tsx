@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { walletRecordTypes } from '../data/data'
 import { type WalletRecord, type WalletRecordType } from '../data/schema'
@@ -139,6 +140,20 @@ export function WalletTable({ data }: DataTableProps) {
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
+          {/* Tabs 下方右侧导出按钮 */}
+          <div className='flex justify-end'>
+            <Button
+              type='button'
+              className='px-5'
+              onClick={() => {
+                // TODO: 接入实际导出逻辑（如导出为 CSV / Excel）
+                console.log('Export wallet records (current tab):', activeTab)
+              }}
+            >
+              Export
+            </Button>
+          </div>
+
           <DataTableToolbar
             table={table}
             searchPlaceholder='Clents Order Number'

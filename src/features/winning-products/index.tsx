@@ -1,9 +1,7 @@
 import { getRouteApi } from '@tanstack/react-router'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { ProductsProvider } from '../products/components/products-provider'
 import { ProductsGrid } from '../products/components/products-grid'
 import { winningProducts } from './data/data'
@@ -17,14 +15,10 @@ export function WinningProducts() {
   return (
     <ProductsProvider>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
-      <Main>
+      <Main fluid>
         <ProductsGrid data={winningProducts} search={search} navigate={navigate} />
       </Main>
     </ProductsProvider>

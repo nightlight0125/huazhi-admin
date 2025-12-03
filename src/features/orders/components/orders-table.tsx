@@ -39,11 +39,10 @@ type DataTableProps = {
   onTableReady?: (table: ReturnType<typeof useReactTable<Order>>) => void
 }
 
-// Product detail row component
 function ProductDetailRow({ product }: { product: OrderProduct }) {
   const variantText =
     product.productVariant?.map((v) => `${v.name}: ${v.value}`).join(', ') ||
-    '---'
+    '---';
 
   // Define cell configurations matching the table columns
   const cellConfigs = [
@@ -63,10 +62,10 @@ function ProductDetailRow({ product }: { product: OrderProduct }) {
             </div>
           )}
           <div className='flex flex-col gap-1'>
-            <Button variant='outline' size='sm' className='h-6 w-12 text-xs'>
+            <Button variant='outline' size='sm' className='h-5 w-10 text-[12px]'>
               Store
             </Button>
-            <Button variant='outline' size='sm' className='h-6 w-12 text-xs'>
+            <Button variant='outline' size='sm' className='h-5 w-10 text-[12px]'>
               HZ
             </Button>
           </div>
@@ -76,75 +75,77 @@ function ProductDetailRow({ product }: { product: OrderProduct }) {
     {
       // Store Order Number / HZ Order Number - shows Title
       content: (
-        <div className='space-y-1 text-sm'>
+        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
           <div>Title: ---</div>
-          <div>Title: {product.productName}</div>
+          <div className='break-words' style={{ marginTop: '8px'}}>Title: {product.productName}</div>
         </div>
       ),
     },
     {
       // Store Order Time / HZ Order Time - shows SKU
       content: (
-        <div className='space-y-1 text-sm'>
+        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
           <div>SKU: ---</div>
-          <div>SKU: {product.id}</div>
+          <div className='break-words' style={{ marginTop: '8px'}}>SKU: {product.id}</div>
         </div>
       ),
     },
     {
       // Cost - shows Variant
       content: (
-        <div className='space-y-1 text-sm'>
+        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
           <div>Variant: ---</div>
-          <div>Variant: {variantText}</div>
+          <div className='break-words' style={{ marginTop: '8px'}}>Variant: {variantText}</div>
         </div>
       ),
     },
     {
       // Customer - shows Price
       content: (
-        <div className='space-y-1 text-sm'>
+        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
           <div>Price: ---</div>
-          <div>Price: ${product.price.toFixed(2)}</div>
+          <div style={{ marginTop: '8px'}}>Price: ${product.price.toFixed(2)}</div>
         </div>
       ),
     },
     {
       // Shipping Track ID - shows Quantity, Variant ID, Weight
       content: (
-        <div className='space-y-1 text-sm'>
+        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
           <div>Quantity: {product.quantity}</div>
-          <div>Quantity: {product.quantity}</div>
-          <div>Variant ID: ---</div>
-          <div>Weight: ---</div>
+          <div style={{ marginTop: '8px'}}>Quantity: {product.quantity}</div>
         </div>
       ),
     },
     {
       // Action buttons column
       content: (
-        <div className='flex flex-col gap-1'>
-          <Button variant='outline' size='sm' className='h-7 text-xs'>
+        <div style={{ marginTop: '4px'}} className='flex flex-col gap-1 min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
+          <Button variant='outline' size='sm' className='h-6 text-[12px]'>
             Modify Product
           </Button>
-          <Button variant='outline' size='sm' className='h-7 text-xs'>
+          <Button variant='outline' size='sm' className='h-6 text-[12px]'>
             Delete
           </Button>
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <TableRow className='bg-muted/30'>
-      <TableCell className='w-[80px]'></TableCell>
-      {cellConfigs.map((config, index) => (
-        <TableCell key={index} className='p-4'>
-          {config.content}
-        </TableCell>
-      ))}
+      {/* 让展开行内容占据整一行宽度 */}
+      <TableCell colSpan={100} className='px-3 py-2'>
+        <div className='flex flex-wrap items-start gap-x-4 gap-y-2 text-[12px]'>
+          {cellConfigs.map((config, index) => (
+            <div key={index} className='flex-shrink-0'>
+              {config.content}
+            </div>
+          ))}
+        </div>
+      </TableCell>
     </TableRow>
-  )
+  );
 }
 
 export function OrdersTable({ data, onTableReady }: DataTableProps) {

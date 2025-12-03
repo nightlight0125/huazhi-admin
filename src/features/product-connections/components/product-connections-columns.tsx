@@ -88,7 +88,7 @@ export const productConnectionsColumns: ColumnDef<ProductConnection>[] = [
     cell: ({ row }) => {
       const price = row.getValue('price') as number
       return (
-        <div className='text-right font-medium'>
+        <div className='text-right font-medium text-green-600'>
           ${price.toFixed(2)}
         </div>
       )
@@ -144,7 +144,7 @@ export const productConnectionsColumns: ColumnDef<ProductConnection>[] = [
     cell: ({ row }) => {
       const shippingCost = row.getValue('shippingCost') as number
       return (
-        <div className='text-right font-medium'>
+        <div className='text-right font-medium text-green-600'>
           ${shippingCost.toFixed(2)}
         </div>
       )
@@ -158,7 +158,7 @@ export const productConnectionsColumns: ColumnDef<ProductConnection>[] = [
     cell: ({ row }) => {
       const totalAmount = row.getValue('totalAmount') as number
       return (
-        <div className='text-right font-bold text-lg'>
+        <div className='text-right font-bold text-lg text-green-600'>
           ${totalAmount.toFixed(2)}
         </div>
       )

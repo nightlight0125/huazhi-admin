@@ -3,7 +3,6 @@ import { type ColumnDef } from '@tanstack/react-table'
 import { Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Tooltip,
@@ -11,6 +10,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { type StockOrder } from '../data/schema'
+import { StockOrdersRowActions } from './stock-orders-row-actions'
 
 export const createStockOrdersColumns = (options?: {
   onPay?: (orderId: string) => void
@@ -119,7 +119,11 @@ export const createStockOrdersColumns = (options?: {
       header: 'Price',
       cell: ({ row }) => {
         const order = row.original
-        return <div className='text-sm'>${order.cost.product.toFixed(2)}</div>
+        return (
+          <div className='text-sm font-medium text-green-600'>
+            ${order.cost.product.toFixed(2)}
+          </div>
+        )
       },
       size: 100,
     },
@@ -128,7 +132,11 @@ export const createStockOrdersColumns = (options?: {
       header: 'Other Fees',
       cell: ({ row }) => {
         const order = row.original
-        return <div className='text-sm'>${order.cost.other.toFixed(2)}</div>
+        return (
+          <div className='text-sm font-medium text-green-600'>
+            ${order.cost.other.toFixed(2)}
+          </div>
+        )
       },
       size: 100,
     },
@@ -138,7 +146,7 @@ export const createStockOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original
         return (
-          <div className='text-sm font-medium'>
+          <div className='text-sm font-medium text-green-600'>
             ${order.cost.total.toFixed(2)}
           </div>
         )
@@ -208,59 +216,17 @@ export const createStockOrdersColumns = (options?: {
     {
       id: 'actions',
       header: 'Action',
-      cell: ({ row }) => {
-        const order = row.original
-        return (
-          <div className='flex flex-col gap-1'>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onPay?.(order.id)
-              }}
-            >
-              Pay
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditAddress?.(order.id)
-              }}
-            >
-              Edit Adress
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onAddPackage?.(order.id)
-              }}
-            >
-              Add Package
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs text-red-600 hover:text-red-700'
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete?.(order.id)
-              }}
-            >
-              Delete
-            </Button>
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <StockOrdersRowActions
+          row={row}
+          onPay={onPay}
+          onEditAddress={onEditAddress}
+          onAddPackage={onAddPackage}
+          onDelete={onDelete}
+        />
+      ),
       enableSorting: false,
-      size: 140,
+      size: 80,
     },
     {
       id: 'productName',

@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { DataTableToolbar } from '@/components/data-table'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { SampleOrdersDialogs } from './components/sample-orders-dialogs'
 import { SampleOrdersProvider } from './components/sample-orders-provider'
 import { SampleOrdersStats } from './components/sample-orders-stats'
@@ -19,11 +17,7 @@ export function SampleOrders() {
   return (
     <SampleOrdersProvider>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
       <Main fluid>

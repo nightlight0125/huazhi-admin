@@ -14,16 +14,10 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
   // 计算统计数据
   const totalOrders = orders.length
 
-  // 按状态统计订单
-  const statusCounts = orders.reduce(
-    (acc, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1
-      return acc
-    },
-    {} as Record<string, number>
-  )
-
-  const unpaidOrders = statusCounts['pending_payment'] || 0
+  // 计算待支付金额
+  const pendingPayment = orders
+    .filter((order) => order.status === 'pending_payment')
+    .reduce((sum, order) => sum + order.totalCost, 0)
 
   // 模拟账号余额（实际项目中应该从用户数据获取）
   const accountBalance = 125000.5
@@ -56,19 +50,24 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
         <CardHeader>
           <CardDescription>Pending Payment</CardDescription>
           <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-            {unpaidOrders}
+            $
+            {pendingPayment.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </CardTitle>
         </CardHeader>
       </Card>
 
       <Card className='@container/card'>
         <CardHeader>
-          <div className='space-y-2'>
-            <CardTitle className='text-2xl font-semibold text-blue-600 tabular-nums @[250px]/card:text-3xl'>
+          <CardDescription>Currency</CardDescription>
+          <div className='flex items-center gap-3'>
+            <CardTitle className='text-muted-foreground text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
               $ 0.00
             </CardTitle>
-            <div className='border-border border-t'></div>
-            <CardTitle className='text-2xl font-semibold text-red-600 tabular-nums @[250px]/card:text-3xl'>
+            <div className='border-border h-6 border-l'></div>
+            <CardTitle className='text-muted-foreground text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
               € 0.00
             </CardTitle>
           </div>

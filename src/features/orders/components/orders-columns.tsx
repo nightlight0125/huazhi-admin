@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { type Order } from '../data/schema'
+import { OrdersRowActions } from './orders-row-actions'
 
 export const createOrdersColumns = (options?: {
   onExpand?: (rowId: string) => void
@@ -89,7 +90,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'orderNumbers',
-      header: 'Store Order Number\nHZ Order Number',
+      header: 'Store/HZ No.',
       cell: ({ row }) => {
         const order = row.original
         return (
@@ -103,7 +104,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'orderTimes',
-      header: 'Store Order Time\nHZ Order Time',
+      header: 'Store/HZ Time',
       cell: ({ row }) => {
         const order = row.original
         return (
@@ -161,7 +162,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'shipping',
-      header: 'Shipping Track ID',
+      header: 'Shipping/No.',
       cell: ({ row }) => {
         const order = row.original
         return (
@@ -189,43 +190,20 @@ export const createOrdersColumns = (options?: {
     {
       id: 'actions',
       header: 'Action',
-      cell: ({ row }) => {
-        const order = row.original
-        return (
-          <div className='flex flex-col gap-1'>
-            <Button variant='outline' size='sm' className='h-7 text-xs'>
-              Pay
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onModifyProduct?.(order.id)
-              }}
-            >
-              Modify Product
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditAddress?.(order.id)
-              }}
-            >
-              Edit Address
-            </Button>
-            <Button variant='outline' size='sm' className='h-7 text-xs'>
-              Add Package
-            </Button>
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <OrdersRowActions
+          row={row}
+          onModifyProduct={onModifyProduct}
+          onEditAddress={onEditAddress}
+        />
+      ),
       enableSorting: false,
-      size: 120,
+      size: 30,
+      minSize: 30,
+      maxSize: 30,
+      meta: {
+        className: 'w-[30px] max-w-[30px]',
+      },
     },
     // Hidden columns for filtering only
     {

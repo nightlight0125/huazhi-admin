@@ -11,11 +11,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { TasksProvider } from '../tasks/components/tasks-provider'
 import { StoreListingTabs } from './components/store-listing-tabs'
 import { StoresTable } from './components/stores-table'
@@ -92,11 +90,7 @@ export function StoreManagement() {
   return (
     <TasksProvider>
       <Header>
-        <div className='ms-auto flex items-center gap-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
       <Main fluid>

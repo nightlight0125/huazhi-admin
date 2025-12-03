@@ -314,7 +314,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
                 </p>
 
                 {/* Price */}
-                <div className='text-base font-bold'>
+                <div className='text-base font-bold text-green-600'>
                   ${product.price.toFixed(2)}
                 </div>
 

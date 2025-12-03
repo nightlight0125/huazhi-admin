@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Building2, DollarSign, Gift, Wallet } from 'lucide-react'
+import { Building2, Wallet } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,10 +59,6 @@ export function WalletStats({ stats }: WalletStatsProps) {
         <CardContent className='space-y-4'>
           <Separator />
           <div className='space-y-2'>
-            <div className='flex items-center gap-2'>
-              <Gift className='h-5 w-5 text-purple-600' />
-              <CardDescription>Benefits Tiers</CardDescription>
-            </div>
             <div className='space-y-2'>
               {benefitTiers.map((tier, index) => (
                 <div
@@ -89,7 +85,6 @@ export function WalletStats({ stats }: WalletStatsProps) {
       <Card className='@container/card'>
         <CardHeader>
           <div className='flex items-center gap-2'>
-            <DollarSign className='h-5 w-5 text-green-600' />
             <CardDescription>Topup Amount</CardDescription>
           </div>
           <CardContent className='p-0 pt-4'>

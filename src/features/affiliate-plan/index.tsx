@@ -2,10 +2,8 @@ import { useState } from 'react'
 import { Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/header-actions'
 import { Main } from '@/components/layout/main'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { ConfigDrawer } from '@/components/config-drawer'
-import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Input } from '@/components/ui/input'
 
 export function AffiliatePlan() {
@@ -25,14 +23,10 @@ export function AffiliatePlan() {
   return (
     <>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
-      <Main className='flex flex-col items-center px-4 py-8 lg:py-10'>
+      <Main fluid className='flex flex-col items-center px-4 py-8 lg:py-10'>
         {/* Title & subtitle */}
         <div className='max-w-3xl text-center space-y-2 mb-6 lg:mb-8'>
           <h1 className='text-2xl font-semibold tracking-tight lg:text-3xl'>

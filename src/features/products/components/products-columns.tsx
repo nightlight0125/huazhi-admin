@@ -103,7 +103,7 @@ export const productsColumns: ColumnDef<Product>[] = [
     cell: ({ row }) => {
       const price = row.getValue('price') as number
       return (
-        <div className='w-24 text-right font-mono font-medium'>
+        <div className='w-24 text-right font-mono font-medium text-green-600'>
           ${price.toFixed(2)}
         </div>
       )

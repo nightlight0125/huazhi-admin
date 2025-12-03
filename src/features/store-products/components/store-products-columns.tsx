@@ -84,7 +84,7 @@ export const createStoreProductsColumns = (
     cell: ({ row }) => {
       const price = row.getValue('storePrice') as number
       return (
-        <div className='text-xs font-medium text-orange-500'>
+        <div className='text-xs font-medium text-green-600'>
           ${price.toFixed(2)}
         </div>
       )
@@ -98,7 +98,9 @@ export const createStoreProductsColumns = (
     cell: ({ row }) => {
       const price = row.getValue('hzPrice') as number | null
       return (
-        <div className='text-xs'>{price ? `$${price.toFixed(2)}` : '—'}</div>
+        <div className='text-xs font-medium text-green-600'>
+          {price ? `$${price.toFixed(2)}` : '—'}
+        </div>
       )
     },
   },

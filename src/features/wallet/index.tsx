@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { WalletRechargeDialog } from './components/wallet-recharge-dialog'
 import { WalletStats } from './components/wallet-stats'
 import { WalletTable } from './components/wallet-table'
@@ -15,14 +13,10 @@ export function Wallet() {
   return (
     <>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
-      <Main>
+      <Main fluid>
         {/* 钱包统计 */}
         <div className='mb-6'>
           <WalletStats stats={walletStats} />
