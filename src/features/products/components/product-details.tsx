@@ -1,5 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import {
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnFiltersState,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/react-table'
 import {
   ArrowLeft,
   ChevronDown,
@@ -30,12 +39,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { type BrandItem } from '@/features/brands/data/schema'
 import { likedProductsData } from '@/features/liked-products/data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
+import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
+import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
+import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
+import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
 import { products } from '../data/data'
 import { type Product } from '../data/schema'
 
@@ -82,6 +96,19 @@ export function ProductDetails() {
     useState(false)
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
   const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false)
+  const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
+  const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
+    string[]
+  >([])
+  const [storeListingTagsPopoverOpen, setStoreListingTagsPopoverOpen] =
+    useState(false)
+  const [storeListingRowSelection, setStoreListingRowSelection] =
+    useState<RowSelectionState>({})
+  const [storeListingSorting, setStoreListingSorting] = useState<SortingState>(
+    []
+  )
+  const [storeListingColumnFilters, setStoreListingColumnFilters] =
+    useState<ColumnFiltersState>([])
 
   // 颜色选项
   const colorOptions = ['White', 'Pink', 'Purple', 'Dark Green', 'Black']
@@ -141,7 +168,27 @@ export function ProductDetails() {
 
   const totalPrice = productData.price * selectedQuantity
 
-  // 处理发布到店铺
+  // 为 StoreListingTabs 准备 Variant Pricing 表格
+  const variantPricingColumns = useMemo(() => createVariantPricingColumns(), [])
+  const variantPricingData = useMemo(() => mockVariantPricingData, [])
+  const variantPricingTable = useReactTable<VariantPricing>({
+    data: variantPricingData,
+    columns: variantPricingColumns,
+    state: {
+      rowSelection: storeListingRowSelection,
+      sorting: storeListingSorting,
+      columnFilters: storeListingColumnFilters,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setStoreListingRowSelection,
+    onSortingChange: setStoreListingSorting,
+    onColumnFiltersChange: setStoreListingColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
+
+  // 处理发布到店铺：关闭弹框并显示 StoreListingTabs 组件
   const handlePublishToStore = () => {
     if (!selectedStore) {
       alert('请选择一个店铺')
@@ -152,9 +199,8 @@ export function ProductDetails() {
     console.log(`发布产品 ${productData.name} 到店铺: ${store?.name}`)
 
     // 这里可以添加实际的发布逻辑
-    alert(`产品已成功发布到 ${store?.name}`)
     setIsPublishDialogOpen(false)
-    setSelectedStore('')
+    setIsStoreListingOpen(true)
   }
 
   // 处理品牌定制
@@ -481,153 +527,205 @@ export function ProductDetails() {
         </div>
 
         {/* 右侧：价格和操作（在桌面端固定在视窗内） */}
-        <div className='lg:sticky lg:top-24 lg:col-span-1 lg:self-start'>
-          <Card>
-            <CardHeader>
-              <CardTitle>Recap</CardTitle>
-            </CardHeader>
+        <div className='lg:col-span-1 lg:self-start'>
+          <div className='lg:fixed lg:top-28 lg:right-8 lg:w-[320px]'>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recap</CardTitle>
+              </CardHeader>
 
-            <CardContent className='space-y-4'>
-              {/* 变体信息 */}
-              <div className='flex items-center justify-between text-sm'>
-                <span className='text-muted-foreground'>Variation Name</span>
-                <span>{selectedColor || 'White'}</span>
-              </div>
-
-              {/* 价格信息 */}
-              <div className='space-y-2'>
-                <div className='flex items-center justify-between'>
-                  <span className='text-muted-foreground'>Product Price</span>
-                  <span className='font-medium'>
-                    ${productData.price.toFixed(2)}
-                  </span>
+              <CardContent className='space-y-4'>
+                {/* 变体信息 */}
+                <div className='flex items-center justify-between text-sm'>
+                  <span className='text-muted-foreground'>Variation Name</span>
+                  <span>{selectedColor || 'White'}</span>
                 </div>
-                <div className='flex items-center justify-between'>
-                  <span className='text-muted-foreground'>Shipping Price</span>
-                  <span className='font-medium'>$0</span>
-                </div>
-                <Separator />
-                <div className='flex items-center justify-between text-lg font-bold'>
-                  <span>Total</span>
-                  <span>${totalPrice.toFixed(2)}</span>
-                </div>
-              </div>
 
-              {/* 操作按钮 */}
-              <div className='space-y-2'>
-                <Dialog
-                  open={isPublishDialogOpen}
-                  onOpenChange={setIsPublishDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button className='w-full' size='lg'>
-                      <Store className='mr-2 h-4 w-4' />
-                      Publish To Store
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className='sm:max-w-md'>
-                    <DialogHeader>
-                      <DialogTitle>Publish To Store</DialogTitle>
-                    </DialogHeader>
-                    <div className='space-y-4 py-4'>
-                      <div className='space-y-2'>
-                        <Label htmlFor='store-select'>选择店铺</Label>
-                        <Select
-                          value={selectedStore}
-                          onValueChange={setSelectedStore}
-                        >
-                          <SelectTrigger id='store-select'>
-                            <SelectValue placeholder='请选择要发布的店铺' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {stores.map((store) => (
-                              <SelectItem key={store.id} value={store.value}>
-                                {store.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                {/* 价格信息 */}
+                <div className='space-y-2'>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-muted-foreground'>Product Price</span>
+                    <span className='font-medium'>
+                      ${productData.price.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-muted-foreground'>
+                      Shipping Price
+                    </span>
+                    <span className='font-medium'>$0</span>
+                  </div>
+                  <Separator />
+                  <div className='flex items-center justify-between text-lg font-bold'>
+                    <span>Total</span>
+                    <span>${totalPrice.toFixed(2)}</span>
+                  </div>
+                </div>
 
-                      <div className='bg-muted/50 space-y-2 rounded-lg p-3'>
-                        <div className='text-sm font-medium'>产品信息</div>
-                        <div className='text-muted-foreground text-sm'>
-                          <div>产品名称: {productData.name}</div>
-                          <div>SKU: {productData.sku}</div>
-                          <div>价格: ${productData.price.toFixed(2)}</div>
+                {/* 操作按钮 */}
+                <div className='space-y-2'>
+                  <Dialog
+                    open={isPublishDialogOpen}
+                    onOpenChange={setIsPublishDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button className='w-full' size='lg'>
+                        <Store className='mr-2 h-4 w-4' />
+                        Publish To Store
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className='sm:max-w-md'>
+                      <DialogHeader>
+                        <DialogTitle>Publish To Store</DialogTitle>
+                      </DialogHeader>
+                      <div className='space-y-4 py-4'>
+                        <div className='space-y-2'>
+                          <Label htmlFor='store-select'>选择店铺</Label>
+                          <Select
+                            value={selectedStore}
+                            onValueChange={setSelectedStore}
+                          >
+                            <SelectTrigger id='store-select'>
+                              <SelectValue placeholder='请选择要发布的店铺' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {stores.map((store) => (
+                                <SelectItem key={store.id} value={store.value}>
+                                  {store.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className='bg-muted/50 space-y-2 rounded-lg p-3'>
+                          <div className='text-sm font-medium'>
+                            product info
+                          </div>
+                          <div className='text-muted-foreground text-sm'>
+                            <div>name: {productData.name}</div>
+                            <div>SKU: {productData.sku}</div>
+                            <div>price: ${productData.price.toFixed(2)}</div>
+                          </div>
+                        </div>
+
+                        <div className='flex gap-2 pt-2'>
+                          <Button
+                            variant='outline'
+                            className='flex-1'
+                            onClick={() => setIsPublishDialogOpen(false)}
+                          >
+                            cancel
+                          </Button>
+                          <Button
+                            className='flex-1'
+                            onClick={handlePublishToStore}
+                            disabled={!selectedStore}
+                          >
+                            confirm
+                          </Button>
                         </div>
                       </div>
+                    </DialogContent>
+                  </Dialog>
 
-                      <div className='flex gap-2 pt-2'>
-                        <Button
-                          variant='outline'
-                          className='flex-1'
-                          onClick={() => setIsPublishDialogOpen(false)}
-                        >
-                          取消
-                        </Button>
-                        <Button
-                          className='flex-1'
-                          onClick={handlePublishToStore}
-                          disabled={!selectedStore}
-                        >
-                          确认发布
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
-                <Button
-                  variant='outline'
-                  className='w-full'
-                  size='lg'
-                  onClick={handleBuySampleClick}
-                >
-                  <ShoppingCart className='mr-2 h-4 w-4' />
-                  Buy Sample
-                </Button>
-
-                <Button
-                  variant='outline'
-                  className='w-full'
-                  size='lg'
-                  onClick={handleBuyStockClick}
-                >
-                  <Tag className='mr-2 h-4 w-4' />
-                  Buy Stock
-                </Button>
-
-                <Button variant='outline' className='w-full' size='lg'>
-                  <Plus className='mr-2 h-4 w-4' />
-                  Collection
-                </Button>
-
-                {isFromPackagingProducts && (
                   <Button
                     variant='outline'
                     className='w-full'
                     size='lg'
-                    onClick={() => {
-                      navigate({ to: `/products/${productData.id}/design` })
-                    }}
+                    onClick={handleBuySampleClick}
                   >
-                    <Palette className='mr-2 h-4 w-4' />
-                    Design
+                    <ShoppingCart className='mr-2 h-4 w-4' />
+                    Buy Sample
                   </Button>
-                )}
-              </div>
 
-              {/* 喜欢按钮 */}
-              {/* <div className='pt-4'>
+                  <Button
+                    variant='outline'
+                    className='w-full'
+                    size='lg'
+                    onClick={handleBuyStockClick}
+                  >
+                    <Tag className='mr-2 h-4 w-4' />
+                    Buy Stock
+                  </Button>
+
+                  <Button variant='outline' className='w-full' size='lg'>
+                    <Plus className='mr-2 h-4 w-4' />
+                    Collection
+                  </Button>
+
+                  {isFromPackagingProducts && (
+                    <Button
+                      variant='outline'
+                      className='w-full'
+                      size='lg'
+                      onClick={() => {
+                        navigate({ to: `/products/${productData.id}/design` })
+                      }}
+                    >
+                      <Palette className='mr-2 h-4 w-4' />
+                      Design
+                    </Button>
+                  )}
+                </div>
+
+                {/* 喜欢按钮 */}
+                {/* <div className='pt-4'>
                 <Button variant='ghost' className='w-full'>
                   <Heart className='mr-2 h-4 w-4' />
                   喜欢这个产品
                 </Button>
               </div> */}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
+
+        {/* Store listing 右侧抽屉（使用 StoreListingTabs 公共组件） */}
+        <Sheet open={isStoreListingOpen} onOpenChange={setIsStoreListingOpen}>
+          <SheetContent
+            side='right'
+            className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
+          >
+            <div className='flex h-full text-sm'>
+              {/* 左侧：Listing 类型菜单（与 StoreManagement 保持一致） */}
+              <div className='bg-muted/30 w-48 border-r px-3 py-4'>
+                <div className='mb-2 text-sm font-semibold'>Manual Listing</div>
+                <button className='bg-primary/10 text-primary hover:bg-primary/15 mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm font-medium transition-colors'>
+                  Custom Editing
+                </button>
+                <div className='text-muted-foreground mt-4 mb-2 text-sm font-semibold'>
+                  Template Listing
+                </div>
+                <button className='text-muted-foreground hover:bg-muted/50 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors'>
+                  Add New Template
+                </button>
+              </div>
+
+              {/* 右侧：Tabs + 表单内容 */}
+              <StoreListingTabs
+                tagsPopoverOpen={storeListingTagsPopoverOpen}
+                setTagsPopoverOpen={setStoreListingTagsPopoverOpen}
+                selectedTags={storeListingSelectedTags}
+                setSelectedTags={setStoreListingSelectedTags}
+                variantPricingTable={variantPricingTable}
+                columns={variantPricingColumns}
+              />
+            </div>
+
+            {/* 底部操作按钮，保持与 /store-management 一致 */}
+            <div className='flex items-center justify-end gap-2 border-t px-4 py-3'>
+              <Button
+                variant='outline'
+                onClick={() => setIsStoreListingOpen(false)}
+                className='min-w-[96px]'
+              >
+                Cancel
+              </Button>
+              <Button className='min-w-[120px]'>Confirm</Button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
 
       {/* 产品描述 */}

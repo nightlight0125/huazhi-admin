@@ -194,14 +194,12 @@ export function PackagingProductsGrid({ data }: PackagingProductsGridProps) {
         })}
       </div>
 
-      {/* No Results */}
       {table.getRowModel().rows.length === 0 && (
         <div className='text-muted-foreground flex h-24 items-center justify-center'>
           No products found.
         </div>
       )}
 
-      {/* Pagination */}
       <DataTablePagination table={table} />
     </div>
   )

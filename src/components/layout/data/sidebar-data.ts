@@ -3,7 +3,6 @@ import {
   ChartColumnBig,
   ClipboardList,
   ClipboardMinus,
-  Command,
   GalleryVerticalEnd,
   House,
   LayoutGrid,
@@ -25,7 +24,7 @@ export const sidebarData: SidebarData = {
   teams: [
     {
       name: '华智 FOP',
-      logo: Command,
+      logo: "https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/logo_1764749478049.png",
       plan: '企业版',
     },
     {

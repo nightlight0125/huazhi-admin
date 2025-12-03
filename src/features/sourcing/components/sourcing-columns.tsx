@@ -1,12 +1,16 @@
 import { type NavigateOptions } from '@tanstack/react-router'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Eye } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { sourcingStatuses } from '../data/data'
 import { type Sourcing } from '../data/schema'
+import { SourcingRowActions } from './sourcing-row-actions'
 
 type NavigateFn = (options: NavigateOptions) => void
 
@@ -89,6 +93,7 @@ export const createSourcingColumns = (
     ),
     cell: ({ row }) => {
       const sourcing = row.original
+      const name = sourcing.productName || ''
       return (
         <div
           className='flex cursor-pointer items-start gap-2'
@@ -107,17 +112,27 @@ export const createSourcingColumns = (
             </div>
           )}
           <div className='min-w-0 flex-1'>
-            <div className='flex items-start gap-1'>
-              <p className='line-clamp-3 text-[10px] leading-tight'>
-                {sourcing.productName}
-              </p>
-              <Eye className='mt-0.5 h-3 w-3 shrink-0 text-gray-400' />
-            </div>
+            {name ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type='button'
+                    className='text-foreground line-clamp-2 max-w-[220px] text-left text-[10px] leading-tight'
+                  >
+                    {name}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className='max-w-xs text-xs'>
+                  {name}
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
           </div>
         </div>
       )
     },
     enableSorting: false,
+    enableHiding: false,
   },
   {
     accessorKey: 'status',
@@ -147,6 +162,7 @@ export const createSourcingColumns = (
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id))
     },
+    enableHiding: false,
   },
   {
     accessorKey: 'result',
@@ -179,6 +195,7 @@ export const createSourcingColumns = (
       )
     },
     enableSorting: false,
+    enableHiding: false,
   },
   {
     accessorKey: 'remark',
@@ -186,28 +203,33 @@ export const createSourcingColumns = (
       <DataTableColumnHeader column={column} title='Remark' />
     ),
     cell: ({ row }) => {
-      const remark = row.getValue('remark') as string | undefined
+      const remark = (row.getValue('remark') as string | undefined) || ''
       const sourcing = row.original
-      const productId = sourcing.productId
 
-      if (!productId) {
-        return <div className='text-xs'>{remark || ''}</div>
+      if (!remark) {
+        return <div className='text-muted-foreground text-xs'>-</div>
       }
 
       return (
-        <button
-          type='button'
-          className='hover:text-primary cursor-pointer text-left text-xs hover:underline'
-          onClick={(e) => {
-            e.stopPropagation()
-            handlers?.onRemarkClick?.(sourcing)
-          }}
-        >
-          {remark || ''}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type='button'
+              className='text-muted-foreground max-w-[140px] truncate text-left text-xs'
+              onClick={(e) => {
+                e.stopPropagation()
+                handlers?.onRemarkClick?.(sourcing)
+              }}
+            >
+              {remark}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className='max-w-xs text-xs'>{remark}</TooltipContent>
+        </Tooltip>
       )
     },
     enableSorting: false,
+    enableHiding: false,
   },
   {
     accessorKey: 'createdTime',
@@ -231,6 +253,7 @@ export const createSourcingColumns = (
         </div>
       )
     },
+    enableHiding: false,
   },
   {
     accessorKey: 'resultTime',
@@ -255,37 +278,12 @@ export const createSourcingColumns = (
         </div>
       )
     },
+    enableHiding: false,
   },
   {
     id: 'actions',
-    header: () => <div className='text-xs font-medium'>Operation</div>,
-    cell: ({ row }) => {
-      return (
-        <>
-          <Button
-            variant='outline'
-            size='sm'
-            className='h-7 text-xs'
-            onClick={() => {
-              // Handle connect HZ product action
-              console.log('Connect HZ Product:', row.original.sourcingId)
-            }}
-          >
-            Connect HZ Product
-          </Button>
-          <Button
-            variant='outline'
-            size='sm'
-            className='h-7 text-xs'
-            onClick={() => {
-              console.log('Delete:', row.original.sourcingId)
-            }}
-          >
-            Delete
-          </Button>
-        </>
-      )
-    },
+    cell: ({ row }) => <SourcingRowActions row={row} />,
+    enableHiding: false,
   },
 ]
 

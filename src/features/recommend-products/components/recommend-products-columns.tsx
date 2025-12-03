@@ -1,9 +1,8 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Eye, Store, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type RecommendProduct } from '../data/schema'
+import { RecommendProductsRowActions } from './recommend-products-row-actions'
 
 export const recommendProductsColumns: ColumnDef<RecommendProduct>[] = [
   {
@@ -49,7 +48,6 @@ export const recommendProductsColumns: ColumnDef<RecommendProduct>[] = [
               <p className='line-clamp-2 text-xs leading-tight'>
                 {product.description}
               </p>
-              <Eye className='mt-0.5 h-3 w-3 shrink-0 text-gray-400' />
             </div>
           </div>
         </div>
@@ -108,36 +106,6 @@ export const recommendProductsColumns: ColumnDef<RecommendProduct>[] = [
   },
   {
     id: 'actions',
-    header: () => <div className='text-xs font-medium'>Operate</div>,
-    cell: ({ row }) => {
-      return (
-        <>
-          <Button
-            variant='link'
-            size='sm'
-            className='h-auto p-0 text-xs text-red-600 hover:text-red-700'
-            onClick={() => {
-              // Handle delete action
-              console.log('Delete product:', row.original.id)
-            }}
-          >
-            <Trash2 className='mr-1 h-3 w-3' />
-            Delete
-          </Button>
-          <Button
-            variant='link'
-            size='sm'
-            className='h-auto p-0 text-xs text-blue-600 hover:text-blue-700'
-            onClick={() => {
-              // Handle delete action
-              console.log('Delete product:', row.original.id)
-            }}
-          >
-            <Store className='mr-1 h-3 w-3' />
-            publish store
-          </Button>
-        </>
-      )
-    },
+    cell: ({ row }) => <RecommendProductsRowActions row={row} />,
   },
 ]

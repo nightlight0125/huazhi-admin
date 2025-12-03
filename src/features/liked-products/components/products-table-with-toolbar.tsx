@@ -105,7 +105,8 @@ export function ProductsTableWithToolbar<TData>({
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <DataTableToolbar
         table={table as Table<TData>}
-        extraSearch={{ columnId: 'spu', placeholder: 'Search by SPU' }}
+        searchPlaceholder='Product Name'
+        extraSearch={{ columnId: 'spu', placeholder: 'Search by TD SPU' }}
         dateRange={{
           enabled: true,
           columnId: 'createdAt',

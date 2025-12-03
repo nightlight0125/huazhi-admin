@@ -1,9 +1,8 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Eye, Store, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type LikedProduct } from '../data/schema'
+import { LikedProductsRowActions } from './liked-products-row-actions'
 
 export const likedProductsColumns: ColumnDef<LikedProduct>[] = [
   {
@@ -49,7 +48,6 @@ export const likedProductsColumns: ColumnDef<LikedProduct>[] = [
               <p className='line-clamp-2 text-xs leading-tight'>
                 {product.description}
               </p>
-              <Eye className='mt-0.5 h-3 w-3 shrink-0 text-gray-400' />
             </div>
           </div>
         </div>
@@ -107,37 +105,29 @@ export const likedProductsColumns: ColumnDef<LikedProduct>[] = [
     },
   },
   {
-    id: 'actions',
-    header: () => <div className='text-xs font-medium'>Operate</div>,
+    accessorKey: 'isFavorited',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Favorited' />
+    ),
     cell: ({ row }) => {
+      const isFavorited = row.getValue('isFavorited') as boolean
       return (
-        <>
-          <Button
-            variant='link'
-            size='sm'
-            className='h-auto p-0 text-xs text-red-600 hover:text-red-700'
-            onClick={() => {
-              // Handle delete action
-              console.log('Delete product:', row.original.id)
-            }}
-          >
-            <Trash2 className='mr-1 h-3 w-3' />
-            Delete
-          </Button>
-          <Button
-            variant='link'
-            size='sm'
-            className='h-auto p-0 text-xs text-blue-600 hover:text-blue-700'
-            onClick={() => {
-              // Handle delete action
-              console.log('Delete product:', row.original.id)
-            }}
-          >
-            <Store className='mr-1 h-3 w-3' />
-            publish store
-          </Button>
-        </>
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+            isFavorited
+              ? 'border-sky-400 bg-sky-50 text-sky-600'
+              : 'border-red-300 bg-red-50 text-red-600'
+          }`}
+        >
+          {isFavorited ? 'Favorited' : 'Not Favorited'}
+        </span>
       )
     },
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) => <LikedProductsRowActions row={row} />,
   },
 ]

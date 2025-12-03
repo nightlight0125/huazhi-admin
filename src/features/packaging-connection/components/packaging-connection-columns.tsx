@@ -3,6 +3,7 @@ import { type StoreSku } from '../data/schema'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ChevronRight, Minus, Image as ImageIcon } from 'lucide-react'
+import { PackagingConnectionRowActions } from './packaging-connection-row-actions'
 
 export const createPackagingConnectionColumns = (options?: {
   onExpand?: (rowId: string) => void
@@ -250,32 +251,14 @@ export const createPackagingConnectionColumns = (options?: {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => {
-        const item = row.original
-        if (isConnectedFilter) {
-          // For Connected filter, show Connect button
-          return (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => onConnect?.(item)}
-              className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              Connect
-            </Button>
-          )
-        } else {
-          // For Unconnected/All, show Disconnect button
-          return (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onDisconnect?.(item)}
-              className="text-xs"
-            >
-              Disconnect
-            </Button>
-          )
-        }
+        return (
+          <PackagingConnectionRowActions
+            row={row}
+            isConnectedFilter={isConnectedFilter}
+            onConnect={onConnect}
+            onDisconnect={onDisconnect}
+          />
+        )
       },
       enableSorting: false,
       size: 120,
