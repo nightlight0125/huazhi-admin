@@ -1,7 +1,4 @@
 import { useState } from 'react'
-import { type Table } from '@tanstack/react-table'
-import { Search } from 'lucide-react'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -12,33 +9,13 @@ import {
 import { StoreProductsPrimaryButtons } from './store-products-primary-buttons'
 import { useStoreProducts } from './store-products-provider'
 
-type StoreProductsToolbarProps<TData> = {
-  table: Table<TData>
-}
-
-export function StoreProductsToolbar<TData>({
-  table: _table,
-}: StoreProductsToolbarProps<TData>) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function StoreProductsToolbar() {
   const { setOpen: _setOpen } = useStoreProducts()
-  const [productName, setProductName] = useState('')
   const [selectedShop, setSelectedShop] = useState<string>('')
   const [associateStatus, setAssociateStatus] = useState<string>('')
 
-
   return (
-    <div className='flex items-center gap-3 border-b p-4'>
-      <div className='relative flex-1'>
-        <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
-        <Input
-          type='text'
-          placeholder='Product Name'
-          value={productName}
-          onChange={(e) => setProductName(e.target.value)}
-          className='h-9 pl-9'
-        />
-      </div>
-
+    <div className='flex items-center gap-3'>
       <Select value={selectedShop} onValueChange={setSelectedShop}>
         <SelectTrigger className='h-9 w-[180px]'>
           <SelectValue placeholder='- Select Shop -' />

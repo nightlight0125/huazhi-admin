@@ -9,6 +9,7 @@ export const sourcingSchema = z.object({
   status: z.string(),
   result: z.string().optional(),
   remark: z.string().optional(),
+  productId: z.string().optional(), // 关联的产品ID
   createdTime: z.date(),
   resultTime: z.date().optional(),
 })

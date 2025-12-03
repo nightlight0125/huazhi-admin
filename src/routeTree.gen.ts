@@ -53,6 +53,7 @@ import { Route as AuthenticatedMyInventoryIndexRouteImport } from './routes/_aut
 import { Route as AuthenticatedLogisticsIndexRouteImport } from './routes/_authenticated/logistics/index'
 import { Route as AuthenticatedLikedProductsIndexRouteImport } from './routes/_authenticated/liked-products/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
+import { Route as AuthenticatedCollectionProductsIndexRouteImport } from './routes/_authenticated/collection-products/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedBrandsIndexRouteImport } from './routes/_authenticated/brands/index'
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
@@ -311,6 +312,12 @@ const AuthenticatedHelpCenterIndexRoute =
     path: '/help-center/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCollectionProductsIndexRoute =
+  AuthenticatedCollectionProductsIndexRouteImport.update({
+    id: '/collection-products/',
+    path: '/collection-products/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
   id: '/chats/',
   path: '/chats/',
@@ -429,6 +436,7 @@ export interface FileRoutesByFullPath {
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/brands': typeof AuthenticatedBrandsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
+  '/collection-products': typeof AuthenticatedCollectionProductsIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/liked-products': typeof AuthenticatedLikedProductsIndexRoute
   '/logistics': typeof AuthenticatedLogisticsIndexRoute
@@ -486,6 +494,7 @@ export interface FileRoutesByTo {
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/brands': typeof AuthenticatedBrandsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
+  '/collection-products': typeof AuthenticatedCollectionProductsIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/liked-products': typeof AuthenticatedLikedProductsIndexRoute
   '/logistics': typeof AuthenticatedLogisticsIndexRoute
@@ -548,6 +557,7 @@ export interface FileRoutesById {
   '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/brands/': typeof AuthenticatedBrandsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
+  '/_authenticated/collection-products/': typeof AuthenticatedCollectionProductsIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/liked-products/': typeof AuthenticatedLikedProductsIndexRoute
   '/_authenticated/logistics/': typeof AuthenticatedLogisticsIndexRoute
@@ -608,6 +618,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/brands'
     | '/chats'
+    | '/collection-products'
     | '/help-center'
     | '/liked-products'
     | '/logistics'
@@ -665,6 +676,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/brands'
     | '/chats'
+    | '/collection-products'
     | '/help-center'
     | '/liked-products'
     | '/logistics'
@@ -726,6 +738,7 @@ export interface FileRouteTypes {
     | '/_authenticated/apps/'
     | '/_authenticated/brands/'
     | '/_authenticated/chats/'
+    | '/_authenticated/collection-products/'
     | '/_authenticated/help-center/'
     | '/_authenticated/liked-products/'
     | '/_authenticated/logistics/'
@@ -1079,6 +1092,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/collection-products/': {
+      id: '/_authenticated/collection-products/'
+      path: '/collection-products'
+      fullPath: '/collection-products'
+      preLoaderRoute: typeof AuthenticatedCollectionProductsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/chats/': {
       id: '/_authenticated/chats/'
       path: '/chats'
@@ -1241,6 +1261,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedBrandsIndexRoute: typeof AuthenticatedBrandsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
+  AuthenticatedCollectionProductsIndexRoute: typeof AuthenticatedCollectionProductsIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedLikedProductsIndexRoute: typeof AuthenticatedLikedProductsIndexRoute
   AuthenticatedLogisticsIndexRoute: typeof AuthenticatedLogisticsIndexRoute
@@ -1280,6 +1301,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedBrandsIndexRoute: AuthenticatedBrandsIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
+  AuthenticatedCollectionProductsIndexRoute:
+    AuthenticatedCollectionProductsIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedLikedProductsIndexRoute: AuthenticatedLikedProductsIndexRoute,
   AuthenticatedLogisticsIndexRoute: AuthenticatedLogisticsIndexRoute,

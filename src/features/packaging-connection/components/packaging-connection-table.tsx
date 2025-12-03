@@ -24,6 +24,7 @@ import {
 import { DataTablePagination } from '@/components/data-table'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
 import { createPackagingConnectionColumns } from './packaging-connection-columns'
+import { PackagingConnectionBulkActions } from './packaging-connection-bulk-actions'
 
 type DataTableProps = {
   data: StoreSku[]
@@ -140,7 +141,7 @@ export function PackagingConnectionTable({
   const table = externalTable || internalTable
 
   return (
-    <div className='space-y-4'>
+    <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <div className='overflow-hidden rounded-md border'>
         <Table>
           <TableHeader>
@@ -280,6 +281,7 @@ export function PackagingConnectionTable({
         </Table>
       </div>
       <DataTablePagination table={table} />
+      <PackagingConnectionBulkActions table={table} />
     </div>
   )
 }

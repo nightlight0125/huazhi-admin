@@ -21,10 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DataTablePagination } from '@/components/data-table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type LikedProduct } from '../data/schema'
 import { likedProductsColumns as columns } from './liked-products-columns'
-import { LikedProductsToolbar } from './liked-products-toolbar'
 
 const route = getRouteApi('/_authenticated/liked-products/')
 
@@ -95,7 +94,7 @@ export function LikedProductsTable({ data }: DataTableProps) {
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
-      <LikedProductsToolbar table={table} />
+      <DataTableToolbar table={table} />
       <div className='overflow-hidden rounded-md border'>
         <Table>
           <TableHeader>

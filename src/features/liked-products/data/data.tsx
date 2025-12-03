@@ -10,6 +10,7 @@ export const likedProductsData: LikedProduct[] = [
     priceMin: 5.48,
     priceMax: 11.12,
     addDate: new Date('2025-10-27T11:20:45'),
+    isFavorited: true,
   },
   {
     id: 'PROD-2000', // 使用一个可能存在的产品 ID 格式
@@ -20,6 +21,7 @@ export const likedProductsData: LikedProduct[] = [
     priceMin: 29.99,
     priceMax: 49.99,
     addDate: new Date('2025-10-26T14:30:20'),
+    isFavorited: false,
   },
   {
     id: 'PROD-3000', // 使用一个可能存在的产品 ID 格式
@@ -30,6 +32,7 @@ export const likedProductsData: LikedProduct[] = [
     priceMin: 79.99,
     priceMax: 129.99,
     addDate: new Date('2025-10-25T09:15:10'),
+    isFavorited: true,
   },
 ]
 

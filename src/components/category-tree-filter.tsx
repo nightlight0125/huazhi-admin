@@ -49,14 +49,24 @@ export function CategoryTreeFilter({
     children?: CategoryItem[]
   ) => {
     onValueChange(value, checked)
-    
-    // If category has children and is being checked, also check all children
-    if (checked && children) {
-      children.forEach((child) => {
-        if (!selectedValues.has(child.value)) {
-          onValueChange(child.value, true)
-        }
-      })
+
+    // 如果是父级分类，联动子级选中/取消
+    if (children && children.length > 0) {
+      if (checked) {
+        // 选中父级时，将所有子级选中
+        children.forEach((child) => {
+          if (!selectedValues.has(child.value)) {
+            onValueChange(child.value, true)
+          }
+        })
+      } else {
+        // 取消父级时，将所有子级取消
+        children.forEach((child) => {
+          if (selectedValues.has(child.value)) {
+            onValueChange(child.value, false)
+          }
+        })
+      }
     }
   }
 

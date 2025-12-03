@@ -1,8 +1,24 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnFiltersState,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/react-table'
+import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -11,8 +27,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfigDrawer } from '@/components/config-drawer'
+import { DataTableToolbar } from '@/components/data-table'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -20,6 +45,9 @@ import { RichTextEditor } from '@/components/rich-text-editor'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { TasksProvider } from '../tasks/components/tasks-provider'
 import { StoresTable } from './components/stores-table'
+import { VariantPricingBulkActions } from './components/variant-pricing-bulk-actions'
+import { createVariantPricingColumns } from './components/variant-pricing-columns'
+import { mockVariantPricingData } from './components/variant-pricing-data'
 import { stores } from './data/stores'
 
 const platformButtons = [
@@ -28,10 +56,75 @@ const platformButtons = [
     icon: '/src/assets/brand-icons/shopify.png',
     color: 'text-green-600',
   },
+  {
+    name: 'WooCommerce',
+    icon: '/src/assets/brand-icons/woocommerce.png',
+    color: 'text-purple-600',
+  },
+  {
+    name: 'eBay',
+    icon: '/src/assets/brand-icons/ebay-copy.png',
+    color: 'text-blue-600',
+  },
+  {
+    name: 'Etsy',
+    icon: '/src/assets/brand-icons/etsy.png',
+    color: 'text-orange-600',
+  },
+  {
+    name: 'TikTok',
+    icon: '/src/assets/brand-icons/tiktoklogo_tiktok.png',
+    color: 'text-orange-600',
+  },
+  {
+    name: 'Offline Store',
+    icon: '/src/assets/brand-icons/office.png',
+    color: 'text-gray-600',
+  },
+  {
+    name: 'Amazon',
+    icon: '/src/assets/brand-icons/platform-amazon.png',
+    color: 'text-orange-600',
+  },
+]
+
+// 模拟标签选项
+const tagOptions = [
+  { id: 'tag1', name: 'Electronics' },
+  { id: 'tag2', name: 'Fashion' },
+  { id: 'tag3', name: 'Home & Garden' },
+  { id: 'tag4', name: 'Sports' },
+  { id: 'tag5', name: 'Toys' },
+  { id: 'tag6', name: 'Beauty' },
 ]
 
 export function StoreManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [tagsPopoverOpen, setTagsPopoverOpen] = useState(false)
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+
+  const columns = useMemo(() => createVariantPricingColumns(), [])
+  const data = useMemo(() => mockVariantPricingData, [])
+
+  const variantPricingTable = useReactTable({
+    data,
+    columns,
+    state: {
+      rowSelection,
+      sorting,
+      columnFilters,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
 
   return (
     <TasksProvider>
@@ -43,7 +136,7 @@ export function StoreManagement() {
         </div>
       </Header>
 
-      <Main>
+      <Main fluid>
         {/* Add Store Section */}
         <Card className='mb-6'>
           <CardContent className=''>
@@ -54,7 +147,7 @@ export function StoreManagement() {
                   <button
                     key={platform.name}
                     type='button'
-                    className='flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50'
+                    className='border-border bg-background hover:bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors'
                     onClick={() => setDrawerOpen(true)}
                   >
                     <img
@@ -78,56 +171,59 @@ export function StoreManagement() {
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
           <SheetContent
             side='right'
-            className='flex h-full w-full flex-col sm:!w-[80vw] sm:!max-w-none'
+            className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
           >
             {/* 左侧菜单 + 右侧内容 */}
-            <div className='flex h-full text-base'>
+            <div className='flex h-full text-sm'>
               {/* 左侧：Listing 类型菜单 */}
-              <div className='w-48 border-r bg-gray-50 px-3 py-4'>
-                <div className='mb-2 font-semibold'>Manual Listing</div>
-                <button className='mb-1 flex w-full items-center rounded-sm bg-orange-500/10 px-2 py-1.5 text-left font-medium text-orange-600'>
+              <div className='bg-muted/30 w-48 border-r px-3 py-4'>
+                <div className='mb-2 text-sm font-semibold'>Manual Listing</div>
+                <button className='bg-primary/10 text-primary hover:bg-primary/15 mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm font-medium transition-colors'>
                   Custom Editing
                 </button>
-                <div className='text-muted-foreground mt-4 mb-2 font-semibold'>
+                <div className='text-muted-foreground mt-4 mb-2 text-sm font-semibold'>
                   Template Listing
                 </div>
-                <button className='text-muted-foreground flex w-full items-center rounded-sm px-2 py-1.5 text-left hover:bg-gray-200'>
+                <button className='text-muted-foreground hover:bg-muted/50 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors'>
                   Add New Template
                 </button>
               </div>
 
               {/* 右侧：Tabs + 表单内容 */}
-              <div className='flex flex-1 flex-col'>
-                <Tabs defaultValue='products' className='flex flex-1 flex-col'>
+              <div className='flex flex-1 flex-col overflow-hidden'>
+                <Tabs
+                  defaultValue='products'
+                  className='flex flex-1 flex-col overflow-hidden'
+                >
                   {/* 顶部 Tabs 和提示条 */}
-                  <div className='border-b px-6 pt-3 pb-2'>
+                  <div className='shrink-0 border-b px-6 pt-3 pb-2'>
                     <TabsList className='mb-2 h-8 rounded-none border-b bg-transparent p-0'>
                       <TabsTrigger
                         value='products'
-                        className='rounded-none border-b-2 border-transparent px-4 text-base data-[state=active]:border-orange-500 data-[state=active]:text-orange-500'
+                        className='rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-sm shadow-none data-[state=active]:border-orange-500 data-[state=active]:bg-transparent data-[state=active]:text-orange-500 data-[state=active]:shadow-none'
                       >
                         Products
                       </TabsTrigger>
                       <TabsTrigger
                         value='variant-pricing'
-                        className='rounded-none border-b-2 border-transparent px-4 text-base data-[state=active]:border-orange-500 data-[state=active]:text-orange-500'
+                        className='rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-sm shadow-none data-[state=active]:border-orange-500 data-[state=active]:bg-transparent data-[state=active]:text-orange-500 data-[state=active]:shadow-none'
                       >
                         Variant Pricing
                       </TabsTrigger>
                       <TabsTrigger
                         value='images'
-                        className='rounded-none border-b-2 border-transparent px-4 text-base data-[state=active]:border-orange-500 data-[state=active]:text-orange-500'
+                        className='rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-sm shadow-none data-[state=active]:border-orange-500 data-[state=active]:bg-transparent data-[state=active]:text-orange-500 data-[state=active]:shadow-none'
                       >
                         Images &amp; Videos
                       </TabsTrigger>
                       <TabsTrigger
                         value='description'
-                        className='rounded-none border-b-2 border-transparent px-4 text-base data-[state=active]:border-orange-500 data-[state=active]:text-orange-500'
+                        className='rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-sm shadow-none data-[state=active]:border-orange-500 data-[state=active]:bg-transparent data-[state=active]:text-orange-500 data-[state=active]:shadow-none'
                       >
                         Description
                       </TabsTrigger>
                     </TabsList>
-                    <div className='bg-orange-50 px-3 py-1 text-orange-700'>
+                    <div className='bg-primary/5 border-primary/20 text-foreground rounded-md border px-3 py-2 text-sm'>
                       Product data is provided directly by suppliers. Although
                       CJ is committed to protecting intellectual property
                       rights, it cannot ensure that all potential intellectual
@@ -138,7 +234,7 @@ export function StoreManagement() {
                   {/* Tabs 内容 */}
                   <TabsContent
                     value='products'
-                    className='flex-1 overflow-auto px-6 py-4 text-base'
+                    className='flex-1 overflow-y-auto px-6 py-4 text-sm'
                   >
                     <div className='space-y-4'>
                       <div className='space-y-1'>
@@ -162,28 +258,76 @@ export function StoreManagement() {
                         <div className='text-muted-foreground font-medium'>
                           Tags
                         </div>
-                        <Input placeholder='Please add new' className='h-8' />
+                        <Popover
+                          open={tagsPopoverOpen}
+                          onOpenChange={setTagsPopoverOpen}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant='outline'
+                              className='h-8 w-full justify-between font-normal'
+                            >
+                              {selectedTags.length > 0
+                                ? `${selectedTags.length} tag(s) selected`
+                                : 'Please add new'}
+                              <ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className='w-[--radix-popover-trigger-width] p-0'
+                            align='start'
+                          >
+                            <div className='max-h-[300px] overflow-y-auto p-1'>
+                              {tagOptions.map((tag) => (
+                                <div
+                                  key={tag.id}
+                                  className='hover:bg-accent flex items-center space-x-2 rounded-sm px-2 py-1.5'
+                                >
+                                  <Checkbox
+                                    checked={selectedTags.includes(tag.id)}
+                                    onCheckedChange={(checked: boolean) => {
+                                      if (checked) {
+                                        setSelectedTags([
+                                          ...selectedTags,
+                                          tag.id,
+                                        ])
+                                      } else {
+                                        setSelectedTags(
+                                          selectedTags.filter(
+                                            (id) => id !== tag.id
+                                          )
+                                        )
+                                      }
+                                    }}
+                                  />
+                                  <label className='flex-1 cursor-pointer text-sm font-normal'>
+                                    {tag.name}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
                   </TabsContent>
 
                   <TabsContent
                     value='variant-pricing'
-                    className='flex-1 overflow-auto px-6 py-4 text-base'
+                    className='flex-1 overflow-y-auto px-4 py-3 text-xs'
                   >
-                    <div className='space-y-4'>
-                      {/* Top shipping method row */}
-                      <div className='space-y-2 rounded-md bg-orange-50 px-4 py-3'>
-                        <div className='font-semibold'>
+                    <div className='space-y-3'>
+                      <div className='border-border bg-muted/30 space-y-1.5 rounded-lg border px-3 py-2'>
+                        <div className='text-xs font-semibold'>
                           Set a Default Shipping Method on CJ
                         </div>
-                        <div className='mt-2 grid gap-3 md:grid-cols-3'>
+                        <div className='mt-1.5 grid gap-2 md:grid-cols-3'>
                           <div className='space-y-1'>
-                            <div className='text-muted-foreground'>
+                            <div className='text-muted-foreground text-xs'>
                               * Shipping From
                             </div>
                             <Select defaultValue='china'>
-                              <SelectTrigger className='h-8'>
+                              <SelectTrigger className='h-7 text-xs'>
                                 <SelectValue placeholder='Select' />
                               </SelectTrigger>
                               <SelectContent>
@@ -193,11 +337,11 @@ export function StoreManagement() {
                             </Select>
                           </div>
                           <div className='space-y-1'>
-                            <div className='text-muted-foreground'>
+                            <div className='text-muted-foreground text-xs'>
                               Ship My Order(s) Most to
                             </div>
                             <Select defaultValue='anywhere'>
-                              <SelectTrigger className='h-8'>
+                              <SelectTrigger className='h-7 text-xs'>
                                 <SelectValue placeholder='Select' />
                               </SelectTrigger>
                               <SelectContent>
@@ -209,11 +353,11 @@ export function StoreManagement() {
                             </Select>
                           </div>
                           <div className='space-y-1'>
-                            <div className='text-muted-foreground'>
+                            <div className='text-muted-foreground text-xs'>
                               Shipping Method
                             </div>
                             <Select>
-                              <SelectTrigger className='h-8'>
+                              <SelectTrigger className='h-7 text-xs'>
                                 <SelectValue placeholder='Select shipping method' />
                               </SelectTrigger>
                               <SelectContent>
@@ -222,7 +366,7 @@ export function StoreManagement() {
                             </Select>
                           </div>
                         </div>
-                        <div className='text-muted-foreground mt-2 grid gap-3 md:grid-cols-3'>
+                        <div className='text-muted-foreground mt-1.5 grid gap-2 text-xs md:grid-cols-3'>
                           <div>Estimated Delivery Time: --</div>
                           <div>Shipping Cost: --</div>
                           <div>Tracking Information: --</div>
@@ -230,124 +374,121 @@ export function StoreManagement() {
                       </div>
 
                       {/* Variant pricing table */}
-                      <div className='space-y-2'>
-                        <div className='text-sm font-semibold'>
+                      <div className='space-y-1.5'>
+                        <div className='text-xs font-semibold'>
                           Variant Pricing
                         </div>
 
-                        {/* Bulk Revise row */}
-                        <div className='flex flex-wrap items-center gap-2'>
-                          <span>Bulk Revise:</span>
-                          <Select defaultValue='price-change'>
-                            <SelectTrigger className='h-8 w-40'>
-                              <SelectValue placeholder='Select' />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='price-change'>
-                                Price Change
-                              </SelectItem>
-                              <SelectItem value='shipping-fee'>
-                                Shipping Fee
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            placeholder='Enter value'
-                            className='h-8 w-32'
+                        <div className='space-y-1.5'>
+                          <DataTableToolbar
+                            table={variantPricingTable}
+                            showSearch={false}
+                            filters={[]}
+                            bulkRevise={{
+                              enabled: true,
+                              placeholder: 'Bulk Reviser',
+                              options: [
+                                {
+                                  label: 'Price Change',
+                                  value: 'price-change',
+                                },
+                                {
+                                  label: 'Shipping Fee',
+                                  value: 'shipping-fee',
+                                },
+                              ],
+                              onApply: (type, value) => {
+                                const selectedRows =
+                                  variantPricingTable.getFilteredSelectedRowModel()
+                                    .rows
+                                console.log(
+                                  'Bulk revise:',
+                                  type,
+                                  value,
+                                  selectedRows
+                                )
+                                // TODO: 实现批量修改逻辑
+                              },
+                            }}
                           />
-                          <Button className='h-8 px-4' size='sm'>
-                            OK
-                          </Button>
-                          <span className='text-muted-foreground'>
-                            4 variants selected
-                          </span>
-                        </div>
 
-                        {/* Table */}
-                        <div className='overflow-x-auto rounded border'>
-                          <table className='w-full border-collapse'>
-                            <thead className='text-muted-foreground bg-orange-50'>
-                              <tr>
-                                <th className='w-8 border-b px-2 py-2 text-left'>
-                                  <Checkbox aria-label='Select all' />
-                                </th>
-                                <th className='w-20 border-b px-2 py-2 text-left'>
-                                  Images
-                                </th>
-                                <th className='border-b px-2 py-2 text-left'>
-                                  SKU
-                                </th>
-                                <th className='border-b px-2 py-2 text-left'>
-                                  CJ Color
-                                </th>
-                                <th className='border-b px-2 py-2 text-left'>
-                                  Color
-                                </th>
-                                <th className='border-b px-2 py-2 text-left'>
-                                  RRP
-                                </th>
-                                <th className='border-b px-2 py-2 text-left'>
-                                  CJ Price
-                                </th>
-                                <th className='border-b px-2 py-2 text-left'>
-                                  Shipping Fee
-                                </th>
-                                <th className='border-b px-2 py-2 text-left'>
-                                  Total Dropshipping Price
-                                </th>
-                                <th className='border-b px-2 py-2 text-left text-orange-500'>
-                                  * Your Price
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[1, 2, 3, 4].map((row) => (
-                                <tr key={row} className='even:bg-orange-50/30'>
-                                  <td className='border-b px-2 py-2'>
-                                    <Checkbox
-                                      aria-label='Select row'
-                                      defaultChecked
-                                    />
-                                  </td>
-                                  <td className='border-b px-2 py-2'>
-                                    <div className='h-12 w-12 overflow-hidden rounded bg-gray-100' />
-                                  </td>
-                                  <td className='border-b px-2 py-2'>
-                                    CJJT25562260{row}DW
-                                  </td>
-                                  <td className='border-b px-2 py-2'>Black</td>
-                                  <td className='border-b px-2 py-2'>
-                                    <Input
-                                      value='Black'
-                                      className='h-7 w-24 text-center'
-                                      readOnly
-                                    />
-                                  </td>
-                                  <td className='border-b px-2 py-2'>
-                                    <div className='flex flex-col'>
-                                      <span>$14.24</span>
-                                      <span className='text-muted-foreground'>
-                                        Estimated Profit 325%
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className='border-b px-2 py-2'>$3.35</td>
-                                  <td className='border-b px-2 py-2'>--</td>
-                                  <td className='border-b px-2 py-2'>--</td>
-                                  <td className='border-b px-2 py-2'>
-                                    <Input className='h-7 w-20' />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          {/* Table */}
+                          <div className='border-border overflow-x-auto rounded-lg border'>
+                            <Table>
+                              <TableHeader>
+                                {variantPricingTable
+                                  .getHeaderGroups()
+                                  .map((headerGroup) => (
+                                    <TableRow
+                                      key={headerGroup.id}
+                                      className='text-muted-foreground bg-muted/50'
+                                    >
+                                      {headerGroup.headers.map((header) => (
+                                        <TableHead
+                                          key={header.id}
+                                          className='border-b px-1.5 py-1.5 text-left text-xs'
+                                        >
+                                          {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                header.column.columnDef.header,
+                                                header.getContext()
+                                              )}
+                                        </TableHead>
+                                      ))}
+                                    </TableRow>
+                                  ))}
+                              </TableHeader>
+                              <TableBody>
+                                {variantPricingTable.getRowModel().rows
+                                  ?.length ? (
+                                  variantPricingTable
+                                    .getRowModel()
+                                    .rows.map((row) => (
+                                      <TableRow
+                                        key={row.id}
+                                        data-state={
+                                          row.getIsSelected() && 'selected'
+                                        }
+                                        className='even:bg-muted/30 hover:bg-muted/50 transition-colors'
+                                      >
+                                        {row.getVisibleCells().map((cell) => (
+                                          <TableCell
+                                            key={cell.id}
+                                            className='border-b px-1.5 py-1.5 text-xs'
+                                          >
+                                            {flexRender(
+                                              cell.column.columnDef.cell,
+                                              cell.getContext()
+                                            )}
+                                          </TableCell>
+                                        ))}
+                                      </TableRow>
+                                    ))
+                                ) : (
+                                  <TableRow>
+                                    <TableCell
+                                      colSpan={columns.length}
+                                      className='h-24 text-center'
+                                    >
+                                      No results.
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+
+                          <VariantPricingBulkActions
+                            table={variantPricingTable}
+                          />
                         </div>
                       </div>
                     </div>
                   </TabsContent>
                   <TabsContent
                     value='images'
-                    className='text-muted-foreground flex-1 overflow-auto px-6 py-4 text-base'
+                    className='text-muted-foreground flex-1 overflow-y-auto px-6 py-4 text-sm'
                   >
                     <div className='space-y-4'>
                       <div className='text-sm font-semibold'>Images</div>
@@ -359,26 +500,28 @@ export function StoreManagement() {
                       </div>
 
                       <div className='space-y-2'>
-                        <div className='font-semibold'>Marketing Picture</div>
+                        <div className='text-sm font-semibold'>
+                          Marketing Picture
+                        </div>
                         <div className='grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
                           {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
                             <div
                               key={idx}
-                              className='relative aspect-[4/5] overflow-hidden rounded border bg-gray-100'
+                              className='border-border bg-muted/30 relative aspect-[4/5] overflow-hidden rounded-lg border transition-shadow hover:shadow-md'
                             >
                               {/* 选中角标 */}
-                              <div className='absolute top-1 left-1 flex h-5 w-5 items-center justify-center rounded bg-orange-500 text-white'>
+                              <div className='bg-primary text-primary-foreground absolute top-1 left-1 flex h-5 w-5 items-center justify-center rounded-full shadow-sm'>
                                 ✓
                               </div>
                               {/* 放大图标占位 */}
-                              <div className='absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded bg-black/40 text-white'>
+                              <div className='bg-background/80 text-foreground absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full shadow-sm backdrop-blur-sm'>
                                 ⤢
                               </div>
                               {/* 图片占位 */}
-                              <div className='h-full w-full bg-gradient-to-br from-gray-200 to-gray-300' />
+                              <div className='from-muted to-muted/50 h-full w-full bg-gradient-to-br' />
                               {/* Cover Image 标签，仅第一张显示 */}
                               {idx === 0 && (
-                                <div className='absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-white'>
+                                <div className='bg-background/80 text-foreground absolute inset-x-0 bottom-0 px-2 py-1 text-sm font-medium backdrop-blur-sm'>
                                   Cover Image
                                 </div>
                               )}
@@ -395,29 +538,20 @@ export function StoreManagement() {
                           supported for listing videos.
                         </div>
                         <div className='mt-3 flex flex-wrap gap-4'>
-                          <div className='h-32 w-56 overflow-hidden rounded border bg-gray-100' />
+                          <div className='border-border bg-muted/30 h-32 w-56 overflow-hidden rounded-lg border' />
                         </div>
                       </div>
                     </div>
                   </TabsContent>
                   <TabsContent
                     value='description'
-                    className='text-muted-foreground flex-1 overflow-auto px-6 py-4 text-base'
+                    className='text-muted-foreground flex-1 overflow-y-auto px-6 py-4 text-sm'
                   >
                     <div className='space-y-2'>
                       <div className='text-muted-foreground font-medium'>
                         Description
                       </div>
-                      <RichTextEditor
-                        initialContent={`<p><strong>Overview:</strong><br/>Good material, High quality.<br/>100% Brand New.</p>
-<p><strong>Product information:</strong><br/>
-Color: Oz doll Christmas elf-red, Oz doll Christmas elf-Green, Oz doll Christmas elf-blue, Oz doll Christmas elf-Black<br/>
-Material: Resin<br/>
-Size: 16*6 * 5cm<br/>
-Category: resin crafts</p>
-<p><strong>Packing list:</strong><br/>1* Christmas Decoration</p>
-<p><strong>Product Image:</strong></p>`}
-                      />
+                      <RichTextEditor initialContent={``} />
                     </div>
                   </TabsContent>
                 </Tabs>

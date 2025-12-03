@@ -1,118 +1,144 @@
-import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { Download, FileDown, MoreHorizontal } from 'lucide-react'
+import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
 import { type WalletRecord } from '../data/schema'
-import { WalletConfirmDialog } from './wallet-confirm-dialog'
 
 interface DataTableBulkActionsProps {
   table: Table<WalletRecord>
 }
 
 export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [actionType, setActionType] = useState<string>('')
-  const [actionTitle, setActionTitle] = useState('')
-  const [actionDescription, setActionDescription] = useState('')
-
   const selectedRows = table.getFilteredSelectedRowModel().rows
-  const selectedCount = selectedRows.length
 
-  if (selectedCount === 0) {
-    return null
-  }
-
-  const handleBulkAction = (type: string, title: string, description: string) => {
-    setActionType(type)
-    setActionTitle(title)
-    setActionDescription(description)
-    setShowConfirmDialog(true)
-  }
-
-  const handleConfirm = () => {
-    const selectedRecords = selectedRows.map(row => row.original)
-    console.log(`执行批量操作: ${actionType}`, selectedRecords)
-    
-    // 这里可以添加实际的批量操作逻辑
-    switch (actionType) {
-      case 'download_invoices':
-        // 批量下载发票
-        console.log('批量下载发票:', selectedRecords.filter(r => r.type === 'invoice'))
-        break
-      case 'export_records':
-        // 导出记录
-        console.log('导出记录:', selectedRecords)
-        break
-      default:
-        break
-    }
-    
-    setShowConfirmDialog(false)
+  const handleBulkExport = () => {
+    const selected = selectedRows.map((row) => row.original)
+    console.log('Export wallet records:', selected)
     table.resetRowSelection()
   }
 
-  // 检查是否有发票记录
-  const hasInvoiceRecords = selectedRows.some(row => row.original.type === 'invoice')
+  const handleBulkDelete = () => {
+    const selected = selectedRows.map((row) => row.original)
+    console.log('Delete wallet records:', selected)
+    table.resetRowSelection()
+  }
+
+  const handleBulkAction = (action: string) => {
+    const selected = selectedRows.map((row) => row.original)
+    console.log(`Bulk action [${action}] on wallet records:`, selected)
+    table.resetRowSelection()
+  }
 
   return (
-    <>
-      <div className='flex items-center justify-between'>
-        <div className='flex-1 text-sm text-muted-foreground'>
-          {selectedCount} 条记录被选中
-        </div>
-        <div className='flex items-center space-x-2'>
-          <DropdownMenu>
+    <BulkActionsToolbar table={table} entityName='record'>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant='outline' size='sm' className='ml-auto hidden h-8 lg:flex'>
-                <MoreHorizontal className='mr-2 h-4 w-4' />
-                批量操作
+              <Button
+                variant='outline'
+                size='icon'
+                className='size-8'
+                aria-label='Bulk actions'
+                title='Bulk actions'
+              >
+                <CircleArrowUp />
+                <span className='sr-only'>Bulk actions</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align='end' className='w-[150px]'>
-              {hasInvoiceRecords && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => handleBulkAction(
-                      'download_invoices',
-                      '批量下载发票',
-                      `下载 ${selectedRows.filter(r => r.original.type === 'invoice').length} 张发票`
-                    )}
-                  >
-                    <Download className='mr-2 h-4 w-4' />
-                    下载发票
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem
-                onClick={() => handleBulkAction(
-                  'export_records',
-                  '导出记录',
-                  `导出 ${selectedCount} 条钱包记录`
-                )}
-              >
-                <FileDown className='mr-2 h-4 w-4' />
-                导出记录
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Bulk actions</p>
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent sideOffset={14}>
+          <DropdownMenuItem onClick={() => handleBulkAction('export_invoices')}>
+            Export Invoices
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleBulkAction('mark_reviewed')}>
+            Mark as Reviewed
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      <WalletConfirmDialog
-        open={showConfirmDialog}
-        onOpenChange={setShowConfirmDialog}
-        title={actionTitle}
-        description={actionDescription}
-        onConfirm={handleConfirm}
-      />
-    </>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant='outline'
+                size='icon'
+                className='size-8'
+                aria-label='Sort options'
+                title='Sort options'
+              >
+                <ArrowUpDown />
+                <span className='sr-only'>Sort options</span>
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Sort options</p>
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent sideOffset={14}>
+          <DropdownMenuItem onClick={() => handleBulkAction('sort_by_amount')}>
+            Sort by Amount
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleBulkAction('sort_by_time')}>
+            Sort by Time
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant='outline'
+            size='icon'
+            onClick={handleBulkExport}
+            className='size-8'
+            aria-label='Export wallet records'
+            title='Export wallet records'
+          >
+            <Download />
+            <span className='sr-only'>Export wallet records</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Export wallet records</p>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant='destructive'
+            size='icon'
+            onClick={handleBulkDelete}
+            className='size-8'
+            aria-label='Delete selected records'
+            title='Delete selected records'
+          >
+            <Trash2 />
+            <span className='sr-only'>Delete selected records</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Delete selected records</p>
+        </TooltipContent>
+      </Tooltip>
+    </BulkActionsToolbar>
   )
 }

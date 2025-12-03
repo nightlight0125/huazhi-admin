@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { CircleArrowUp, Download, Trash2 } from 'lucide-react'
+import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { sleep } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -92,6 +92,40 @@ export function DataTableBulkActions<TData>({
                 {status.label}
               </DropdownMenuItem>
             ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant='outline'
+                  size='icon'
+                  className='size-8'
+                  aria-label='Sort options'
+                  title='Sort options'
+                >
+                  <ArrowUpDown />
+                  <span className='sr-only'>Sort options</span>
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Sort options</p>
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent sideOffset={14}>
+            <DropdownMenuItem
+              onClick={() => console.log('Sort by store price')}
+            >
+              Sort by Store Price
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => console.log('Sort by hz price')}
+            >
+              Sort by HZ Price
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

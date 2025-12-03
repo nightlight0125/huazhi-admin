@@ -1,9 +1,34 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type HotSellingProduct } from '../data/schema'
 
 export const createHotSellingProductsColumns =
   (): ColumnDef<HotSellingProduct>[] => [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label='Select all'
+          className='translate-y-[2px]'
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label='Select row'
+          className='translate-y-[2px]'
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       id: 'selectedStore',
       accessorFn: () => '', // 虚拟列，用于过滤
@@ -35,6 +60,12 @@ export const createHotSellingProductsColumns =
       cell: ({ row }) => (
         <div className='text-sm'>{row.getValue('productName')}</div>
       ),
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const productName = String(row.getValue(id)).toLowerCase()
+        const searchValue = String(value).toLowerCase()
+        return productName.includes(searchValue)
+      },
     },
     {
       accessorKey: 'quantity',

@@ -56,10 +56,10 @@ export const sidebarData: SidebarData = {
         //   title: 'apps',
         //   url: '/apps',
         // },
-        // {
-        //   title: 'stores',
-        //   url: '/stores',
-        // },
+        {
+          title: 'stores',
+          url: '/stores',
+        },
         // {
         //   title: 'wallet',
         //   url: '/wallet',
@@ -126,8 +126,12 @@ export const sidebarData: SidebarData = {
               url: '/sourcing',
             },
             {
-              title: 'Liked Products',
+              title: 'liked products',
               url: '/liked-products',
+            },
+            {
+              title: 'collection products',
+              url: '/collection-products',
             },
             {
               title: 'Recommend Products',

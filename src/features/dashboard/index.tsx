@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { HeaderActions } from '@/components/header-actions'
 import { HotSellingProducts } from './components/hot-selling-products'
 import { Overview } from './components/overview'
 
@@ -36,9 +36,7 @@ const notifications = [
 export function Dashboard() {
   return (
     <>
-      {/* ===== Top Heading ===== */}
       <Header>
-        {/* <TopNav links={topNav} /> */}
         <HeaderActions />
       </Header>
 

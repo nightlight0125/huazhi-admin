@@ -1,12 +1,52 @@
+import { type NavigateOptions } from '@tanstack/react-router'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Eye } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { sourcingStatuses } from '../data/data'
 import { type Sourcing } from '../data/schema'
 
-export const sourcingColumns: ColumnDef<Sourcing>[] = [
+type NavigateFn = (options: NavigateOptions) => void
+
+type SourcingColumnHandlers = {
+  onEdit?: (sourcing: Sourcing) => void
+  onRemarkClick?: (sourcing: Sourcing) => void
+}
+
+// 状态到颜色/样式的映射（与其他列表保持一致）
+function getSourcingStatusVariant(
+  status: string
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  const lower = status.toLowerCase()
+
+  if (lower === 'completed') return 'default'
+  if (lower === 'processing') return 'secondary'
+  if (lower === 'failed') return 'destructive'
+  return 'secondary'
+}
+
+function getSourcingStatusClassName(status: string): string {
+  const lower = status.toLowerCase()
+
+  if (lower === 'completed') {
+    return 'bg-green-500/10 text-green-700 border-green-500/20 dark:bg-green-500/20 dark:text-green-400'
+  }
+  if (lower === 'processing') {
+    return 'bg-purple-500/10 text-purple-700 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-400'
+  }
+  if (lower === 'failed') {
+    return 'bg-red-500/10 text-red-700 border-red-500/20 dark:bg-red-500/20 dark:text-red-400'
+  }
+
+  return ''
+}
+
+export const createSourcingColumns = (
+  navigate: NavigateFn,
+  handlers?: SourcingColumnHandlers
+): ColumnDef<Sourcing>[] => [
   {
     id: 'select',
     header: ({ table }) => (
@@ -50,7 +90,10 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
     cell: ({ row }) => {
       const sourcing = row.original
       return (
-        <div className='flex items-start gap-2'>
+        <div
+          className='flex cursor-pointer items-start gap-2'
+          onClick={() => handlers?.onEdit?.(sourcing)}
+        >
           {sourcing.images && sourcing.images.length > 0 && (
             <div className='flex gap-1'>
               {sourcing.images.slice(0, 2).map((img, idx) => (
@@ -90,29 +133,15 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
         return null
       }
 
-      const statusColors: Record<string, string> = {
-        processing: 'text-purple-600',
-        completed: 'text-green-600',
-        failed: 'text-red-600',
-      }
-
       return (
-        <div className='flex items-center gap-1'>
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              statusColors[status.value] || 'text-gray-600'
-            }`}
-            style={{
-              backgroundColor:
-                status.value === 'processing'
-                  ? '#9333ea'
-                  : status.value === 'completed'
-                    ? '#16a34a'
-                    : '#dc2626',
-            }}
-          />
-          <span className='text-xs'>{status.label}</span>
-        </div>
+        <Badge
+          variant={getSourcingStatusVariant(status.value)}
+          className={
+            getSourcingStatusClassName(status.value) || 'text-xs font-normal'
+          }
+        >
+          {status.label}
+        </Badge>
       )
     },
     filterFn: (row, id, value) => {
@@ -126,7 +155,28 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
     ),
     cell: ({ row }) => {
       const result = row.getValue('result') as string | undefined
-      return <div className='text-xs'>{result || '-'}</div>
+      const sourcing = row.original
+      // 使用 productId 字段，如果不存在则不显示为可点击
+      const productId = sourcing.productId
+
+      if (!productId) {
+        return <div className='text-xs'>{result || '-'}</div>
+      }
+
+      return (
+        <div
+          className='hover:text-primary cursor-pointer text-xs hover:underline'
+          onClick={(e) => {
+            e.stopPropagation()
+            navigate({
+              to: '/products/$productId',
+              params: { productId },
+            })
+          }}
+        >
+          {result || '-'}
+        </div>
+      )
     },
     enableSorting: false,
   },
@@ -137,7 +187,25 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
     ),
     cell: ({ row }) => {
       const remark = row.getValue('remark') as string | undefined
-      return <div className='text-xs'>{remark || ''}</div>
+      const sourcing = row.original
+      const productId = sourcing.productId
+
+      if (!productId) {
+        return <div className='text-xs'>{remark || ''}</div>
+      }
+
+      return (
+        <button
+          type='button'
+          className='hover:text-primary cursor-pointer text-left text-xs hover:underline'
+          onClick={(e) => {
+            e.stopPropagation()
+            handlers?.onRemarkClick?.(sourcing)
+          }}
+        >
+          {remark || ''}
+        </button>
+      )
     },
     enableSorting: false,
   },
@@ -220,3 +288,10 @@ export const sourcingColumns: ColumnDef<Sourcing>[] = [
     },
   },
 ]
+
+// 为了向后兼容，导出一个默认的 columns（不包含导航功能）
+export const sourcingColumns: ColumnDef<Sourcing>[] = createSourcingColumns(
+  () => {
+    console.warn('Navigate function not provided to sourcing columns')
+  }
+)

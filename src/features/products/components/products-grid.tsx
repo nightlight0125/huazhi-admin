@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Heart, Search, ShoppingCart, Store } from 'lucide-react'
+import { Heart, ShoppingCart, Store } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -12,6 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
+import { FilterToolbar } from '@/components/filter-toolbar'
+import { ImageSearchInput } from '@/components/image-search-input'
 import { PriceRangePopover } from '@/components/price-range-popover'
 import { locations, suppliers } from '@/features/products/data/data'
 import { type Product } from '@/features/products/data/schema'
@@ -210,33 +211,33 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
 
   return (
     <div className='space-y-4'>
-      <div className='flex items-center gap-2'>
-        <div className='relative flex-1'>
-          <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
-          <Input
-            type='text'
-            placeholder='Search'
+      <FilterToolbar
+        showSearch={false}
+        searchPlaceholder='Search'
+        searchValue={globalFilter || ''}
+        onSearchChange={(value) => onGlobalFilterChange?.(value)}
+        filters={[
+          <ImageSearchInput
             value={globalFilter || ''}
             onChange={(e) => onGlobalFilterChange?.(e.target.value)}
-            className='pl-9'
-          />
-        </div>
-
-        {/* Filter Dropdowns */}
-        <div className='flex flex-wrap items-center gap-2'>
+            onImageSearchClick={() => {
+              /* 打开上传图片 / 图片搜索弹窗 */
+            }}
+          />,
           <CategoryTreeFilterPopover
+            key='category'
             title='All categories'
             categories={categoryTree}
             selectedValues={selectedCategories}
             onValueChange={handleCategoryChange}
-          />
-
+          />,
           <PriceRangePopover
+            key='price'
             value={selectedPriceRange}
             onChange={setSelectedPriceRange}
-          />
-
+          />,
           <Select
+            key='location'
             value={selectedLocation || 'all'}
             onValueChange={(value) =>
               setSelectedLocation(value === 'all' ? undefined : value)
@@ -252,9 +253,9 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
-
+          </Select>,
           <Select
+            key='supplier'
             value={selectedSupplier || 'all'}
             onValueChange={(value) =>
               setSelectedSupplier(value === 'all' ? undefined : value)
@@ -270,9 +271,9 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
-        </div>
-      </div>
+          </Select>,
+        ]}
+      />
 
       {/* Grid Layout */}
       <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>

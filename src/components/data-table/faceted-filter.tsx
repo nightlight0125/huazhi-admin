@@ -1,6 +1,7 @@
 import * as React from 'react'
-import { CheckIcon, PlusCircledIcon } from '@radix-ui/react-icons'
+import { CheckIcon } from '@radix-ui/react-icons'
 import { type Column } from '@tanstack/react-table'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -47,14 +48,14 @@ export function DataTableFacetedFilter<TData, TValue>({
   } catch (error) {
     console.warn('Error getting faceted unique values:', error)
   }
-  
+
   const selectedValues = new Set(column?.getFilterValue() as string[])
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant='outline' size='sm' className='h-8 border-dashed'>
-          <PlusCircledIcon className='size-4' />
+          <ChevronDown className='ml-2 h-4 w-4 opacity-50' />
           {title}
           {selectedValues?.size > 0 && (
             <>

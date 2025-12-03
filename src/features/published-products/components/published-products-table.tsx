@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -19,10 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DataTablePagination } from '@/components/data-table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type PublishedProduct } from '../data/schema'
+import { PublishedProductsBulkActions } from './published-products-bulk-actions'
 import { publishedProductsColumns as columns } from './published-products-columns'
-import { PublishedProductsToolbar } from './published-products-toolbar'
 
 const route = getRouteApi('/_authenticated/published-products/')
 
@@ -97,8 +97,19 @@ export function PublishedProductsTable({ data, status }: DataTableProps) {
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='Enter SPU/SKU/Product Name'
+        searchKey='name'
+        filters={[
+          {
+            columnId: 'storeName',
+            title: 'Store Name',
+            options: [{ label: 'Store 1', value: 'Store 1' }],
+          },
+        ]}
+      />
       <div className='overflow-hidden rounded-md border'>
-        <PublishedProductsToolbar table={table} />
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -154,7 +165,7 @@ export function PublishedProductsTable({ data, status }: DataTableProps) {
         </Table>
       </div>
       <DataTablePagination table={table} />
+      <PublishedProductsBulkActions table={table} />
     </div>
   )
 }
-

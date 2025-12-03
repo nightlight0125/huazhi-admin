@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { Input } from '@/components/ui/input'
 
 type PriceRange = {
   min: number
@@ -62,12 +62,12 @@ export function PriceRangePopover({
       </PopoverTrigger>
       <PopoverContent
         align='start'
-        className='bg-background w-[260px] rounded-xl border p-4 shadow-md'
+        className='bg-popover text-popover-foreground w-[240px] rounded-md border p-3 shadow-md'
       >
         <div className='space-y-4'>
           {/* 双滑块 */}
           <div className='relative h-6'>
-            <div className='bg-muted absolute top-1/2 left-0 right-0 h-1 -translate-y-1/2 rounded-full' />
+            <div className='bg-muted absolute top-1/2 right-0 left-0 h-1 -translate-y-1/2 rounded-full' />
             <div
               className='bg-primary absolute top-1/2 h-1 -translate-y-1/2 rounded-full'
               style={{
@@ -85,7 +85,7 @@ export function PriceRangePopover({
                 const next = clamp(Number(e.target.value))
                 setLocalMin(Math.min(next, localMax))
               }}
-              className='pointer-events-none absolute top-1/2 left-0 h-1 w-full -translate-y-1/2 appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary'
+              className='[&::-webkit-slider-thumb]:bg-primary pointer-events-none absolute top-1/2 left-0 h-1 w-full -translate-y-1/2 appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full'
             />
             <input
               type='range'
@@ -97,7 +97,7 @@ export function PriceRangePopover({
                 const next = clamp(Number(e.target.value))
                 setLocalMax(Math.max(next, localMin))
               }}
-              className='pointer-events-none absolute top-1/2 left-0 h-1 w-full -translate-y-1/2 appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary'
+              className='[&::-webkit-slider-thumb]:bg-primary pointer-events-none absolute top-1/2 left-0 h-1 w-full -translate-y-1/2 appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full'
             />
           </div>
 
@@ -165,5 +165,3 @@ export function PriceRangePopover({
     </Popover>
   )
 }
-
-
