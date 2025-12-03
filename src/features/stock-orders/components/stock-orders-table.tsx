@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { stockOrderStatuses } from '../data/data'
 import { type StockOrder } from '../data/schema'
 import { StockOrdersActionsMenu } from './stock-orders-actions-menu'
+import { StockOrdersBulkActions } from './stock-orders-bulk-actions'
 import { createStockOrdersColumns } from './stock-orders-columns'
 import { StockOrdersPayDialog } from './stock-orders-pay-dialog'
 import { StockOrdersTableFooter } from './stock-orders-table-footer'
@@ -33,15 +34,17 @@ const route = getRouteApi('/_authenticated/stock-orders/')
 
 type DataTableProps = {
   data: StockOrder[]
+  onTableReady?: (table: ReturnType<typeof useReactTable<StockOrder>>) => void
 }
 
-export function StockOrdersTable({ data }: DataTableProps) {
+export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    productName: false,
+  })
   const [activeTab, setActiveTab] = useState('all')
-  const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [selectedOrderForPayment, setSelectedOrderForPayment] =
     useState<StockOrder | null>(null)
@@ -95,13 +98,12 @@ export function StockOrdersTable({ data }: DataTableProps) {
   const columns = useMemo(
     () =>
       createStockOrdersColumns({
-        onSelectOrder: setSelectedOrderId,
         onPay: handlePay,
         onEditAddress: handleEditAddress,
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    [selectedOrderId]
+    []
   )
 
   const table = useReactTable({
@@ -142,6 +144,13 @@ export function StockOrdersTable({ data }: DataTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
+  // Notify parent component when table is ready
+  useEffect(() => {
+    if (onTableReady) {
+      onTableReady(table)
+    }
+  }, [table, onTableReady])
+
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <div className='mb-2 flex items-center justify-end'>
@@ -162,23 +171,21 @@ export function StockOrdersTable({ data }: DataTableProps) {
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead key={header.id} colSpan={header.colSpan}>
-                          {header.isPlaceholder ? null : typeof header.column
-                              .columnDef.header === 'string' ? (
-                            <div className='whitespace-pre-line'>
-                              {header.column.columnDef.header}
-                            </div>
-                          ) : (
-                            flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )
-                          )}
-                        </TableHead>
-                      )
-                    })}
+                    {headerGroup.headers.map((header) => (
+                      <TableHead key={header.id} colSpan={header.colSpan}>
+                        {header.isPlaceholder ? null : typeof header.column
+                            .columnDef.header === 'string' ? (
+                          <div className='whitespace-pre-line'>
+                            {header.column.columnDef.header}
+                          </div>
+                        ) : (
+                          flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )
+                        )}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 ))}
               </TableHeader>
@@ -218,6 +225,8 @@ export function StockOrdersTable({ data }: DataTableProps) {
           <StockOrdersTableFooter table={table} />
         </TabsContent>
       </Tabs>
+
+      <StockOrdersBulkActions table={table} />
 
       <StockOrdersPayDialog
         open={payDialogOpen}

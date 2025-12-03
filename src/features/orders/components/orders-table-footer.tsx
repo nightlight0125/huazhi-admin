@@ -3,7 +3,7 @@ import { type Table } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react'
-import { cn, getPageNumbers } from '@/lib/utils'
+import { getPageNumbers } from '@/lib/utils'
 import { type Order } from '../data/schema'
 import { OrdersBatchPaymentDialog } from './orders-batch-payment-dialog'
 
@@ -92,7 +92,7 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
       {/* Center: Pagination */}
       <div className='flex items-center gap-2'>
         <Button
-          variant='ghost'
+          variant='outline'
           size='icon'
           className='h-8 w-8'
           onClick={() => table.previousPage()}
@@ -108,13 +108,9 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
               <span className='px-2 text-sm text-gray-500'>...</span>
             ) : (
               <Button
-                variant={currentPage === pageNumber ? 'default' : 'ghost'}
+                variant={currentPage === pageNumber ? 'default' : 'outline'}
                 size='sm'
-                className={cn(
-                  'h-8 min-w-8 px-2',
-                  currentPage === pageNumber &&
-                    'bg-blue-500 text-white hover:bg-blue-600'
-                )}
+                className='h-8 min-w-8 px-2'
                 onClick={() => table.setPageIndex((pageNumber as number) - 1)}
               >
                 {pageNumber}
@@ -124,7 +120,7 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
         ))}
 
         <Button
-          variant='ghost'
+          variant='outline'
           size='icon'
           className='h-8 w-8'
           onClick={() => table.nextPage()}
@@ -150,11 +146,7 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
             <span>Referenced amount</span>
           </div>
         </div>
-        <Button
-          onClick={handleBatchPayment}
-          disabled={selectedCount === 0}
-          className='bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50'
-        >
+        <Button onClick={handleBatchPayment} disabled={selectedCount === 0}>
           Batch Payment
         </Button>
       </div>

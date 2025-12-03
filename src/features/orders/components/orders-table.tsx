@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { orderStatuses } from '../data/data'
 import { type Order, type OrderProduct } from '../data/schema'
+import { DataTableBulkActions } from './data-table-bulk-actions'
 import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
 import { OrdersModifyProductDialog } from './orders-modify-product-dialog'
@@ -35,6 +36,7 @@ const route = getRouteApi('/_authenticated/orders/')
 
 type DataTableProps = {
   data: Order[]
+  onTableReady?: (table: ReturnType<typeof useReactTable<Order>>) => void
 }
 
 // Product detail row component
@@ -145,7 +147,7 @@ function ProductDetailRow({ product }: { product: OrderProduct }) {
   )
 }
 
-export function OrdersTable({ data }: DataTableProps) {
+export function OrdersTable({ data, onTableReady }: DataTableProps) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -154,10 +156,12 @@ export function OrdersTable({ data }: DataTableProps) {
     platformFulfillmentStatus: false,
     store: false,
     logistics: false,
+    country: false,
+    status: false,
+    shippingOrigin: false,
   })
   const [activeTab, setActiveTab] = useState('all')
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [modifyProductDialog, setModifyProductDialog] = useState<{
     open: boolean
     products: OrderProduct[]
@@ -279,8 +283,6 @@ export function OrdersTable({ data }: DataTableProps) {
       createOrdersColumns({
         onExpand: handleExpand,
         expandedRows,
-        selectedOrderId,
-        onSelectOrder: setSelectedOrderId,
         onModifyProduct: (orderId) => {
           const order = data.find((o) => o.id === orderId)
           if (order && order.productList && order.productList.length > 0) {
@@ -300,7 +302,7 @@ export function OrdersTable({ data }: DataTableProps) {
         },
         onEditAddress: handleEditAddress,
       }),
-    [expandedRows, selectedOrderId, data]
+    [expandedRows, data]
   )
 
   const table = useReactTable({
@@ -354,6 +356,13 @@ export function OrdersTable({ data }: DataTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
+  // Notify parent component when table is ready
+  useEffect(() => {
+    if (onTableReady) {
+      onTableReady(table)
+    }
+  }, [table, onTableReady])
+
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
@@ -400,9 +409,8 @@ export function OrdersTable({ data }: DataTableProps) {
                       order.productList && order.productList.length > 0
 
                     return (
-                      <>
+                      <React.Fragment key={row.id}>
                         <TableRow
-                          key={row.id}
                           data-state={row.getIsSelected() && 'selected'}
                         >
                           {row.getVisibleCells().map((cell) => (
@@ -424,7 +432,7 @@ export function OrdersTable({ data }: DataTableProps) {
                             ))}
                           </>
                         )}
-                      </>
+                      </React.Fragment>
                     )
                   })
                 ) : (
@@ -444,6 +452,8 @@ export function OrdersTable({ data }: DataTableProps) {
           <OrdersTableFooter table={table} />
         </TabsContent>
       </Tabs>
+
+      <DataTableBulkActions table={table} />
 
       {/* Modify Product Dialog */}
       <OrdersModifyProductDialog

@@ -24,26 +24,31 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { sampleOrderStatuses } from '../data/data'
 import { type SampleOrder } from '../data/schema'
-import { createSampleOrdersColumns } from './sample-orders-columns'
-import { SampleOrdersTableFooter } from './sample-orders-table-footer'
-import { SampleOrdersPayDialog } from './sample-orders-pay-dialog'
 import { SampleOrdersActionsMenu } from './sample-orders-actions-menu'
+import { SampleOrdersBulkActions } from './sample-orders-bulk-actions'
+import { createSampleOrdersColumns } from './sample-orders-columns'
+import { SampleOrdersPayDialog } from './sample-orders-pay-dialog'
+import { SampleOrdersTableFooter } from './sample-orders-table-footer'
 
 const route = getRouteApi('/_authenticated/sample-orders/')
 
 type DataTableProps = {
   data: SampleOrder[]
+  onTableReady?: (table: ReturnType<typeof useReactTable<SampleOrder>>) => void
 }
 
-export function SampleOrdersTable({ data }: DataTableProps) {
+export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    productName: false,
+    logistics: false,
+  })
   const [activeTab, setActiveTab] = useState('all')
-  const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
-  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<SampleOrder | null>(null)
+  const [selectedOrderForPayment, setSelectedOrderForPayment] =
+    useState<SampleOrder | null>(null)
 
   // Synced with URL states
   const {
@@ -59,9 +64,7 @@ export function SampleOrdersTable({ data }: DataTableProps) {
     navigate: route.useNavigate(),
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
-    columnFilters: [
-      { columnId: 'status', searchKey: 'status', type: 'array' },
-    ],
+    columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
   // Filter data based on active tab
@@ -96,13 +99,12 @@ export function SampleOrdersTable({ data }: DataTableProps) {
   const columns = useMemo(
     () =>
       createSampleOrdersColumns({
-        onSelectOrder: setSelectedOrderId,
         onPay: handlePay,
         onEditAddress: handleEditAddress,
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    [selectedOrderId]
+    []
   )
 
   const table = useReactTable({
@@ -125,10 +127,7 @@ export function SampleOrdersTable({ data }: DataTableProps) {
       const sku = String(row.original.sku).toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
 
-      return (
-        orderNumber.includes(searchValue) ||
-        sku.includes(searchValue)
-      )
+      return orderNumber.includes(searchValue) || sku.includes(searchValue)
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -146,9 +145,16 @@ export function SampleOrdersTable({ data }: DataTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
+  // Notify parent component when table is ready
+  useEffect(() => {
+    if (onTableReady) {
+      onTableReady(table)
+    }
+  }, [table, onTableReady])
+
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
-      <div className='flex items-center justify-end mb-2'>
+      <div className='mb-2 flex items-center justify-end'>
         <SampleOrdersActionsMenu />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
@@ -223,6 +229,8 @@ export function SampleOrdersTable({ data }: DataTableProps) {
         </TabsContent>
       </Tabs>
 
+      <SampleOrdersBulkActions table={table} />
+
       <SampleOrdersPayDialog
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
@@ -231,4 +239,3 @@ export function SampleOrdersTable({ data }: DataTableProps) {
     </div>
   )
 }
-

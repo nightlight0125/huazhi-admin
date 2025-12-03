@@ -47,6 +47,11 @@ type DataTableToolbarProps<TData> = {
     columnId: string
     placeholder?: string
   }
+  /** 第四个搜索输入框，同样按列过滤，可选 */
+  extraSearch3?: {
+    columnId: string
+    placeholder?: string
+  }
   filters?: {
     columnId: string
     title: string
@@ -85,6 +90,7 @@ export function DataTableToolbar<TData>({
   onSearch,
   extraSearch,
   extraSearch2,
+  extraSearch3,
   filters = [],
   dateRange,
   bulkRevise,
@@ -150,8 +156,8 @@ export function DataTableToolbar<TData>({
   }
 
   return (
-    <div className='flex items-center justify-between'>
-      <div className='flex flex-1 flex-col-reverse items-start gap-y-2 sm:flex-row sm:items-center sm:space-x-2'>
+    <div className='flex flex-wrap items-start justify-between gap-2'>
+      <div className='flex flex-1 flex-wrap items-center gap-2'>
         {showSearch && (
           <>
             {searchKey ? (
@@ -207,7 +213,23 @@ export function DataTableToolbar<TData>({
             className='h-8 w-[150px] lg:w-[250px]'
           />
         )}
-        <div className='flex gap-x-2'>
+        {extraSearch3 && (
+          <Input
+            placeholder={extraSearch3.placeholder ?? 'Search...'}
+            value={
+              (table
+                .getColumn(extraSearch3.columnId)
+                ?.getFilterValue() as string) ?? ''
+            }
+            onChange={(event) =>
+              table
+                .getColumn(extraSearch3.columnId)
+                ?.setFilterValue(event.target.value)
+            }
+            className='h-8 w-[150px] lg:w-[250px]'
+          />
+        )}
+        <div className='flex flex-wrap items-center gap-2'>
           {customFilterSlot}
           {filters.map((filter) => {
             const column = table.getColumn(filter.columnId)
@@ -328,7 +350,7 @@ export function DataTableToolbar<TData>({
           </Button>
         )}
       </div>
-      <div className='flex items-center gap-2'>
+      <div className='flex flex-wrap items-center gap-2'>
         <Button
           onClick={handleSearch}
           className='h-8 bg-orange-500 text-white hover:bg-orange-600'

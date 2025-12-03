@@ -1,32 +1,41 @@
 import { format } from 'date-fns'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Minus, Plus, ShoppingBag } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { type Order } from '../data/schema'
 
 export const createOrdersColumns = (options?: {
   onExpand?: (rowId: string) => void
   expandedRows?: Set<string>
-  selectedOrderId?: string
-  onSelectOrder?: (orderId: string) => void
   onModifyProduct?: (orderId: string) => void
   onEditAddress?: (orderId: string) => void
 }): ColumnDef<Order>[] => {
   const {
     onExpand,
     expandedRows = new Set(),
-    selectedOrderId,
-    onSelectOrder,
     onModifyProduct,
     onEditAddress,
   } = options || {}
 
   return [
     {
-      id: 'select-expand',
-      header: '',
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label='选择全部'
+          className='translate-y-[2px]'
+        />
+      ),
+      meta: {
+        className: cn('sticky md:table-cell start-0 z-10 rounded-tl-[inherit]'),
+      },
       cell: ({ row }) => {
         const order = row.original
         const isExpanded = expandedRows.has(row.id)
@@ -34,24 +43,21 @@ export const createOrdersColumns = (options?: {
 
         return (
           <div className='flex items-center gap-2'>
-            <RadioGroup value={selectedOrderId || ''}>
-              <div className='flex items-center space-x-2'>
-                <RadioGroupItem
-                  value={order.id}
-                  id={order.id}
-                  onClick={() => onSelectOrder?.(order.id)}
-                />
-                <Label htmlFor={order.id} className='sr-only'>
-                  Select order
-                </Label>
-              </div>
-            </RadioGroup>
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label='选择行'
+              className='translate-y-[2px]'
+            />
             {hasProducts && (
               <Button
                 variant='ghost'
                 size='icon'
                 className='h-6 w-6'
-                onClick={() => onExpand?.(row.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onExpand?.(row.id)
+                }}
               >
                 {isExpanded ? (
                   <Minus className='h-4 w-4' />
@@ -252,6 +258,33 @@ export const createOrdersColumns = (options?: {
     {
       id: 'logistics',
       accessorFn: (row) => row.logistics || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+    {
+      id: 'country',
+      accessorFn: (row) => row.country || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+    {
+      id: 'status',
+      accessorFn: (row) => row.status || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+    {
+      id: 'shippingOrigin',
+      accessorFn: (row) => row.shippingOrigin || '',
       header: () => null,
       cell: () => null,
       enableHiding: false,

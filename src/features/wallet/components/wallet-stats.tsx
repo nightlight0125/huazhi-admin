@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { Building2 } from 'lucide-react'
+import { Building2, DollarSign, Gift, Wallet } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
+  CardHeader,
   CardTitle,
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { type WalletStats } from '../data/schema'
 
 interface WalletStatsProps {
@@ -36,78 +38,64 @@ export function WalletStats({ stats }: WalletStatsProps) {
     string | null
   >(null)
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  }
-
   return (
-    <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-      {/* First Card: Account Balance and Benefits */}
-      <Card className='h-[280px]'>
-        <CardContent className='flex h-full flex-col p-4'>
-          <div className='grid h-full grid-cols-10 gap-4'>
-            <div className='col-span-4'>
-              <div className='dark:to-card relative flex h-full flex-col justify-center overflow-hidden'>
-                <div className='relative'>
-                  <CardDescription className='mb-1 text-xs text-purple-600 dark:text-purple-400'>
-                    Account balance
-                  </CardDescription>
-                  <CardTitle className='text-3xl font-bold text-purple-600 dark:text-purple-400'>
-                    {formatCurrency(stats.accountBalance)}
-                  </CardTitle>
-                  <div className='text-muted-foreground mt-1 text-xs'>
-                    Bonus: {formatCurrency(0)}
+    <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card -mx-4 grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:px-6'>
+      {/* Account Balance and Benefits Card */}
+      <Card className='@container/card'>
+        <CardHeader>
+          <div className='flex items-center gap-2'>
+            <Wallet className='text-primary h-5 w-5' />
+            <CardDescription>Account balance</CardDescription>
+          </div>
+          <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
+            $
+            {stats.accountBalance.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </CardTitle>
+          <div className='text-muted-foreground mt-1 text-xs'>Bonus: $0.00</div>
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          <Separator />
+          <div className='space-y-2'>
+            <div className='flex items-center gap-2'>
+              <Gift className='h-5 w-5 text-purple-600' />
+              <CardDescription>Benefits Tiers</CardDescription>
+            </div>
+            <div className='space-y-2'>
+              {benefitTiers.map((tier, index) => (
+                <div
+                  key={index}
+                  className='bg-muted/50 rounded-lg border p-2.5 text-xs'
+                >
+                  <div className='flex items-center justify-between'>
+                    <span className='font-medium'>
+                      ${tier.min.toFixed(0)}-
+                      {tier.max === 99999.0 ? '∞' : `$${tier.max.toFixed(0)}`}
+                    </span>
+                    <Badge variant='secondary' className='text-xs'>
+                      {tier.percentage.toFixed(1)}%
+                    </Badge>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Benefits List - 6 columns */}
-            <div className='col-span-6'>
-              <div className='flex h-full flex-col justify-center space-y-2'>
-                {benefitTiers.map((tier, index) => (
-                  <div key={index} className='rounded-lg border p-2.5'>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-xs font-medium'>
-                        {tier.min.toFixed(2)}-
-                        {tier.max === 99999.0 ? '∞' : tier.max.toFixed(2)}
-                      </span>
-                      <span className='text-xs font-semibold'>
-                        Benefits {tier.percentage.toFixed(2)} %
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Second Card: Billing Dashboard */}
-      <Card className='h-[280px]'>
-        <CardContent className='flex h-full flex-col space-y-3 overflow-y-auto p-4'>
-          {/* Welcome Text */}
-          <div>
-            <p className='text-muted-foreground text-xs leading-tight'>
-              Welcome to your billing dashboard. Make payments and review your
-              transactions history here.
-            </p>
+      {/* Topup and Payment Methods Card */}
+      <Card className='@container/card'>
+        <CardHeader>
+          <div className='flex items-center gap-2'>
+            <DollarSign className='h-5 w-5 text-green-600' />
+            <CardDescription>Topup Amount</CardDescription>
           </div>
-
-          {/* Topup Amount Input */}
-          <div className='space-y-1.5'>
-            <Label htmlFor='topup-amount' className='text-xs'>
-              Topup Amount
-            </Label>
+          <CardContent className='p-0 pt-4'>
             <div className='flex gap-2'>
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className='h-8 w-[90px] text-xs'>
+                <SelectTrigger className='h-9 w-[100px]'>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -122,15 +110,20 @@ export function WalletStats({ stats }: WalletStatsProps) {
                 type='number'
                 value={topupAmount}
                 onChange={(e) => setTopupAmount(e.target.value)}
-                placeholder='0'
-                className='h-8 flex-1 text-xs'
+                placeholder='Enter amount'
+                className='h-9 flex-1'
               />
             </div>
-          </div>
-
-          {/* Payment Methods */}
-          <div className='space-y-2'>
-            <Label className='text-xs'>Payment Methods</Label>
+          </CardContent>
+        </CardHeader>
+        <CardContent className='space-y-3'>
+          <Separator />
+          <div className='space-y-3'>
+            <CardDescription>Payment Methods</CardDescription>
+            <p className='text-muted-foreground text-sm leading-tight'>
+              Welcome to your billing dashboard. Make payments and review your
+              transactions history here.
+            </p>
             <div className='grid grid-cols-1 gap-2 sm:grid-cols-3'>
               {/* Bank Transfer (Generic) */}
               <Button
@@ -139,11 +132,11 @@ export function WalletStats({ stats }: WalletStatsProps) {
                     ? 'default'
                     : 'outline'
                 }
-                className='h-auto flex-col items-start gap-1.5 border-purple-200 p-2.5 hover:border-purple-300'
+                className='h-auto flex-col items-start gap-2 p-3'
                 onClick={() => setSelectedPaymentMethod('bank-transfer')}
               >
                 <Building2 className='h-5 w-5' />
-                <span className='text-xs font-medium'>Bank Transfer</span>
+                <span className='text-sm font-medium'>Bank Transfer</span>
               </Button>
 
               {/* Bank Transfer (Detailed) */}
@@ -153,7 +146,7 @@ export function WalletStats({ stats }: WalletStatsProps) {
                     ? 'default'
                     : 'outline'
                 }
-                className='h-auto flex-col items-start gap-1.5 border-purple-200 p-2.5 hover:border-purple-300'
+                className='h-auto flex-col items-start gap-2 p-3'
                 onClick={() =>
                   setSelectedPaymentMethod('bank-transfer-detailed')
                 }
@@ -161,16 +154,16 @@ export function WalletStats({ stats }: WalletStatsProps) {
                 <div className='flex w-full items-center justify-between'>
                   <Building2 className='h-5 w-5' />
                   <div className='flex gap-0.5'>
-                    <span className='text-[10px]'>🇺🇸</span>
-                    <span className='text-[10px]'>🇬🇧</span>
-                    <span className='text-[10px]'>🇨🇦</span>
-                    <span className='text-[10px]'>🇦🇺</span>
-                    <span className='text-[10px]'>🇪🇺</span>
+                    <span className='text-xs'>🇺🇸</span>
+                    <span className='text-xs'>🇬🇧</span>
+                    <span className='text-xs'>🇨🇦</span>
+                    <span className='text-xs'>🇦🇺</span>
+                    <span className='text-xs'>🇪🇺</span>
                   </div>
                 </div>
                 <div className='flex w-full flex-col items-start gap-0.5'>
-                  <span className='text-xs font-medium'>Bank transfer</span>
-                  <span className='text-muted-foreground text-[10px]'>
+                  <span className='text-sm font-medium'>Bank transfer</span>
+                  <span className='text-muted-foreground text-xs'>
                     Up to 1 business day
                   </span>
                 </div>
@@ -181,13 +174,13 @@ export function WalletStats({ stats }: WalletStatsProps) {
                 variant={
                   selectedPaymentMethod === 'payoneer' ? 'default' : 'outline'
                 }
-                className='h-auto flex-col items-start gap-1.5 border-purple-200 p-2.5 hover:border-purple-300'
+                className='h-auto flex-col items-start gap-2 p-3'
                 onClick={() => setSelectedPaymentMethod('payoneer')}
               >
                 <div className='flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-blue-500'>
-                  <span className='text-[10px] font-bold text-white'>P</span>
+                  <span className='text-xs font-bold text-white'>P</span>
                 </div>
-                <span className='text-xs font-medium'>Payoneer</span>
+                <span className='text-sm font-medium'>Payoneer</span>
               </Button>
             </div>
           </div>

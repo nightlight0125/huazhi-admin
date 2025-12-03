@@ -34,7 +34,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'description',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='描述' />
+      <DataTableColumnHeader column={column} title='description' />
     ),
     cell: ({ row }) => (
       <div className='max-w-[200px] truncate text-sm font-medium'>
@@ -45,21 +45,17 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'paymentMethod',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='充值方式' />
+      <DataTableColumnHeader column={column} title='paymentMethod' />
     ),
     cell: ({ row }) => {
       const paymentMethod = row.getValue('paymentMethod') as string
-      return (
-        <div className='text-sm'>
-          {paymentMethod || '-'}
-        </div>
-      )
+      return <div className='text-sm'>{paymentMethod || '-'}</div>
     },
   },
   {
     accessorKey: 'date',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='日期' />
+      <DataTableColumnHeader column={column} title='date' />
     ),
     cell: ({ row }) => {
       const date = row.getValue('date') as Date
@@ -79,16 +75,19 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'amount',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='金额' />
+      <DataTableColumnHeader column={column} title='amount' />
     ),
     cell: ({ row }) => {
       const amount = row.getValue('amount') as number
       const record = row.original
       const isRecharge = record.type === 'recharge'
-      
+
       return (
-        <div className={`font-medium ${isRecharge ? 'text-green-600' : 'text-blue-600'}`}>
-          {isRecharge ? '+' : '-'}{new Intl.NumberFormat('zh-CN', {
+        <div
+          className={`font-medium ${isRecharge ? 'text-green-600' : 'text-blue-600'}`}
+        >
+          {isRecharge ? '+' : '-'}
+          {new Intl.NumberFormat('zh-CN', {
             style: 'currency',
             currency: 'CNY',
           }).format(amount)}
@@ -99,17 +98,18 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'cashback',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='返现' />
+      <DataTableColumnHeader column={column} title='cashback' />
     ),
     cell: ({ row }) => {
       const cashback = row.getValue('cashback') as number | undefined
       if (!cashback) {
         return <span className='text-muted-foreground'>-</span>
       }
-      
+
       return (
         <div className='font-medium text-green-600'>
-          +{new Intl.NumberFormat('zh-CN', {
+          +
+          {new Intl.NumberFormat('zh-CN', {
             style: 'currency',
             currency: 'CNY',
           }).format(cashback)}
@@ -120,16 +120,16 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'notes',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='备注' />
+      <DataTableColumnHeader column={column} title='notes' />
     ),
     cell: ({ row }) => {
       const notes = row.getValue('notes') as string | undefined
       if (!notes) {
         return <span className='text-muted-foreground'>-</span>
       }
-      
+
       return (
-        <div className='max-w-[200px] truncate text-sm text-muted-foreground'>
+        <div className='text-muted-foreground max-w-[200px] truncate text-sm'>
           {notes}
         </div>
       )
@@ -138,7 +138,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'status',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='充值状态' />
+      <DataTableColumnHeader column={column} title='status' />
     ),
     cell: ({ row }) => {
       const status = walletRecordStatuses.find(
