@@ -22,8 +22,8 @@ import {
   TableRow,
   Table as UITable,
 } from '@/components/ui/table'
-import { DataTablePagination } from '@/components/data-table'
-import { LikedProductsToolbar } from './liked-products-toolbar'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { LikedProductsBulkActions } from './liked-products-bulk-actions'
 
 type ProductsTableWithToolbarProps<TData> = {
   data: TData[]
@@ -103,7 +103,15 @@ export function ProductsTableWithToolbar<TData>({
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
-      <LikedProductsToolbar table={table as Table<TData>} />
+      <DataTableToolbar
+        table={table as Table<TData>}
+        extraSearch={{ columnId: 'spu', placeholder: 'Search by SPU' }}
+        dateRange={{
+          enabled: true,
+          columnId: 'createdAt',
+          placeholder: 'Select Date Range',
+        }}
+      />
       <div className='overflow-hidden rounded-md border'>
         <UITable>
           <TableHeader>
@@ -185,6 +193,7 @@ export function ProductsTableWithToolbar<TData>({
         </UITable>
       </div>
       <DataTablePagination table={table} />
+      <LikedProductsBulkActions table={table as Table<any>} />
     </div>
   )
 }

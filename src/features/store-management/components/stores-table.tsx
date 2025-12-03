@@ -99,14 +99,30 @@ export function StoresTable({ data }: DataTableProps) {
         table={table}
         searchPlaceholder='Filter by store name or ID...'
       />
-      <div className='overflow-hidden rounded-md border'>
+      <div className='rounded-md border'>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className={
+                        header.column.id === 'select' ||
+                        header.column.id === 'storeName'
+                          ? 'pr-2 pl-1'
+                          : undefined
+                      }
+                      style={{
+                        width:
+                          header.getSize() !== 150
+                            ? `${header.getSize()}px`
+                            : undefined,
+                        minWidth: `${header.getSize()}px`,
+                      }}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -127,7 +143,22 @@ export function StoresTable({ data }: DataTableProps) {
                   data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={
+                        cell.column.id === 'select' ||
+                        cell.column.id === 'storeName'
+                          ? 'pr-2 pl-1'
+                          : undefined
+                      }
+                      style={{
+                        width:
+                          cell.column.getSize() !== 150
+                            ? `${cell.column.getSize()}px`
+                            : undefined,
+                        minWidth: `${cell.column.getSize()}px`,
+                      }}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

@@ -1,5 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type StoreProduct } from '../data/schema'
 import { EditableSelectCell } from './editable-select-cell'
@@ -12,7 +13,37 @@ const shippingMethodOptions = [
   'TDPacket Electro',
 ]
 
-export const storeProductsColumns: ColumnDef<StoreProduct>[] = [
+type ColumnOptions = {
+  onConnectProducts?: (productId: string) => void
+}
+
+export const createStoreProductsColumns = (
+  options?: ColumnOptions
+): ColumnDef<StoreProduct>[] => [
+  {
+    id: 'select',
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && 'indeterminate')
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label='Select all'
+        className='translate-y-[2px]'
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label='Select row'
+        className='translate-y-[2px]'
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: 'image',
     header: ({ column }) => (
@@ -124,6 +155,16 @@ export const storeProductsColumns: ColumnDef<StoreProduct>[] = [
     },
   },
   {
+    accessorKey: 'associateStatus',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Associate Status' />
+    ),
+    cell: ({ row }) => {
+      const value = (row.getValue('associateStatus') as string) || '-'
+      return <div className='text-xs'>{value}</div>
+    },
+  },
+  {
     id: 'actions',
     header: () => <div className='text-xs font-medium'>Action</div>,
     cell: ({ row }) => {
@@ -134,7 +175,7 @@ export const storeProductsColumns: ColumnDef<StoreProduct>[] = [
             size='sm'
             className='h-7 text-xs'
             onClick={() => {
-              console.log('Connect Products:', row.original.id)
+              options?.onConnectProducts?.(row.original.id)
             }}
           >
             Connect Products
@@ -155,3 +196,7 @@ export const storeProductsColumns: ColumnDef<StoreProduct>[] = [
     enableSorting: false,
   },
 ]
+
+// 为了向后兼容，导出一个默认的 columns
+export const storeProductsColumns: ColumnDef<StoreProduct>[] =
+  createStoreProductsColumns()

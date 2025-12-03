@@ -1,8 +1,9 @@
+import type React from 'react'
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { type Table } from '@tanstack/react-table'
-import { Calendar as CalendarIcon } from 'lucide-react'
+import { Calendar as CalendarIcon, Search } from 'lucide-react'
 import { type DateRange } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { CategoryTreeFacetedFilter } from './category-tree-faceted-filter'
 import { DataTableFacetedFilter } from './faceted-filter'
 import { DataTableViewOptions } from './view-options'
@@ -27,6 +35,18 @@ type DataTableToolbarProps<TData> = {
   table: Table<TData>
   searchPlaceholder?: string
   searchKey?: string
+  showSearch?: boolean
+  onSearch?: () => void
+  /** 额外的搜索输入框（例如第二个搜索条件），只有外部传入时才展示 */
+  extraSearch?: {
+    columnId: string
+    placeholder?: string
+  }
+  /** 第三个搜索输入框（例如仓库、店铺等），同样按列过滤，可选 */
+  extraSearch2?: {
+    columnId: string
+    placeholder?: string
+  }
   filters?: {
     columnId: string
     title: string
@@ -44,18 +64,37 @@ type DataTableToolbarProps<TData> = {
     onDateRangeChange?: (dateRange: DateRange | undefined) => void
     placeholder?: string
   }
+  bulkRevise?: {
+    enabled?: boolean
+    options?: {
+      label: string
+      value: string
+    }[]
+    placeholder?: string
+    onApply?: (type: string, value: string) => void
+  }
+  /** 自定义筛选区域（例如两个输入框 + 日期选择器），会显示在 facets 之前 */
+  customFilterSlot?: React.ReactNode
 }
 
 export function DataTableToolbar<TData>({
   table,
   searchPlaceholder = 'Filter...',
   searchKey,
+  showSearch = true,
+  onSearch,
+  extraSearch,
+  extraSearch2,
   filters = [],
   dateRange,
+  bulkRevise,
+  customFilterSlot,
 }: DataTableToolbarProps<TData>) {
   const [dateRangeValue, setDateRangeValue] = useState<DateRange | undefined>(
     undefined
   )
+  const [bulkReviseType, setBulkReviseType] = useState<string>('price-change')
+  const [bulkReviseValue, setBulkReviseValue] = useState<string>('')
 
   const isFiltered =
     table.getState().columnFilters.length > 0 ||
@@ -93,29 +132,83 @@ export function DataTableToolbar<TData>({
     }
   }
 
+  const handleSearch = () => {
+    if (onSearch) {
+      onSearch()
+    } else {
+      // 默认行为：触发表格重新过滤
+      // 由于搜索是实时的，这里可以触发一个重新渲染
+      table.resetRowSelection()
+    }
+  }
+
+  const handleBulkReviseApply = () => {
+    if (bulkRevise?.onApply && bulkReviseValue) {
+      bulkRevise.onApply(bulkReviseType, bulkReviseValue)
+      setBulkReviseValue('')
+    }
+  }
+
   return (
     <div className='flex items-center justify-between'>
       <div className='flex flex-1 flex-col-reverse items-start gap-y-2 sm:flex-row sm:items-center sm:space-x-2'>
-        {searchKey ? (
+        {showSearch && (
+          <>
+            {searchKey ? (
+              <Input
+                placeholder={searchPlaceholder}
+                value={
+                  (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
+                }
+                onChange={(event) =>
+                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                }
+                className='h-8 w-[150px] lg:w-[250px]'
+              />
+            ) : (
+              <Input
+                placeholder={searchPlaceholder}
+                value={table.getState().globalFilter ?? ''}
+                onChange={(event) => table.setGlobalFilter(event.target.value)}
+                className='h-8 w-[150px] lg:w-[250px]'
+              />
+            )}
+          </>
+        )}
+        {extraSearch && (
           <Input
-            placeholder={searchPlaceholder}
+            placeholder={extraSearch.placeholder ?? 'Search...'}
             value={
-              (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
+              (table
+                .getColumn(extraSearch.columnId)
+                ?.getFilterValue() as string) ?? ''
             }
             onChange={(event) =>
-              table.getColumn(searchKey)?.setFilterValue(event.target.value)
+              table
+                .getColumn(extraSearch.columnId)
+                ?.setFilterValue(event.target.value)
             }
             className='h-8 w-[150px] lg:w-[250px]'
           />
-        ) : (
+        )}
+        {extraSearch2 && (
           <Input
-            placeholder={searchPlaceholder}
-            value={table.getState().globalFilter ?? ''}
-            onChange={(event) => table.setGlobalFilter(event.target.value)}
+            placeholder={extraSearch2.placeholder ?? 'Search...'}
+            value={
+              (table
+                .getColumn(extraSearch2.columnId)
+                ?.getFilterValue() as string) ?? ''
+            }
+            onChange={(event) =>
+              table
+                .getColumn(extraSearch2.columnId)
+                ?.setFilterValue(event.target.value)
+            }
             className='h-8 w-[150px] lg:w-[250px]'
           />
         )}
         <div className='flex gap-x-2'>
+          {customFilterSlot}
           {filters.map((filter) => {
             const column = table.getColumn(filter.columnId)
             if (!column || !column.columnDef) return null
@@ -192,6 +285,37 @@ export function DataTableToolbar<TData>({
               </PopoverContent>
             </Popover>
           )}
+          {/* Bulk Revise */}
+          {bulkRevise?.enabled && (
+            <div className='flex items-center'>
+              <Select value={bulkReviseType} onValueChange={setBulkReviseType}>
+                <SelectTrigger
+                  size='sm'
+                  className='h-8 w-32 rounded-r-none border-r-0 py-0 text-xs'
+                >
+                  <SelectValue placeholder='Select' />
+                </SelectTrigger>
+                <SelectContent>
+                  {bulkRevise.options?.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder={bulkRevise?.placeholder || 'Enter value'}
+                value={bulkReviseValue}
+                onChange={(e) => setBulkReviseValue(e.target.value)}
+                className='h-8 w-32 rounded-l-none border-l-0 py-0 text-xs'
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleBulkReviseApply()
+                  }
+                }}
+              />
+            </div>
+          )}
         </div>
         {isFiltered && (
           <Button
@@ -204,7 +328,17 @@ export function DataTableToolbar<TData>({
           </Button>
         )}
       </div>
-      <DataTableViewOptions table={table} />
+      <div className='flex items-center gap-2'>
+        <Button
+          onClick={handleSearch}
+          className='h-8 bg-orange-500 text-white hover:bg-orange-600'
+          size='sm'
+        >
+          <Search className='mr-2 h-4 w-4' />
+          Search
+        </Button>
+        <DataTableViewOptions table={table} />
+      </div>
     </div>
   )
 }

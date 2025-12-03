@@ -23,11 +23,11 @@ import {
   Table as UITable,
 } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTablePagination } from '@/components/data-table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type SupportTicket, type SupportTicketStatus } from '../data/schema'
+import { SupportTicketsBulkActions } from './support-tickets-bulk-actions'
 import { createSupportTicketsColumns } from './support-tickets-columns'
 import { SupportTicketsReasonDialog } from './support-tickets-reason-dialog'
-import { SupportTicketsToolbar } from './support-tickets-toolbar'
 
 const route = getRouteApi('/_authenticated/support-tickets/')
 
@@ -132,32 +132,37 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  const handleSearch = (filters: {
-    supportTicketNo?: string
-    hzOrderNo?: string
-    storeName?: string
-    type?: string
-    createTimeFrom?: Date
-    createTimeTo?: Date
-  }) => {
-    // TODO: Implement search with filters
-    console.log('Search filters:', filters)
-    // For now, just use global filter
-    if (filters.supportTicketNo || filters.hzOrderNo) {
-      onGlobalFilterChange?.(filters.supportTicketNo || filters.hzOrderNo || '')
-    }
-  }
-
-  const handleReset = () => {
-    onGlobalFilterChange?.('')
-    setActiveTab('all')
-  }
-
   return (
     <div className='space-y-4'>
-      <SupportTicketsToolbar onSearch={handleSearch} onReset={handleReset} />
-
-      {/* Status Tabs */}
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='please support ticket number'
+        extraSearch={{
+          columnId: 'supportTicketNo',
+          placeholder: 'please Enter HZ Order No.',
+        }}
+        filters={[
+          {
+            columnId: 'storeName',
+            title: 'Store Name',
+            options: [{ label: 'Store 1', value: 'Store 1' }],
+          },
+          {
+            columnId: 'type',
+            title: 'Type',
+            options: [
+              { label: 'Product return', value: 'Product return' },
+              { label: 'Other', value: 'Other' },
+            ],
+          },
+        ]}
+        dateRange={{
+          enabled: true,
+          columnId: 'createTime',
+          // onDateRangeChange: setDateRange,
+          placeholder: 'Select  Date Range',
+        }}
+      />
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as SupportTicketStatus)}
@@ -221,6 +226,7 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
         </UITable>
       </div>
       <DataTablePagination table={table as Table<SupportTicket>} />
+      <SupportTicketsBulkActions table={table as Table<SupportTicket>} />
 
       <SupportTicketsReasonDialog
         open={reasonDialogOpen}

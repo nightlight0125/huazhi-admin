@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { ChevronDown } from 'lucide-react'
 import { showSubmittedData } from '@/lib/show-submitted-data'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogClose,
@@ -20,19 +24,25 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 
 const formSchema = z.object({
-  file: z
-    .instanceof(FileList)
-    .refine((files) => files.length > 0, {
-      message: 'Please upload a file',
-    })
-    .refine(
-      (files) => ['text/csv'].includes(files?.[0]?.type),
-      'Please upload csv format.'
-    ),
+  files: z.array(z.string()).min(1, {
+    message: 'Please select at least one file',
+  }),
 })
+
+// 模拟文件选项
+const fileOptions = [
+  { id: 'file1', name: 'products.csv' },
+  { id: 'file2', name: 'inventory.csv' },
+  { id: 'file3', name: 'prices.csv' },
+  { id: 'file4', name: 'variants.csv' },
+]
 
 type StoreProductsImportDialogProps = {
   open: boolean
@@ -43,23 +53,23 @@ export function StoreProductsImportDialog({
   open,
   onOpenChange,
 }: StoreProductsImportDialogProps) {
+  const [popoverOpen, setPopoverOpen] = useState(false)
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { file: undefined },
+    defaultValues: { files: [] },
   })
 
-  const fileRef = form.register('file')
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    const selectedFileNames = data.files
+      .map((fileId) => fileOptions.find((f) => f.id === fileId)?.name)
+      .filter(Boolean)
 
-  const onSubmit = () => {
-    const file = form.getValues('file')
-
-    if (file && file[0]) {
-      const fileDetails = {
-        name: file[0].name,
-        size: file[0].size,
-        type: file[0].type,
-      }
-      showSubmittedData(fileDetails, 'You have imported the following file:')
+    if (selectedFileNames.length > 0) {
+      showSubmittedData(
+        { files: selectedFileNames },
+        'You have selected the following files:'
+      )
     }
     onOpenChange(false)
   }
@@ -76,20 +86,71 @@ export function StoreProductsImportDialog({
         <DialogHeader className='text-start'>
           <DialogTitle>Import Store Products</DialogTitle>
           <DialogDescription>
-            Import store products quickly from a CSV file.
+            Import store products quickly from shop.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form id='store-products-import-form' onSubmit={form.handleSubmit(onSubmit)}>
+          <form
+            id='store-products-import-form'
+            onSubmit={form.handleSubmit(onSubmit)}
+          >
             <FormField
               control={form.control}
-              name='file'
-              render={() => (
+              name='files'
+              render={({ field }) => (
                 <FormItem className='my-2'>
-                  <FormLabel>File</FormLabel>
-                  <FormControl>
-                    <Input type='file' {...fileRef} className='h-8 py-0' />
-                  </FormControl>
+                  <FormLabel>shops</FormLabel>
+                  <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant='outline'
+                          role='combobox'
+                          className={cn(
+                            'h-8 w-full justify-between font-normal',
+                            !field.value || field.value.length === 0
+                              ? 'text-muted-foreground'
+                              : ''
+                          )}
+                        >
+                          {field.value && field.value.length > 0
+                            ? `${field.value.length} file(s) selected`
+                            : 'Select shops...'}
+                          <ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className='w-[--radix-popover-trigger-width] p-0'
+                      align='start'
+                    >
+                      <div className='max-h-[300px] overflow-y-auto p-1'>
+                        {fileOptions.map((file) => (
+                          <div
+                            key={file.id}
+                            className='hover:bg-accent flex items-center space-x-2 rounded-sm px-2 py-1.5'
+                          >
+                            <Checkbox
+                              checked={Array.isArray(field.value) && field.value.includes(file.id)}
+                              onCheckedChange={(checked) => {
+                                const currentValue = Array.isArray(field.value) ? field.value : []
+                                if (checked) {
+                                  field.onChange([...currentValue, file.id])
+                                } else {
+                                  field.onChange(
+                                    currentValue.filter((id: string) => id !== file.id)
+                                  )
+                                }
+                              }}
+                            />
+                            <label className='flex-1 cursor-pointer text-sm font-normal'>
+                              {file.name}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -101,11 +162,10 @@ export function StoreProductsImportDialog({
             <Button variant='outline'>Close</Button>
           </DialogClose>
           <Button type='submit' form='store-products-import-form'>
-            Import
+            Confirm
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
-

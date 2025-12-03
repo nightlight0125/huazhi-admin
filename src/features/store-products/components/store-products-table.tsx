@@ -21,11 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DataTablePagination } from '@/components/data-table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type StoreProduct } from '../data/schema'
+import { ConnectProductsConfirmDialog } from './connect-products-confirm-dialog'
 import { DataTableBulkActions } from './data-table-bulk-actions'
-import { storeProductsColumns as columns } from './store-products-columns'
-import { StoreProductsToolbar } from './store-products-toolbar'
+import { ProductsConnectionDialog } from './products-connection-dialog'
+import { createStoreProductsColumns } from './store-products-columns'
 
 const route = getRouteApi('/_authenticated/store-products/')
 
@@ -37,7 +38,11 @@ export function StoreProductsTable({ data }: DataTableProps) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    associateStatus: false,
+  })
+  const [connectDialogOpen, setConnectDialogOpen] = useState(false)
+  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false)
 
   // Synced with URL states (updated to match route search schema defaults)
   const {
@@ -54,6 +59,31 @@ export function StoreProductsTable({ data }: DataTableProps) {
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
+  })
+
+  const handleConnectProducts = (_productId: string) => {
+    setConnectDialogOpen(true)
+  }
+
+  const handleConfirmConnect = () => {
+    setConnectDialogOpen(false)
+    // 不在这里关闭，让确认对话框打开连接对话框
+  }
+
+  const handleOpenConnectionDialog = () => {
+    setConnectionDialogOpen(true)
+  }
+
+  const handleConnectionConfirm = (
+    connections: Array<{ storeProductId: string; teemDropProductId: string }>
+  ) => {
+    console.log('Product connections:', connections)
+    // TODO: 实现连接产品的逻辑
+    setConnectionDialogOpen(false)
+  }
+
+  const columns = createStoreProductsColumns({
+    onConnectProducts: handleConnectProducts,
   })
 
   const table = useReactTable({
@@ -96,8 +126,40 @@ export function StoreProductsTable({ data }: DataTableProps) {
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='Product Name'
+        searchKey='name'
+        filters={[
+          {
+            columnId: 'storeName',
+            title: 'Select Shop',
+            options: [
+              { label: 'Shop 1', value: 'Shop 1' },
+              { label: 'Shop 2', value: 'Shop 2' },
+              { label: 'Shop 3', value: 'Shop 3' },
+            ],
+          },
+          {
+            columnId: 'associateStatus',
+            title: 'Associate Status',
+            options: [
+              { label: 'Associated', value: 'associated' },
+              { label: 'Not Associated', value: 'not-associated' },
+              { label: 'Pending', value: 'pending' },
+            ],
+          },
+          {
+            columnId: 'status',
+            title: 'Status',
+            options: [
+              { label: 'Active', value: 'active' },
+              { label: 'Inactive', value: 'inactive' },
+            ],
+          },
+        ]}
+      />
       <div className='overflow-hidden rounded-md border'>
-        <StoreProductsToolbar table={table} />
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -154,6 +216,17 @@ export function StoreProductsTable({ data }: DataTableProps) {
       </div>
       <DataTablePagination table={table} />
       <DataTableBulkActions table={table} />
+      <ConnectProductsConfirmDialog
+        open={connectDialogOpen}
+        onOpenChange={setConnectDialogOpen}
+        onConfirm={handleConfirmConnect}
+        onOpenConnectionDialog={handleOpenConnectionDialog}
+      />
+      <ProductsConnectionDialog
+        open={connectionDialogOpen}
+        onOpenChange={setConnectionDialogOpen}
+        onConfirm={handleConnectionConfirm}
+      />
     </div>
   )
 }

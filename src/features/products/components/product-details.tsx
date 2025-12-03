@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { type BrandItem } from '@/features/brands/data/schema'
 import { likedProductsData } from '@/features/liked-products/data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
@@ -77,6 +78,10 @@ export function ProductDetails() {
     useState('shopify')
   const [selectedShippingMethod, setSelectedShippingMethod] =
     useState('tdpacket-electro')
+  const [isShippingOptionsDialogOpen, setIsShippingOptionsDialogOpen] =
+    useState(false)
+  const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
+  const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false)
 
   // 颜色选项
   const colorOptions = ['White', 'Pink', 'Purple', 'Dark Green', 'Black']
@@ -86,6 +91,30 @@ export function ProductDetails() {
     if (productData) {
       navigator.clipboard.writeText(productData.sku)
       // 可以添加toast提示
+    }
+  }
+
+  // 处理 Buy Sample 按钮点击：先检查地址（这里默认存在），弹出提示后再跳转
+  const handleBuySampleClick = () => {
+    const hasAddress = true
+
+    if (hasAddress) {
+      setIsAddressDialogOpen(true)
+    } else {
+      // 这里预留无地址时的处理，例如跳转到地址管理页
+      // navigate({ to: '/account/address' })
+    }
+  }
+
+  // 处理 Buy Stock 按钮点击：先检查仓库（这里默认存在），弹出提示后再跳转
+  const handleBuyStockClick = () => {
+    const hasWarehouse = true
+
+    if (hasWarehouse) {
+      setIsWarehouseDialogOpen(true)
+    } else {
+      // 这里预留无仓库时的处理，例如跳转到仓库管理页
+      // navigate({ to: '/warehouse' })
     }
   }
 
@@ -315,7 +344,10 @@ export function ProductDetails() {
                     {/* 销售平台、发货地和物流方式 - 水平布局 */}
                     <div className='flex items-start gap-1.5 border-y py-3'>
                       {/* Selling On */}
-                      <div className='flex flex-1 items-center gap-1.5'>
+                      <div
+                        className='flex flex-1 cursor-pointer items-center gap-1.5'
+                        onClick={() => setIsShippingOptionsDialogOpen(true)}
+                      >
                         <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
                           <Store className='h-3.5 w-3.5 text-gray-600' />
                         </div>
@@ -328,7 +360,7 @@ export function ProductDetails() {
                             value={selectedSellingPlatform}
                             onValueChange={setSelectedSellingPlatform}
                           >
-                            <SelectTrigger className='h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
+                            <SelectTrigger className='pointer-events-none h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -346,7 +378,10 @@ export function ProductDetails() {
                       <div className='h-8 w-px shrink-0 bg-gray-200' />
 
                       {/* Ship To */}
-                      <div className='flex flex-1 items-center gap-1.5'>
+                      <div
+                        className='flex flex-1 cursor-pointer items-center gap-1.5'
+                        onClick={() => setIsShippingOptionsDialogOpen(true)}
+                      >
                         <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
                           <Truck className='h-3.5 w-3.5 text-gray-600' />
                         </div>
@@ -359,7 +394,7 @@ export function ProductDetails() {
                             value={selectedTo}
                             onValueChange={setSelectedTo}
                           >
-                            <SelectTrigger className='h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
+                            <SelectTrigger className='pointer-events-none h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
                               <SelectValue placeholder='选择目的地' />
                             </SelectTrigger>
                             <SelectContent>
@@ -547,9 +582,7 @@ export function ProductDetails() {
                   variant='outline'
                   className='w-full'
                   size='lg'
-                  onClick={() =>
-                    navigate({ to: `/products/${productData.id}/purchase` })
-                  }
+                  onClick={handleBuySampleClick}
                 >
                   <ShoppingCart className='mr-2 h-4 w-4' />
                   Buy Sample
@@ -559,7 +592,7 @@ export function ProductDetails() {
                   variant='outline'
                   className='w-full'
                   size='lg'
-                  onClick={() => setIsBrandCustomizationOpen(true)}
+                  onClick={handleBuyStockClick}
                 >
                   <Tag className='mr-2 h-4 w-4' />
                   Buy Stock
@@ -645,6 +678,113 @@ export function ProductDetails() {
         onDisconnect={handleBrandDisconnect}
         onView={handleBrandView}
       />
+
+      {/* 物流选择弹框 */}
+      <ShippingOptionsDialog
+        open={isShippingOptionsDialogOpen}
+        onOpenChange={setIsShippingOptionsDialogOpen}
+        defaultTo={
+          selectedTo === 'usa'
+            ? 'United States'
+            : selectedTo === 'uk'
+              ? 'United Kingdom'
+              : selectedTo === 'canada'
+                ? 'Canada'
+                : 'France'
+        }
+        defaultQuantity={selectedQuantity}
+        onSelect={(optionId) => {
+          console.log('Selected shipping option:', optionId)
+          // 这里可以处理选择后的逻辑
+        }}
+      />
+
+      {/* 地址已存在提示弹框 */}
+      <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Shipping Address</DialogTitle>
+          </DialogHeader>
+          <p className='text-muted-foreground text-sm'>
+            已存在收货地址，将使用该地址下单样品。
+          </p>
+          <div className='flex justify-end gap-2 pt-4'>
+            <Button
+              variant='outline'
+              onClick={() => setIsAddressDialogOpen(false)}
+            >
+              cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsAddressDialogOpen(false)
+                navigate({ to: `/products/PROD-1513/purchase` as any })
+              }}
+            >
+              next
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 仓库已选择提示弹框 */}
+      <Dialog
+        open={isWarehouseDialogOpen}
+        onOpenChange={setIsWarehouseDialogOpen}
+      >
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Warehouse</DialogTitle>
+          </DialogHeader>
+          <p className='text-muted-foreground text-sm'>
+            已选择发货仓库，将使用该仓库准备库存。
+          </p>
+          <div className='flex justify-end gap-2 pt-4'>
+            <Button
+              variant='outline'
+              onClick={() => setIsWarehouseDialogOpen(false)}
+            >
+              cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsWarehouseDialogOpen(false)
+                navigate({ to: `/products/PROD-1513/purchase` as any })
+              }}
+            >
+              next
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 地址已存在提示弹框 */}
+      <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Shipping Address</DialogTitle>
+          </DialogHeader>
+          <p className='text-muted-foreground text-sm'>
+            已存在收货地址，将使用该地址下单样品。
+          </p>
+          <div className='flex justify-end gap-2 pt-4'>
+            <Button
+              variant='outline'
+              onClick={() => setIsAddressDialogOpen(false)}
+            >
+              cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsAddressDialogOpen(false)
+                navigate({ to: `/products/PROD-1513/purchase` as any })
+              }}
+            >
+              next
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

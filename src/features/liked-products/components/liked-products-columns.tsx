@@ -1,8 +1,8 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Eye, Store, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
-import { Eye, Trash2 } from 'lucide-react'
 import { type LikedProduct } from '../data/schema'
 
 export const likedProductsColumns: ColumnDef<LikedProduct>[] = [
@@ -42,14 +42,14 @@ export const likedProductsColumns: ColumnDef<LikedProduct>[] = [
           <img
             src={product.image}
             alt={product.name}
-            className='h-12 w-12 rounded object-cover shrink-0'
+            className='h-12 w-12 shrink-0 rounded object-cover'
           />
-          <div className='flex-1 min-w-0'>
+          <div className='min-w-0 flex-1'>
             <div className='flex items-start gap-1'>
-              <p className='text-xs leading-tight line-clamp-2'>
+              <p className='line-clamp-2 text-xs leading-tight'>
                 {product.description}
               </p>
-              <Eye className='h-3 w-3 shrink-0 text-gray-400 mt-0.5' />
+              <Eye className='mt-0.5 h-3 w-3 shrink-0 text-gray-400' />
             </div>
           </div>
         </div>
@@ -111,20 +111,33 @@ export const likedProductsColumns: ColumnDef<LikedProduct>[] = [
     header: () => <div className='text-xs font-medium'>Operate</div>,
     cell: ({ row }) => {
       return (
-        <Button
-          variant='link'
-          size='sm'
-          className='h-auto p-0 text-xs text-blue-600 hover:text-blue-700'
-          onClick={() => {
-            // Handle delete action
-            console.log('Delete product:', row.original.id)
-          }}
-        >
-          <Trash2 className='mr-1 h-3 w-3' />
-          Delete
-        </Button>
+        <>
+          <Button
+            variant='link'
+            size='sm'
+            className='h-auto p-0 text-xs text-red-600 hover:text-red-700'
+            onClick={() => {
+              // Handle delete action
+              console.log('Delete product:', row.original.id)
+            }}
+          >
+            <Trash2 className='mr-1 h-3 w-3' />
+            Delete
+          </Button>
+          <Button
+            variant='link'
+            size='sm'
+            className='h-auto p-0 text-xs text-blue-600 hover:text-blue-700'
+            onClick={() => {
+              // Handle delete action
+              console.log('Delete product:', row.original.id)
+            }}
+          >
+            <Store className='mr-1 h-3 w-3' />
+            publish store
+          </Button>
+        </>
       )
     },
   },
 ]
-

@@ -22,10 +22,10 @@ import {
   TableRow,
   Table as UITable,
 } from '@/components/ui/table'
-import { DataTablePagination } from '@/components/data-table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type InventoryItem } from '../data/schema'
+import { InventoryBulkActions } from './inventory-bulk-actions'
 import { inventoryColumns } from './inventory-columns'
-import { InventoryToolbar } from './inventory-toolbar'
 
 const route = getRouteApi('/_authenticated/my-inventory/')
 
@@ -96,7 +96,19 @@ export function InventoryTable({ data }: InventoryTableProps) {
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
-      <InventoryToolbar table={table as Table<InventoryItem>} />
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='please Enter SPU'
+        extraSearch={{
+          columnId: 'warehouse',
+          placeholder: 'please Enter Warehouse',
+        }}
+        extraSearch2={{
+          columnId: 'sku',
+          placeholder: 'please Enter SKU',
+        }}
+      />
+      {/* <InventoryToolbar table={table as Table<InventoryItem>} /> */}
       <div className='overflow-hidden rounded-md border'>
         <UITable>
           <TableHeader>
@@ -146,6 +158,7 @@ export function InventoryTable({ data }: InventoryTableProps) {
         </UITable>
       </div>
       <DataTablePagination table={table} />
+      <InventoryBulkActions table={table as Table<InventoryItem>} />
     </div>
   )
 }

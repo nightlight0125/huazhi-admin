@@ -1,12 +1,75 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Edit } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
-import { Edit } from 'lucide-react'
 import { type Store } from '../data/schema'
+
+// 状态到颜色的映射函数
+function getStatusVariant(
+  status: string
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  const lowerStatus = status.toLowerCase()
+
+  // Store Status 映射
+  if (
+    lowerStatus.includes('active') ||
+    lowerStatus.includes('authorized') ||
+    lowerStatus.includes('connected')
+  ) {
+    return 'default' // 绿色/主色
+  }
+  if (
+    lowerStatus.includes('inactive') ||
+    lowerStatus.includes('disconnected')
+  ) {
+    return 'secondary' // 灰色
+  }
+  if (
+    lowerStatus.includes('suspended') ||
+    lowerStatus.includes('unauthorized') ||
+    lowerStatus.includes('failed')
+  ) {
+    return 'destructive' // 红色
+  }
+  if (lowerStatus.includes('pending') || lowerStatus.includes('processing')) {
+    return 'outline' // 边框样式，可以自定义颜色
+  }
+
+  return 'secondary' // 默认灰色
+}
+
+// 获取状态的自定义样式类
+function getStatusClassName(status: string): string {
+  const lowerStatus = status.toLowerCase()
+
+  if (
+    lowerStatus.includes('active') ||
+    lowerStatus.includes('authorized') ||
+    lowerStatus.includes('connected')
+  ) {
+    return 'bg-green-500/10 text-green-700 border-green-500/20 dark:bg-green-500/20 dark:text-green-400'
+  }
+  if (lowerStatus.includes('pending') || lowerStatus.includes('processing')) {
+    return 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400'
+  }
+  if (
+    lowerStatus.includes('suspended') ||
+    lowerStatus.includes('unauthorized') ||
+    lowerStatus.includes('failed')
+  ) {
+    return 'bg-red-500/10 text-red-700 border-red-500/20 dark:bg-red-500/20 dark:text-red-400'
+  }
+
+  return '' // 使用默认的 secondary 样式
+}
 
 export const storesColumns: ColumnDef<Store>[] = [
   {
     id: 'select',
+    size: 40,
+    minSize: 40,
+    maxSize: 40,
     header: ({ table }) => (
       <Checkbox
         checked={
@@ -31,12 +94,17 @@ export const storesColumns: ColumnDef<Store>[] = [
   },
   {
     accessorKey: 'storeName',
+    size: 220,
+    minSize: 100,
+    maxSize: 100,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store Name' />
     ),
     cell: ({ row }) => (
-      <div className='flex flex-col'>
-        <span className='font-medium'>{row.getValue('storeName')}</span>
+      <div className='flex max-w-[260px] flex-col text-left break-words whitespace-normal'>
+        <span className='leading-snug font-medium'>
+          {row.getValue('storeName')}
+        </span>
         <Edit className='text-muted-foreground mt-1 h-3 w-3' />
       </div>
     ),
@@ -46,9 +114,7 @@ export const storesColumns: ColumnDef<Store>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store ID' />
     ),
-    cell: ({ row }) => (
-      <div className='text-sm'>{row.getValue('storeId')}</div>
-    ),
+    cell: ({ row }) => <div className='text-sm'>{row.getValue('storeId')}</div>,
   },
   {
     accessorKey: 'authorizationTime',
@@ -88,36 +154,46 @@ export const storesColumns: ColumnDef<Store>[] = [
   },
   {
     accessorKey: 'storeStatus',
+    size: 130,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store Status' />
     ),
     cell: ({ row }) => {
       const status = row.getValue('storeStatus') as string
+      const variant = getStatusVariant(status)
+      const customClassName = getStatusClassName(status)
+
       return (
-        <span className='text-green-600'>{status}</span>
+        <Badge variant={variant} className={customClassName || undefined}>
+          {status}
+        </Badge>
       )
     },
   },
   {
     accessorKey: 'authorizationStatus',
+    size: 160,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Authorization Status' />
     ),
     cell: ({ row }) => {
       const status = row.getValue('authorizationStatus') as string
+      const variant = getStatusVariant(status)
+      const customClassName = getStatusClassName(status)
+
       return (
-        <span className='text-green-600'>{status}</span>
+        <Badge variant={variant} className={customClassName || undefined}>
+          {status}
+        </Badge>
       )
     },
   },
   {
     accessorKey: 'platformType',
+    size: 140,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Platform Type' />
     ),
-    cell: ({ row }) => (
-      <div>{row.getValue('platformType')}</div>
-    ),
+    cell: ({ row }) => <div>{row.getValue('platformType')}</div>,
   },
 ]
-
