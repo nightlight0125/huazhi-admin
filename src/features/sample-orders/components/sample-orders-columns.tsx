@@ -1,43 +1,50 @@
 import { format } from 'date-fns'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Image as ImageIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { type SampleOrder } from '../data/schema'
 
 export const createSampleOrdersColumns = (options?: {
-  onSelectOrder?: (orderId: string) => void
   onPay?: (orderId: string) => void
   onEditAddress?: (orderId: string) => void
   onAddPackage?: (orderId: string) => void
   onDelete?: (orderId: string) => void
 }): ColumnDef<SampleOrder>[] => {
-  const { onSelectOrder, onPay, onEditAddress, onAddPackage, onDelete } =
-    options || {}
+  const { onPay, onEditAddress, onAddPackage, onDelete } = options || {}
 
   return [
     {
       id: 'select',
-      header: '',
-      cell: ({ row }) => {
-        const order = row.original
-        return (
-          <RadioGroup value={row.id}>
-            <div className='flex items-center space-x-2'>
-              <RadioGroupItem
-                value={order.id}
-                id={order.id}
-                onClick={() => onSelectOrder?.(order.id)}
-              />
-              <Label htmlFor={order.id} className='sr-only'>
-                Select order
-              </Label>
-            </div>
-          </RadioGroup>
-        )
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label='选择全部'
+          className='translate-y-[2px]'
+        />
+      ),
+      meta: {
+        className: cn('sticky md:table-cell start-0 z-10 rounded-tl-[inherit]'),
       },
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label='选择行'
+          className='translate-y-[2px]'
+        />
+      ),
       enableSorting: false,
       enableHiding: false,
       size: 50,
@@ -151,9 +158,21 @@ export const createSampleOrdersColumns = (options?: {
       accessorKey: 'remark',
       header: 'Remark',
       cell: ({ row }) => {
-        return <div className='text-sm'>{row.getValue('remark') || '---'}</div>
+        const remark = (row.getValue('remark') as string) || '---'
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='text-muted-foreground max-w-[80px] truncate text-xs'>
+                {remark}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className='max-w-xs text-xs'>
+              {remark}
+            </TooltipContent>
+          </Tooltip>
+        )
       },
-      size: 150,
+      size: 80,
     },
     {
       accessorKey: 'status',
@@ -239,6 +258,25 @@ export const createSampleOrdersColumns = (options?: {
       },
       enableSorting: false,
       size: 140,
+    },
+    // Hidden columns for filtering only
+    {
+      id: 'productName',
+      accessorFn: (row) => row.productList?.[0]?.productName || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+    {
+      id: 'logistics',
+      accessorFn: (row) => row.shippingMethod || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
     },
   ]
 }

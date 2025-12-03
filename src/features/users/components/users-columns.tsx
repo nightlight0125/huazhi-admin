@@ -39,7 +39,7 @@ export const usersColumns: ColumnDef<User>[] = [
   {
     accessorKey: 'username',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='用户名' />
+      <DataTableColumnHeader column={column} title='username' />
     ),
     cell: ({ row }) => (
       <LongText className='max-w-36 ps-3'>{row.getValue('username')}</LongText>
@@ -55,7 +55,7 @@ export const usersColumns: ColumnDef<User>[] = [
   {
     id: 'fullName',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='姓名' />
+      <DataTableColumnHeader column={column} title='fullName' />
     ),
     cell: ({ row }) => {
       const { firstName, lastName } = row.original
@@ -67,7 +67,7 @@ export const usersColumns: ColumnDef<User>[] = [
   {
     accessorKey: 'email',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='邮箱' />
+      <DataTableColumnHeader column={column} title='email' />
     ),
     cell: ({ row }) => (
       <div className='w-fit text-nowrap'>{row.getValue('email')}</div>
@@ -76,7 +76,7 @@ export const usersColumns: ColumnDef<User>[] = [
   {
     accessorKey: 'phoneNumber',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='手机号' />
+      <DataTableColumnHeader column={column} title='phoneNumber' />
     ),
     cell: ({ row }) => <div>{row.getValue('phoneNumber')}</div>,
     enableSorting: false,
@@ -84,17 +84,18 @@ export const usersColumns: ColumnDef<User>[] = [
   {
     accessorKey: 'status',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='状态' />
+      <DataTableColumnHeader column={column} title='status' />
     ),
     cell: ({ row }) => {
       const { status } = row.original
       const badgeColor = callTypes.get(status)
-      const statusText = {
-        active: '活跃',
-        inactive: '非活跃',
-        invited: '已邀请',
-        suspended: '已暂停'
-      }[status] || status
+      const statusText =
+        {
+          active: '活跃',
+          inactive: '非活跃',
+          invited: '已邀请',
+          suspended: '已暂停',
+        }[status] || status
       return (
         <div className='flex space-x-2'>
           <Badge variant='outline' className={cn('capitalize', badgeColor)}>
@@ -112,7 +113,7 @@ export const usersColumns: ColumnDef<User>[] = [
   {
     accessorKey: 'role',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='角色' />
+      <DataTableColumnHeader column={column} title='role' />
     ),
     cell: ({ row }) => {
       const { role } = row.original

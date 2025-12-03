@@ -21,10 +21,9 @@ import {
   TableRow,
   Table as UITable,
 } from '@/components/ui/table'
-import { DataTablePagination } from '@/components/data-table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type Logistics } from '../data/schema'
 import { createLogisticsColumns } from './logistics-columns'
-import { LogisticsToolbar } from './logistics-toolbar'
 
 const route = getRouteApi('/_authenticated/logistics/')
 
@@ -55,7 +54,11 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
     columnFilters: [
       { columnId: 'shippingFrom', searchKey: 'shippingFrom', type: 'array' },
       { columnId: 'shippingTo', searchKey: 'shippingTo', type: 'array' },
-      { columnId: 'shippingMethod', searchKey: 'shippingMethod', type: 'array' },
+      {
+        columnId: 'shippingMethod',
+        searchKey: 'shippingMethod',
+        type: 'array',
+      },
     ],
   })
 
@@ -80,7 +83,9 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
       const sku = String(row.getValue('sku')).toLowerCase()
       const shippingFrom = String(row.getValue('shippingFrom')).toLowerCase()
       const shippingTo = String(row.getValue('shippingTo')).toLowerCase()
-      const shippingMethod = String(row.getValue('shippingMethod')).toLowerCase()
+      const shippingMethod = String(
+        row.getValue('shippingMethod')
+      ).toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
 
       return (
@@ -106,40 +111,24 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  const handleSearch = (filters: {
-    sku?: string
-    shippingFrom?: string
-    shippingTo?: string
-    shippingMethod?: string
-  }) => {
-    // Apply global filter for text search
-    const globalSearchValue =
-      filters.sku || filters.shippingFrom || filters.shippingTo || filters.shippingMethod
-    table.setGlobalFilter(globalSearchValue || '')
-
-    // Apply column filters for specific fields
-    const newColumnFilters = []
-    if (filters.shippingFrom) {
-      newColumnFilters.push({ id: 'shippingFrom', value: filters.shippingFrom })
-    }
-    if (filters.shippingTo) {
-      newColumnFilters.push({ id: 'shippingTo', value: filters.shippingTo })
-    }
-    if (filters.shippingMethod) {
-      newColumnFilters.push({ id: 'shippingMethod', value: filters.shippingMethod })
-    }
-    table.setColumnFilters(newColumnFilters)
-  }
-
-  const handleReset = () => {
-    table.resetColumnFilters()
-    table.setGlobalFilter('')
-  }
-
   return (
     <div className='space-y-4'>
-      <LogisticsToolbar onSearch={handleSearch} onReset={handleReset} />
-
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='please Enter SKU'
+        extraSearch={{
+          columnId: 'shippingFrom',
+          placeholder: 'please Enter Shipping From',
+        }}
+        extraSearch2={{
+          columnId: 'shippingTo',
+          placeholder: 'please Enter Shipping To',
+        }}
+        extraSearch3={{
+          columnId: 'shippingMethod',
+          placeholder: 'please Enter Shipping Method',
+        }}
+      />
       <div className='overflow-hidden rounded-md border'>
         <UITable>
           <TableHeader>
@@ -192,4 +181,3 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
     </div>
   )
 }
-

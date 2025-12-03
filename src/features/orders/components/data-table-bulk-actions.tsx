@@ -1,26 +1,19 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { 
-  Trash2, 
-  MessageSquare, 
-  Pause, 
-  Play, 
-  Package, 
-  Truck, 
-  X, 
-  Download, 
-  FileDown, 
-  Merge, 
-  CreditCard 
-} from 'lucide-react'
+import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
 import { useOrders } from './orders-provider'
 import { OrdersBulkActionsDialog } from './orders-bulk-actions-dialog'
 import { OrdersMergeDialog } from './orders-merge-dialog'
@@ -54,31 +47,28 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
     onConfirm: () => {}
   })
 
-  if (selectedRows.length === 0) {
-    return null
-  }
-
   const handleBulkAction = (action: string) => {
-    const selectedOrderIds = selectedRows.map(row => row.original.id)
-    
+    const selectedOrderIds = selectedRows.map((row) => row.original.id)
+
     // 对于简单的操作，直接执行
-    if (['download_invoice', 'export_orders'].includes(action)) {
+    if (['upload', 'export_orders', 'sort-by-date', 'sort-by-status', 'sort-by-amount'].includes(action)) {
       console.log(`批量操作: ${action}`, selectedOrderIds)
       // 这里应该调用相应的 API
+      table.resetRowSelection()
       return
     }
-    
+
     // 对于特殊的操作，打开专门的对话框
     if (action === 'merge_orders') {
       setMergeDialog(true)
       return
     }
-    
+
     if (action === 'batch_payment') {
       setPaymentDialog(true)
       return
     }
-    
+
     // 对于需要简单确认的操作
     if (['quote', 'pause', 'resume', 'free_stock', 'cancel_payment'].includes(action)) {
       const actionNames = {
@@ -86,9 +76,9 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
         pause: '暂停订单',
         resume: '恢复订单',
         free_stock: '使用自由库存',
-        cancel_payment: '取消付款'
+        cancel_payment: '取消付款',
       }
-      
+
       setConfirmDialog({
         open: true,
         title: `批量${actionNames[action as keyof typeof actionNames]}`,
@@ -97,116 +87,127 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
         onConfirm: () => {
           console.log(`批量操作: ${action}`, selectedOrderIds)
           // 这里应该调用相应的 API
-        }
+          table.resetRowSelection()
+        },
       })
       return
     }
-    
+
     // 对于其他需要确认的操作，打开通用对话框
     setBulkActionDialog({ open: true, action })
   }
 
   return (
     <>
-      <div className='flex items-center gap-2'>
-        <span className='text-sm text-muted-foreground'>
-          已选择 {selectedRows.length} 个订单
-        </span>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant='outline' size='sm' className='h-8'>
-              批量操作
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align='end' className='w-[200px]'>
-            <DropdownMenuItem onClick={() => handleBulkAction('quote')}>
-              <MessageSquare className='mr-2 h-4 w-4' />
-              询问报价
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('cancel')}>
-              <X className='mr-2 h-4 w-4' />
-              取消/重置
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('pause')}>
-              <Pause className='mr-2 h-4 w-4' />
-              订单暂停
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('resume')}>
-              <Play className='mr-2 h-4 w-4' />
-              订单恢复
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('free_stock')}>
-              <Package className='mr-2 h-4 w-4' />
-              使用自由库存
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('change_shipping')}>
-              <Truck className='mr-2 h-4 w-4' />
-              更改发货方式
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('cancel_payment')}>
-              <X className='mr-2 h-4 w-4' />
-              取消付款
-            </DropdownMenuItem>
-            
-            <DropdownMenuSeparator />
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('download_invoice')}>
-              <Download className='mr-2 h-4 w-4' />
-              下载发票
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('export_orders')}>
-              <FileDown className='mr-2 h-4 w-4' />
-              导出订单
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('merge_orders')}>
-              <Merge className='mr-2 h-4 w-4' />
-              合并订单
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={() => handleBulkAction('batch_payment')}>
-              <CreditCard className='mr-2 h-4 w-4' />
-              批量付款
-            </DropdownMenuItem>
-            
-            <DropdownMenuSeparator />
-            
-            <DropdownMenuItem 
-              onClick={() => setOpen('delete')}
-              className='text-destructive focus:text-destructive'
+      <BulkActionsToolbar table={table} entityName='order'>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant='outline'
+              size='icon'
+              onClick={() => handleBulkAction('upload')}
+              className='size-8'
+              aria-label='Upload or move up'
+              title='Upload or move up'
             >
-              <Trash2 className='mr-2 h-4 w-4' />
-              删除订单
+              <CircleArrowUp />
+              <span className='sr-only'>Upload or move up</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Upload or move up</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant='outline'
+                  size='icon'
+                  className='size-8'
+                  aria-label='Sort or reorder'
+                  title='Sort or reorder'
+                >
+                  <ArrowUpDown />
+                  <span className='sr-only'>Sort or reorder</span>
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Sort or reorder</p>
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent sideOffset={14}>
+            <DropdownMenuItem onClick={() => handleBulkAction('sort-by-date')}>
+              Sort by Date
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleBulkAction('sort-by-status')}>
+              Sort by Status
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleBulkAction('sort-by-amount')}>
+              Sort by Amount
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant='outline'
+              size='icon'
+              onClick={() => handleBulkAction('export_orders')}
+              className='size-8'
+              aria-label='Export orders'
+              title='Export orders'
+            >
+              <Download />
+              <span className='sr-only'>Export orders</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Export orders</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant='destructive'
+              size='icon'
+              onClick={() => setOpen('delete')}
+              className='size-8'
+              aria-label='Delete selected orders'
+              title='Delete selected orders'
+            >
+              <Trash2 />
+              <span className='sr-only'>Delete selected orders</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Delete selected orders</p>
+          </TooltipContent>
+        </Tooltip>
+      </BulkActionsToolbar>
 
       <OrdersBulkActionsDialog
         open={bulkActionDialog.open}
         onOpenChange={(open) => setBulkActionDialog({ open, action: '' })}
         action={bulkActionDialog.action}
-        selectedOrders={selectedRows.map(row => row.original)}
+        selectedOrders={selectedRows.map((row) => row.original)}
       />
 
       <OrdersMergeDialog
         open={mergeDialog}
         onOpenChange={setMergeDialog}
-        selectedOrders={selectedRows.map(row => row.original)}
+        selectedOrders={selectedRows.map((row) => row.original)}
       />
 
       <OrdersBatchPaymentDialog
         open={paymentDialog}
         onOpenChange={setPaymentDialog}
-        selectedOrders={selectedRows.map(row => row.original)}
+        selectedOrders={selectedRows.map((row) => row.original)}
       />
 
       <OrdersConfirmDialog

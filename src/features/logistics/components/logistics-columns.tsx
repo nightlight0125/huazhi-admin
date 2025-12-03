@@ -1,10 +1,39 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type Logistics } from '../data/schema'
 
 export const createLogisticsColumns = (): ColumnDef<Logistics>[] => {
   return [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label='选择全部'
+          className='translate-y-[2px]'
+        />
+      ),
+      meta: {
+        className: cn('sticky md:table-cell start-0 z-10 rounded-tl-[inherit]'),
+      },
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label='选择行'
+          className='translate-y-[2px]'
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: 'sku',
       header: ({ column }) => (
