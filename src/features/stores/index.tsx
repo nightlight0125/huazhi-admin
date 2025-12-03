@@ -12,11 +12,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Card, CardContent } from '@/components/ui/card'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { stores } from './data/stores'
 import { type Store } from './data/schema'
 import { StoreIcon } from './components/store-icons'
@@ -87,11 +85,7 @@ export function Stores() {
     <>
       {/* ===== Top Heading ===== */}
       <Header>
-        <div className='ms-auto flex items-center gap-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
       {/* ===== Content ===== */}

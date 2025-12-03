@@ -1,4 +1,5 @@
-import type { InputHTMLAttributes, ReactNode } from 'react'
+import type { ChangeEvent, InputHTMLAttributes, ReactNode } from 'react'
+import { useRef } from 'react'
 import { Image as ImageIcon, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,8 @@ type ImageSearchInputProps = {
   onChange?: InputHTMLAttributes<HTMLInputElement>['onChange']
   /** 点击图片搜索按钮时触发 */
   onImageSearchClick?: () => void
+  /** 选择图片文件后的回调 */
+  onFileSelect?: (files: FileList) => void
   /** 自定义尾部内容（例如上传组件），不传则使用默认图片图标按钮 */
   suffix?: ReactNode
 }
@@ -31,8 +34,21 @@ export function ImageSearchInput({
   value,
   onChange,
   onImageSearchClick,
+  onFileSelect,
   suffix,
 }: ImageSearchInputProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    onFileSelect?.(files)
+
+    // 允许选择同一文件多次
+    event.target.value = ''
+  }
+
   return (
     <div
       className={cn(
@@ -57,16 +73,28 @@ export function ImageSearchInput({
         {suffix ? (
           suffix
         ) : (
+          <>
+            <input
+              ref={fileInputRef}
+              type='file'
+              accept='image/*'
+              className='hidden'
+              onChange={handleFileChange}
+            />
           <Button
             type='button'
             variant='ghost'
             size='icon'
             className='h-7 w-7 rounded-full'
-            onClick={onImageSearchClick}
+              onClick={() => {
+                fileInputRef.current?.click()
+                onImageSearchClick?.()
+              }}
           >
             <ImageIcon className='h-4 w-4' />
             <span className='sr-only'>Search by image</span>
           </Button>
+          </>
         )}
       </div>
     </div>

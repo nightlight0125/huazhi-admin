@@ -45,7 +45,7 @@ export const createSupportTicketsColumns = (options?: {
     {
       accessorKey: 'supportTicketNo',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Support Ticket No.' />
+        <DataTableColumnHeader column={column} title='No.' />
       ),
       cell: ({ row }) => (
         <div className='font-medium'>{row.getValue('supportTicketNo')}</div>
@@ -79,12 +79,14 @@ export const createSupportTicketsColumns = (options?: {
     {
       accessorKey: 'returnQty',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='return amount' />
+        <DataTableColumnHeader column={column} title='Qty' />
       ),
       cell: ({ row }) => (
-        <div className='text-xs'>{row.getValue('returnQty')}</div>
+        <div className='w-10 text-xs text-center'>
+          {row.getValue('returnQty')}
+        </div>
       ),
-      size: 80,
+      size: 40,
     },
     {
       accessorKey: 'storeName',

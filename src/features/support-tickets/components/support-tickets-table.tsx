@@ -177,8 +177,8 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
         </TabsList>
       </Tabs>
 
-      <div className='overflow-hidden rounded-md border'>
-        <UITable>
+      <div className='overflow-x-auto rounded-md border'>
+        <UITable className='min-w-[1100px]'>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

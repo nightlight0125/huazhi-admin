@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { PublishedProductsTable } from './components/published-products-table'
 import { publishedProducts } from './data/data'
 
@@ -16,14 +14,10 @@ export function PublishedProducts() {
   return (
     <>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
-      <Main>
+      <Main fluid>
         <Tabs
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as PublishedStatus)}

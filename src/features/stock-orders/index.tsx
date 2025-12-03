@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { DataTableToolbar } from '@/components/data-table'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { StockOrdersDialogs } from './components/stock-orders-dialogs'
 import { StockOrdersProvider } from './components/stock-orders-provider'
 import { StockOrdersStats } from './components/stock-orders-stats'
@@ -19,11 +17,7 @@ export function StockOrders() {
   return (
     <StockOrdersProvider>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
       <Main fluid>

@@ -14,7 +14,7 @@ export function StoreProducts() {
         <HeaderActions />
       </Header>
 
-      <Main>
+      <Main fluid>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>
           <div>
             <p className='text-muted-foreground'>

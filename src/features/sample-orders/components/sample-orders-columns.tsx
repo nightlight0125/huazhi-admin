@@ -3,7 +3,6 @@ import { type ColumnDef } from '@tanstack/react-table'
 import { Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Tooltip,
@@ -11,6 +10,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { type SampleOrder } from '../data/schema'
+import { SampleOrdersRowActions } from './sample-orders-row-actions'
 
 export const createSampleOrdersColumns = (options?: {
   onPay?: (orderId: string) => void
@@ -65,7 +65,7 @@ export const createSampleOrdersColumns = (options?: {
         const order = row.original
         const firstProduct = order.productList?.[0]
         return (
-          <div className='space-y-2'>
+          <div className='space-y-2 max-w-[200px]'>
             {firstProduct && (
               <>
                 {firstProduct.productImageUrl ? (
@@ -79,9 +79,9 @@ export const createSampleOrdersColumns = (options?: {
                     <ImageIcon className='text-muted-foreground h-8 w-8' />
                   </div>
                 )}
-                <div className='text-sm'>
+                <div className='text-sm break-words leading-snug'>
                   <div>SKU: {order.sku}</div>
-                  <div>
+                  <div className='whitespace-normal'>
                     Variant:{' '}
                     {firstProduct.productVariant
                       ?.map((v) => `${v.name}: ${v.value}`)
@@ -205,59 +205,17 @@ export const createSampleOrdersColumns = (options?: {
     {
       id: 'actions',
       header: 'Action',
-      cell: ({ row }) => {
-        const order = row.original
-        return (
-          <div className='flex flex-col gap-1'>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onPay?.(order.id)
-              }}
-            >
-              Pay
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditAddress?.(order.id)
-              }}
-            >
-              Edit Adress
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onAddPackage?.(order.id)
-              }}
-            >
-              Add Package
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs text-red-600 hover:text-red-700'
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete?.(order.id)
-              }}
-            >
-              Delete
-            </Button>
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <SampleOrdersRowActions
+          row={row}
+          onPay={onPay}
+          onEditAddress={onEditAddress}
+          onAddPackage={onAddPackage}
+          onDelete={onDelete}
+        />
+      ),
       enableSorting: false,
-      size: 140,
+      size: 80,
     },
     // Hidden columns for filtering only
     {

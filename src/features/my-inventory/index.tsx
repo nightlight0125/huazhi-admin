@@ -11,7 +11,7 @@ export function MyInventory() {
         <HeaderActions />
       </Header>
 
-      <Main>
+      <Main fluid>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
           <InventoryTable data={inventoryItems} />
         </div>

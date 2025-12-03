@@ -1,9 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { Header } from '@/components/layout/header'
+import { HeaderActions } from '@/components/header-actions'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { Button } from '@/components/ui/button'
 
 export function PodDesign() {
@@ -21,11 +19,7 @@ export function PodDesign() {
   return (
     <>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
       <Main>
         <div className='flex h-full flex-col'>

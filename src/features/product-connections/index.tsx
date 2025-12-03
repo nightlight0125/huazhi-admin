@@ -1,9 +1,6 @@
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { ProductConnectionsDialogs } from './components/product-connections-dialogs'
 import { ProductConnectionsProvider } from './components/product-connections-provider'
 import { ProductConnectionsTable } from './components/product-connections-table'
@@ -13,15 +10,10 @@ export function ProductConnections() {
   return (
     <ProductConnectionsProvider>
       <Header fixed>
-        <Search />
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
-      <Main>
+      <Main fluid>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>产品连接</h2>

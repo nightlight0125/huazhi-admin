@@ -72,8 +72,12 @@ export const publishedProductsColumns: ColumnDef<PublishedProduct>[] = [
       const product = row.original
       return (
         <div className='space-y-0.5 text-xs'>
-          <div>TD: ${product.tdPrice.toFixed(2)}</div>
-          <div>Your: {product.yourPrice}</div>
+          <div className='font-medium text-green-600'>
+            TD: ${product.tdPrice.toFixed(2)}
+          </div>
+          <div className='font-medium text-green-600'>
+            Your: {product.yourPrice}
+          </div>
         </div>
       )
     },

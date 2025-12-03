@@ -185,7 +185,7 @@ export function ProductsGridTable({
                 </p>
 
                 {/* Price */}
-                <div className='text-base font-bold'>
+                <div className='text-base font-bold text-green-600'>
                   ${item.price.toFixed(2)}
                 </div>
 

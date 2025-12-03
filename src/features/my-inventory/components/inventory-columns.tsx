@@ -38,7 +38,7 @@ export const inventoryColumns: ColumnDef<InventoryItem>[] = [
   {
     accessorKey: 'sku',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='SKU' />
+      <DataTableColumnHeader column={column} title='HZ SKU' />
     ),
     cell: ({ row }) => <div>{row.getValue('sku')}</div>,
   },
@@ -48,29 +48,40 @@ export const inventoryColumns: ColumnDef<InventoryItem>[] = [
       <DataTableColumnHeader column={column} title='Price' />
     ),
     cell: ({ row }) => {
-      const price = parseFloat(row.getValue('price'))
-      return <div>${price.toFixed(2)}</div>
+      const price = row.getValue<number>('price') ?? 0
+      return (
+        <div className='font-medium text-green-600'>
+          ${price.toFixed(2)}
+        </div>
+      )
     },
   },
   {
-    accessorKey: 'QTY',
+    accessorKey: 'warehouse',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Inventory QTY' />
+      <DataTableColumnHeader column={column} title='Warehouse' />
     ),
-    cell: ({ row }) => <div>{row.getValue('inventoryQty')}</div>,
+    cell: ({ row }) => <div>{row.getValue('warehouse')}</div>,
   },
   {
-    accessorKey: 'Available Inventory',
+    accessorKey: 'qty',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Inventory QTY' />
+      <DataTableColumnHeader column={column} title='QTY' />
     ),
-    cell: ({ row }) => <div>{row.getValue('inventoryQty')}</div>,
+    cell: ({ row }) => <div>{row.getValue('qty')}</div>,
   },
   {
-    accessorKey: 'Under Procurement',
+    accessorKey: 'availableInventory',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Inventory QTY' />
+      <DataTableColumnHeader column={column} title='Available Inventory' />
     ),
-    cell: ({ row }) => <div>{row.getValue('inventoryQty')}</div>,
+    cell: ({ row }) => <div>{row.getValue('availableInventory')}</div>,
+  },
+  {
+    accessorKey: 'underProcurement',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Under Procurement' />
+    ),
+    cell: ({ row }) => <div>{row.getValue('underProcurement')}</div>,
   },
 ]

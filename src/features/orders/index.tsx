@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { DataTableToolbar } from '@/components/data-table'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { OrdersDialogs } from './components/orders-dialogs'
 import { OrdersPrimaryButtons } from './components/orders-primary-buttons'
 import { OrdersProvider } from './components/orders-provider'
@@ -29,11 +27,7 @@ export function Orders() {
   return (
     <OrdersProvider>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
       <Main fluid>
@@ -116,8 +110,7 @@ export function Orders() {
             />
           </div>
         )}
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>
-          <div></div>
+        <div className='mb-2 flex flex-wrap items-center justify-end space-y-2 gap-x-4'>
           <OrdersPrimaryButtons />
         </div>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>

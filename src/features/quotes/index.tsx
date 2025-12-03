@@ -1,10 +1,7 @@
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
 import { SectionCards } from '@/components/section-cards'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { QuotesDialogs } from './components/quotes-dialogs'
 import { QuotesPrimaryButtons } from './components/quotes-primary-buttons'
 import { QuotesProvider } from './components/quotes-provider'
@@ -15,15 +12,10 @@ export function Quotes() {
   return (
     <QuotesProvider>
       <Header fixed>
-        <Search />
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
-      <Main>
+      <Main fluid>
         <div className='mb-6'>
           <SectionCards />
         </div>

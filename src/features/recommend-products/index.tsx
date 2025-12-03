@@ -1,9 +1,7 @@
 import { getRouteApi } from '@tanstack/react-router'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { ProductsTableWithToolbar } from '../liked-products/components/products-table-with-toolbar'
 import { recommendProductsColumns } from './components/recommend-products-columns'
 import { recommendProductsData } from './data/data'
@@ -17,11 +15,7 @@ export function RecommendProducts() {
   return (
     <>
       <Header fixed>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
+        <HeaderActions />
       </Header>
 
       <Main fluid>
