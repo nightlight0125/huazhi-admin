@@ -19,7 +19,7 @@ import {
 type TeamSwitcherProps = {
   teams: {
     name: string
-    logo: React.ElementType
+    logo: React.ElementType | string
     plan: string
   }[]
 }
@@ -27,6 +27,21 @@ type TeamSwitcherProps = {
 export function TeamSwitcher({ teams }: TeamSwitcherProps) {
   const { isMobile } = useSidebar()
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
+
+  const renderLogo = (logo: React.ElementType | string, className: string) => {
+    if (typeof logo === 'string') {
+      return (
+        <img
+          src={logo}
+          alt='team logo'
+          className={`h-full w-full object-contain ${className}`}
+        />
+      )
+    }
+
+    const LogoComponent = logo
+    return <LogoComponent className={className} />
+  }
 
   return (
     <SidebarMenu className='mb-2'>
@@ -37,8 +52,8 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
               size='lg'
               className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center'
             >
-              <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg'>
-                <activeTeam.logo className='size-4' />
+              <div className='flex aspect-square size-9 shrink-0 items-center justify-center'>
+                {renderLogo(activeTeam.logo, '')}
               </div>
               <div className='grid flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden'>
                 <span className='truncate font-semibold'>
@@ -64,8 +79,8 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
                 onClick={() => setActiveTeam(team)}
                 className='gap-2 p-2'
               >
-                <div className='flex size-6 items-center justify-center rounded-sm border'>
-                  <team.logo className='size-4 shrink-0' />
+                <div className='flex aspect-square size-7 items-center justify-center'>
+                  {renderLogo(team.logo, '')}
                 </div>
                 {team.name}
                 <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>

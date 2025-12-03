@@ -30,6 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { ImageSearchInput } from '@/components/image-search-input'
 import { products } from '@/features/products/data/data'
 import { sourcingStatuses } from '../data/data'
 import { type Sourcing } from '../data/schema'
@@ -147,6 +148,16 @@ export function SourcingTable({ data }: DataTableProps) {
         <DataTableToolbar
           table={table}
           searchPlaceholder='search'
+          showSearch={false}
+          customFilterSlot={
+            <ImageSearchInput
+              value={globalFilter || ''}
+              onChange={(e) => onGlobalFilterChange?.(e.target.value)}
+              onImageSearchClick={() => {
+                /* 打开上传图片 / 图片搜索弹窗 */
+              }}
+            />
+          }
           filters={[
             {
               columnId: 'status',

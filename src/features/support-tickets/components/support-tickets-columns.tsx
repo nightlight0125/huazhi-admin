@@ -1,9 +1,14 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type SupportTicket } from '../data/schema'
+import { SupportTicketsRowActions } from './support-tickets-row-actions'
 
 export const createSupportTicketsColumns = (options?: {
   onEdit?: (ticket: SupportTicket) => void
@@ -76,7 +81,10 @@ export const createSupportTicketsColumns = (options?: {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='return amount' />
       ),
-      cell: ({ row }) => <div>{row.getValue('returnQty')}</div>,
+      cell: ({ row }) => (
+        <div className='text-xs'>{row.getValue('returnQty')}</div>
+      ),
+      size: 80,
     },
     {
       accessorKey: 'storeName',
@@ -127,48 +135,38 @@ export const createSupportTicketsColumns = (options?: {
       ),
       cell: ({ row }) => {
         const ticket = row.original
+        const reason = (row.getValue('reason') as string) || '---'
         return (
-          <div
-            onClick={(e) => {
-              e.stopPropagation()
-              onReasonClick?.(ticket)
-            }}
-          >
-            {row.getValue('reason')}
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className='text-muted-foreground max-w-[120px] cursor-pointer truncate text-xs'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onReasonClick?.(ticket)
+                }}
+              >
+                {reason}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className='max-w-xs text-xs'>
+              {reason}
+            </TooltipContent>
+          </Tooltip>
         )
       },
+      size: 140,
     },
     {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => {
-        const ticket = row.original
         return (
-          <div className='flex gap-2'>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onCancel?.(ticket)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit?.(ticket)
-              }}
-            >
-              Edit
-            </Button>
-          </div>
+          <SupportTicketsRowActions
+            row={row}
+            onEdit={onEdit}
+            onCancel={onCancel}
+          />
         )
       },
       enableSorting: false,

@@ -25,7 +25,6 @@ export const sourcingData: Sourcing[] = [
     url: 'https://example.com/product/1',
     images: [
       'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=100&h=100&fit=crop',
-      'https://images.unsplash.com/photo-1594633313593-bab3825d0caf?w=100&h=100&fit=crop',
     ],
     productName:
       "Split Skirt Women's Summer Long Skirt 100.00kg New Modal Strap A-line Skirt Slim-fit Long Skirt Skirt",

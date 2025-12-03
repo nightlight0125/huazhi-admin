@@ -1,8 +1,8 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type PublishedProduct } from '../data/schema'
+import { PublishedProductsRowActions } from './published-products-row-actions'
 
 export const publishedProductsColumns: ColumnDef<PublishedProduct>[] = [
   {
@@ -90,21 +90,7 @@ export const publishedProductsColumns: ColumnDef<PublishedProduct>[] = [
   },
   {
     id: 'actions',
-    header: () => <div className='text-xs font-medium'>Action</div>,
-    cell: ({ row }) => {
-      return (
-        <Button
-          variant='outline'
-          size='sm'
-          className='h-7 text-xs'
-          onClick={() => {
-            console.log('Delete:', row.original.id)
-          }}
-        >
-          Delete
-        </Button>
-      )
-    },
+    cell: ({ row }) => <PublishedProductsRowActions row={row} />,
     enableSorting: false,
   },
 ]

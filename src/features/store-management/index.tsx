@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import {
-  flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
@@ -9,43 +8,17 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfigDrawer } from '@/components/config-drawer'
-import { DataTableToolbar } from '@/components/data-table'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
-import { RichTextEditor } from '@/components/rich-text-editor'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { TasksProvider } from '../tasks/components/tasks-provider'
+import { StoreListingTabs } from './components/store-listing-tabs'
 import { StoresTable } from './components/stores-table'
-import { VariantPricingBulkActions } from './components/variant-pricing-bulk-actions'
 import { createVariantPricingColumns } from './components/variant-pricing-columns'
 import { mockVariantPricingData } from './components/variant-pricing-data'
 import { stores } from './data/stores'
@@ -53,32 +26,32 @@ import { stores } from './data/stores'
 const platformButtons = [
   {
     name: 'Shopify',
-    icon: '/src/assets/brand-icons/shopify.png',
+    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/shopify_1764749551392.png',
     color: 'text-green-600',
   },
   {
     name: 'WooCommerce',
-    icon: '/src/assets/brand-icons/woocommerce.png',
+    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/woocommerce_1764749594778.png',
     color: 'text-purple-600',
   },
   {
     name: 'eBay',
-    icon: '/src/assets/brand-icons/ebay-copy.png',
+    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/ebay-copy_1764749627017.png',
     color: 'text-blue-600',
   },
   {
     name: 'Etsy',
-    icon: '/src/assets/brand-icons/etsy.png',
+    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/etsy_1764749608025.png',
     color: 'text-orange-600',
   },
   {
     name: 'TikTok',
-    icon: '/src/assets/brand-icons/tiktoklogo_tiktok.png',
+    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/tiktoklogo_tiktok_1764749645734.png',
     color: 'text-orange-600',
   },
   {
     name: 'Offline Store',
-    icon: '/src/assets/brand-icons/office.png',
+    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/office_1764749661650.png',
     color: 'text-gray-600',
   },
   {
@@ -86,16 +59,6 @@ const platformButtons = [
     icon: '/src/assets/brand-icons/platform-amazon.png',
     color: 'text-orange-600',
   },
-]
-
-// 模拟标签选项
-const tagOptions = [
-  { id: 'tag1', name: 'Electronics' },
-  { id: 'tag2', name: 'Fashion' },
-  { id: 'tag3', name: 'Home & Garden' },
-  { id: 'tag4', name: 'Sports' },
-  { id: 'tag5', name: 'Toys' },
-  { id: 'tag6', name: 'Beauty' },
 ]
 
 export function StoreManagement() {
@@ -189,373 +152,15 @@ export function StoreManagement() {
                 </button>
               </div>
 
-              {/* 右侧：Tabs + 表单内容 */}
-              <div className='flex flex-1 flex-col overflow-hidden'>
-                <Tabs
-                  defaultValue='products'
-                  className='flex flex-1 flex-col overflow-hidden'
-                >
-                  {/* 顶部 Tabs 和提示条 */}
-                  <div className='shrink-0 border-b px-6 pt-3 pb-2'>
-                    <TabsList className='mb-2 h-8 rounded-none border-b bg-transparent p-0'>
-                      <TabsTrigger
-                        value='products'
-                        className='rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-sm shadow-none data-[state=active]:border-orange-500 data-[state=active]:bg-transparent data-[state=active]:text-orange-500 data-[state=active]:shadow-none'
-                      >
-                        Products
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value='variant-pricing'
-                        className='rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-sm shadow-none data-[state=active]:border-orange-500 data-[state=active]:bg-transparent data-[state=active]:text-orange-500 data-[state=active]:shadow-none'
-                      >
-                        Variant Pricing
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value='images'
-                        className='rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-sm shadow-none data-[state=active]:border-orange-500 data-[state=active]:bg-transparent data-[state=active]:text-orange-500 data-[state=active]:shadow-none'
-                      >
-                        Images &amp; Videos
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value='description'
-                        className='rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-sm shadow-none data-[state=active]:border-orange-500 data-[state=active]:bg-transparent data-[state=active]:text-orange-500 data-[state=active]:shadow-none'
-                      >
-                        Description
-                      </TabsTrigger>
-                    </TabsList>
-                    <div className='bg-primary/5 border-primary/20 text-foreground rounded-md border px-3 py-2 text-sm'>
-                      Product data is provided directly by suppliers. Although
-                      CJ is committed to protecting intellectual property
-                      rights, it cannot ensure that all potential intellectual
-                      property disputes are avoided.
-                    </div>
-                  </div>
-
-                  {/* Tabs 内容 */}
-                  <TabsContent
-                    value='products'
-                    className='flex-1 overflow-y-auto px-6 py-4 text-sm'
-                  >
-                    <div className='space-y-4'>
-                      <div className='space-y-1'>
-                        <div className='text-muted-foreground font-medium'>
-                          * Store Selection
-                        </div>
-                        <Input placeholder='Enter Store Name' className='h-8' />
-                      </div>
-
-                      <div className='space-y-1'>
-                        <div className='text-muted-foreground font-medium'>
-                          * Title
-                        </div>
-                        <Input
-                          placeholder='Fashion Ozzy Christmas Elf Doll Xmas Trees Decoration Ornaments Music Godfather Classic Sitting Posture Noel Elf Plush Toys'
-                          className='h-8'
-                        />
-                      </div>
-
-                      <div className='space-y-1'>
-                        <div className='text-muted-foreground font-medium'>
-                          Tags
-                        </div>
-                        <Popover
-                          open={tagsPopoverOpen}
-                          onOpenChange={setTagsPopoverOpen}
-                        >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant='outline'
-                              className='h-8 w-full justify-between font-normal'
-                            >
-                              {selectedTags.length > 0
-                                ? `${selectedTags.length} tag(s) selected`
-                                : 'Please add new'}
-                              <ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className='w-[--radix-popover-trigger-width] p-0'
-                            align='start'
-                          >
-                            <div className='max-h-[300px] overflow-y-auto p-1'>
-                              {tagOptions.map((tag) => (
-                                <div
-                                  key={tag.id}
-                                  className='hover:bg-accent flex items-center space-x-2 rounded-sm px-2 py-1.5'
-                                >
-                                  <Checkbox
-                                    checked={selectedTags.includes(tag.id)}
-                                    onCheckedChange={(checked: boolean) => {
-                                      if (checked) {
-                                        setSelectedTags([
-                                          ...selectedTags,
-                                          tag.id,
-                                        ])
-                                      } else {
-                                        setSelectedTags(
-                                          selectedTags.filter(
-                                            (id) => id !== tag.id
-                                          )
-                                        )
-                                      }
-                                    }}
-                                  />
-                                  <label className='flex-1 cursor-pointer text-sm font-normal'>
-                                    {tag.name}
-                                  </label>
-                                </div>
-                              ))}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent
-                    value='variant-pricing'
-                    className='flex-1 overflow-y-auto px-4 py-3 text-xs'
-                  >
-                    <div className='space-y-3'>
-                      <div className='border-border bg-muted/30 space-y-1.5 rounded-lg border px-3 py-2'>
-                        <div className='text-xs font-semibold'>
-                          Set a Default Shipping Method on CJ
-                        </div>
-                        <div className='mt-1.5 grid gap-2 md:grid-cols-3'>
-                          <div className='space-y-1'>
-                            <div className='text-muted-foreground text-xs'>
-                              * Shipping From
-                            </div>
-                            <Select defaultValue='china'>
-                              <SelectTrigger className='h-7 text-xs'>
-                                <SelectValue placeholder='Select' />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value='china'>China</SelectItem>
-                                <SelectItem value='usa'>USA</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className='space-y-1'>
-                            <div className='text-muted-foreground text-xs'>
-                              Ship My Order(s) Most to
-                            </div>
-                            <Select defaultValue='anywhere'>
-                              <SelectTrigger className='h-7 text-xs'>
-                                <SelectValue placeholder='Select' />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value='anywhere'>
-                                  Ship from anywhere
-                                </SelectItem>
-                                <SelectItem value='usa'>USA</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className='space-y-1'>
-                            <div className='text-muted-foreground text-xs'>
-                              Shipping Method
-                            </div>
-                            <Select>
-                              <SelectTrigger className='h-7 text-xs'>
-                                <SelectValue placeholder='Select shipping method' />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value='default'>Default</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className='text-muted-foreground mt-1.5 grid gap-2 text-xs md:grid-cols-3'>
-                          <div>Estimated Delivery Time: --</div>
-                          <div>Shipping Cost: --</div>
-                          <div>Tracking Information: --</div>
-                        </div>
-                      </div>
-
-                      {/* Variant pricing table */}
-                      <div className='space-y-1.5'>
-                        <div className='text-xs font-semibold'>
-                          Variant Pricing
-                        </div>
-
-                        <div className='space-y-1.5'>
-                          <DataTableToolbar
-                            table={variantPricingTable}
-                            showSearch={false}
-                            filters={[]}
-                            bulkRevise={{
-                              enabled: true,
-                              placeholder: 'Bulk Reviser',
-                              options: [
-                                {
-                                  label: 'Price Change',
-                                  value: 'price-change',
-                                },
-                                {
-                                  label: 'Shipping Fee',
-                                  value: 'shipping-fee',
-                                },
-                              ],
-                              onApply: (type, value) => {
-                                const selectedRows =
-                                  variantPricingTable.getFilteredSelectedRowModel()
-                                    .rows
-                                console.log(
-                                  'Bulk revise:',
-                                  type,
-                                  value,
-                                  selectedRows
-                                )
-                                // TODO: 实现批量修改逻辑
-                              },
-                            }}
-                          />
-
-                          {/* Table */}
-                          <div className='border-border overflow-x-auto rounded-lg border'>
-                            <Table>
-                              <TableHeader>
-                                {variantPricingTable
-                                  .getHeaderGroups()
-                                  .map((headerGroup) => (
-                                    <TableRow
-                                      key={headerGroup.id}
-                                      className='text-muted-foreground bg-muted/50'
-                                    >
-                                      {headerGroup.headers.map((header) => (
-                                        <TableHead
-                                          key={header.id}
-                                          className='border-b px-1.5 py-1.5 text-left text-xs'
-                                        >
-                                          {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                              )}
-                                        </TableHead>
-                                      ))}
-                                    </TableRow>
-                                  ))}
-                              </TableHeader>
-                              <TableBody>
-                                {variantPricingTable.getRowModel().rows
-                                  ?.length ? (
-                                  variantPricingTable
-                                    .getRowModel()
-                                    .rows.map((row) => (
-                                      <TableRow
-                                        key={row.id}
-                                        data-state={
-                                          row.getIsSelected() && 'selected'
-                                        }
-                                        className='even:bg-muted/30 hover:bg-muted/50 transition-colors'
-                                      >
-                                        {row.getVisibleCells().map((cell) => (
-                                          <TableCell
-                                            key={cell.id}
-                                            className='border-b px-1.5 py-1.5 text-xs'
-                                          >
-                                            {flexRender(
-                                              cell.column.columnDef.cell,
-                                              cell.getContext()
-                                            )}
-                                          </TableCell>
-                                        ))}
-                                      </TableRow>
-                                    ))
-                                ) : (
-                                  <TableRow>
-                                    <TableCell
-                                      colSpan={columns.length}
-                                      className='h-24 text-center'
-                                    >
-                                      No results.
-                                    </TableCell>
-                                  </TableRow>
-                                )}
-                              </TableBody>
-                            </Table>
-                          </div>
-
-                          <VariantPricingBulkActions
-                            table={variantPricingTable}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent
-                    value='images'
-                    className='text-muted-foreground flex-1 overflow-y-auto px-6 py-4 text-sm'
-                  >
-                    <div className='space-y-4'>
-                      <div className='text-sm font-semibold'>Images</div>
-                      <div>
-                        It is your responsibility to ensure that the pictures
-                        you use in your listings do not violate any copyright
-                        laws. CJ does not assume liability for infringement
-                        claims related to that.
-                      </div>
-
-                      <div className='space-y-2'>
-                        <div className='text-sm font-semibold'>
-                          Marketing Picture
-                        </div>
-                        <div className='grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
-                          {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
-                            <div
-                              key={idx}
-                              className='border-border bg-muted/30 relative aspect-[4/5] overflow-hidden rounded-lg border transition-shadow hover:shadow-md'
-                            >
-                              {/* 选中角标 */}
-                              <div className='bg-primary text-primary-foreground absolute top-1 left-1 flex h-5 w-5 items-center justify-center rounded-full shadow-sm'>
-                                ✓
-                              </div>
-                              {/* 放大图标占位 */}
-                              <div className='bg-background/80 text-foreground absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full shadow-sm backdrop-blur-sm'>
-                                ⤢
-                              </div>
-                              {/* 图片占位 */}
-                              <div className='from-muted to-muted/50 h-full w-full bg-gradient-to-br' />
-                              {/* Cover Image 标签，仅第一张显示 */}
-                              {idx === 0 && (
-                                <div className='bg-background/80 text-foreground absolute inset-x-0 bottom-0 px-2 py-1 text-sm font-medium backdrop-blur-sm'>
-                                  Cover Image
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className='space-y-2'>
-                        <div className='text-sm font-semibold'>Videos</div>
-                        <div>
-                          <span className='font-semibold'>Available</span> Only
-                          Shopify, Tiktok and Temu stores are currently
-                          supported for listing videos.
-                        </div>
-                        <div className='mt-3 flex flex-wrap gap-4'>
-                          <div className='border-border bg-muted/30 h-32 w-56 overflow-hidden rounded-lg border' />
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent
-                    value='description'
-                    className='text-muted-foreground flex-1 overflow-y-auto px-6 py-4 text-sm'
-                  >
-                    <div className='space-y-2'>
-                      <div className='text-muted-foreground font-medium'>
-                        Description
-                      </div>
-                      <RichTextEditor initialContent={``} />
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
+              {/* 右侧：Tabs + 表单内容（抽离为公共组件） */}
+              <StoreListingTabs
+                tagsPopoverOpen={tagsPopoverOpen}
+                setTagsPopoverOpen={setTagsPopoverOpen}
+                selectedTags={selectedTags}
+                setSelectedTags={setSelectedTags}
+                variantPricingTable={variantPricingTable}
+                columns={columns}
+              />
             </div>
 
             <div className='flex items-center justify-end gap-2 border-t px-4 py-3'>

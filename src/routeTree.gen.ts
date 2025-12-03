@@ -34,6 +34,7 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedSupportTicketsIndexRouteImport } from './routes/_authenticated/support-tickets/index'
 import { Route as AuthenticatedStoresIndexRouteImport } from './routes/_authenticated/stores/index'
+import { Route as AuthenticatedStoreProductsIndexRouteImport } from './routes/_authenticated/store-products/index'
 import { Route as AuthenticatedStockOrdersIndexRouteImport } from './routes/_authenticated/stock-orders/index'
 import { Route as AuthenticatedSourcingIndexRouteImport } from './routes/_authenticated/sourcing/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
@@ -196,6 +197,12 @@ const AuthenticatedStoresIndexRoute =
   AuthenticatedStoresIndexRouteImport.update({
     id: '/stores/',
     path: '/stores/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStoreProductsIndexRoute =
+  AuthenticatedStoreProductsIndexRouteImport.update({
+    id: '/store-products/',
+    path: '/store-products/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedStockOrdersIndexRoute =
@@ -448,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/sourcing': typeof AuthenticatedSourcingIndexRoute
   '/stock-orders': typeof AuthenticatedStockOrdersIndexRoute
+  '/store-products': typeof AuthenticatedStoreProductsIndexRoute
   '/stores': typeof AuthenticatedStoresIndexRoute
   '/support-tickets': typeof AuthenticatedSupportTicketsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
@@ -505,6 +513,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/sourcing': typeof AuthenticatedSourcingIndexRoute
   '/stock-orders': typeof AuthenticatedStockOrdersIndexRoute
+  '/store-products': typeof AuthenticatedStoreProductsIndexRoute
   '/stores': typeof AuthenticatedStoresIndexRoute
   '/support-tickets': typeof AuthenticatedSupportTicketsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
@@ -567,6 +576,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/sourcing/': typeof AuthenticatedSourcingIndexRoute
   '/_authenticated/stock-orders/': typeof AuthenticatedStockOrdersIndexRoute
+  '/_authenticated/store-products/': typeof AuthenticatedStoreProductsIndexRoute
   '/_authenticated/stores/': typeof AuthenticatedStoresIndexRoute
   '/_authenticated/support-tickets/': typeof AuthenticatedSupportTicketsIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
@@ -627,6 +637,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/sourcing'
     | '/stock-orders'
+    | '/store-products'
     | '/stores'
     | '/support-tickets'
     | '/tasks'
@@ -684,6 +695,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sourcing'
     | '/stock-orders'
+    | '/store-products'
     | '/stores'
     | '/support-tickets'
     | '/tasks'
@@ -745,6 +757,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/'
     | '/_authenticated/sourcing/'
     | '/_authenticated/stock-orders/'
+    | '/_authenticated/store-products/'
     | '/_authenticated/stores/'
     | '/_authenticated/support-tickets/'
     | '/_authenticated/tasks/'
@@ -944,6 +957,13 @@ declare module '@tanstack/react-router' {
       path: '/stores'
       fullPath: '/stores'
       preLoaderRoute: typeof AuthenticatedStoresIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/store-products/': {
+      id: '/_authenticated/store-products/'
+      path: '/store-products'
+      fullPath: '/store-products'
+      preLoaderRoute: typeof AuthenticatedStoreProductsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/stock-orders/': {
@@ -1259,6 +1279,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSampleOrdersIndexRoute: typeof AuthenticatedSampleOrdersIndexRoute
   AuthenticatedSourcingIndexRoute: typeof AuthenticatedSourcingIndexRoute
   AuthenticatedStockOrdersIndexRoute: typeof AuthenticatedStockOrdersIndexRoute
+  AuthenticatedStoreProductsIndexRoute: typeof AuthenticatedStoreProductsIndexRoute
   AuthenticatedStoresIndexRoute: typeof AuthenticatedStoresIndexRoute
   AuthenticatedSupportTicketsIndexRoute: typeof AuthenticatedSupportTicketsIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
@@ -1304,6 +1325,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSampleOrdersIndexRoute: AuthenticatedSampleOrdersIndexRoute,
   AuthenticatedSourcingIndexRoute: AuthenticatedSourcingIndexRoute,
   AuthenticatedStockOrdersIndexRoute: AuthenticatedStockOrdersIndexRoute,
+  AuthenticatedStoreProductsIndexRoute: AuthenticatedStoreProductsIndexRoute,
   AuthenticatedStoresIndexRoute: AuthenticatedStoresIndexRoute,
   AuthenticatedSupportTicketsIndexRoute: AuthenticatedSupportTicketsIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,

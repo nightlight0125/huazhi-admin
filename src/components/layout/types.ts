@@ -8,7 +8,8 @@ type User = {
 
 type Team = {
   name: string
-  logo: React.ElementType
+  // 支持使用 React 图标组件或字符串 URL 作为 logo（例如远程图片）
+  logo: React.ElementType | string
   plan: string
 }
 
