@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -24,7 +24,8 @@ import {
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { DataTableBulkActions } from '@/features/tasks/components/data-table-bulk-actions'
 import { type Store } from '../data/schema'
-import { storesColumns as columns } from './stores-columns'
+import { createStoresColumns } from './stores-columns'
+import { EditStoreNameDialog } from './edit-store-name-dialog'
 
 const route = getRouteApi('/_authenticated/store-management')
 
@@ -37,6 +38,8 @@ export function StoresTable({ data }: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingStore, setEditingStore] = useState<Store | null>(null)
 
   // Synced with URL states
   const {
@@ -54,6 +57,27 @@ export function StoresTable({ data }: DataTableProps) {
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
+
+  const handleEditStoreName = (store: Store) => {
+    setEditingStore(store)
+    setEditDialogOpen(true)
+  }
+
+  const handleConfirmEdit = (newStoreName: string) => {
+    if (editingStore) {
+      console.log('Update store name:', editingStore.storeId, newStoreName)
+      // TODO: 实现实际的更新逻辑
+      // 这里可以调用 API 更新 store name
+    }
+  }
+
+  const columns = useMemo(
+    () =>
+      createStoresColumns({
+        onEditStoreName: handleEditStoreName,
+      }),
+    []
+  )
 
   const table = useReactTable({
     data,
@@ -182,6 +206,20 @@ export function StoresTable({ data }: DataTableProps) {
       </div>
       <DataTablePagination table={table} />
       <DataTableBulkActions table={table} />
+
+      {editingStore && (
+        <EditStoreNameDialog
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open)
+            if (!open) {
+              setEditingStore(null)
+            }
+          }}
+          storeName={editingStore.storeName}
+          onConfirm={handleConfirmEdit}
+        />
+      )}
     </div>
   )
 }
