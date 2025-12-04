@@ -12,7 +12,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { Image as ImageIcon } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -40,112 +39,65 @@ type DataTableProps = {
 }
 
 function ProductDetailRow({ product }: { product: OrderProduct }) {
-  const variantText =
-    product.productVariant?.map((v) => `${v.name}: ${v.value}`).join(', ') ||
-    '---';
-
-  // Define cell configurations matching the table columns
-  const cellConfigs = [
-    {
-      // Store Name column - shows product image and Store HZ buttons
-      content: (
-        <div className='flex items-center gap-3'>
-          {product.productImageUrl ? (
-            <img
-              src={product.productImageUrl}
-              alt={product.productName}
-              className='h-12 w-12 rounded object-cover'
-            />
-          ) : (
-            <div className='bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded'>
-              <ImageIcon className='text-muted-foreground h-6 w-6' />
-            </div>
-          )}
-          <div className='flex flex-col gap-1'>
-            <Button variant='outline' size='sm' className='h-5 w-10 text-[12px]'>
-              Store
-            </Button>
-            <Button variant='outline' size='sm' className='h-5 w-10 text-[12px]'>
-              HZ
-            </Button>
-          </div>
-        </div>
-      ),
-    },
-    {
-      // Store Order Number / HZ Order Number - shows Title
-      content: (
-        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
-          <div>Title: ---</div>
-          <div className='break-words' style={{ marginTop: '8px'}}>Title: {product.productName}</div>
-        </div>
-      ),
-    },
-    {
-      // Store Order Time / HZ Order Time - shows SKU
-      content: (
-        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
-          <div>SKU: ---</div>
-          <div className='break-words' style={{ marginTop: '8px'}}>SKU: {product.id}</div>
-        </div>
-      ),
-    },
-    {
-      // Cost - shows Variant
-      content: (
-        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
-          <div>Variant: ---</div>
-          <div className='break-words' style={{ marginTop: '8px'}}>Variant: {variantText}</div>
-        </div>
-      ),
-    },
-    {
-      // Customer - shows Price
-      content: (
-        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
-          <div>Price: ---</div>
-          <div style={{ marginTop: '8px'}}>Price: ${product.price.toFixed(2)}</div>
-        </div>
-      ),
-    },
-    {
-      // Shipping Track ID - shows Quantity, Variant ID, Weight
-      content: (
-        <div style={{ marginTop: '4px'}} className='space-y-1 text-[12px] min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
-          <div>Quantity: {product.quantity}</div>
-          <div style={{ marginTop: '8px'}}>Quantity: {product.quantity}</div>
-        </div>
-      ),
-    },
-    {
-      // Action buttons column
-      content: (
-        <div style={{ marginTop: '4px'}} className='flex flex-col gap-1 min-w-[30px] overflow-hidden break-words whitespace-pre-line'>
-          <Button variant='outline' size='sm' className='h-6 text-[12px]'>
-            Modify Product
-          </Button>
-          <Button variant='outline' size='sm' className='h-6 text-[12px]'>
-            Delete
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  const fieldLabels = ['Title', 'SKU', 'Variant', 'Price', 'Quantity', 'Weight']
+  const leftButtons = ['Store', 'HZ']
+  const rightButtons = [
+    { label: 'Modify Product', onClick: () => {} },
+    { label: 'Delete', onClick: () => {} },
+  ]
 
   return (
     <TableRow className='bg-muted/30'>
-      {/* 让展开行内容占据整一行宽度 */}
       <TableCell colSpan={100} className='px-3 py-2'>
-        <div className='flex flex-wrap items-start gap-x-4 gap-y-2 text-[12px]'>
-          {cellConfigs.map((config, index) => (
-            <div key={index} className='flex-shrink-0'>
-              {config.content}
+        <div className='flex items-start justify-between gap-2'>
+          <div className='flex items-start gap-2'>
+            <div>
+              <img
+                src={product.productImageUrl}
+                alt={product.productName}
+                className='h-12 w-12 rounded object-cover'
+              />
             </div>
-          ))}
+            <div className='flex flex-col gap-2'>
+              {leftButtons.map((buttonLabel) => (
+                <div key={buttonLabel} className='flex items-center gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-5 w-16 text-[11px]'
+                  >
+                    {buttonLabel}
+                  </Button>
+                  {fieldLabels.map((label) => (
+                    <div
+                      key={label}
+                      style={{ width: '150px', wordBreak: 'break-all' }}
+                      className='text-[12px]'
+                    >
+                      {label}:---
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className='flex flex-col gap-1'>
+            {rightButtons.map((button) => (
+              <Button
+                key={button.label}
+                variant='outline'
+                size='sm'
+                className='h-5 text-[11px]'
+                onClick={button.onClick}
+              >
+                {button.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </TableCell>
     </TableRow>
-  );
+  )
 }
 
 export function OrdersTable({ data, onTableReady }: DataTableProps) {
@@ -235,14 +187,11 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
   }
 
   const handleConfirmModify = (updatedProducts: OrderProduct[]) => {
-    // Update the order's product list
-    // In a real app, this would make an API call
     console.log(
       'Updated products for order:',
       modifyProductDialog.orderId,
       updatedProducts
     )
-    // TODO: Update the order in the data
     setModifyProductDialog({ open: false, products: [], orderId: '' })
   }
 
@@ -268,14 +217,11 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     email?: string
     shippingOrigin: string
   }) => {
-    // Update the order's address
-    // In a real app, this would make an API call
     console.log(
       'Updated address for order:',
       editAddressDialog.order?.id,
       addressData
     )
-    // TODO: Update the order in the data
     setEditAddressDialog({ open: false, order: null })
   }
 
@@ -293,7 +239,6 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
               orderId,
             })
           } else {
-            // If no products, use fake data
             setModifyProductDialog({
               open: true,
               products: [],
@@ -357,7 +302,6 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  // Notify parent component when table is ready
   useEffect(() => {
     if (onTableReady) {
       onTableReady(table)
