@@ -64,7 +64,13 @@ function getStatusClassName(status: string): string {
   return '' // 使用默认的 secondary 样式
 }
 
-export const storesColumns: ColumnDef<Store>[] = [
+type StoresColumnsOptions = {
+  onEditStoreName?: (store: Store) => void
+}
+
+export const createStoresColumns = (
+  options?: StoresColumnsOptions
+): ColumnDef<Store>[] => [
   {
     id: 'select',
     size: 40,
@@ -100,14 +106,27 @@ export const storesColumns: ColumnDef<Store>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store Name' />
     ),
-    cell: ({ row }) => (
-      <div className='flex max-w-[260px] flex-col text-left break-words whitespace-normal'>
-        <span className='leading-snug font-medium'>
-          {row.getValue('storeName')}
-        </span>
-        <Edit className='text-muted-foreground mt-1 h-3 w-3' />
-      </div>
-    ),
+    cell: ({ row }) => {
+      const store = row.original
+      return (
+        <div className='flex max-w-[260px] flex-col text-left break-words whitespace-normal'>
+          <span className='leading-snug font-medium'>
+            {row.getValue('storeName')}
+          </span>
+          <button
+            type='button'
+            onClick={(e) => {
+              e.stopPropagation()
+              options?.onEditStoreName?.(store)
+            }}
+            className='text-muted-foreground hover:text-foreground mt-1 flex h-3 w-3 cursor-pointer items-center transition-colors'
+            aria-label='Edit store name'
+          >
+            <Edit className='h-3 w-3' />
+          </button>
+        </div>
+      )
+    },
   },
   {
     accessorKey: 'storeId',
