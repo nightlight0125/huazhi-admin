@@ -10,6 +10,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
 import {
   TableBody,
   TableCell,
@@ -19,7 +20,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { walletRecordTypes } from '../data/data'
 import { type WalletRecord, type WalletRecordType } from '../data/schema'
@@ -143,8 +143,8 @@ export function WalletTable({ data }: DataTableProps) {
           {/* Tabs 下方右侧导出按钮 */}
           <div className='flex justify-end'>
             <Button
-              type='button'
-              className='px-5'
+              variant='outline'
+              className='space-x-1'
               onClick={() => {
                 // TODO: 接入实际导出逻辑（如导出为 CSV / Excel）
                 console.log('Export wallet records (current tab):', activeTab)

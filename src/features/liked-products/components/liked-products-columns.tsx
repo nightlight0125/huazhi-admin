@@ -4,7 +4,16 @@ import { DataTableColumnHeader } from '@/components/data-table'
 import { type LikedProduct } from '../data/schema'
 import { LikedProductsRowActions } from './liked-products-row-actions'
 
-export const likedProductsColumns: ColumnDef<LikedProduct>[] = [
+type LikedProductsColumnsOptions = {
+  showFavorited?: boolean
+}
+
+export const createLikedProductsColumns = (
+  options?: LikedProductsColumnsOptions
+): ColumnDef<LikedProduct>[] => {
+  const { showFavorited = false } = options || {}
+
+  const columns: ColumnDef<LikedProduct>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -81,53 +90,65 @@ export const likedProductsColumns: ColumnDef<LikedProduct>[] = [
     },
     enableSorting: false,
   },
-  {
-    accessorKey: 'addDate',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Add Date' />
-    ),
-    cell: ({ row }) => {
-      const date = row.getValue('addDate') as Date
-      const month = date.toLocaleDateString('en-US', { month: 'short' })
-      const day = date.getDate()
-      const year = date.getFullYear()
-      const time = date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      })
-      return (
-        <div className='text-xs'>
-          {month}. {day}, {year} {time}
-        </div>
-      )
+    {
+      accessorKey: 'addDate',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title='Add Date' />
+      ),
+      cell: ({ row }) => {
+        const date = row.getValue('addDate') as Date
+        const month = date.toLocaleDateString('en-US', { month: 'short' })
+        const day = date.getDate()
+        const year = date.getFullYear()
+        const time = date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        })
+        return (
+          <div className='text-xs'>
+            {month}. {day}, {year} {time}
+          </div>
+        )
+      },
     },
-  },
-  {
-    accessorKey: 'isFavorited',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Favorited' />
-    ),
-    cell: ({ row }) => {
-      const isFavorited = row.getValue('isFavorited') as boolean
-      return (
-        <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-            isFavorited
-              ? 'border-sky-400 bg-sky-50 text-sky-600'
-              : 'border-red-300 bg-red-50 text-red-600'
-          }`}
-        >
-          {isFavorited ? 'Favorited' : 'Not Favorited'}
-        </span>
-      )
-    },
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
+  ]
+
+  // 条件添加 Favorited 列
+  if (showFavorited) {
+    columns.push({
+      accessorKey: 'isFavorited',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title='Favorited' />
+      ),
+      cell: ({ row }) => {
+        const isFavorited = row.getValue('isFavorited') as boolean
+        return (
+          <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+              isFavorited
+                ? 'border-sky-400 bg-sky-50 text-sky-600'
+                : 'border-red-300 bg-red-50 text-red-600'
+            }`}
+          >
+            {isFavorited ? 'Favorited' : 'Not Favorited'}
+          </span>
+        )
+      },
+      enableSorting: false,
+      enableHiding: false,
+    })
+  }
+
+  // 添加 actions 列
+  columns.push({
     id: 'actions',
     cell: ({ row }) => <LikedProductsRowActions row={row} />,
-  },
-]
+  })
+
+  return columns
+}
+
+// 向后兼容：默认导出（不包含 Favorited 列）
+export const likedProductsColumns = createLikedProductsColumns()

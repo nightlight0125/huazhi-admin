@@ -1,4 +1,3 @@
-import { UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUsers } from './users-provider'
 
@@ -13,8 +12,12 @@ export function UsersPrimaryButtons() {
       >
         <span>邀请用户</span> <MailPlus size={18} />
       </Button> */}
-      <Button className='space-x-1' onClick={() => setOpen('add')}>
-        <span>Add Sub-Account</span> <UserPlus size={18} />
+      <Button
+        variant='outline'
+        className='space-x-1'
+        onClick={() => setOpen('add')}
+      >
+        <span>Add Sub-Account</span>
       </Button>
     </div>
   )

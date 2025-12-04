@@ -333,7 +333,6 @@ export function ProductDetails() {
                               selectedColor === color ? 'default' : 'outline'
                             }
                             size='sm'
-                            className='px-2s h-9 rounded-md border border-gray-300 bg-white text-sm font-normal hover:bg-gray-50'
                             onClick={() => setSelectedColor(color)}
                           >
                             {color}

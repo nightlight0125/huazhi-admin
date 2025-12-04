@@ -1,4 +1,3 @@
-import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useStoreProducts } from './store-products-provider'
 
@@ -13,7 +12,6 @@ export function StoreProductsPrimaryButtons() {
         onClick={() => setOpen('import')}
       >
         <span>Import Store Product</span>
-        <Download size={18} />
       </Button>
     </div>
   )
