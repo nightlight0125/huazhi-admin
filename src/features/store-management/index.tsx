@@ -41,7 +41,7 @@ const platformButtons = [
   },
   {
     name: 'Amazon',
-    icon: '/src/assets/brand-icons/platform-amazon.png',
+    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/platform-amazon_1764749673988.png',
     color: 'text-orange-600',
   },
 ]
