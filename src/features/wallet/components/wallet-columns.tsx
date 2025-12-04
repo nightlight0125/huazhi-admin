@@ -151,9 +151,6 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
 
       return (
         <div className='flex w-[100px] items-center gap-2'>
-          {status.icon && (
-            <status.icon className='text-muted-foreground size-4' />
-          )}
           <Badge variant={status.variant}>{status.label}</Badge>
         </div>
       )
