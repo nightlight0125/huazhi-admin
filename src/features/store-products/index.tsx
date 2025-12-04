@@ -17,7 +17,10 @@ export function StoreProducts() {
       <Main fluid>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>
           <div>
-            <p className='text-muted-foreground'>
+            <p
+              className='text-muted-foreground'
+              style={{ paddingBottom: '30px' }}
+            >
               Here you can find all your stores product.These Products are
               private so they can only be seen by you.
             </p>

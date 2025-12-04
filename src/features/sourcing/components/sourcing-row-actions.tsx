@@ -1,6 +1,6 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { type Row } from '@tanstack/react-table'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -37,13 +37,13 @@ export function SourcingRowActions({ row }: SourcingRowActionsProps) {
             console.log('Edit sourcing:', sourcing.sourcingId)
           }}
         >
-          edit
+          Contact
           <DropdownMenuShortcut>
             <Pencil size={16} />
           </DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
+        {/* <DropdownMenuItem
           onClick={() => {
             console.log('Delete sourcing:', sourcing.sourcingId)
           }}
@@ -53,10 +53,8 @@ export function SourcingRowActions({ row }: SourcingRowActionsProps) {
           <DropdownMenuShortcut>
             <Trash2 size={16} />
           </DropdownMenuShortcut>
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
-
-
