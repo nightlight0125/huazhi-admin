@@ -109,15 +109,34 @@ export const createSupportTicketsColumns = (options?: {
       ),
       cell: ({ row }) => {
         const status = row.getValue('status') as SupportTicket['status']
-        const statusConfig = {
-          processing: { label: 'Processing', variant: 'default' as const },
-          finished: { label: 'Finished', variant: 'secondary' as const },
-          refused: { label: 'Refused', variant: 'destructive' as const },
-          cancelled: { label: 'Cancelled', variant: 'outline' as const },
+        const statusConfig: Record<
+          SupportTicket['status'],
+          { label: string; className: string }
+        > = {
+          processing: {
+            label: 'Processing',
+            className:
+              'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white capitalize',
+          },
+          finished: {
+            label: 'Finished',
+            className:
+              'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white capitalize',
+          },
+          refused: {
+            label: 'Refused',
+            className:
+              'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white capitalize',
+          },
+          cancelled: {
+            label: 'Cancelled',
+            className:
+              'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize',
+          },
         }
         const config = statusConfig[status] || statusConfig.processing
         return (
-          <Badge variant={config.variant} className='capitalize'>
+          <Badge variant='outline' className={config.className}>
             {config.label}
           </Badge>
         )

@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type LikedProduct } from '../data/schema'
@@ -125,15 +126,16 @@ export const createLikedProductsColumns = (
       cell: ({ row }) => {
         const isFavorited = row.getValue('isFavorited') as boolean
         return (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+          <Badge
+            variant='outline'
+            className={
               isFavorited
-                ? 'border-sky-400 bg-sky-50 text-sky-600'
-                : 'border-red-300 bg-red-50 text-red-600'
-            }`}
+                ? 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white'
+                : 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            }
           >
             {isFavorited ? 'Favorited' : 'Not Favorited'}
-          </span>
+          </Badge>
         )
       },
       enableSorting: false,

@@ -2,10 +2,48 @@ import { format } from 'date-fns'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Minus, Plus, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { type Order } from '../data/schema'
 import { OrdersRowActions } from './orders-row-actions'
+
+// 平台订单状态样式映射
+function getPlatformOrderStatusClassName(status: string): string {
+  const lowerStatus = status.toLowerCase()
+
+  // Processing - 紫色背景，白色文字
+  if (lowerStatus === 'processing') {
+    return 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white'
+  }
+  // Cancelled - 红色背景，白色文字
+  if (lowerStatus === 'cancelled') {
+    return 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white'
+  }
+  // Pending - 橙色背景，白色文字
+  if (lowerStatus === 'pending') {
+    return 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white'
+  }
+  // Refunded - 橙色背景，白色文字
+  if (lowerStatus === 'refunded') {
+    return 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white'
+  }
+  // Confirmed - 绿色背景，白色文字
+  if (lowerStatus === 'confirmed') {
+    return 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white'
+  }
+  // Shipped - 蓝色背景，白色文字
+  if (lowerStatus === 'shipped') {
+    return 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white'
+  }
+  // Delivered - 绿色背景，白色文字
+  if (lowerStatus === 'delivered') {
+    return 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white'
+  }
+
+  // 默认灰色
+  return 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+}
 
 export const createOrdersColumns = (options?: {
   onExpand?: (rowId: string) => void
@@ -179,9 +217,23 @@ export const createOrdersColumns = (options?: {
       header: 'Platform/HZ Status',
       cell: ({ row }) => {
         const order = row.original
+        const status = order.platformOrderStatus
+
+        if (!status) {
+          return (
+            <div className='space-y-1 text-sm'>
+              <div>---</div>
+            </div>
+          )
+        }
+
+        const className = getPlatformOrderStatusClassName(status)
+
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.platformOrderStatus || '---'}</div>
+            <Badge variant='outline' className={className}>
+              {status}
+            </Badge>
           </div>
         )
       },

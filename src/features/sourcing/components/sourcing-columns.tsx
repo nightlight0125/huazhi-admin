@@ -34,17 +34,21 @@ function getSourcingStatusVariant(
 function getSourcingStatusClassName(status: string): string {
   const lower = status.toLowerCase()
 
+  // Completed - 浅绿色背景，白色文字
   if (lower === 'completed') {
-    return 'bg-green-500/10 text-green-700 border-green-500/20 dark:bg-green-500/20 dark:text-green-400'
+    return 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white'
   }
+  // Processing - 浅紫色背景，白色文字
   if (lower === 'processing') {
-    return 'bg-purple-500/10 text-purple-700 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-400'
+    return 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white'
   }
+  // Failed - 浅红色背景，白色文字
   if (lower === 'failed') {
-    return 'bg-red-500/10 text-red-700 border-red-500/20 dark:bg-red-500/20 dark:text-red-400'
+    return 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white'
   }
 
-  return ''
+  // 默认灰色
+  return 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
 }
 
 export const createSourcingColumns = (
