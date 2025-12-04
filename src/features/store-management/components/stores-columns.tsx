@@ -43,25 +43,42 @@ function getStatusVariant(
 function getStatusClassName(status: string): string {
   const lowerStatus = status.toLowerCase()
 
+  // Active/Authorized/Connected - 绿色背景，白色文字
   if (
     lowerStatus.includes('active') ||
     lowerStatus.includes('authorized') ||
     lowerStatus.includes('connected')
   ) {
-    return 'bg-green-500/10 text-green-700 border-green-500/20 dark:bg-green-500/20 dark:text-green-400'
+    return 'border-transparent bg-green-600 text-white dark:bg-green-600 dark:text-white'
   }
+
+  // Pending/Processing - 橙色背景，白色文字
   if (lowerStatus.includes('pending') || lowerStatus.includes('processing')) {
-    return 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400'
+    return 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white'
   }
+
+  // Suspended/Unauthorized/Failed - 红色背景，白色文字
   if (
     lowerStatus.includes('suspended') ||
     lowerStatus.includes('unauthorized') ||
-    lowerStatus.includes('failed')
+    lowerStatus.includes('failed') ||
+    lowerStatus.includes('refused')
   ) {
-    return 'bg-red-500/10 text-red-700 border-red-500/20 dark:bg-red-500/20 dark:text-red-400'
+    return 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white'
   }
 
-  return '' // 使用默认的 secondary 样式
+  // Normal/Inactive/Finished - 浅灰色背景，深灰色文字
+  if (
+    lowerStatus.includes('normal') ||
+    lowerStatus.includes('inactive') ||
+    lowerStatus.includes('finished') ||
+    lowerStatus.includes('disconnected')
+  ) {
+    return 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+  }
+
+  // 默认灰色
+  return 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
 }
 
 type StoresColumnsOptions = {

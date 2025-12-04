@@ -149,9 +149,27 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
         return null
       }
 
+      // 状态样式映射
+      const statusClassNameMap: Record<string, string> = {
+        pending:
+          'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
+        completed:
+          'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white',
+        failed:
+          'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
+        cancelled:
+          'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+      }
+
+      const statusClassName =
+        statusClassNameMap[status.value] ||
+        'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+
       return (
         <div className='flex w-[100px] items-center gap-2'>
-          <Badge variant={status.variant}>{status.label}</Badge>
+          <Badge variant='outline' className={statusClassName}>
+            {status.label}
+          </Badge>
         </div>
       )
     },

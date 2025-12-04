@@ -1,5 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { type StoreSku } from '../data/schema'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ChevronRight, Minus, Image as ImageIcon } from 'lucide-react'
@@ -212,9 +213,16 @@ export const createPackagingConnectionColumns = (options?: {
       cell: ({ row }) => {
         const item = row.original
         return (
-          <div className="text-sm">
+          <Badge
+            variant='outline'
+            className={
+              item.isConnected
+                ? 'border-transparent bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            }
+          >
             {item.isConnected ? 'Connected' : 'Unconnected'}
-          </div>
+          </Badge>
         )
       },
       filterFn: (row, id, value) => {

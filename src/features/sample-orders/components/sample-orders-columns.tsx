@@ -180,19 +180,20 @@ export const createSampleOrdersColumns = (options?: {
       cell: ({ row }) => {
         const status = row.getValue('status') as string
         const statusColors: Record<string, string> = {
-          paid: 'bg-green-100 text-green-800',
-          shipped: 'bg-blue-100 text-blue-800',
-          pending: 'bg-yellow-100 text-yellow-800',
-          processing: 'bg-purple-100 text-purple-800',
-          completed: 'bg-gray-100 text-gray-800',
-          canceled: 'bg-red-100 text-red-800',
-          quoting: 'bg-orange-100 text-orange-800',
-          pay_in_progress: 'bg-indigo-100 text-indigo-800',
+          paid: 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white',
+          shipped: 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white',
+          pending: 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
+          processing: 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white',
+          completed: 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+          canceled: 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
+          quoting: 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
+          pay_in_progress: 'border-transparent bg-indigo-500 text-white dark:bg-indigo-500 dark:text-white',
         }
         return (
           <div className='space-y-1'>
             <Badge
-              className={statusColors[status] || 'bg-gray-100 text-gray-800'}
+              variant='outline'
+              className={statusColors[status] || 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}
             >
               {status.charAt(0).toUpperCase() +
                 status.slice(1).replace('_', ' ')}
