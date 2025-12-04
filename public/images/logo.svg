@@ -1,0 +1,34 @@
+
+<svg
+  version="1.0"
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="2400"
+  height="1800"
+>
+  
+  <rect
+    x="0"
+    y="0"
+    width="100%"
+    height="100%"
+    fill="#fff"
+    fill-opacity="1"
+  ></rect>
+  <svg
+    version="1.0"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    x="0"
+    y="0"
+    width="2400"
+    height="1800"
+    viewBox="0 0 340.000000 250.000000"
+    preserveAspectRatio="xMidYMid meet"
+    color-interpolation-filters="sRGB"
+  >
+    <defs><linearGradient id="92" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#fa71cd"/> <stop offset="100%" stop-color="#9b59b6"/></linearGradient><linearGradient id="93" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f9d423"/> <stop offset="100%" stop-color="#f83600"/></linearGradient><linearGradient id="94" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#0064d2"/> <stop offset="100%" stop-color="#1cb0f6"/></linearGradient><linearGradient id="95" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f00978"/> <stop offset="100%" stop-color="#3f51b1"/></linearGradient><linearGradient id="96" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7873f5"/> <stop offset="100%" stop-color="#ec77ab"/></linearGradient><linearGradient id="97" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f9d423"/> <stop offset="100%" stop-color="#e14fad"/></linearGradient><linearGradient id="98" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#009efd"/> <stop offset="100%" stop-color="#2af598"/></linearGradient><linearGradient id="99" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#ffcc00"/> <stop offset="100%" stop-color="#00b140"/></linearGradient><linearGradient id="100" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#d51007"/> <stop offset="100%" stop-color="#ff8177"/></linearGradient><linearGradient id="102" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#a2b6df"/> <stop offset="100%" stop-color="#0c3483"/></linearGradient><linearGradient id="103" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7ac5d8"/> <stop offset="100%" stop-color="#eea2a2"/></linearGradient><linearGradient id="104" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00ecbc"/> <stop offset="100%" stop-color="#007adf"/></linearGradient><linearGradient id="105" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#b88746"/> <stop offset="100%" stop-color="#fdf5a6"/></linearGradient></defs> <g class="imagesvg isNoFont" transform="translate(140.00000000121133,103.22378730773926)"><g><rect fill="#333" fill-opacity="0" stroke-width="2" x="0" y="0" width="60" height="43.552426233078066" class="image-rect"/> <svg x="0" y="0" width="60" height="43.552426233078066" filtersec="colorsb3983798670" class="image-svg-svg primary" style="overflow: visible;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0.050200462341308594 -0.01689004898071289 184.5216827392578 133.93942260742188"><path d="M88.59 54.21c18.92 0 37.85-.31 56.75.18 7.23.18 11.57-1.51 12.61-9.17.32-2.33.77-5.59 3.7-6 2.39-.36 3.77 2.28 5.11 4 5.39 7 10.59 14.12 16 21.1 2.71 3.51 2.47 6.08-1.33 8.75-10.72 7.53-21.26 15.33-31.9 23-1.56 1.12-3.27 3.12-5.31 1.55s-.58-3.69-.34-5.65c.34-2.78 3.94-6.7-1.7-7.83-4.42-.89-8.51-.28-10 5.34-3 11.45-6.63 22.74-9.52 34.22-1.79 7.15-5.19 10.75-13.14 10.16-8.53-.63-17.14-.08-25.72-.17s-9.19-1-6.72-9.42q4.71-15.94 9.64-31.82c2.25-7.24 1.51-8.64-6.12-8.53-27.08.37-21.17-4.07-28.55 21-2.2 7.49-4.62 14.92-6.77 22.42-1.19 4.17-3.43 6.42-8 6.35-10.59-.15-21.19-.09-31.78 0-4.86 0-6.29-2.32-5-6.77C7.06 104.43 13.7 82 20.23 59.46c1.32-4.54 4.26-5.38 8.58-5.33 19.92.18 39.85.08 59.78.08z" fill="#fabe00"/><path d="M123.16 45.89h-15.85c-4.6.05-6.42-1.48-4.9-6.44 3.25-10.57 6.18-21.23 9-31.92 1.33-5.07 3.85-7.7 9.47-7.54 10.06.3 20.12.21 30.19.01 5.38-.09 7.46 1.79 5.74 7.26q-5.33 16.88-10.33 33.87c-1 3.54-3.33 4.75-6.71 4.73-5.54.01-11.08.03-16.61.03zM47.83 45.89h-16.6c-4.05 0-6.16-1.26-4.74-6Q31.5 23.31 36 6.56C37.2 1.92 39.86 0 44.61 0c10.31.15 20.63.12 30.94 0 4.84 0 7.19 1.57 5.56 6.79q-5.35 17.27-10.52 34.6c-1.08 3.63-3.63 4.46-6.91 4.44-5.28.05-10.57.07-15.85.06z" fill="#ea5504"/></svg></svg> </g></g><defs v-gra="od"/>
+  </svg>
+</svg>
+
+
