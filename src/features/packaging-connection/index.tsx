@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Package, Store } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { HeaderActions } from '@/components/header-actions'
 import { DataTableToolbar } from '@/components/data-table'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ApplyPackagingDialog } from './components/apply-packaging-dialog'
@@ -156,14 +156,12 @@ export function PackagingConnection() {
           >
             <TabsList className='mb-4 grid h-9 w-fit grid-cols-2 gap-1'>
               {tabs.map((tab) => {
-                const Icon = tab.icon
                 return (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className='flex h-8 items-center gap-2 px-3 py-1.5 text-sm'
+                    className='data-[state=active]:text-primary flex h-8 items-center gap-2 px-3 py-1.5 text-sm'
                   >
-                    <Icon className='h-4 w-4' />
                     {tab.label}
                   </TabsTrigger>
                 )
@@ -184,14 +182,14 @@ export function PackagingConnection() {
                       },
                       ...(tab.value === 'stores'
                         ? [
-                      {
-                        columnId: 'status',
-                        title: 'Status',
-                        options: [
+                            {
+                              columnId: 'status',
+                              title: 'Status',
+                              options: [
                                 { label: 'Connected', value: 'connected' },
                                 { label: 'Unconnected', value: 'unconnected' },
-                        ],
-                      },
+                              ],
+                            },
                           ]
                         : []),
                     ]}

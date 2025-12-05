@@ -131,9 +131,8 @@ export function WalletTable({ data }: DataTableProps) {
             <TabsTrigger
               key={type.value}
               value={type.value}
-              className='flex items-center gap-2'
+              className='data-[state=active]:text-primary flex items-center gap-2 px-4 text-sm'
             >
-              <type.icon className='h-4 w-4' />
               {type.label}
             </TabsTrigger>
           ))}

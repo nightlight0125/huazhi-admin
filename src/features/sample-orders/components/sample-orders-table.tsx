@@ -160,7 +160,11 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
         <TabsList className='grid w-full grid-cols-9'>
           {sampleOrderStatuses.map((status) => (
-            <TabsTrigger key={status.value} value={status.value}>
+            <TabsTrigger
+              key={status.value}
+              value={status.value}
+              className='data-[state=active]:text-primary px-4 text-sm'
+            >
               {status.label}
             </TabsTrigger>
           ))}
