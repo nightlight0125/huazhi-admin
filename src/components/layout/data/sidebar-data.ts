@@ -162,6 +162,10 @@ export const sidebarData: SidebarData = {
               url: '/users',
             },
             {
+              title: 'Addresses',
+              url: '/addresses',
+            },
+            {
               title: 'Appearance',
               url: '/settings/appearance',
             },
