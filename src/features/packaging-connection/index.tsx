@@ -156,7 +156,6 @@ export function PackagingConnection() {
           >
             <TabsList className='mb-4 grid h-9 w-fit grid-cols-2 gap-1'>
               {tabs.map((tab) => {
-                const Icon = tab.icon
                 return (
                   <TabsTrigger
                     key={tab.value}
