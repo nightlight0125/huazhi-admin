@@ -47,62 +47,6 @@ export const sidebarData: SidebarData = {
           url: '/',
           icon: House,
         },
-        // {
-        //   title: 'Tasks',
-        //   url: '/tasks',
-        // },
-        // {
-        //   title: 'apps',
-        //   url: '/apps',
-        // },
-        // {
-        //   title: 'stores',
-        //   url: '/stores',
-        // },
-        // {
-        //   title: 'wallet',
-        //   url: '/wallet',
-        // },
-        // {
-        //   title: 'auth',
-        //   url: '/auth',
-        // },
-        // {
-        //   title: 'chats',
-        //   url: '/chats',
-        // },
-        // {
-        //   title: 'brands',
-        //   url: '/brands',
-        // },
-        // {
-        //   title: 'quotes',
-        //   url: '/quotes',
-        // },
-        // {
-        //   title: 'roles',
-        //   url: '/roles',
-        // },
-        // {
-        //   title: 'Users',
-        //   url: '/users',
-        //   icon: Users,
-        // },
-        // {
-        //   title: 'settings',
-        //   url: '/settings',
-        // },
-        // {
-        //   title: 'Order',
-        //   url: '/orders',
-        //   icon: ClipboardList,
-        // },
-        // {
-        //   title: 'Order',
-        //   url: '/orders',
-        //   icon: ClipboardList,
-        // },
-
         {
           title: 'Store Management',
           url: '/store-management',
@@ -146,10 +90,6 @@ export const sidebarData: SidebarData = {
               title: 'Store Products',
               url: '/store-products',
             },
-            // {
-            //   title: 'Bundle Products',
-            //   url: '/bundle-products',
-            // },
             {
               title: 'Published products',
               url: '/published-products',
@@ -170,11 +110,6 @@ export const sidebarData: SidebarData = {
             }
           ],
         },
-        // {
-        //   title: 'Cart',
-        //   url: '/cart',
-        //   icon: ShoppingCart,
-        // },
         {
           title: 'Orders',
           icon: ClipboardList,
@@ -193,24 +128,6 @@ export const sidebarData: SidebarData = {
             },
           ],
         },
-        // {
-        //   title: 'POD',
-        //   icon: CircleParking,
-        //   items: [
-        //     {
-        //       title: 'POD Products',
-        //       url: '/pod-products',
-        //     },
-        //     {
-        //       title: 'POD Design',
-        //       url: '/pod-design',
-        //     },
-        //     {
-        //       title: 'POD Publish',
-        //       url: '/pod-publish',
-        //     },
-        //   ],
-        // },
         {
           title: 'My Inventory',
           url: '/my-inventory',
@@ -237,20 +154,28 @@ export const sidebarData: SidebarData = {
           icon: Settings,
           items: [
             {
-              title: 'Profile',
-              url: '/settings',
-            },
-            {
               title: 'Logistics',
               url: '/logistics',
+            },
+            {
+              title: 'Accounts',
+              url: '/users',
             },
             {
               title: 'Appearance',
               url: '/settings/appearance',
             },
             {
-              title: 'Accounts',
-              url: '/users',
+              title: 'Profile',
+              url: '/settings',
+            },
+            {
+              title: 'Notifications',
+              url: '/settings/notifications',
+            },
+            {
+              title: 'Display',
+              url: '/settings/display',
             },
           ],
         }
