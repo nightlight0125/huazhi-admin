@@ -24,9 +24,24 @@ export function PublishedProducts() {
           className='w-full'
         >
           <TabsList className='grid w-fit grid-cols-3'>
-            <TabsTrigger value='published'>Published</TabsTrigger>
-            <TabsTrigger value='publishing'>Publishing</TabsTrigger>
-            <TabsTrigger value='failed'>Failed</TabsTrigger>
+            <TabsTrigger
+              value='published'
+              className='data-[state=active]:text-primary'
+            >
+              Published
+            </TabsTrigger>
+            <TabsTrigger
+              value='publishing'
+              className='data-[state=active]:text-primary'
+            >
+              Publishing
+            </TabsTrigger>
+            <TabsTrigger
+              value='failed'
+              className='data-[state=active]:text-primary'
+            >
+              Failed
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value='published' className='mt-4'>
