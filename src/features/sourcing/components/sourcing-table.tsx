@@ -76,7 +76,7 @@ export function SourcingTable({ data }: DataTableProps) {
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
-  const columns = createSourcingColumns(navigate, {
+  const columns = createSourcingColumns({
     onEdit: (sourcing) => {
       setEditingSourcing(sourcing)
       setIsEditSourcingDialogOpen(true)

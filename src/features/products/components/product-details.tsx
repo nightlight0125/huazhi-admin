@@ -527,7 +527,7 @@ export function ProductDetails() {
 
         {/* 右侧：价格和操作（在桌面端固定在视窗内） */}
         <div className='lg:col-span-1 lg:self-start'>
-          <div className='lg:fixed lg:top-28 lg:right-8 lg:w-[320px]'>
+          <div className='lg:fixed lg:top-28 lg:right-8 lg:w-[300px]'>
             <Card>
               <CardHeader>
                 <CardTitle>Recap</CardTitle>

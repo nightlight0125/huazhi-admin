@@ -1,4 +1,3 @@
-import { type NavigateOptions } from '@tanstack/react-router'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -11,8 +10,6 @@ import { DataTableColumnHeader } from '@/components/data-table'
 import { sourcingStatuses } from '../data/data'
 import { type Sourcing } from '../data/schema'
 import { SourcingRowActions } from './sourcing-row-actions'
-
-type NavigateFn = (options: NavigateOptions) => void
 
 type SourcingColumnHandlers = {
   onEdit?: (sourcing: Sourcing) => void
@@ -52,7 +49,6 @@ function getSourcingStatusClassName(status: string): string {
 }
 
 export const createSourcingColumns = (
-  navigate: NavigateFn,
   handlers?: SourcingColumnHandlers
 ): ColumnDef<Sourcing>[] => [
   {
@@ -188,10 +184,7 @@ export const createSourcingColumns = (
           className='hover:text-primary cursor-pointer text-xs hover:underline'
           onClick={(e) => {
             e.stopPropagation()
-            navigate({
-              to: '/products/$productId',
-              params: { productId },
-            })
+            handlers?.onRemarkClick?.(sourcing)
           }}
         >
           {result || '-'}
@@ -291,9 +284,5 @@ export const createSourcingColumns = (
   },
 ]
 
-// 为了向后兼容，导出一个默认的 columns（不包含导航功能）
-export const sourcingColumns: ColumnDef<Sourcing>[] = createSourcingColumns(
-  () => {
-    console.warn('Navigate function not provided to sourcing columns')
-  }
-)
+// 为了向后兼容，导出一个默认的 columns
+export const sourcingColumns: ColumnDef<Sourcing>[] = createSourcingColumns()
