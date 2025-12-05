@@ -69,11 +69,11 @@ export const sidebarData: SidebarData = {
               url: '/sourcing',
             },
             {
-              title: 'liked products',
+              title: 'Liked products',
               url: '/liked-products',
             },
             {
-              title: 'collection products',
+              title: 'Collection products',
               url: '/collection-products',
             },
             {
@@ -160,6 +160,10 @@ export const sidebarData: SidebarData = {
             {
               title: 'Accounts',
               url: '/users',
+            },
+            {
+              title: 'Addresses',
+              url: '/addresses',
             },
             {
               title: 'Appearance',
