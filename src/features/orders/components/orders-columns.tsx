@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Minus, Plus, ShoppingBag } from 'lucide-react'
+import { Edit, Minus, Plus, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,12 +50,14 @@ export const createOrdersColumns = (options?: {
   expandedRows?: Set<string>
   onModifyProduct?: (orderId: string) => void
   onEditAddress?: (orderId: string) => void
+  onEditCustomerName?: (orderId: string) => void
 }): ColumnDef<Order>[] => {
   const {
     onExpand,
     expandedRows = new Set(),
     onModifyProduct,
     onEditAddress,
+    onEditCustomerName,
   } = options || {}
 
   return [
@@ -190,9 +192,22 @@ export const createOrdersColumns = (options?: {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
-            <div>Name: {order.customerName}</div>
-            <div>Country: {order.country}</div>
-            <div>Address: {order.address}</div>
+            <div className='flex items-center gap-2'>
+              <span>Name: {order.customerName}</span>
+              <Button
+                variant='ghost'
+                size='icon'
+                className='h-4 w-4'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditCustomerName?.(order.id)
+                }}
+              >
+                <Edit className='h-3 w-3' />
+              </Button>
+            </div>
+            {/* <div>Country: {order.country}</div> */}
+            {/* <div>Address: {order.address}</div> */}
           </div>
         )
       },

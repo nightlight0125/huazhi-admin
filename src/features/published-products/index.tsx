@@ -23,18 +23,12 @@ export function PublishedProducts() {
           onValueChange={(value) => setActiveTab(value as PublishedStatus)}
           className='w-full'
         >
-          <TabsList className='grid w-fit grid-cols-3'>
+          <TabsList className='grid w-fit grid-cols-2'>
             <TabsTrigger
               value='published'
               className='data-[state=active]:text-primary'
             >
               Published
-            </TabsTrigger>
-            <TabsTrigger
-              value='publishing'
-              className='data-[state=active]:text-primary'
-            >
-              Publishing
             </TabsTrigger>
             <TabsTrigger
               value='failed'

@@ -18,8 +18,6 @@ export const users = Array.from({ length: 500 }, () => {
     status: faker.helpers.arrayElement([
       'active',
       'inactive',
-      'invited',
-      'suspended',
     ]),
     role: faker.helpers.arrayElement([
       'superadmin',

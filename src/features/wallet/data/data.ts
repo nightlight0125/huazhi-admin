@@ -17,25 +17,25 @@ export const walletRecordTypes = [
 // 钱包记录状态选项
 export const walletRecordStatuses = [
   {
-    label: '待处理',
+    label: 'Pending',
     value: 'pending',
     icon: Clock,
     variant: 'secondary' as const,
   },
   {
-    label: '已完成',
+    label: 'Completed',
     value: 'completed',
     icon: CheckCircle,
     variant: 'default' as const,
   },
   {
-    label: '失败',
+    label: 'Failed',
     value: 'failed',
     icon: XCircle,
     variant: 'destructive' as const,
   },
   {
-    label: '已取消',
+    label: 'Cancelled',
     value: 'cancelled',
     icon: AlertCircle,
     variant: 'outline' as const,

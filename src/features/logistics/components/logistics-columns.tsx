@@ -82,13 +82,13 @@ export const createLogisticsColumns = (): ColumnDef<Logistics>[] => {
       ),
       cell: ({ row }) => <div>{row.getValue('shippingMethod')}</div>,
     },
-    {
-      accessorKey: 'shippingFrom',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Shipping From' />
-      ),
-      cell: ({ row }) => <div>{row.getValue('shippingFrom')}</div>,
-    },
+    // {
+    //   accessorKey: 'shippingFrom',
+    //   header: ({ column }) => (
+    //     <DataTableColumnHeader column={column} title='Shipping From' />
+    //   ),
+    //   cell: ({ row }) => <div>{row.getValue('shippingFrom')}</div>,
+    // },
     {
       accessorKey: 'shippingTo',
       header: ({ column }) => (

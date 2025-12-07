@@ -91,10 +91,8 @@ export const usersColumns: ColumnDef<User>[] = [
       const badgeColor = callTypes.get(status)
       const statusText =
         {
-          active: '活跃',
-          inactive: '非活跃',
-          invited: '已邀请',
-          suspended: '已暂停',
+          active: 'Active',
+          inactive: 'Inactive'
         }[status] || status
       return (
         <div className='flex space-x-2'>
