@@ -579,13 +579,13 @@ export function ProductDetails() {
                       </DialogHeader>
                       <div className='space-y-4 py-4'>
                         <div className='space-y-2'>
-                          <Label htmlFor='store-select'>选择店铺</Label>
+                          <Label htmlFor='store-select'>Select Store</Label>
                           <Select
                             value={selectedStore}
                             onValueChange={setSelectedStore}
                           >
                             <SelectTrigger id='store-select'>
-                              <SelectValue placeholder='请选择要发布的店铺' />
+                              <SelectValue placeholder='Select Store to Publish' />
                             </SelectTrigger>
                             <SelectContent>
                               {stores.map((store) => (
@@ -730,7 +730,7 @@ export function ProductDetails() {
       {/* 产品描述 */}
       <Card className='mt-8'>
         <CardHeader>
-          <CardTitle>产品描述</CardTitle>
+          <CardTitle>Product Description</CardTitle>
         </CardHeader>
         <CardContent>
           <div className='prose max-w-none'>
@@ -803,7 +803,7 @@ export function ProductDetails() {
             <DialogTitle>Shipping Address</DialogTitle>
           </DialogHeader>
           <p className='text-muted-foreground text-sm'>
-            已存在收货地址，将使用该地址下单样品。
+            There is already a shipping address, which will be used to place an order for samples.
           </p>
           <div className='flex justify-end gap-2 pt-4'>
             <Button
@@ -834,7 +834,7 @@ export function ProductDetails() {
             <DialogTitle>Warehouse</DialogTitle>
           </DialogHeader>
           <p className='text-muted-foreground text-sm'>
-            已选择发货仓库，将使用该仓库准备库存。
+            There is already a shipping warehouse, which will be used to prepare inventory.
           </p>
           <div className='flex justify-end gap-2 pt-4'>
             <Button
@@ -862,7 +862,7 @@ export function ProductDetails() {
             <DialogTitle>Shipping Address</DialogTitle>
           </DialogHeader>
           <p className='text-muted-foreground text-sm'>
-            已存在收货地址，将使用该地址下单样品。
+            There is already a shipping address, which will be used to place an order for samples.
           </p>
           <div className='flex justify-end gap-2 pt-4'>
             <Button

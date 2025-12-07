@@ -23,12 +23,10 @@ export function PodDesign() {
       </Header>
       <Main>
         <div className='flex h-full flex-col'>
-          {/* 设计区域占满剩余空间，后续可嵌入实际设计器 */}
           <div className='flex-1 overflow-auto bg-background'>
             {/* POD Design content / iframe placeholder */}
           </div>
 
-          {/* 底部操作条：取消 / 保存 按钮，沿用项目样式 */}
           <div className='border-t bg-background px-6 py-3'>
             <div className='flex items-center justify-end gap-2'>
               <Button variant='outline' onClick={handleCancel}>

@@ -272,16 +272,6 @@ export function ProductPurchase() {
                 {/* 操作按钮 */}
                 <div className='flex flex-wrap gap-3 pt-4'>
                   <Button
-                    variant='outline'
-                    size='lg'
-                    className='min-w-[120px] flex-1'
-                  >
-                    Go to Cart
-                  </Button>
-                  <Button size='lg' className='min-w-[120px] flex-1'>
-                    Add to Cart
-                  </Button>
-                  <Button
                     size='lg'
                     className='min-w-[120px] flex-1'
                     onClick={handleBuyNow}

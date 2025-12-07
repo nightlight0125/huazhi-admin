@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -7,7 +9,25 @@ import { StoreProductsProvider } from './components/store-products-provider'
 import { StoreProductsTable } from './components/store-products-table'
 import { storeProducts } from './data/data'
 
+type AssociateStatus = 'associated' | 'not-associated'
+
 export function StoreProducts() {
+  const [activeTab, setActiveTab] = useState<AssociateStatus>('associated')
+
+  const associatedData = useMemo(() => {
+    return storeProducts.filter(
+      (product) => product.associateStatus === 'associated'
+    )
+  }, [])
+
+  const notAssociatedData = useMemo(() => {
+    return storeProducts.filter(
+      (product) =>
+        product.associateStatus === 'not-associated' ||
+        product.associateStatus === undefined
+    )
+  }, [])
+
   return (
     <StoreProductsProvider>
       <Header fixed>
@@ -27,9 +47,38 @@ export function StoreProducts() {
           </div>
           <StoreProductsPrimaryButtons />
         </div>
-        <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-          <StoreProductsTable data={storeProducts} />
-        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as AssociateStatus)}
+          className='w-full'
+        >
+          <TabsList className='grid w-fit grid-cols-2'>
+            <TabsTrigger
+              value='associated'
+              className='data-[state=active]:text-primary'
+            >
+              Associated
+            </TabsTrigger>
+            <TabsTrigger
+              value='not-associated'
+              className='data-[state=active]:text-primary'
+            >
+              Not Associated
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value='associated' className='mt-4'>
+            <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+              <StoreProductsTable data={associatedData} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value='not-associated' className='mt-4'>
+            <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+              <StoreProductsTable data={notAssociatedData} />
+            </div>
+          </TabsContent>
+        </Tabs>
       </Main>
 
       <StoreProductsDialogs />

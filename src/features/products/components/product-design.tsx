@@ -586,9 +586,9 @@ export function ProductDesign() {
   }
 
   return (
-    <div className='flex h-screen flex-col bg-white'>
+    <div className='flex h-screen flex-col bg-background'>
       {/* Top Toolbar */}
-      <div className='flex items-center justify-between border-b bg-white px-4 py-3'>
+      <div className='flex items-center justify-between border-b border-border bg-background px-4 py-3'>
         <div className='flex items-center gap-3'>
           <Home className='h-4 w-4' />
         </div>
@@ -715,7 +715,7 @@ export function ProductDesign() {
 
       <div className='flex flex-1 overflow-hidden'>
         {/* Left Sidebar */}
-        <div className='w-64 border-r bg-gray-50 p-4'>
+        <div className='w-64 border-r border-border bg-muted/50 p-4'>
           <div className='mb-6'>
             <div className='space-y-1'>
               <button
@@ -724,7 +724,7 @@ export function ProductDesign() {
                   'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   activeTab === 'logo'
                     ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-gray-200'
+                    : 'hover:bg-muted'
                 )}
               >
                 <ImageIcon className='h-5 w-5' />
@@ -739,7 +739,7 @@ export function ProductDesign() {
                   'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   activeTab === 'text'
                     ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-gray-200'
+                    : 'hover:bg-muted'
                 )}
               >
                 <Type className='h-5 w-5 text-lg font-bold' />
@@ -753,7 +753,7 @@ export function ProductDesign() {
                   'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   activeTab === 'notes'
                     ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-gray-200'
+                    : 'hover:bg-muted'
                 )}
               >
                 <Pencil className='h-5 w-5' />
@@ -766,7 +766,7 @@ export function ProductDesign() {
             <div className='space-y-4'>
               <div
                 className={cn(
-                  'cursor-pointer rounded-md border-2 border-dashed bg-white p-6 text-center transition-colors',
+                  'cursor-pointer rounded-md border-2 border-dashed border-border bg-background p-6 text-center transition-colors',
                   'hover:border-primary/50'
                 )}
                 onDrop={handleDrop}
@@ -792,7 +792,7 @@ export function ProductDesign() {
                 />
               </div>
               {uploadedLogo && (
-                <div className='overflow-hidden rounded-md border bg-white'>
+                <div className='overflow-hidden rounded-md border border-border bg-background'>
                   <img
                     src={uploadedLogo}
                     alt='Uploaded logo'
@@ -806,7 +806,7 @@ export function ProductDesign() {
           {activeTab === 'notes' && (
             <div className='space-y-4'>
               <div className='space-y-2'>
-                <div className='text-sm font-medium'>Name</div>
+                <div className='text-sm font-medium text-foreground'>Name</div>
                 <Input
                   placeholder='Enter name'
                   value={noteName}
@@ -816,7 +816,7 @@ export function ProductDesign() {
               </div>
 
               <div className='space-y-2'>
-                <div className='text-sm font-medium'>Notes</div>
+                <div className='text-sm font-medium text-foreground'>Notes</div>
                 <div className='relative'>
                   <Textarea
                     placeholder='Enter notes'
@@ -839,9 +839,9 @@ export function ProductDesign() {
         </div>
 
         {/* Main Content Area */}
-        <div className='flex flex-1 flex-col overflow-hidden bg-white'>
-          <div className='flex flex-1 items-center justify-center overflow-auto bg-gray-100 p-8'>
-            <div className='bg-white shadow-lg'>
+        <div className='flex flex-1 flex-col overflow-hidden bg-background'>
+          <div className='flex flex-1 items-center justify-center overflow-auto bg-muted/30 p-8'>
+            <div className='bg-background shadow-lg'>
               <canvas ref={canvasRef} />
             </div>
           </div>

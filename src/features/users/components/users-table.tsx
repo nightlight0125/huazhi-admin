@@ -101,10 +101,8 @@ export function UsersTable({ data, search, navigate }: DataTableProps) {
             columnId: 'status',
             title: 'status',
             options: [
-              { label: '活跃', value: 'active' },
-              { label: '非活跃', value: 'inactive' },
-              { label: '已邀请', value: 'invited' },
-              { label: '已暂停', value: 'suspended' },
+              { label: 'Active', value: 'active' },
+              { label: 'Inactive', value: 'inactive' },
             ],
           },
           {

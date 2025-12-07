@@ -140,15 +140,14 @@ export function StoreProductsTable({ data }: DataTableProps) {
               { label: 'Shop 3', value: 'Shop 3' },
             ],
           },
-          {
-            columnId: 'associateStatus',
-            title: 'Associate Status',
-            options: [
-              { label: 'Associated', value: 'associated' },
-              { label: 'Not Associated', value: 'not-associated' },
-              { label: 'Pending', value: 'pending' },
-            ],
-          },
+          // {
+          //   columnId: 'associateStatus',
+          //   title: 'Associate Status',
+          //   options: [
+          //     { label: 'Associated', value: 'associated' },
+          //     { label: 'Not Associated', value: 'not-associated' },
+          //   ],
+          // },
           {
             columnId: 'status',
             title: 'Status',

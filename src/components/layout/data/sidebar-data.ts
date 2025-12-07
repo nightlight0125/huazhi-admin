@@ -165,10 +165,10 @@ export const sidebarData: SidebarData = {
               title: 'Addresses',
               url: '/addresses',
             },
-            {
-              title: 'Appearance',
-              url: '/settings/appearance',
-            },
+            // {
+            //   title: 'Appearance',
+            //   url: '/settings/appearance',
+            // },
             {
               title: 'Profile',
               url: '/settings',
@@ -177,10 +177,10 @@ export const sidebarData: SidebarData = {
               title: 'Notifications',
               url: '/settings/notifications',
             },
-            {
-              title: 'Display',
-              url: '/settings/display',
-            },
+            // {
+            //   title: 'Display',
+            //   url: '/settings/display',
+            // },
           ],
         }
       ],

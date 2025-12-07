@@ -28,6 +28,7 @@ import { type Order, type OrderProduct } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
+import { OrdersEditCustomerNameDialog } from './orders-edit-customer-name-dialog'
 import { OrdersModifyProductDialog } from './orders-modify-product-dialog'
 import { OrdersTableFooter } from './orders-table-footer'
 
@@ -131,6 +132,13 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     open: false,
     order: null,
   })
+  const [editCustomerNameDialog, setEditCustomerNameDialog] = useState<{
+    open: boolean
+    order: Order | null
+  }>({
+    open: false,
+    order: null,
+  })
 
   // Synced with URL states
   const {
@@ -225,6 +233,25 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     setEditAddressDialog({ open: false, order: null })
   }
 
+  const handleEditCustomerName = (orderId: string) => {
+    const order = data.find((o) => o.id === orderId)
+    if (order) {
+      setEditCustomerNameDialog({
+        open: true,
+        order,
+      })
+    }
+  }
+
+  const handleConfirmEditCustomerName = (customerName: string) => {
+    console.log(
+      'Updated customer name for order:',
+      editCustomerNameDialog.order?.id,
+      customerName
+    )
+    setEditCustomerNameDialog({ open: false, order: null })
+  }
+
   const columns = useMemo(
     () =>
       createOrdersColumns({
@@ -247,6 +274,7 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
           }
         },
         onEditAddress: handleEditAddress,
+        onEditCustomerName: handleEditCustomerName,
       }),
     [expandedRows, data]
   )
@@ -427,6 +455,15 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
         }
         order={editAddressDialog.order}
         onConfirm={handleConfirmEditAddress}
+      />
+
+      <OrdersEditCustomerNameDialog
+        open={editCustomerNameDialog.open}
+        onOpenChange={(open) =>
+          setEditCustomerNameDialog({ ...editCustomerNameDialog, open })
+        }
+        order={editCustomerNameDialog.order}
+        onConfirm={handleConfirmEditCustomerName}
       />
     </div>
   )

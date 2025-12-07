@@ -53,7 +53,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             onClick={() => handleAction('view', '查看详情', `查看记录 ${record.id} 的详细信息`)}
           >
             <Eye className='mr-2 h-4 w-4' />
-            查看详情
+            View Details
           </DropdownMenuItem>
           
           {record.type === 'invoice' && record.invoiceUrl && (
@@ -63,7 +63,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                 onClick={() => handleAction('download_invoice', '下载发票', `下载发票 ${record.invoiceNumber || record.id}`)}
               >
                 <Download className='mr-2 h-4 w-4' />
-                下载发票
+                Download Invoice
               </DropdownMenuItem>
             </>
           )}
@@ -75,7 +75,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                 onClick={() => handleAction('view_transaction', '查看交易', `查看交易 ${record.transactionId} 的详细信息`)}
               >
                 <FileText className='mr-2 h-4 w-4' />
-                查看交易
+                View Transaction
               </DropdownMenuItem>
             </>
           )}
