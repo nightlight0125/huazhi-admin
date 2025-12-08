@@ -1,347 +1,249 @@
-import { useEffect, useState } from 'react'
-import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html'
-import { TOGGLE_LINK_COMMAND } from '@lexical/link'
-import {
-  INSERT_ORDERED_LIST_COMMAND,
-  INSERT_UNORDERED_LIST_COMMAND,
-  ListItemNode,
-  ListNode,
-} from '@lexical/list'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { ContentEditable } from '@lexical/react/LexicalContentEditable'
-import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
-import { ListPlugin } from '@lexical/react/LexicalListPlugin'
-import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
-import {
-  $getRoot,
-  $getSelection,
-  $insertNodes,
-  $isRangeSelection,
-  EditorState,
-  FORMAT_ELEMENT_COMMAND,
-  FORMAT_TEXT_COMMAND,
-} from 'lexical'
-import { AlignCenter, AlignLeft, AlignRight, Image, Link } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useEffect, useRef, useState } from 'react'
+import Quill from 'quill'
+import 'quill/dist/quill.snow.css'
 
 type RichTextEditorProps = {
   initialContent?: string
   onChange?: (value: string) => void
 }
 
-// 工具栏按钮组件
-function ToolbarPlugin() {
-  const [editor] = useLexicalComposerContext()
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false)
-  const [imageDialogOpen, setImageDialogOpen] = useState(false)
-  const [linkUrl, setLinkUrl] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-
-  const handleBold = () => {
-    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')
-  }
-
-  const handleItalic = () => {
-    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')
-  }
-
-  const handleUnderline = () => {
-    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')
-  }
-
-  const handleAlignLeft = () => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'left')
-  }
-
-  const handleAlignCenter = () => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'center')
-  }
-
-  const handleAlignRight = () => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'right')
-  }
-
-  const handleBulletList = () => {
-    editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
-  }
-
-  const handleOrderedList = () => {
-    editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)
-  }
-
-  const handleInsertLink = () => {
-    if (linkUrl.trim()) {
-      editor.dispatchCommand(TOGGLE_LINK_COMMAND, linkUrl)
-      setLinkUrl('')
-      setLinkDialogOpen(false)
-    }
-  }
-
-  const handleInsertImage = () => {
-    if (imageUrl.trim()) {
-      editor.update(() => {
-        const selection = $getSelection()
-        if ($isRangeSelection(selection)) {
-          // Create a paragraph with the image as HTML
-          const imgHtml = `<img src="${imageUrl}" style="max-width: 100%; height: auto; display: block; margin: 4px 0;" />`
-          const parser = new DOMParser()
-          const dom = parser.parseFromString(imgHtml, 'text/html')
-          const nodes = $generateNodesFromDOM(editor, dom)
-          $insertNodes(nodes)
-        }
-      })
-      setImageUrl('')
-      setImageDialogOpen(false)
-    }
-  }
-
-  return (
-    <>
-      <div className='bg-muted inline-flex flex-wrap gap-1 rounded-md border px-1 py-1'>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px]'
-          onClick={handleBold}
-        >
-          B
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px] italic'
-          onClick={handleItalic}
-        >
-          I
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px] underline'
-          onClick={handleUnderline}
-        >
-          U
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px]'
-          onClick={handleAlignLeft}
-          title='Align Left'
-        >
-          <AlignLeft className='h-3 w-3' />
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px]'
-          onClick={handleAlignCenter}
-          title='Align Center'
-        >
-          <AlignCenter className='h-3 w-3' />
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px]'
-          onClick={handleAlignRight}
-          title='Align Right'
-        >
-          <AlignRight className='h-3 w-3' />
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px]'
-          onClick={handleBulletList}
-        >
-          • List
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px]'
-          onClick={handleOrderedList}
-        >
-          1. List
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px]'
-          onClick={() => setLinkDialogOpen(true)}
-          title='Insert Link'
-        >
-          <Link className='h-3 w-3' />
-        </button>
-        <button
-          type='button'
-          className='hover:bg-background rounded px-2 py-0.5 text-[11px]'
-          onClick={() => setImageDialogOpen(true)}
-          title='Insert Image'
-        >
-          <Image className='h-3 w-3' />
-        </button>
-      </div>
-
-      {/* Link Dialog */}
-      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Insert Link</DialogTitle>
-          </DialogHeader>
-          <div className='space-y-4 py-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='link-url'>URL</Label>
-              <Input
-                id='link-url'
-                placeholder='https://example.com'
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleInsertLink()
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant='outline'
-              onClick={() => {
-                setLinkUrl('')
-                setLinkDialogOpen(false)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleInsertLink} disabled={!linkUrl.trim()}>
-              Insert
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Image Dialog */}
-      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Insert Image</DialogTitle>
-          </DialogHeader>
-          <div className='space-y-4 py-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='image-url'>Image URL</Label>
-              <Input
-                id='image-url'
-                placeholder='https://example.com/image.jpg'
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleInsertImage()
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant='outline'
-              onClick={() => {
-                setImageUrl('')
-                setImageDialogOpen(false)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleInsertImage} disabled={!imageUrl.trim()}>
-              Insert
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
-
 export function RichTextEditor({
   initialContent = '',
   onChange,
 }: RichTextEditorProps) {
-  const initialConfig = {
-    namespace: 'RichTextEditor',
-    theme: {},
-    nodes: [ListNode, ListItemNode],
-    onError: (error: Error) => {
-      console.error(error)
-    },
-    editorState: undefined, // Will be initialized by InitializePlugin
-  }
+  const editorRef = useRef<HTMLDivElement>(null)
+  const quillRef = useRef<Quill | null>(null)
+  const onChangeRef = useRef(onChange)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const initKeyRef = useRef<string | null>(null)
 
-  // Initialize editor with HTML content
-  function InitializePlugin({ initialContent }: { initialContent: string }) {
-    const [editor] = useLexicalComposerContext()
+  // 保持 onChange 引用最新
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
-    useEffect(() => {
-      if (initialContent) {
-        editor.update(() => {
-          const parser = new DOMParser()
-          const dom = parser.parseFromString(initialContent, 'text/html')
-          const nodes = $generateNodesFromDOM(editor, dom)
-          const root = $getRoot()
-          root.clear()
-          root.append(...nodes)
-        })
+  useEffect(() => {
+    const editorElement = editorRef.current
+    if (!editorElement) {
+      return
+    }
+
+    // 检查是否已经初始化
+    if (quillRef.current) {
+      return
+    }
+
+    // 彻底清理：移除所有 Quill 相关的 DOM
+    const existingQuill = editorElement.querySelector('.ql-container')
+    if (existingQuill) {
+      const container = existingQuill.parentElement
+      if (container && container.parentNode) {
+        container.parentNode.removeChild(container)
       }
-    }, [editor, initialContent])
+    }
 
-    return null
-  }
+    // 移除所有可能的 Quill 工具栏
+    const existingToolbar = editorElement.querySelector('.ql-toolbar')
+    if (existingToolbar) {
+      const toolbarParent = existingToolbar.parentElement
+      if (toolbarParent && toolbarParent.parentNode) {
+        toolbarParent.parentNode.removeChild(toolbarParent)
+      }
+    }
 
-  // Plugin to handle changes and convert to HTML
-  function OnChangeHTMLPlugin() {
-    const [editor] = useLexicalComposerContext()
+    // 完全清空容器
+    editorElement.innerHTML = ''
 
-    return (
-      <OnChangePlugin
-        onChange={(editorState: EditorState) => {
-          editorState.read(() => {
-            // Convert Lexical state to HTML
-            const selection = null // Generate HTML for entire editor
-            const htmlString = $generateHtmlFromNodes(editor, selection)
-            onChange?.(htmlString)
+    // 生成唯一的初始化 key
+    const initKey = `quill-${Date.now()}-${Math.random()}`
+    initKeyRef.current = initKey
+
+    // 使用 requestAnimationFrame 确保 DOM 完全清理后再初始化
+    requestAnimationFrame(() => {
+      // 再次检查是否已经有实例（防止并发）
+      if (quillRef.current || initKeyRef.current !== initKey) {
+        return
+      }
+
+      // 再次检查并清空
+      if (editorElement.querySelector('.ql-container')) {
+        editorElement.innerHTML = ''
+      }
+
+      try {
+        // 自定义图片上传处理器
+        const imageHandler = () => {
+          const input = document.createElement('input')
+          input.setAttribute('type', 'file')
+          input.setAttribute('accept', 'image/*')
+          input.click()
+
+          input.onchange = () => {
+            const file = input.files?.[0]
+            if (!file) return
+
+            // 验证文件类型
+            if (!file.type.startsWith('image/')) {
+              alert('请选择图片文件')
+              return
+            }
+
+            // 验证文件大小（10MB）
+            if (file.size > 10 * 1024 * 1024) {
+              alert('文件大小不能超过 10MB')
+              return
+            }
+
+            const reader = new FileReader()
+            reader.onload = () => {
+              const base64 = reader.result as string
+              const quill = quillRef.current
+              if (quill) {
+                const range = quill.getSelection(true)
+                if (range) {
+                  quill.insertEmbed(range.index, 'image', base64)
+                  quill.setSelection(range.index + 1, 0)
+                } else {
+                  // 如果没有选择，在末尾插入
+                  const length = quill.getLength()
+                  quill.insertEmbed(length - 1, 'image', base64)
+                  quill.setSelection(length, 0)
+                }
+              }
+            }
+            reader.onerror = () => {
+              alert('图片读取失败，请重试')
+            }
+            reader.readAsDataURL(file)
+          }
+        }
+
+        // 初始化 Quill
+        const quill = new Quill(editorElement, {
+          theme: 'snow',
+          placeholder: '开始输入...',
+          modules: {
+            toolbar: {
+              container: [
+                [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ color: [] }, { background: [] }],
+                [{ script: 'sub' }, { script: 'super' }],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                [{ indent: '-1' }, { indent: '+1' }],
+                [{ align: [] }],
+                ['blockquote', 'code-block'],
+                ['link', 'image', 'video'],
+                ['clean'],
+              ],
+              handlers: {
+                image: imageHandler,
+              },
+            },
+            clipboard: {
+              matchVisual: false,
+            },
+          },
+          formats: [
+            'header',
+            'bold',
+            'italic',
+            'underline',
+            'strike',
+            'color',
+            'background',
+            'script',
+            'list',
+            'indent',
+            'align',
+            'blockquote',
+            'code-block',
+            'link',
+            'image',
+            'video',
+          ],
+        })
+
+        // 验证初始化 key 是否仍然有效（防止重复初始化）
+        if (initKeyRef.current === initKey && !quillRef.current) {
+          quillRef.current = quill
+          setIsLoaded(true)
+
+          // 设置初始内容
+          if (initialContent) {
+            quill.root.innerHTML = initialContent
+          }
+
+          // 监听内容变化
+          quill.on('text-change', () => {
+            const content = quill.root.innerHTML
+            onChangeRef.current?.(content)
           })
-        }}
-      />
-    )
-  }
+        } else {
+          // 如果 key 不匹配或已有实例，销毁这个实例
+          try {
+            const container = quill.container
+            if (container && container.parentNode) {
+              container.parentNode.removeChild(container)
+            }
+          } catch (e) {
+            // 忽略错误
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize Quill:', error)
+        setIsLoaded(true)
+      }
+    })
+
+    // 清理函数
+    return () => {
+      initKeyRef.current = null
+      if (quillRef.current) {
+        const quill = quillRef.current
+        try {
+          quill.off('text-change')
+          // 尝试移除 Quill 创建的 DOM
+          const container = quill.container
+          if (container && container.parentNode) {
+            container.parentNode.removeChild(container)
+          }
+        } catch (e) {
+          // 忽略错误
+        }
+        quillRef.current = null
+        setIsLoaded(false)
+      }
+      // 确保容器被清空
+      if (editorElement) {
+        editorElement.innerHTML = ''
+      }
+    }
+  }, [])
+
+  // 当 initialContent 变化时更新编辑器内容
+  useEffect(() => {
+    if (quillRef.current && initialContent !== undefined) {
+      const currentContent = quillRef.current.root.innerHTML
+      if (currentContent !== initialContent) {
+        quillRef.current.root.innerHTML = initialContent
+      }
+    }
+  }, [initialContent])
 
   return (
-    <div className='space-y-2'>
-      <LexicalComposer initialConfig={initialConfig}>
-        <ToolbarPlugin />
-        <InitializePlugin initialContent={initialContent} />
-        <div className='bg-background focus-visible:ring-ring relative min-h-[160px] rounded-md border px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-offset-2'>
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable className='min-h-[140px] outline-none' />
-            }
-            placeholder={
-              <div className='text-muted-foreground pointer-events-none absolute top-2 left-3'>
-                Start typing...
-              </div>
-            }
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <HistoryPlugin />
-          <ListPlugin />
-          <OnChangeHTMLPlugin />
+    <div className='relative space-y-2'>
+      <div
+        ref={editorRef}
+        style={{
+          height: '300px',
+        }}
+      />
+      {!isLoaded && (
+        <div className='bg-background/80 absolute inset-0 flex items-center justify-center rounded-md'>
+          <div className='text-muted-foreground'>加载编辑器...</div>
         </div>
-      </LexicalComposer>
+      )}
     </div>
   )
 }

@@ -1,7 +1,4 @@
-import {
-  flexRender,
-  type Table as TanstackTable,
-} from '@tanstack/react-table'
+import { flexRender, type Table as TanstackTable } from '@tanstack/react-table'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -26,12 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTableToolbar } from '@/components/data-table'
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { VariantPricingBulkActions } from './variant-pricing-bulk-actions'
@@ -129,10 +121,7 @@ export function StoreListingTabs({
 
             <div className='space-y-1'>
               <div className='text-muted-foreground font-medium'>Tags</div>
-              <Popover
-                open={tagsPopoverOpen}
-                onOpenChange={setTagsPopoverOpen}
-              >
+              <Popover open={tagsPopoverOpen} onOpenChange={setTagsPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant='outline'
@@ -264,12 +253,7 @@ export function StoreListingTabs({
                     onApply: (type, value) => {
                       const selectedRows =
                         variantPricingTable.getFilteredSelectedRowModel().rows
-                      console.log(
-                        'Bulk revise:',
-                        type,
-                        value,
-                        selectedRows
-                      )
+                      console.log('Bulk revise:', type, value, selectedRows)
                       // TODO: 实现批量修改逻辑
                     },
                   }}
@@ -279,8 +263,9 @@ export function StoreListingTabs({
                 <div className='border-border overflow-x-auto rounded-lg border'>
                   <Table>
                     <TableHeader>
-                      {variantPricingTable.getHeaderGroups().map(
-                        (headerGroup) => (
+                      {variantPricingTable
+                        .getHeaderGroups()
+                        .map((headerGroup) => (
                           <TableRow
                             key={headerGroup.id}
                             className='text-muted-foreground bg-muted/50'
@@ -299,32 +284,29 @@ export function StoreListingTabs({
                               </TableHead>
                             ))}
                           </TableRow>
-                        )
-                      )}
+                        ))}
                     </TableHeader>
                     <TableBody>
                       {variantPricingTable.getRowModel().rows?.length ? (
-                        variantPricingTable
-                          .getRowModel()
-                          .rows.map((row) => (
-                            <TableRow
-                              key={row.id}
-                              data-state={row.getIsSelected() && 'selected'}
-                              className='even:bg-muted/30 hover:bg-muted/50 transition-colors'
-                            >
-                              {row.getVisibleCells().map((cell) => (
-                                <TableCell
-                                  key={cell.id}
-                                  className='border-b px-1.5 py-1.5 text-xs'
-                                >
-                                  {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                  )}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))
+                        variantPricingTable.getRowModel().rows.map((row) => (
+                          <TableRow
+                            key={row.id}
+                            data-state={row.getIsSelected() && 'selected'}
+                            className='even:bg-muted/30 hover:bg-muted/50 transition-colors'
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell
+                                key={cell.id}
+                                className='border-b px-1.5 py-1.5 text-xs'
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
                       ) : (
                         <TableRow>
                           <TableCell
@@ -405,12 +387,10 @@ export function StoreListingTabs({
         >
           <div className='space-y-2'>
             <div className='text-muted-foreground font-medium'>Description</div>
-            <RichTextEditor initialContent={``} />
+            <RichTextEditor key='description-editor' initialContent={``} />
           </div>
         </TabsContent>
       </Tabs>
     </div>
   )
 }
-
-

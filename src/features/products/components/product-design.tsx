@@ -23,6 +23,14 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { products } from '../data/data'
@@ -50,8 +58,25 @@ export function ProductDesign() {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const historyIndexRef = useRef(-1)
+  const isUpdatingTextRef = useRef(false)
   const [noteName, setNoteName] = useState('')
   const [noteText, setNoteText] = useState('')
+  
+  // Text editing state
+  const [selectedTextObject, setSelectedTextObject] = useState<Textbox | null>(null)
+  const [textContent, setTextContent] = useState('Teemdrop')
+  const [fontFamily, setFontFamily] = useState('Arial')
+  const [fontSize, setFontSize] = useState(22)
+  const [fontOpacity, setFontOpacity] = useState(100)
+  const [textSpacing, setTextSpacing] = useState(20)
+  const [textColor, setTextColor] = useState('#000000')
+  const [textStyles, setTextStyles] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    linethrough: false,
+    overline: false,
+  })
 
   // 保存状态函数 - 包含背景图片
   const saveState = useCallback(() => {
@@ -226,6 +251,44 @@ export function ProductDesign() {
     canvas.on('object:added', handleObjectAdded)
     canvas.on('object:modified', handleObjectModified)
     canvas.on('object:removed', handleObjectRemoved)
+    
+    // 监听对象选择事件，更新文本编辑面板
+    const handleSelectionCreated = (e: any) => {
+      // 如果正在更新文本对象，跳过选择事件处理
+      if (isUpdatingTextRef.current) return
+      
+      const activeObject = e.selected?.[0] || e.target
+      if (activeObject && activeObject.type === 'textbox') {
+        const textbox = activeObject as Textbox
+        // 只在对象改变时才更新状态
+        if (selectedTextObject !== textbox) {
+          setSelectedTextObject(textbox)
+          setTextContent(textbox.text || '')
+          setFontFamily(textbox.fontFamily || 'Arial')
+          setFontSize(textbox.fontSize || 22)
+          setFontOpacity((textbox.opacity ?? 1) * 100)
+          setTextSpacing(textbox.charSpacing ?? 0)
+          setTextColor((textbox.fill as string) || '#000000')
+          setTextStyles({
+            bold: textbox.fontWeight === 'bold' || textbox.fontWeight === 700,
+            italic: textbox.fontStyle === 'italic',
+            underline: textbox.underline || false,
+            linethrough: textbox.linethrough || false,
+            overline: textbox.overline || false,
+          })
+        }
+      } else if (!activeObject || activeObject.type !== 'textbox') {
+        setSelectedTextObject(null)
+      }
+    }
+    
+    const handleSelectionCleared = () => {
+      setSelectedTextObject(null)
+    }
+    
+    canvas.on('selection:created', handleSelectionCreated)
+    canvas.on('selection:updated', handleSelectionCreated)
+    canvas.on('selection:cleared', handleSelectionCleared)
 
     // 监听双击事件 - 编辑文本
     const handleMouseDblClick = (e: any) => {
@@ -296,6 +359,9 @@ export function ProductDesign() {
       canvas.off('object:modified', handleObjectModified)
       canvas.off('object:removed', handleObjectRemoved)
       canvas.off('mouse:dblclick', handleMouseDblClick)
+      canvas.off('selection:created', handleSelectionCreated)
+      canvas.off('selection:updated', handleSelectionCreated)
+      canvas.off('selection:cleared', handleSelectionCleared)
       window.removeEventListener('keydown', handleKeyDown)
       canvas.dispose()
     }
@@ -498,19 +564,148 @@ export function ProductDesign() {
     if (!fabricCanvasRef.current) return
     const canvas = fabricCanvasRef.current
     const center = canvas.getCenter()
-    const text = new Textbox('双击编辑文本', {
+    const text = new Textbox(textContent || 'Teemdrop', {
       left: (center.left || 0) - 100,
       top: (center.top || 0) - 15,
       width: 200,
-      fontSize: 24,
-      fontFamily: 'Arial',
-      fill: '#000000',
+      fontSize: fontSize,
+      fontFamily: fontFamily,
+      fill: textColor,
       textAlign: 'center',
+      opacity: fontOpacity / 100,
+      charSpacing: textSpacing,
+      fontWeight: textStyles.bold ? 'bold' : 'normal',
+      fontStyle: textStyles.italic ? 'italic' : 'normal',
+      underline: textStyles.underline,
+      linethrough: textStyles.linethrough,
+      overline: textStyles.overline,
     })
     canvas.add(text)
     canvas.setActiveObject(text)
+    setSelectedTextObject(text)
     canvas.renderAll()
   }
+  
+  // 更新文本对象属性 - 使用 ref 来避免依赖问题
+  const updateTextObjectRef = useRef<((updates: any) => void) | null>(null)
+  
+  updateTextObjectRef.current = (updates: Partial<{
+    text: string
+    fontFamily: string
+    fontSize: number
+    opacity: number
+    charSpacing: number
+    fill: string
+    fontWeight: string | number
+    fontStyle: string
+    underline: boolean
+    linethrough: boolean
+    overline: boolean
+  }>) => {
+    if (!fabricCanvasRef.current || !selectedTextObject) return
+    const canvas = fabricCanvasRef.current
+    
+    // 设置标志，防止选择事件触发状态更新
+    isUpdatingTextRef.current = true
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (key === 'text') {
+        selectedTextObject.set('text', value as string)
+      } else if (key === 'charSpacing') {
+        // charSpacing 在 Fabric.js 中直接使用数值
+        selectedTextObject.set('charSpacing', value as number)
+      } else {
+        ;(selectedTextObject as any)[key] = value
+      }
+    })
+    
+    // 强制重新计算尺寸
+    selectedTextObject.setCoords()
+    canvas.renderAll()
+    
+    // 延迟保存状态，避免频繁保存
+    setTimeout(() => {
+      saveState()
+      isUpdatingTextRef.current = false
+    }, 200)
+  }
+  
+  // 文本内容变化 - 使用防抖来优化性能
+  useEffect(() => {
+    if (!selectedTextObject || isUpdatingTextRef.current) return
+    
+    const timeoutId = setTimeout(() => {
+      if (updateTextObjectRef.current && selectedTextObject.text !== textContent) {
+        updateTextObjectRef.current({ text: textContent })
+      }
+    }, 50)
+    
+    return () => clearTimeout(timeoutId)
+  }, [textContent, selectedTextObject])
+  
+  // 字体家族变化
+  useEffect(() => {
+    if (!selectedTextObject || isUpdatingTextRef.current) return
+    if (updateTextObjectRef.current && selectedTextObject.fontFamily !== fontFamily) {
+      updateTextObjectRef.current({ fontFamily })
+    }
+  }, [fontFamily, selectedTextObject])
+  
+  // 字体大小变化
+  useEffect(() => {
+    if (!selectedTextObject || isUpdatingTextRef.current) return
+    if (updateTextObjectRef.current && selectedTextObject.fontSize !== fontSize) {
+      updateTextObjectRef.current({ fontSize })
+    }
+  }, [fontSize, selectedTextObject])
+  
+  // 透明度变化
+  useEffect(() => {
+    if (!selectedTextObject || isUpdatingTextRef.current) return
+    const newOpacity = fontOpacity / 100
+    if (updateTextObjectRef.current && selectedTextObject.opacity !== newOpacity) {
+      updateTextObjectRef.current({ opacity: newOpacity })
+    }
+  }, [fontOpacity, selectedTextObject])
+  
+  // 间距变化
+  useEffect(() => {
+    if (!selectedTextObject || isUpdatingTextRef.current) return
+    if (updateTextObjectRef.current && selectedTextObject.charSpacing !== textSpacing) {
+      updateTextObjectRef.current({ charSpacing: textSpacing })
+    }
+  }, [textSpacing, selectedTextObject])
+  
+  // 颜色变化
+  useEffect(() => {
+    if (!selectedTextObject || isUpdatingTextRef.current) return
+    if (updateTextObjectRef.current && selectedTextObject.fill !== textColor) {
+      updateTextObjectRef.current({ fill: textColor })
+    }
+  }, [textColor, selectedTextObject])
+  
+  // 样式变化
+  useEffect(() => {
+    if (!selectedTextObject || isUpdatingTextRef.current) return
+    if (updateTextObjectRef.current) {
+      const currentBold = selectedTextObject.fontWeight === 'bold' || selectedTextObject.fontWeight === 700
+      const currentItalic = selectedTextObject.fontStyle === 'italic'
+      
+      if (currentBold !== textStyles.bold || 
+          currentItalic !== textStyles.italic ||
+          selectedTextObject.underline !== textStyles.underline ||
+          selectedTextObject.linethrough !== textStyles.linethrough ||
+          selectedTextObject.overline !== textStyles.overline) {
+        updateTextObjectRef.current({
+          fontWeight: textStyles.bold ? 'bold' : 'normal',
+          fontStyle: textStyles.italic ? 'italic' : 'normal',
+          underline: textStyles.underline,
+          linethrough: textStyles.linethrough,
+          overline: textStyles.overline,
+        })
+      }
+    }
+  }, [textStyles, selectedTextObject])
 
   const handleRotate = () => {
     if (!fabricCanvasRef.current) return
@@ -733,7 +928,9 @@ export function ProductDesign() {
               <button
                 onClick={() => {
                   setActiveTab('text')
-                  handleAddText()
+                  if (!selectedTextObject) {
+                    handleAddText()
+                  }
                 }}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
@@ -800,6 +997,345 @@ export function ProductDesign() {
                   />
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'text' && (
+            <div className='space-y-4'>
+              <div className='text-lg font-semibold text-foreground'>Text</div>
+              
+              {/* Text Content */}
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>Text content:</Label>
+                <Textarea
+                  value={textContent}
+                  onChange={(e) => {
+                    const newValue = e.target.value
+                    setTextContent(newValue)
+                    // 立即更新到画布，不等待 useEffect
+                    if (selectedTextObject) {
+                      isUpdatingTextRef.current = true
+                      selectedTextObject.set('text', newValue)
+                      selectedTextObject.setCoords()
+                      fabricCanvasRef.current?.renderAll()
+                      setTimeout(() => {
+                        isUpdatingTextRef.current = false
+                        saveState()
+                      }, 200)
+                    }
+                  }}
+                  className='min-h-[80px] resize-none'
+                  placeholder='Enter text'
+                />
+              </div>
+
+              {/* Font Family */}
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>Font family:</Label>
+                <Select value={fontFamily} onValueChange={(value) => {
+                  setFontFamily(value)
+                  // 立即更新，不等待 useEffect
+                  if (selectedTextObject && updateTextObjectRef.current) {
+                    isUpdatingTextRef.current = true
+                    selectedTextObject.set('fontFamily', value)
+                    fabricCanvasRef.current?.renderAll()
+                    setTimeout(() => {
+                      isUpdatingTextRef.current = false
+                      saveState()
+                    }, 100)
+                  }
+                }}>
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='Arial'>Arial</SelectItem>
+                    <SelectItem value='Helvetica'>Helvetica</SelectItem>
+                    <SelectItem value='Times New Roman'>Times New Roman</SelectItem>
+                    <SelectItem value='Courier New'>Courier New</SelectItem>
+                    <SelectItem value='Verdana'>Verdana</SelectItem>
+                    <SelectItem value='Georgia'>Georgia</SelectItem>
+                    <SelectItem value='Palatino'>Palatino</SelectItem>
+                    <SelectItem value='Garamond'>Garamond</SelectItem>
+                    <SelectItem value='Comic Sans MS'>Comic Sans MS</SelectItem>
+                    <SelectItem value='Impact'>Impact</SelectItem>
+                    <SelectItem value='sans-serif'>Sans-serif</SelectItem>
+                    <SelectItem value='serif'>Serif</SelectItem>
+                    <SelectItem value='monospace'>Monospace</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Font Size */}
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>Font size: {fontSize}</Label>
+                <input
+                  type='range'
+                  min='8'
+                  max='100'
+                  value={fontSize}
+                  onChange={(e) => {
+                    const newValue = Number(e.target.value)
+                    setFontSize(newValue)
+                    // 立即更新到画布
+                    if (selectedTextObject) {
+                      isUpdatingTextRef.current = true
+                      selectedTextObject.set('fontSize', newValue)
+                      selectedTextObject.setCoords()
+                      fabricCanvasRef.current?.renderAll()
+                      setTimeout(() => {
+                        isUpdatingTextRef.current = false
+                        saveState()
+                      }, 200)
+                    }
+                  }}
+                  className='w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary'
+                  style={{
+                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${(fontSize - 8) / (100 - 8) * 100}%, hsl(var(--muted)) ${(fontSize - 8) / (100 - 8) * 100}%, hsl(var(--muted)) 100%)`
+                  }}
+                />
+              </div>
+
+              {/* Font Opacity */}
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>Font opacity: {fontOpacity}</Label>
+                <input
+                  type='range'
+                  min='0'
+                  max='100'
+                  value={fontOpacity}
+                  onChange={(e) => {
+                    const newValue = Number(e.target.value)
+                    setFontOpacity(newValue)
+                    // 立即更新到画布
+                    if (selectedTextObject) {
+                      isUpdatingTextRef.current = true
+                      selectedTextObject.set('opacity', newValue / 100)
+                      fabricCanvasRef.current?.renderAll()
+                      setTimeout(() => {
+                        isUpdatingTextRef.current = false
+                        saveState()
+                      }, 200)
+                    }
+                  }}
+                  className='w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary'
+                  style={{
+                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${fontOpacity}%, hsl(var(--muted)) ${fontOpacity}%, hsl(var(--muted)) 100%)`
+                  }}
+                />
+              </div>
+
+              {/* Spacing */}
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>Spacing: {textSpacing}</Label>
+                <input
+                  type='range'
+                  min='0'
+                  max='100'
+                  value={textSpacing}
+                  onChange={(e) => {
+                    const newValue = Number(e.target.value)
+                    setTextSpacing(newValue)
+                    // 立即更新到画布
+                    if (selectedTextObject) {
+                      isUpdatingTextRef.current = true
+                      selectedTextObject.set('charSpacing', newValue)
+                      selectedTextObject.setCoords()
+                      fabricCanvasRef.current?.renderAll()
+                      setTimeout(() => {
+                        isUpdatingTextRef.current = false
+                        saveState()
+                      }, 200)
+                    }
+                  }}
+                  className='w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary'
+                  style={{
+                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${textSpacing}%, hsl(var(--muted)) ${textSpacing}%, hsl(var(--muted)) 100%)`
+                  }}
+                />
+              </div>
+
+              {/* Text Color */}
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>Text color: {textColor}</Label>
+                <div className='flex items-center gap-2'>
+                  <div
+                    className='h-10 w-10 rounded border border-border cursor-pointer'
+                    style={{ backgroundColor: textColor }}
+                  />
+                  <Input
+                    type='color'
+                    value={textColor}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setTextColor(newValue)
+                      // 立即更新到画布
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('fill', newValue)
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className='flex-1 h-10 cursor-pointer'
+                  />
+                  <Input
+                    type='text'
+                    value={textColor}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setTextColor(newValue)
+                      // 立即更新到画布
+                      if (selectedTextObject && /^#[0-9A-F]{6}$/i.test(newValue)) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('fill', newValue)
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className='w-24 h-10 font-mono text-sm'
+                    placeholder='#000000'
+                  />
+                </div>
+              </div>
+
+              {/* Text Styling Buttons */}
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>Text Styling</Label>
+                <div className='grid grid-cols-3 gap-2'>
+                  <Button
+                    type='button'
+                    variant={textStyles.bold ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => {
+                      const newBold = !textStyles.bold
+                      setTextStyles(prev => ({ ...prev, bold: newBold }))
+                      // 立即更新到画布
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('fontWeight', newBold ? 'bold' : 'normal')
+                        selectedTextObject.setCoords()
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className={cn(
+                      textStyles.bold && 'bg-primary text-primary-foreground'
+                    )}
+                  >
+                    Bold
+                  </Button>
+                  <Button
+                    type='button'
+                    variant={textStyles.italic ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => {
+                      const newItalic = !textStyles.italic
+                      setTextStyles(prev => ({ ...prev, italic: newItalic }))
+                      // 立即更新到画布
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('fontStyle', newItalic ? 'italic' : 'normal')
+                        selectedTextObject.setCoords()
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className={cn(
+                      textStyles.italic && 'bg-primary text-primary-foreground'
+                    )}
+                  >
+                    Italic
+                  </Button>
+                  <Button
+                    type='button'
+                    variant={textStyles.underline ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => {
+                      const newUnderline = !textStyles.underline
+                      setTextStyles(prev => ({ ...prev, underline: newUnderline }))
+                      // 立即更新到画布
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('underline', newUnderline)
+                        selectedTextObject.setCoords()
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className={cn(
+                      textStyles.underline && 'bg-primary text-primary-foreground'
+                    )}
+                  >
+                    Underline
+                  </Button>
+                  <Button
+                    type='button'
+                    variant={textStyles.linethrough ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => {
+                      const newLinethrough = !textStyles.linethrough
+                      setTextStyles(prev => ({ ...prev, linethrough: newLinethrough }))
+                      // 立即更新到画布
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('linethrough', newLinethrough)
+                        selectedTextObject.setCoords()
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className={cn(
+                      textStyles.linethrough && 'bg-primary text-primary-foreground'
+                    )}
+                  >
+                    Linethrough
+                  </Button>
+                  <Button
+                    type='button'
+                    variant={textStyles.overline ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => {
+                      const newOverline = !textStyles.overline
+                      setTextStyles(prev => ({ ...prev, overline: newOverline }))
+                      // 立即更新到画布
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('overline', newOverline)
+                        selectedTextObject.setCoords()
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className={cn(
+                      textStyles.overline && 'bg-primary text-primary-foreground'
+                    )}
+                  >
+                    Overline
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
