@@ -12,6 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { HelpCircle } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { orderStatuses } from '../data/data'
 import { type Order, type OrderProduct } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
+import { OrdersBatchPaymentDialog } from './orders-batch-payment-dialog'
 import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
 import { OrdersEditCustomerNameDialog } from './orders-edit-customer-name-dialog'
@@ -40,7 +42,7 @@ type DataTableProps = {
 }
 
 function ProductDetailRow({ product }: { product: OrderProduct }) {
-  const fieldLabels = ['Title', 'SKU', 'Variant', 'Price', 'Quantity', 'Weight']
+  const fieldLabels = ['Shopify', 'SKU', 'Price', 'Quantity']
   const leftButtons = ['Store', 'HZ']
   const rightButtons = [
     { label: 'Modify Product', onClick: () => {} },
@@ -60,23 +62,30 @@ function ProductDetailRow({ product }: { product: OrderProduct }) {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              {leftButtons.map((buttonLabel) => (
+              {leftButtons.map((buttonLabel, buttonIndex) => (
                 <div key={buttonLabel} className='flex items-center gap-2'>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className='h-5 w-16 text-[11px]'
-                  >
-                    {buttonLabel}
-                  </Button>
-                  {fieldLabels.map((label) => (
-                    <div
-                      key={label}
-                      style={{ width: '150px', wordBreak: 'break-all' }}
-                      className='text-[12px]'
-                    >
-                      {label}:---
-                    </div>
+                  {fieldLabels.map((label, index) => (
+                    <React.Fragment key={`${buttonLabel}-${label}`}>
+                      {index === 1 && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='h-5 w-16 text-[11px]'
+                        >
+                          {buttonLabel}
+                        </Button>
+                      )}
+                      <div
+                        style={{ width: '150px', wordBreak: 'break-all' }}
+                        className='text-[12px]'
+                      >
+                        {index === 0
+                          ? buttonIndex === 0
+                            ? 'Shopify:---'
+                            : 'Variant:---'
+                          : `${label}:---`}
+                      </div>
+                    </React.Fragment>
                   ))}
                 </div>
               ))}
@@ -139,6 +148,7 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     open: false,
     order: null,
   })
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
 
   // Synced with URL states
   const {
@@ -339,7 +349,7 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-        <TabsList className='grid w-full grid-cols-9'>
+        <TabsList className='grid w-full grid-cols-7'>
           {orderStatuses.map((status) => (
             <TabsTrigger
               key={status.value}
@@ -352,6 +362,41 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
+          {/* Total Amount and Batch Payment - moved to top */}
+          {(() => {
+            const selectedRows = table.getFilteredSelectedRowModel().rows
+            const selectedCount = selectedRows.length
+            const totalAmount = selectedRows.reduce((sum, row) => {
+              return sum + (row.original.totalCost || 0)
+            }, 0)
+
+            return (
+              <div className='flex items-center justify-end gap-4 border-b bg-white px-4 py-3'>
+                <div className='flex flex-col items-end'>
+                  <div className='text-sm'>
+                    Total Amount:{' '}
+                    <span className='font-medium'>
+                      {selectedCount > 0 ? `$${totalAmount.toFixed(2)}` : '---'}
+                    </span>
+                  </div>
+                  <div className='flex items-center gap-1 text-xs text-orange-500'>
+                    <HelpCircle className='h-3 w-3' />
+                    <span>Referenced amount</span>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    if (selectedCount > 0) {
+                      setPaymentDialogOpen(true)
+                    }
+                  }}
+                  disabled={selectedCount === 0}
+                >
+                  Batch Payment
+                </Button>
+              </div>
+            )
+          })()}
           <div className='overflow-hidden rounded-md border'>
             <Table>
               <TableHeader>
@@ -464,6 +509,14 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
         }
         order={editCustomerNameDialog.order}
         onConfirm={handleConfirmEditCustomerName}
+      />
+
+      <OrdersBatchPaymentDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        selectedOrders={table
+          .getFilteredSelectedRowModel()
+          .rows.map((row) => row.original)}
       />
     </div>
   )

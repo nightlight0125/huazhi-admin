@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { HeaderActions } from '@/components/header-actions'
 import { DataTableToolbar } from '@/components/data-table'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { OrdersDialogs } from './components/orders-dialogs'
@@ -15,7 +15,6 @@ import {
   orderStatuses,
   platformFulfillmentStatuses,
   platformOrderStatuses,
-  shippingOrigins,
   stores,
 } from './data/data'
 import { orders } from './data/orders'
@@ -38,7 +37,7 @@ export function Orders() {
           <div className='mb-6'>
             <DataTableToolbar
               table={table}
-              searchPlaceholder='StoreOrder Number'
+              searchPlaceholder='Enter SKU id,SKU name'
               filters={[
                 {
                   columnId: 'country',
@@ -92,14 +91,6 @@ export function Orders() {
                       value: s.value,
                       icon: s.icon,
                     })),
-                },
-                {
-                  columnId: 'shippingOrigin',
-                  title: 'Location',
-                  options: shippingOrigins.map((o) => ({
-                    label: o.label,
-                    value: o.value,
-                  })),
                 },
               ]}
               dateRange={{

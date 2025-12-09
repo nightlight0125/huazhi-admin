@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { HeaderActions } from '@/components/header-actions'
 import { DataTableToolbar } from '@/components/data-table'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { StockOrdersDialogs } from './components/stock-orders-dialogs'
@@ -28,16 +28,8 @@ export function StockOrders() {
           <div className='mb-6'>
             <DataTableToolbar
               table={table}
-              searchPlaceholder='Order Number'
+              searchPlaceholder='Enter Order Number,SKU,Product Name'
               searchKey='orderNumber'
-              extraSearch={{
-                columnId: 'sku',
-                placeholder: 'Enter SKU',
-              }}
-              extraSearch2={{
-                columnId: 'productName',
-                placeholder: 'Enter Product Name',
-              }}
             />
           </div>
         )}

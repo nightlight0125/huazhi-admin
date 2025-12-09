@@ -1,16 +1,11 @@
 import { format } from 'date-fns'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Image as ImageIcon } from 'lucide-react'
+import { CreditCard, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { type StockOrder } from '../data/schema'
-import { StockOrdersRowActions } from './stock-orders-row-actions'
 
 export const createStockOrdersColumns = (options?: {
   onPay?: (orderId: string) => void
@@ -18,7 +13,7 @@ export const createStockOrdersColumns = (options?: {
   onAddPackage?: (orderId: string) => void
   onDelete?: (orderId: string) => void
 }): ColumnDef<StockOrder>[] => {
-  const { onPay, onEditAddress, onAddPackage, onDelete } = options || {}
+  const { onPay, onDelete } = options || {}
 
   return [
     {
@@ -128,21 +123,8 @@ export const createStockOrdersColumns = (options?: {
       size: 100,
     },
     {
-      id: 'otherFees',
-      header: 'Other Fees',
-      cell: ({ row }) => {
-        const order = row.original
-        return (
-          <div className='text-sm font-medium text-green-600'>
-            ${order.cost.other.toFixed(2)}
-          </div>
-        )
-      },
-      size: 100,
-    },
-    {
       id: 'amount',
-      header: 'Amount',
+      header: ' Total Amount',
       cell: ({ row }) => {
         const order = row.original
         return (
@@ -165,46 +147,35 @@ export const createStockOrdersColumns = (options?: {
       size: 120,
     },
     {
-      accessorKey: 'remark',
-      header: 'Remark',
-      cell: ({ row }) => {
-        const remark = (row.getValue('remark') as string) || '---'
-        return (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className='text-muted-foreground max-w-[80px] truncate text-xs'>
-                {remark}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className='max-w-xs text-xs'>
-              {remark}
-            </TooltipContent>
-          </Tooltip>
-        )
-      },
-      size: 80,
-      minSize: 60,
-    },
-    {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
         const status = row.getValue('status') as string
         const statusColors: Record<string, string> = {
           paid: 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white',
-          shipped: 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white',
-          pending: 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-          processing: 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white',
-          completed: 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-          canceled: 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
-          quoting: 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-          pay_in_progress: 'border-transparent bg-indigo-500 text-white dark:bg-indigo-500 dark:text-white',
+          shipped:
+            'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white',
+          pending:
+            'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
+          processing:
+            'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white',
+          completed:
+            'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+          canceled:
+            'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
+          quoting:
+            'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
+          pay_in_progress:
+            'border-transparent bg-indigo-500 text-white dark:bg-indigo-500 dark:text-white',
         }
         return (
           <div className='space-y-1'>
             <Badge
               variant='outline'
-              className={statusColors[status] || 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}
+              className={
+                statusColors[status] ||
+                'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+              }
             >
               {status.charAt(0).toUpperCase() +
                 status.slice(1).replace('_', ' ')}
@@ -217,17 +188,40 @@ export const createStockOrdersColumns = (options?: {
     {
       id: 'actions',
       header: 'Action',
-      cell: ({ row }) => (
-        <StockOrdersRowActions
-          row={row}
-          onPay={onPay}
-          onEditAddress={onEditAddress}
-          onAddPackage={onAddPackage}
-          onDelete={onDelete}
-        />
-      ),
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div
+            className='flex items-center gap-2'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              variant='ghost'
+              size='sm'
+              className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
+              onClick={() => {
+                onPay?.(order.id)
+              }}
+            >
+              <CreditCard className='h-4 w-4' />
+              Pay
+            </Button>
+            <Button
+              variant='ghost'
+              size='sm'
+              className='text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+              onClick={() => {
+                onDelete?.(order.id)
+              }}
+            >
+              <Trash2 className='h-4 w-4' />
+              Delete
+            </Button>
+          </div>
+        )
+      },
       enableSorting: false,
-      size: 80,
+      size: 150,
     },
     {
       id: 'productName',

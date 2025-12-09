@@ -1,30 +1,21 @@
-import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { getPageNumbers } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { type Order } from '../data/schema'
-import { OrdersBatchPaymentDialog } from './orders-batch-payment-dialog'
 
 type OrdersTableFooterProps = {
   table: Table<Order>
 }
 
 export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
   const pageNumbers = getPageNumbers(currentPage, totalPages)
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-  const selectedCount = selectedRows.length
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length
   const isAllPageSelected = table.getIsAllPageRowsSelected()
   const isSomePageSelected = table.getIsSomePageRowsSelected()
-
-  // Calculate total amount for selected orders
-  const totalAmount = selectedRows.reduce((sum, row) => {
-    return sum + (row.original.totalCost || 0)
-  }, 0)
 
   const handlePageSelect = (checked: boolean) => {
     if (checked) {
@@ -44,12 +35,6 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
     }
   }
 
-  const handleBatchPayment = () => {
-    if (selectedCount > 0) {
-      setPaymentDialogOpen(true)
-    }
-  }
-
   return (
     <div className='flex items-center justify-between border-t bg-white px-4 py-3'>
       {/* Left: Selection checkboxes and count */}
@@ -59,13 +44,15 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
             id='page-select'
             checked={
               isAllPageSelected ||
-              (isSomePageSelected && !isAllPageSelected ? 'indeterminate' : false)
+              (isSomePageSelected && !isAllPageSelected
+                ? 'indeterminate'
+                : false)
             }
             onCheckedChange={handlePageSelect}
           />
           <label
             htmlFor='page-select'
-            className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+            className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
           >
             Page
           </label>
@@ -78,7 +65,7 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
           />
           <label
             htmlFor='all-select'
-            className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+            className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
           >
             All Orders
           </label>
@@ -129,34 +116,6 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
           <ChevronRight className='h-4 w-4' />
         </Button>
       </div>
-
-      {/* Right: Total amount and batch payment button */}
-      <div className='flex items-center gap-4'>
-        <div className='flex flex-col items-end'>
-          <div className='text-sm'>
-            Total Amount:{' '}
-            <span className='font-medium'>
-              {selectedCount > 0
-                ? `$${totalAmount.toFixed(2)}`
-                : '---'}
-            </span>
-          </div>
-          <div className='flex items-center gap-1 text-xs text-orange-500'>
-            <HelpCircle className='h-3 w-3' />
-            <span>Referenced amount</span>
-          </div>
-        </div>
-        <Button onClick={handleBatchPayment} disabled={selectedCount === 0}>
-          Batch Payment
-        </Button>
-      </div>
-
-      <OrdersBatchPaymentDialog
-        open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        selectedOrders={selectedRows.map((row) => row.original)}
-      />
     </div>
   )
 }
-

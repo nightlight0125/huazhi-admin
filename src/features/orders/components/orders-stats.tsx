@@ -23,7 +23,7 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
   const accountBalance = 125000.5
 
   return (
-    <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card -mx-4 grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:grid-cols-4 lg:px-6'>
+    <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card -mx-4 grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:grid-cols-3 lg:px-6'>
       <Card className='@container/card'>
         <CardHeader>
           <CardDescription>Account balance</CardDescription>
@@ -39,7 +39,7 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
 
       <Card className='@container/card'>
         <CardHeader>
-          <CardDescription>Pending Orders</CardDescription>
+          <CardDescription>Awaiting Orders</CardDescription>
           <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
             {totalOrders.toLocaleString()}
           </CardTitle>
@@ -48,7 +48,7 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
 
       <Card className='@container/card'>
         <CardHeader>
-          <CardDescription>Pending Payment</CardDescription>
+          <CardDescription>Awaiting Payment</CardDescription>
           <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
             $
             {pendingPayment.toLocaleString('en-US', {
@@ -56,21 +56,6 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
               maximumFractionDigits: 2,
             })}
           </CardTitle>
-        </CardHeader>
-      </Card>
-
-      <Card className='@container/card'>
-        <CardHeader>
-          <CardDescription>Currency</CardDescription>
-          <div className='flex items-center gap-3'>
-            <CardTitle className='text-muted-foreground text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-              $ 0.00
-            </CardTitle>
-            <div className='border-border h-6 border-l'></div>
-            <CardTitle className='text-muted-foreground text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-              € 0.00
-            </CardTitle>
-          </div>
         </CardHeader>
       </Card>
     </div>

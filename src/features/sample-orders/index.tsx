@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { HeaderActions } from '@/components/header-actions'
 import { DataTableToolbar } from '@/components/data-table'
+import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { SampleOrdersDialogs } from './components/sample-orders-dialogs'
@@ -28,28 +28,8 @@ export function SampleOrders() {
           <div className='mb-6'>
             <DataTableToolbar
               table={table}
-              searchPlaceholder='Order Number'
+              searchPlaceholder='Enter Order Number,SKU,Product Name'
               searchKey='orderNumber'
-              extraSearch={{
-                columnId: 'sku',
-                placeholder: 'Enter SKU',
-              }}
-              extraSearch2={{
-                columnId: 'productName',
-                placeholder: 'Enter Product Name',
-              }}
-              filters={[
-                {
-                  columnId: 'logistics',
-                  title: 'Logistics',
-                  options: [
-                    { label: 'DHL', value: 'DHL' },
-                    { label: 'FedEx', value: 'FedEx' },
-                    { label: 'UPS', value: 'UPS' },
-                    { label: 'USPS', value: 'USPS' },
-                  ],
-                },
-              ]}
               dateRange={{
                 enabled: true,
                 columnId: 'createdAt',
