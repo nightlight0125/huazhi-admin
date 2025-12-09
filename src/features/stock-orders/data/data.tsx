@@ -8,18 +8,18 @@ export const stockOrderStatuses = [
     icon: Package,
   },
   {
-    label: 'unpaid ',
-    value: 'unpaid' as const,
+    label: 'Awaiting Payment',
+    value: 'Awaiting Payment' as const,
     icon: Clock,
   },
   {
     label: 'Paid',
-    value: 'paid' as const,
+    value: 'Paid' as const,
     icon: CheckCircle,
   },
   {
-    label: 'cancel',
-    value: 'cancel' as const,
+    label: 'Cancelled',
+    value: 'cancelled' as const,
   },
 ]
 

@@ -14,7 +14,7 @@ export function CollectionProducts() {
   const navigate = route.useNavigate()
 
   const columns = useMemo(
-    () => createLikedProductsColumns({ showFavorited: true }),
+    () => createLikedProductsColumns(),
     []
   )
 

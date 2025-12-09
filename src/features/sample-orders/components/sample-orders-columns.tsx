@@ -1,16 +1,11 @@
 import { format } from 'date-fns'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Image as ImageIcon } from 'lucide-react'
+import { CreditCard, Edit, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { type SampleOrder } from '../data/schema'
-import { SampleOrdersRowActions } from './sample-orders-row-actions'
 
 export const createSampleOrdersColumns = (options?: {
   onPay?: (orderId: string) => void
@@ -18,7 +13,7 @@ export const createSampleOrdersColumns = (options?: {
   onAddPackage?: (orderId: string) => void
   onDelete?: (orderId: string) => void
 }): ColumnDef<SampleOrder>[] => {
-  const { onPay, onEditAddress, onAddPackage, onDelete } = options || {}
+  const { onPay, onEditAddress, onDelete } = options || {}
 
   return [
     {
@@ -54,7 +49,14 @@ export const createSampleOrdersColumns = (options?: {
       header: 'Order No',
       cell: ({ row }) => {
         const order = row.original
-        return <div className='font-medium'>{order.orderNumber}</div>
+        return (
+          <div>
+            <div className='font-medium'>{order.orderNumber}</div>
+            <div className='text-sm'>
+              {format(new Date(order.createdAt), 'MM-dd-yyyy')}
+            </div>
+          </div>
+        )
       },
       size: 150,
     },
@@ -65,21 +67,21 @@ export const createSampleOrdersColumns = (options?: {
         const order = row.original
         const firstProduct = order.productList?.[0]
         return (
-          <div className='space-y-2 max-w-[200px]'>
+          <div className='max-w-[200px]'>
             {firstProduct && (
-              <>
+              <div className='flex items-start gap-2'>
                 {firstProduct.productImageUrl ? (
                   <img
                     src={firstProduct.productImageUrl}
                     alt={firstProduct.productName}
-                    className='h-16 w-16 rounded object-cover'
+                    className='h-16 w-16 shrink-0 rounded object-cover'
                   />
                 ) : (
-                  <div className='bg-muted flex h-16 w-16 items-center justify-center rounded'>
+                  <div className='bg-muted flex h-16 w-16 shrink-0 items-center justify-center rounded'>
                     <ImageIcon className='text-muted-foreground h-8 w-8' />
                   </div>
                 )}
-                <div className='text-sm break-words leading-snug'>
+                <div className='min-w-0 flex-1 text-sm leading-snug break-words'>
                   <div>SKU: {order.sku}</div>
                   <div className='whitespace-normal'>
                     Variant:{' '}
@@ -88,25 +90,12 @@ export const createSampleOrdersColumns = (options?: {
                       .join(', ') || 'xxxx'}
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </div>
         )
       },
       size: 200,
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Creat Time',
-      cell: ({ row }) => {
-        const order = row.original
-        return (
-          <div className='text-sm'>
-            {format(new Date(order.createdAt), 'MM-dd-yyyy')}
-          </div>
-        )
-      },
-      size: 120,
     },
     {
       id: 'cost',
@@ -127,14 +116,27 @@ export const createSampleOrdersColumns = (options?: {
     },
     {
       id: 'address',
-      header: 'Adress',
+      header: 'Address',
       cell: ({ row }) => {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
             <div>Name: {order.address.name}</div>
             <div>Country: {order.address.country}</div>
-            <div>Adress: {order.address.address}</div>
+            <div className='flex items-center gap-2'>
+              <span>Address: {order.address.address}</span>
+              <Button
+                variant='ghost'
+                size='icon'
+                className='h-4 w-4'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditAddress?.(order.id)
+                }}
+              >
+                <Edit className='h-3 w-3' />
+              </Button>
+            </div>
           </div>
         )
       },
@@ -142,37 +144,16 @@ export const createSampleOrdersColumns = (options?: {
     },
     {
       id: 'shipping',
-      header: 'Shipping Method\nTrack ID',
+      header: 'Tracking No.',
       cell: ({ row }) => {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.shippingMethod || '---'}</div>
             <div>{order.trackId || '---'}</div>
           </div>
         )
       },
       size: 150,
-    },
-    {
-      accessorKey: 'remark',
-      header: 'Remark',
-      cell: ({ row }) => {
-        const remark = (row.getValue('remark') as string) || '---'
-        return (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className='text-muted-foreground max-w-[80px] truncate text-xs'>
-                {remark}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className='max-w-xs text-xs'>
-              {remark}
-            </TooltipContent>
-          </Tooltip>
-        )
-      },
-      size: 80,
     },
     {
       accessorKey: 'status',
@@ -181,19 +162,29 @@ export const createSampleOrdersColumns = (options?: {
         const status = row.getValue('status') as string
         const statusColors: Record<string, string> = {
           paid: 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white',
-          shipped: 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white',
-          pending: 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-          processing: 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white',
-          completed: 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-          canceled: 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
-          quoting: 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-          pay_in_progress: 'border-transparent bg-indigo-500 text-white dark:bg-indigo-500 dark:text-white',
+          shipped:
+            'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white',
+          pending:
+            'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
+          processing:
+            'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white',
+          completed:
+            'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+          canceled:
+            'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
+          quoting:
+            'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
+          pay_in_progress:
+            'border-transparent bg-indigo-500 text-white dark:bg-indigo-500 dark:text-white',
         }
         return (
           <div className='space-y-1'>
             <Badge
               variant='outline'
-              className={statusColors[status] || 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}
+              className={
+                statusColors[status] ||
+                'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+              }
             >
               {status.charAt(0).toUpperCase() +
                 status.slice(1).replace('_', ' ')}
@@ -206,17 +197,40 @@ export const createSampleOrdersColumns = (options?: {
     {
       id: 'actions',
       header: 'Action',
-      cell: ({ row }) => (
-        <SampleOrdersRowActions
-          row={row}
-          onPay={onPay}
-          onEditAddress={onEditAddress}
-          onAddPackage={onAddPackage}
-          onDelete={onDelete}
-        />
-      ),
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div
+            className='flex items-center gap-2'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              variant='ghost'
+              size='sm'
+              className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
+              onClick={() => {
+                onPay?.(order.id)
+              }}
+            >
+              <CreditCard className='h-4 w-4' />
+              Pay
+            </Button>
+            <Button
+              variant='ghost'
+              size='sm'
+              className='text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+              onClick={() => {
+                onDelete?.(order.id)
+              }}
+            >
+              <Trash2 className='h-4 w-4' />
+              Delete
+            </Button>
+          </div>
+        )
+      },
       enableSorting: false,
-      size: 80,
+      size: 120,
     },
     // Hidden columns for filtering only
     {

@@ -1,12 +1,18 @@
 import { format } from 'date-fns'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Edit, Minus, Plus, ShoppingBag } from 'lucide-react'
+import {
+  CreditCard,
+  Edit,
+  Minus,
+  Plus,
+  ShoppingBag,
+  Trash2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { type Order } from '../data/schema'
-import { OrdersRowActions } from './orders-row-actions'
 
 // 平台订单状态样式映射
 function getPlatformOrderStatusClassName(status: string): string {
@@ -51,13 +57,17 @@ export const createOrdersColumns = (options?: {
   onModifyProduct?: (orderId: string) => void
   onEditAddress?: (orderId: string) => void
   onEditCustomerName?: (orderId: string) => void
+  onPay?: (orderId: string) => void
+  onDelete?: (orderId: string) => void
 }): ColumnDef<Order>[] => {
   const {
     onExpand,
     expandedRows = new Set(),
-    onModifyProduct,
+    onModifyProduct: _onModifyProduct,
     onEditAddress,
-    onEditCustomerName,
+    onEditCustomerName: _onEditCustomerName,
+    onPay,
+    onDelete,
   } = options || {}
 
   return [
@@ -200,14 +210,12 @@ export const createOrdersColumns = (options?: {
                 className='h-4 w-4'
                 onClick={(e) => {
                   e.stopPropagation()
-                  onEditCustomerName?.(order.id)
+                  onEditAddress?.(order.id)
                 }}
               >
                 <Edit className='h-3 w-3' />
               </Button>
             </div>
-            {/* <div>Country: {order.country}</div> */}
-            {/* <div>Address: {order.address}</div> */}
           </div>
         )
       },
@@ -245,7 +253,10 @@ export const createOrdersColumns = (options?: {
         const className = getPlatformOrderStatusClassName(status)
 
         return (
-          <div className='space-y-1 text-sm'>
+          <div className='flex flex-col gap-1.5 text-sm'>
+            <Badge variant='outline' className={className}>
+              {status}
+            </Badge>
             <Badge variant='outline' className={className}>
               {status}
             </Badge>
@@ -257,20 +268,40 @@ export const createOrdersColumns = (options?: {
     {
       id: 'actions',
       header: 'Action',
-      cell: ({ row }) => (
-        <OrdersRowActions
-          row={row}
-          onModifyProduct={onModifyProduct}
-          onEditAddress={onEditAddress}
-        />
-      ),
-      enableSorting: false,
-      size: 30,
-      minSize: 30,
-      maxSize: 30,
-      meta: {
-        className: 'w-[30px] max-w-[30px]',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div
+            className='flex items-center gap-0'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              variant='ghost'
+              size='sm'
+              className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary -mr-1 h-8 px-1.5 hover:bg-transparent dark:hover:bg-transparent'
+              onClick={() => {
+                onPay?.(order.id)
+              }}
+            >
+              <CreditCard className='h-3.5 w-3.5' />
+              Pay
+            </Button>
+            <Button
+              variant='ghost'
+              size='sm'
+              className='h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+              onClick={() => {
+                onDelete?.(order.id)
+              }}
+            >
+              <Trash2 className='h-3.5 w-3.5' />
+              Delete
+            </Button>
+          </div>
+        )
       },
+      enableSorting: false,
+      size: 140,
     },
     // Hidden columns for filtering only
     {

@@ -1,60 +1,43 @@
 import {
   CheckCircle,
-  Clock,
   DollarSign,
   Package,
   ShoppingCart,
   Truck,
   XCircle,
-  AlertCircle,
 } from 'lucide-react'
 
 // 订单状态选项
 export const sampleOrderStatuses = [
   {
-    label: 'All',
+    label: 'AlI',
     value: 'all' as const,
     icon: Package,
   },
   {
-    label: 'Quoting',
-    value: 'quoting' as const,
-    icon: Clock,
-  },
-  {
-    label: 'Pending',
-    value: 'pending' as const,
+    label: 'Awaiting Payment',
+    value: 'pending_payment' as const,
     icon: DollarSign,
   },
   {
-    label: 'Paid',
+    label: 'paid',
     value: 'paid' as const,
     icon: CheckCircle,
   },
   {
-    label: 'Processing',
+    label: 'processing',
     value: 'processing' as const,
     icon: ShoppingCart,
   },
   {
-    label: 'Shipped',
+    label: 'shipped',
     value: 'shipped' as const,
     icon: Truck,
   },
   {
-    label: 'Completed',
-    value: 'completed' as const,
-    icon: CheckCircle,
-  },
-  {
-    label: 'Canceled',
-    value: 'canceled' as const,
+    label: 'cancelled',
+    value: 'cancelled' as const,
     icon: XCircle,
-  },
-  {
-    label: 'Pay In Progress',
-    value: 'pay_in_progress' as const,
-    icon: AlertCircle,
   },
 ]
 
@@ -69,4 +52,3 @@ export const logistics = [
   { label: '京东物流', value: 'jd_logistics' },
   { label: '菜鸟裹裹', value: 'cainiao' },
 ]
-

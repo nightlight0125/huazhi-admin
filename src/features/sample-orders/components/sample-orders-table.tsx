@@ -29,6 +29,7 @@ import { SampleOrdersBulkActions } from './sample-orders-bulk-actions'
 import { createSampleOrdersColumns } from './sample-orders-columns'
 import { SampleOrdersPayDialog } from './sample-orders-pay-dialog'
 import { SampleOrdersTableFooter } from './sample-orders-table-footer'
+import { EditAddressDialog, type AddressData } from '@/components/edit-address-dialog'
 
 const route = getRouteApi('/_authenticated/sample-orders/')
 
@@ -49,6 +50,13 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [selectedOrderForPayment, setSelectedOrderForPayment] =
     useState<SampleOrder | null>(null)
+  const [editAddressDialog, setEditAddressDialog] = useState<{
+    open: boolean
+    order: SampleOrder | null
+  }>({
+    open: false,
+    order: null,
+  })
 
   // Synced with URL states
   const {
@@ -82,8 +90,22 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
   }
 
   const handleEditAddress = (orderId: string) => {
-    console.log('Edit address for order:', orderId)
-    // TODO: Implement edit address logic
+    const order = data.find((o) => o.id === orderId)
+    if (order) {
+      setEditAddressDialog({
+        open: true,
+        order,
+      })
+    }
+  }
+
+  const handleConfirmEditAddress = (addressData: AddressData) => {
+    console.log(
+      'Updated address for order:',
+      editAddressDialog.order?.id,
+      addressData
+    )
+    setEditAddressDialog({ open: false, order: null })
   }
 
   const handleAddPackage = (orderId: string) => {
@@ -158,7 +180,7 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
         <SampleOrdersActionsMenu />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-        <TabsList className='grid w-full grid-cols-9'>
+        <TabsList className='grid w-full grid-cols-6'>
           {sampleOrderStatuses.map((status) => (
             <TabsTrigger
               key={status.value}
@@ -239,6 +261,23 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
         order={selectedOrderForPayment}
+      />
+
+      <EditAddressDialog
+        open={editAddressDialog.open}
+        onOpenChange={(open) =>
+          setEditAddressDialog({ ...editAddressDialog, open })
+        }
+        initialData={
+          editAddressDialog.order
+            ? {
+                customerName: editAddressDialog.order.address.name,
+                address: editAddressDialog.order.address.address,
+                country: editAddressDialog.order.address.country,
+              }
+            : undefined
+        }
+        onConfirm={handleConfirmEditAddress}
       />
     </div>
   )
