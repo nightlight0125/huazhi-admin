@@ -11,14 +11,12 @@ import {
 } from '@tanstack/react-table'
 import {
   ArrowLeft,
-  ChevronDown,
   Copy,
   Palette,
   Plus,
   ShoppingCart,
   Store,
   Tag,
-  Truck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -81,17 +79,13 @@ export function ProductDetails() {
   const productData = product as Product | PackagingProduct
 
   const [selectedQuantity, setSelectedQuantity] = useState(1)
-  const [selectedTo, setSelectedTo] = useState('usa')
   const [selectedColor, setSelectedColor] = useState('')
+  const [selectedSize, setSelectedSize] = useState('')
   const [selectedThumbnail, setSelectedThumbnail] = useState(0)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const [selectedStore, setSelectedStore] = useState('')
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
     useState(false)
-  const [selectedSellingPlatform, setSelectedSellingPlatform] =
-    useState('shopify')
-  const [selectedShippingMethod, setSelectedShippingMethod] =
-    useState('tdpacket-electro')
   const [isShippingOptionsDialogOpen, setIsShippingOptionsDialogOpen] =
     useState(false)
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
@@ -112,6 +106,8 @@ export function ProductDetails() {
 
   // 颜色选项
   const colorOptions = ['White', 'Pink', 'Purple', 'Dark Green', 'Black']
+  // 尺寸选项
+  const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL']
 
   // 复制SPU功能
   const handleCopySPU = () => {
@@ -312,7 +308,7 @@ export function ProductDetails() {
 
                     {/* 价格和MOQ */}
                     <div className='flex items-center gap-4'>
-                      <div className='text-3xl font-bold text-purple-600'>
+                      <div className='text-3xl font-bold text-orange-500'>
                         ${productData.price.toFixed(2)}
                       </div>
                       <div className='rounded border border-gray-300 bg-gray-50 px-3 py-1 text-sm'>
@@ -336,6 +332,27 @@ export function ProductDetails() {
                             onClick={() => setSelectedColor(color)}
                           >
                             {color}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 尺寸选项 */}
+                    <div>
+                      <Label className='mb-2 block text-sm font-medium'>
+                        Size
+                      </Label>
+                      <div className='flex flex-wrap gap-2'>
+                        {sizeOptions.map((size) => (
+                          <Button
+                            key={size}
+                            variant={
+                              selectedSize === size ? 'default' : 'outline'
+                            }
+                            size='sm'
+                            onClick={() => setSelectedSize(size)}
+                          >
+                            {size}
                           </Button>
                         ))}
                       </div>
@@ -387,8 +404,7 @@ export function ProductDetails() {
                     </div>
 
                     {/* 销售平台、发货地和物流方式 - 水平布局 */}
-                    <div className='flex items-start gap-1.5 border-y py-3'>
-                      {/* Selling On */}
+                    {/* <div className='flex items-start gap-1.5 border-y py-3'>
                       <div
                         className='flex flex-1 cursor-pointer items-center gap-1.5'
                         onClick={() => setIsShippingOptionsDialogOpen(true)}
@@ -419,10 +435,8 @@ export function ProductDetails() {
                         </div>
                       </div>
 
-                      {/* 分隔线 */}
                       <div className='h-8 w-px shrink-0 bg-gray-200' />
 
-                      {/* Ship To */}
                       <div
                         className='flex flex-1 cursor-pointer items-center gap-1.5'
                         onClick={() => setIsShippingOptionsDialogOpen(true)}
@@ -451,10 +465,8 @@ export function ProductDetails() {
                         </div>
                       </div>
 
-                      {/* 分隔线 */}
                       <div className='h-8 w-px shrink-0 bg-gray-200' />
 
-                      {/* By Shipping Method */}
                       <div className='flex flex-1 items-center gap-1.5'>
                         <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
                           <Truck className='h-3.5 w-3.5 text-gray-600' />
@@ -495,10 +507,10 @@ export function ProductDetails() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* 预计时间和费用 */}
-                    <div className='space-y-2 border-t pt-4'>
+                    {/* <div className='space-y-2 border-t pt-4'>
                       <div className='text-sm'>
                         <span className='text-muted-foreground'>
                           Estimated Processing Time:{' '}
@@ -517,7 +529,7 @@ export function ProductDetails() {
                         </span>
                         <span className='font-semibold'>$6.99</span>
                       </div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -537,7 +549,7 @@ export function ProductDetails() {
                 {/* 变体信息 */}
                 <div className='flex items-center justify-between text-sm'>
                   <span className='text-muted-foreground'>Variation Name</span>
-                  <span>{selectedColor || 'White'}</span>
+                  <span>{selectedColor || 'Black30*40cm'}</span>
                 </div>
 
                 {/* 价格信息 */}
@@ -568,10 +580,12 @@ export function ProductDetails() {
                     onOpenChange={setIsPublishDialogOpen}
                   >
                     <DialogTrigger asChild>
-                      <Button className='w-full' size='lg'>
-                        <Store className='mr-2 h-4 w-4' />
-                        Publish To Store
-                      </Button>
+                      {!isFromPackagingProducts ? (
+                        <Button className='w-full' size='lg'>
+                          <Store className='mr-2 h-4 w-4' />
+                          Publish To Store
+                        </Button>
+                      ) : null}
                     </DialogTrigger>
                     <DialogContent className='sm:max-w-md'>
                       <DialogHeader>
@@ -628,29 +642,32 @@ export function ProductDetails() {
                     </DialogContent>
                   </Dialog>
 
-                  <Button
-                    variant='outline'
-                    className='w-full'
-                    size='lg'
-                    onClick={handleBuySampleClick}
-                  >
-                    <ShoppingCart className='mr-2 h-4 w-4' />
-                    Buy Sample
-                  </Button>
-
-                  <Button
-                    variant='outline'
-                    className='w-full'
-                    size='lg'
-                    onClick={handleBuyStockClick}
-                  >
-                    <Tag className='mr-2 h-4 w-4' />
-                    Buy Stock
-                  </Button>
+                  {!isFromPackagingProducts ? (
+                    <Button
+                      variant='outline'
+                      className='w-full'
+                      size='lg'
+                      onClick={handleBuySampleClick}
+                    >
+                      <ShoppingCart className='mr-2 h-4 w-4' />
+                      Buy Sample
+                    </Button>
+                  ) : null}
+                  {!isFromPackagingProducts ? (
+                    <Button
+                      variant='outline'
+                      className='w-full'
+                      size='lg'
+                      onClick={handleBuyStockClick}
+                    >
+                      <Tag className='mr-2 h-4 w-4' />
+                      Buy Stock
+                    </Button>
+                  ) : null}
 
                   <Button variant='outline' className='w-full' size='lg'>
                     <Plus className='mr-2 h-4 w-4' />
-                    Collection
+                    Add To My
                   </Button>
 
                   {isFromPackagingProducts && (
@@ -780,15 +797,7 @@ export function ProductDetails() {
       <ShippingOptionsDialog
         open={isShippingOptionsDialogOpen}
         onOpenChange={setIsShippingOptionsDialogOpen}
-        defaultTo={
-          selectedTo === 'usa'
-            ? 'United States'
-            : selectedTo === 'uk'
-              ? 'United Kingdom'
-              : selectedTo === 'canada'
-                ? 'Canada'
-                : 'France'
-        }
+        defaultTo='United States'
         defaultQuantity={selectedQuantity}
         onSelect={(optionId) => {
           console.log('Selected shipping option:', optionId)
@@ -803,7 +812,8 @@ export function ProductDetails() {
             <DialogTitle>Shipping Address</DialogTitle>
           </DialogHeader>
           <p className='text-muted-foreground text-sm'>
-            There is already a shipping address, which will be used to place an order for samples.
+            There is already a shipping address, which will be used to place an
+            order for samples.
           </p>
           <div className='flex justify-end gap-2 pt-4'>
             <Button
@@ -834,7 +844,8 @@ export function ProductDetails() {
             <DialogTitle>Warehouse</DialogTitle>
           </DialogHeader>
           <p className='text-muted-foreground text-sm'>
-            There is already a shipping warehouse, which will be used to prepare inventory.
+            There is already a shipping warehouse, which will be used to prepare
+            inventory.
           </p>
           <div className='flex justify-end gap-2 pt-4'>
             <Button
@@ -862,7 +873,8 @@ export function ProductDetails() {
             <DialogTitle>Shipping Address</DialogTitle>
           </DialogHeader>
           <p className='text-muted-foreground text-sm'>
-            There is already a shipping address, which will be used to place an order for samples.
+            There is already a shipping address, which will be used to place an
+            order for samples.
           </p>
           <div className='flex justify-end gap-2 pt-4'>
             <Button

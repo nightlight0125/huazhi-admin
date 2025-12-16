@@ -213,7 +213,7 @@ export function HotSellingProducts() {
     <div className='mt-8'>
       <CardContent className='space-y-4'>
         <div className='flex flex-wrap items-center gap-4'></div>
-        <div className='text-lg font-bold'>Hot Selling Products</div>
+        <div className='text-lg font-bold'>Store Selling Products</div>
 
         <div className='space-y-4'>
           <DataTableToolbar

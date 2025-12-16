@@ -75,6 +75,11 @@
   animation: slideUp 300ms ease-out;
 }
 
+/* 确保展开状态下内容完全可见 */
+.CollapsibleContent[data-state='open'] > * {
+  overflow: visible;
+}
+
 @keyframes slideDown {
   from {
     height: 0;

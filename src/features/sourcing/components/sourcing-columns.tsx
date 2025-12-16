@@ -1,5 +1,7 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Eye } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Tooltip,
@@ -9,7 +11,6 @@ import {
 import { DataTableColumnHeader } from '@/components/data-table'
 import { sourcingStatuses } from '../data/data'
 import { type Sourcing } from '../data/schema'
-import { SourcingRowActions } from './sourcing-row-actions'
 
 type SourcingColumnHandlers = {
   onEdit?: (sourcing: Sourcing) => void
@@ -170,24 +171,55 @@ export const createSourcingColumns = (
       <DataTableColumnHeader column={column} title='Result' />
     ),
     cell: ({ row }) => {
-      const result = row.getValue('result') as string | undefined
       const sourcing = row.original
-      // 使用 productId 字段，如果不存在则不显示为可点击
       const productId = sourcing.productId
+      const image = sourcing.images?.[0] || '/placeholder-image.png'
+      const productName = sourcing.productName || '-'
+      const result = sourcing.result || '-'
 
-      if (!productId) {
-        return <div className='text-xs'>{result || '-'}</div>
-      }
+      const spuMatch =
+        result.match(/SU\d+/i) || result.match(/TD\s+SPU:\s*(.+)/i)
+      const spu = spuMatch ? spuMatch[1] || spuMatch[0] : result
+
+      const priceRange = (sourcing as any).priceRange || '-'
 
       return (
         <div
-          className='hover:text-primary cursor-pointer text-xs hover:underline'
-          onClick={(e) => {
-            e.stopPropagation()
-            handlers?.onRemarkClick?.(sourcing)
+          className={`flex items-center gap-2 ${productId ? 'cursor-pointer' : ''}`}
+          onClick={() => {
+            window.open(sourcing.url, '_blank')
           }}
         >
-          {result || '-'}
+          <div className='relative h-10 w-10 flex-shrink-0 overflow-hidden rounded border'>
+            <img
+              src={image}
+              alt={productName}
+              className='h-full w-full object-cover'
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = '/placeholder-image.png'
+              }}
+            />
+          </div>
+
+          <div className='min-w-0 flex-1'>
+            <div className='truncate text-[10px] leading-tight font-medium text-gray-900'>
+              toy
+            </div>
+            <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
+              TD SPU: {spu}
+            </div>
+            <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
+              Price: {priceRange}
+            </div>
+          </div>
+
+          {/* 眼睛图标 */}
+          {productId && (
+            <div className='flex-shrink-0'>
+              <Eye className='h-3 w-3 text-gray-400' />
+            </div>
+          )}
         </div>
       )
     },
@@ -279,7 +311,22 @@ export const createSourcingColumns = (
   },
   {
     id: 'actions',
-    cell: ({ row }) => <SourcingRowActions row={row} />,
+    cell: ({ row }) => {
+      const sourcing = row.original
+      return (
+        <Button
+          variant='outline'
+          size='sm'
+          className='h-7 px-2 text-xs'
+          onClick={(e) => {
+            e.stopPropagation()
+            handlers?.onEdit?.(sourcing)
+          }}
+        >
+          Contact
+        </Button>
+      )
+    },
     enableHiding: false,
   },
 ]

@@ -1,9 +1,10 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Link2, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type StoreProduct } from '../data/schema'
 import { EditableSelectCell } from './editable-select-cell'
-import { StoreProductsRowActions } from './store-products-row-actions'
 
 const shippingFromOptions = ['选项1', '选项2', '选项3', '选项4']
 const shippingMethodOptions = [
@@ -168,12 +169,38 @@ export const createStoreProductsColumns = (
   },
   {
     id: 'actions',
-    cell: ({ row }) => (
-      <StoreProductsRowActions
-        row={row}
-        onConnectProducts={options?.onConnectProducts}
-      />
-    ),
+    cell: ({ row }) => {
+      const product = row.original
+
+      return (
+        <div className='flex gap-2'>
+          <Button
+            variant='outline'
+            size='sm'
+            className='h-7 px-2 text-xs'
+            onClick={(e) => {
+              e.stopPropagation()
+              options?.onConnectProducts?.(product.id)
+            }}
+          >
+            <Link2 className='mr-1 h-3.5 w-3.5' />
+            Connect
+          </Button>
+          <Button
+            variant='outline'
+            size='sm'
+            className='h-7 border-red-200 px-2 text-xs text-red-500'
+            onClick={(e) => {
+              e.stopPropagation()
+              console.log('Delete store product:', product.id)
+              // TODO: 在这里调用删除店铺商品的接口
+            }}
+          >
+            <Trash2 className='mr-1 h-3.5 w-3.5' />
+          </Button>
+        </div>
+      )
+    },
     enableSorting: false,
   },
 ]

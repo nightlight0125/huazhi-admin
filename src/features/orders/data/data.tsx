@@ -8,6 +8,7 @@ import {
   Truck,
   XCircle,
 } from 'lucide-react'
+import { allCountries } from '@/lib/countries'
 
 // 订单状态选项
 export const orderStatuses = [
@@ -173,14 +174,8 @@ export const shippingOrigins = [
   { label: '西安', value: 'xian' },
 ]
 
-// 国家选项
-export const countries = [
-  { label: '中国', value: 'china' },
-  { label: '美国', value: 'usa' },
-  { label: '英国', value: 'uk' },
-  { label: '德国', value: 'germany' },
-  { label: '法国', value: 'france' },
-  { label: '日本', value: 'japan' },
-  { label: '韩国', value: 'korea' },
-  { label: '澳大利亚', value: 'australia' },
-]
+// 国家选项（仅用于不需要国旗的地方）
+export const countries = allCountries.map((c) => ({
+  label: c.name,
+  value: c.code,
+}))

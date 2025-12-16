@@ -63,7 +63,7 @@ export const createOrdersColumns = (options?: {
   const {
     onExpand,
     expandedRows = new Set(),
-    onModifyProduct: _onModifyProduct,
+    // onModifyProduct, // not used currently
     onEditAddress,
     onEditCustomerName: _onEditCustomerName,
     onPay,
@@ -203,7 +203,7 @@ export const createOrdersColumns = (options?: {
         return (
           <div className='space-y-1 text-sm'>
             <div className='flex items-center gap-2'>
-              <span>Name: {order.customerName}</span>
+              <span>{order.customerName}</span>
               <Button
                 variant='ghost'
                 size='icon'
@@ -269,7 +269,6 @@ export const createOrdersColumns = (options?: {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => {
-        const order = row.original
         return (
           <div
             className='flex items-center gap-0'
@@ -280,22 +279,26 @@ export const createOrdersColumns = (options?: {
               size='sm'
               className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary -mr-1 h-8 px-1.5 hover:bg-transparent dark:hover:bg-transparent'
               onClick={() => {
-                onPay?.(order.id)
+                onPay?.(row.original.id)
               }}
             >
               <CreditCard className='h-3.5 w-3.5' />
               Pay
             </Button>
+            {/* <OrdersRowActions
+              row={row}
+              onModifyProduct={onModifyProduct}
+              onEditAddress={onEditAddress}
+            /> */}
             <Button
               variant='ghost'
               size='sm'
-              className='h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+              className='h-8 px-1.5 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300'
               onClick={() => {
-                onDelete?.(order.id)
+                onDelete?.(row.original.id)
               }}
             >
               <Trash2 className='h-3.5 w-3.5' />
-              Delete
             </Button>
           </div>
         )

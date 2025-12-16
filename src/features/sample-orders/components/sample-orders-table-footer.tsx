@@ -1,5 +1,5 @@
 import { type Table } from '@tanstack/react-table'
-import { ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { getPageNumbers } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -20,11 +20,6 @@ export function SampleOrdersTableFooter({
   const isAllPageSelected = table.getIsAllPageRowsSelected()
   const isSomePageSelected = table.getIsSomePageRowsSelected()
 
-  // Calculate total amount for selected orders
-  const totalAmount = selectedRows.reduce((sum, row) => {
-    return sum + (row.original.cost.total || 0)
-  }, 0)
-
   const handlePageSelect = (checked: boolean) => {
     if (checked) {
       table.toggleAllPageRowsSelected(true)
@@ -43,15 +38,6 @@ export function SampleOrdersTableFooter({
     }
   }
 
-  const handleBatchPayment = () => {
-    if (selectedCount > 0) {
-      // TODO: Implement batch payment dialog
-      console.log(
-        'Batch payment for orders:',
-        selectedRows.map((row) => row.original.id)
-      )
-    }
-  }
 
   return (
     <div className='flex items-center justify-between border-t bg-white px-4 py-3'>
@@ -135,24 +121,6 @@ export function SampleOrdersTableFooter({
         </Button>
       </div>
 
-      {/* Right: Total amount and batch payment button */}
-      <div className='flex items-center gap-4'>
-        <div className='flex flex-col items-end'>
-          <div className='text-sm'>
-            Total Amount:{' '}
-            <span className='font-medium'>
-              {selectedCount > 0 ? `$${totalAmount.toFixed(2)}` : '---'}
-            </span>
-          </div>
-          <div className='flex items-center gap-1 text-xs text-orange-500'>
-            <HelpCircle className='h-3 w-3' />
-            <span>Referenced amount</span>
-          </div>
-        </div>
-        <Button onClick={handleBatchPayment} disabled={selectedCount === 0}>
-          Batch Payment
-        </Button>
-      </div>
     </div>
   )
 }

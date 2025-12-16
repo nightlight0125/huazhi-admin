@@ -12,23 +12,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
 
-// 包装产品类型选项
-const packagingTypes = [
-  'Paper boxes',
-  'Plastic boxes',
-  'Leather boxes',
-  'Wooden boxes',
-  'Bamboo boxes',
-  'Cartons',
-  'Card',
-  'Sticker',
-  'Shipping bag',
-  'Ziplock bag',
-  'Label',
-  'Paper bag',
-  'Cloth bag',
-]
-
 // 模拟包装产品数据
 const mockPackagingProducts: PackagingProduct[] = [
   {
@@ -107,7 +90,6 @@ export function ApplyPackagingDialog({
   onConfirm,
 }: ApplyPackagingDialogProps) {
   const [skuSearch, setSkuSearch] = useState('')
-  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
     new Set()
   )
@@ -131,19 +113,7 @@ export function ApplyPackagingDialog({
     // 暂时返回所有产品
 
     return filtered
-  }, [skuSearch, selectedTypes])
-
-  const handleTypeToggle = (type: string) => {
-    setSelectedTypes((prev) => {
-      const next = new Set(prev)
-      if (next.has(type)) {
-        next.delete(type)
-      } else {
-        next.add(type)
-      }
-      return next
-    })
-  }
+  }, [skuSearch])
 
   // Note: handleProductToggle is commented out because product selection checkboxes are currently disabled
   // const handleProductToggle = (productId: string) => {
@@ -167,7 +137,6 @@ export function ApplyPackagingDialog({
     onConfirm?.(products)
     // 重置状态
     setSkuSearch('')
-    setSelectedTypes(new Set())
     setSelectedProducts(new Set())
     setApplyToSpu(false)
     onOpenChange(false)
@@ -176,7 +145,6 @@ export function ApplyPackagingDialog({
   const handleCancel = () => {
     // 重置状态
     setSkuSearch('')
-    setSelectedTypes(new Set())
     setSelectedProducts(new Set())
     setApplyToSpu(false)
     onOpenChange(false)
@@ -245,6 +213,7 @@ export function ApplyPackagingDialog({
 
           {/* 搜索区域 */}
           <div className='space-y-2'>
+            <h3 className='text-sm font-medium'>My Packaging</h3>
             <h3 className='text-sm font-medium'>Please search for SKU</h3>
             <div className='flex items-center gap-2'>
               <Input
@@ -270,7 +239,7 @@ export function ApplyPackagingDialog({
           </div>
 
           {/* 包装产品类型选择 */}
-          <div className='space-y-3'>
+          {/* <div className='space-y-3'>
             <h3 className='text-sm font-medium'>Packaging Products Type</h3>
             <div className='grid grid-cols-4 gap-3'>
               {packagingTypes.map((type) => (
@@ -289,7 +258,7 @@ export function ApplyPackagingDialog({
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* 包装产品列表 */}
           <div className='space-y-3'>

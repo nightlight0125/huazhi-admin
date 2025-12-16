@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -36,10 +35,14 @@ const countryCodes = [
 ]
 
 const profileFormSchema = z.object({
-  username: z
-    .string('Please enter your username.')
-    .min(2, 'Username must be at least 2 characters.')
-    .max(30, 'Username must not be longer than 30 characters.'),
+  firstName: z
+    .string('Please enter your first name.')
+    .min(1, 'First name is required.')
+    .max(50, 'First name must not be longer than 50 characters.'),
+  lastName: z
+    .string('Please enter your last name.')
+    .min(1, 'Last name is required.')
+    .max(50, 'Last name must not be longer than 50 characters.'),
   email: z.string().email('Please enter a valid email address.'),
   bio: z.string().max(160).min(4),
   whatsappCountryCode: z.string().optional(),
@@ -54,6 +57,8 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>
 
 // This can come from your database or API.
 const defaultValues: Partial<ProfileFormValues> = {
+  firstName: '',
+  lastName: '',
   bio: 'I own a computer.',
   email: '',
   whatsappCountryCode: '+86',
@@ -77,23 +82,35 @@ export function ProfileForm() {
         onSubmit={form.handleSubmit((data) => showSubmittedData(data))}
         className='space-y-8'
       >
-        <FormField
-          control={form.control}
-          name='username'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder='shadcn' {...field} />
-              </FormControl>
-              <FormDescription>
-                This is your public display name. It can be your real name or a
-                pseudonym. You can only change this once every 30 days.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className='grid grid-cols-2 gap-4'>
+          <FormField
+            control={form.control}
+            name='firstName'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>First Name</FormLabel>
+                <FormControl>
+                  <Input placeholder='Please enter first name' {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='lastName'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Last Name</FormLabel>
+                <FormControl>
+                  <Input placeholder='Please enter last name' {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -150,63 +167,6 @@ export function ProfileForm() {
             />
           </div>
         </FormItem>
-
-        <FormField
-          control={form.control}
-          name='discord'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Discord</FormLabel>
-              <FormControl>
-                <Input placeholder='Discord ID' {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name='twitter'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>X(Twitter)</FormLabel>
-              <FormControl>
-                <Input placeholder='X(Twitter) ID' {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name='facebook'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Facebook</FormLabel>
-              <FormControl>
-                <Input placeholder='Facebook ID' {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name='instagram'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Instagram</FormLabel>
-              <FormControl>
-                <Input placeholder='Instagram ID' {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <Button type='submit'>Update profile</Button>
       </form>
     </Form>

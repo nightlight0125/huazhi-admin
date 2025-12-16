@@ -1,10 +1,11 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Download, Eye, FileText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { walletRecordStatuses } from '../data/data'
 import { type WalletRecord } from '../data/schema'
-import { DataTableRowActions } from './data-table-row-actions'
 
 export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
@@ -179,7 +180,65 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   },
   {
     id: 'actions',
-    cell: ({ row }) => <DataTableRowActions row={row} />,
+    cell: ({ row }) => {
+      const record = row.original
+
+      return (
+        <div className='flex gap-2'>
+          <Button
+            variant='outline'
+            size='sm'
+            className='h-7 px-2 text-xs'
+            onClick={(e) => {
+              e.stopPropagation()
+              console.log('View wallet record details:', record.id)
+              // TODO: 在这里打开详情对话框或侧边栏
+            }}
+          >
+            <Eye className='mr-1 h-3.5 w-3.5' />
+            View
+          </Button>
+
+          {record.type === 'invoice' && record.invoiceUrl && (
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-7 px-2 text-xs'
+              onClick={(e) => {
+                e.stopPropagation()
+                console.log(
+                  'Download invoice:',
+                  record.invoiceNumber || record.id
+                )
+                // TODO: 在这里触发发票下载
+              }}
+            >
+              <Download className='mr-1 h-3.5 w-3.5' />
+              Invoice
+            </Button>
+          )}
+
+          {record.type === 'recharge' && (
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-7 px-2 text-xs'
+              onClick={(e) => {
+                e.stopPropagation()
+                console.log(
+                  'View recharge transaction:',
+                  record.transactionId || record.id
+                )
+                // TODO: 在这里查看充值交易详情
+              }}
+            >
+              <FileText className='mr-1 h-3.5 w-3.5' />
+              Transaction
+            </Button>
+          )}
+        </div>
+      )
+    },
   },
 ]
 
