@@ -63,7 +63,7 @@ export const createOrdersColumns = (options?: {
   const {
     onExpand,
     expandedRows = new Set(),
-    // onModifyProduct, // not used currently
+    onModifyProduct: _onModifyProduct,
     onEditAddress,
     onEditCustomerName: _onEditCustomerName,
     onPay,

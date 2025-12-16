@@ -90,6 +90,7 @@ export function ApplyPackagingDialog({
   onConfirm,
 }: ApplyPackagingDialogProps) {
   const [skuSearch, setSkuSearch] = useState('')
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
     new Set()
   )
@@ -113,7 +114,7 @@ export function ApplyPackagingDialog({
     // 暂时返回所有产品
 
     return filtered
-  }, [skuSearch])
+  }, [skuSearch, selectedTypes])
 
   // Note: handleProductToggle is commented out because product selection checkboxes are currently disabled
   // const handleProductToggle = (productId: string) => {
@@ -137,6 +138,7 @@ export function ApplyPackagingDialog({
     onConfirm?.(products)
     // 重置状态
     setSkuSearch('')
+    setSelectedTypes(new Set())
     setSelectedProducts(new Set())
     setApplyToSpu(false)
     onOpenChange(false)
@@ -145,6 +147,7 @@ export function ApplyPackagingDialog({
   const handleCancel = () => {
     // 重置状态
     setSkuSearch('')
+    setSelectedTypes(new Set())
     setSelectedProducts(new Set())
     setApplyToSpu(false)
     onOpenChange(false)

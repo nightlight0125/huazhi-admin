@@ -158,9 +158,8 @@ export function DataTableToolbar<TData>({
   return (
     <div className='flex flex-wrap items-start justify-between gap-2'>
       <div className='flex flex-1 flex-wrap items-center gap-2'>
-        {/* 自定义筛选区域 + Filters (下拉框) - 放在最前面 */}
+        {/* Filters (下拉框) - 放在最前面 */}
         <div className='flex flex-wrap items-center gap-2'>
-          {customFilterSlot}
           {filters.map((filter) => {
             const column = table.getColumn(filter.columnId)
             if (!column || !column.columnDef) return null
@@ -311,6 +310,7 @@ export function DataTableToolbar<TData>({
           </Popover>
         )}
         <div className='flex flex-wrap items-center gap-2'>
+          {customFilterSlot}
           {/* Bulk Revise */}
           {bulkRevise?.enabled && (
             <div className='flex items-center'>

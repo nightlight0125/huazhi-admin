@@ -79,6 +79,7 @@ export function ProductDetails() {
   const productData = product as Product | PackagingProduct
 
   const [selectedQuantity, setSelectedQuantity] = useState(1)
+  const [selectedTo] = useState('usa')
   const [selectedColor, setSelectedColor] = useState('')
   const [selectedSize, setSelectedSize] = useState('')
   const [selectedThumbnail, setSelectedThumbnail] = useState(0)
@@ -86,6 +87,10 @@ export function ProductDetails() {
   const [selectedStore, setSelectedStore] = useState('')
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
     useState(false)
+  // const [selectedSellingPlatform, setSelectedSellingPlatform] =
+  //   useState('shopify')
+  // const [selectedShippingMethod, setSelectedShippingMethod] =
+  //   useState('tdpacket-electro')
   const [isShippingOptionsDialogOpen, setIsShippingOptionsDialogOpen] =
     useState(false)
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
@@ -797,7 +802,15 @@ export function ProductDetails() {
       <ShippingOptionsDialog
         open={isShippingOptionsDialogOpen}
         onOpenChange={setIsShippingOptionsDialogOpen}
-        defaultTo='United States'
+        defaultTo={
+          selectedTo === 'usa'
+            ? 'United States'
+            : selectedTo === 'uk'
+              ? 'United Kingdom'
+              : selectedTo === 'canada'
+                ? 'Canada'
+                : 'France'
+        }
         defaultQuantity={selectedQuantity}
         onSelect={(optionId) => {
           console.log('Selected shipping option:', optionId)
