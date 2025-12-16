@@ -273,7 +273,7 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
       createOrdersColumns({
         onExpand: handleExpand,
         expandedRows,
-        onModifyProduct: (orderId) => {
+        onModifyProduct: (orderId: string) => {
           const order = data.find((o) => o.id === orderId)
           if (order && order.productList && order.productList.length > 0) {
             setModifyProductDialog({

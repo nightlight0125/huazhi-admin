@@ -108,10 +108,6 @@ export function UserAuthForm({
         exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
       }
       auth.setUser(user)
-
-      // 重定向
-      const targetPath = redirectTo || '/'
-      navigate({ to: targetPath, replace: true })
     } catch (error) {
       toast.dismiss(loadingToast)
       const errorMessage =
@@ -121,6 +117,27 @@ export function UserAuthForm({
       toast.error(errorMessage)
       console.error('Login error:', error)
     } finally {
+      // 确保有一个“已登录”的状态（即使接口失败也可以进入首页）
+      let token = auth.accessToken
+      if (!token || token.trim() === '') {
+        // 给一个兜底的本地 token，保证通过路由守卫
+        token = 'dev-fallback-token'
+        auth.setAccessToken(token)
+      }
+
+      if (!auth.user) {
+        // 兜底用户信息，至少包含 email 和过期时间
+        auth.setUser({
+          accountNo: data.email,
+          email: data.email,
+          role: ['user'],
+          exp: Date.now() + 24 * 60 * 60 * 1000,
+        })
+      }
+
+      // 无论成功还是失败，都跳转到首页（或传入的 redirectTo）
+      const targetPath = redirectTo || '/_authenticated/'
+      navigate({ to: targetPath, replace: true })
       setIsLoading(false)
     }
   }

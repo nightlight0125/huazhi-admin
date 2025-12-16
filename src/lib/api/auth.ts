@@ -80,14 +80,23 @@ export async function memberLogin(
     requestData
   )
 
-  // 检查响应状态
-  if (!response.data.status) {
+  const res = response.data
+
+  // 检查响应状态：
+  // 1. status 为 false
+  // 2. 或 errorCode 不为空且不为 "0"
+  const hasErrorCode =
+    typeof res.errorCode === 'string' &&
+    res.errorCode.trim() !== '' &&
+    res.errorCode.trim() !== '0'
+
+  if (!res.status || hasErrorCode) {
     const errorMessage =
-      response.data.message || 'Login failed. Please check your credentials.'
+      res.message || 'Login failed. Please check your credentials.'
     throw new Error(errorMessage)
   }
 
-  return response.data
+  return res
 }
 
 // 获取 Token API
