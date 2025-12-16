@@ -1,8 +1,9 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Store, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type RecommendProduct } from '../data/schema'
-import { RecommendProductsRowActions } from './recommend-products-row-actions'
 
 export const recommendProductsColumns: ColumnDef<RecommendProduct>[] = [
   {
@@ -106,6 +107,38 @@ export const recommendProductsColumns: ColumnDef<RecommendProduct>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => <RecommendProductsRowActions row={row} />,
+    cell: ({ row }) => {
+      const product = row.original
+
+      return (
+        <div className='flex gap-2'>
+          <Button
+            variant='outline'
+            size='sm'
+            className='h-7 px-2 text-xs'
+            onClick={(e) => {
+              e.stopPropagation()
+              console.log('Publish recommend product to store:', product.id)
+              // TODO: 在这里调用发布到店铺的接口
+            }}
+          >
+            <Store className='mr-1 h-3.5 w-3.5' />
+            Publish
+          </Button>
+          <Button
+            variant='outline'
+            size='sm'
+            className='h-7 border-red-200 px-2 text-xs text-red-500'
+            onClick={(e) => {
+              e.stopPropagation()
+              console.log('Delete recommend product:', product.id)
+              // TODO: 在这里调用删除推荐商品的接口
+            }}
+          >
+            <Trash2 className='mr-1 h-3.5 w-3.5' />
+          </Button>
+        </div>
+      )
+    },
   },
 ]

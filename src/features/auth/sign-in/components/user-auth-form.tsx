@@ -5,9 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
-import { IconFacebook, IconGithub } from '@/assets/brand-icons'
 import { useAuthStore } from '@/stores/auth-store'
-import { sleep, cn } from '@/lib/utils'
+import { getToken, memberLogin } from '@/lib/api/auth'
+import { encryptPassword } from '@/lib/crypto-utils'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -27,7 +28,7 @@ const formSchema = z.object({
   password: z
     .string()
     .min(1, 'Please enter your password')
-    .min(7, 'Password must be at least 7 characters long'),
+    .min(1, 'Password is required'),
 })
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
@@ -46,39 +47,82 @@ export function UserAuthForm({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: '4301779144@qq.com',
+      password: '123456',
     },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
+  async function onSubmit(data: z.infer<typeof formSchema>) {
     setIsLoading(true)
 
-    // Mock successful authentication
-    const mockUser = {
-      accountNo: 'ACC001',
-      email: data.email,
-      role: ['user'],
-      exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
+    const loadingToast = toast.loading('Signing in...')
+
+    try {
+      // 加密密码
+      const encryptedPassword = encryptPassword(data.password)
+      console.log('encryptedPassword', encryptedPassword)
+
+      // 检查当前 token 状态
+      const currentToken = auth.accessToken
+      const currentUser = auth.user
+      let token = currentToken
+
+      if (!token || token.trim() === '') {
+        // 先调用 getToken 接口获取 token
+        token = await getToken()
+        // 临时保存 token，以便后续请求使用
+        auth.setAccessToken(token)
+      } else if (currentUser?.exp) {
+        // 检查 token 是否过期
+        const now = Date.now()
+        if (now >= currentUser.exp) {
+          // Token 已过期，重新获取
+          // token = await getToken(data.email)
+          // auth.setAccessToken(token)
+        }
+      }
+
+      // 获取到 token 后，调用会员登录接口
+      const loginResponse = await memberLogin(data.email, encryptedPassword)
+
+      toast.dismiss(loadingToast)
+      toast.success('Login successful!')
+
+      // 确保使用最新的 token（如果登录响应中有新的 token，使用新的）
+      const finalToken =
+        loginResponse.token || loginResponse.access_token || token
+      auth.setAccessToken(finalToken)
+
+      // 设置用户信息（根据实际 API 响应调整）
+      const userData = loginResponse.data as {
+        accountId?: string
+        id?: string
+        email?: string
+        [key: string]: unknown
+      }
+
+      const user = {
+        accountNo: userData.accountId || userData.id || data.email,
+        email: userData.email || data.email,
+        role: ['user'],
+        exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
+      }
+      auth.setUser(user)
+
+      // 重定向
+      const targetPath = redirectTo || '/'
+      navigate({ to: targetPath, replace: true })
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to sign in. Please check your credentials.'
+      toast.error(errorMessage)
+      console.error('Login error:', error)
+    } finally {
+      setIsLoading(false)
     }
-
-    toast.promise(sleep(2000), {
-      loading: 'Signing in...',
-      success: () => {
-        setIsLoading(false)
-
-        // Set user and access token
-        auth.setUser(mockUser)
-        auth.setAccessToken('mock-access-token')
-
-        // Redirect to the stored location or default to dashboard
-        const targetPath = redirectTo || '/'
-        navigate({ to: targetPath, replace: true })
-
-        return `Welcome back, ${data.email}!`
-      },
-      error: 'Error',
-    })
   }
 
   return (
@@ -136,14 +180,15 @@ export function UserAuthForm({
           </div>
         </div>
 
-        <div className='grid grid-cols-2 gap-2'>
-          <Button variant='outline' type='button' disabled={isLoading}>
-            <IconGithub className='h-4 w-4' /> GitHub
-          </Button>
-          <Button variant='outline' type='button' disabled={isLoading}>
-            <IconFacebook className='h-4 w-4' /> Facebook
-          </Button>
-        </div>
+        {/* <p className='text-muted-foreground text-center text-sm'>
+          Don't have an account?{' '}
+          <Link
+            to='/sign-up'
+            className='hover:text-primary font-medium underline underline-offset-4'
+          >
+            Sign up
+          </Link>
+        </p> */}
       </form>
     </Form>
   )

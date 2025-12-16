@@ -41,11 +41,17 @@ type DataTableProps = {
   onTableReady?: (table: ReturnType<typeof useReactTable<Order>>) => void
 }
 
-function ProductDetailRow({ product }: { product: OrderProduct }) {
+function ProductDetailRow({
+  product,
+  onModifyProduct,
+}: {
+  product: OrderProduct
+  onModifyProduct?: () => void
+}) {
   const fieldLabels = ['Shopify', 'SKU', 'Price', 'Quantity']
   const leftButtons = ['Store', 'HZ']
   const rightButtons = [
-    { label: 'Modify Product', onClick: () => {} },
+    { label: 'Modify Product', onClick: onModifyProduct || (() => {}) },
     { label: 'Delete', onClick: () => {} },
   ]
 
@@ -362,7 +368,7 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
-          {/* Total Amount and Batch Payment - moved to top */}
+          {/* Total Amount and Batch Payment - positioned at top left */}
           {(() => {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             const selectedCount = selectedRows.length
@@ -371,8 +377,8 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
             }, 0)
 
             return (
-              <div className='flex items-center justify-end gap-4 border-b bg-white px-4 py-3'>
-                <div className='flex flex-col items-end'>
+              <div className='flex items-center justify-start gap-4 border-b bg-white px-4 py-3'>
+                <div className='flex flex-col items-start'>
                   <div className='text-sm'>
                     Total Amount:{' '}
                     <span className='font-medium'>
@@ -450,6 +456,13 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
                               <ProductDetailRow
                                 key={product.id}
                                 product={product}
+                                onModifyProduct={() => {
+                                  setModifyProductDialog({
+                                    open: true,
+                                    products: order.productList || [],
+                                    orderId: order.id,
+                                  })
+                                }}
                               />
                             ))}
                           </>
@@ -479,9 +492,7 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
 
       {/* Modify Product Dialog */}
       <OrdersModifyProductDialog
-        open={
-          modifyProductDialog.open && modifyProductDialog.products.length > 0
-        }
+        open={modifyProductDialog.open}
         onOpenChange={(open) => {
           if (!open) {
             setModifyProductDialog({ open: false, products: [], orderId: '' })

@@ -1,10 +1,15 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { type StoreSku } from '../data/schema'
+import {
+  ChevronRight,
+  Image as ImageIcon,
+  Link2,
+  Link2Off,
+  Minus,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ChevronRight, Minus, Image as ImageIcon } from 'lucide-react'
-import { PackagingConnectionRowActions } from './packaging-connection-row-actions'
+import { type StoreSku } from '../data/schema'
 
 export const createPackagingConnectionColumns = (options?: {
   onExpand?: (rowId: string) => void
@@ -13,7 +18,13 @@ export const createPackagingConnectionColumns = (options?: {
   onConnect?: (storeSku: StoreSku) => void
   isConnectedFilter?: boolean
 }): ColumnDef<StoreSku>[] => {
-  const { onExpand, expandedRows = new Set(), onDisconnect, onConnect, isConnectedFilter = false } = options || {}
+  const {
+    onExpand,
+    expandedRows = new Set(),
+    onDisconnect,
+    onConnect,
+    isConnectedFilter = false,
+  } = options || {}
 
   return [
     {
@@ -45,24 +56,26 @@ export const createPackagingConnectionColumns = (options?: {
       id: 'expand',
       header: '',
       cell: ({ row }) => {
-        const hasPackagingProducts = row.original.packagingProducts && row.original.packagingProducts.length > 0
+        const hasPackagingProducts =
+          row.original.packagingProducts &&
+          row.original.packagingProducts.length > 0
         const isExpanded = expandedRows.has(row.id)
 
         if (!hasPackagingProducts) {
-          return <div className="w-6" />
+          return <div className='w-6' />
         }
 
         return (
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
+            variant='ghost'
+            size='icon'
+            className='h-6 w-6'
             onClick={() => onExpand?.(row.id)}
           >
             {isExpanded ? (
-              <Minus className="h-4 w-4" />
+              <Minus className='h-4 w-4' />
             ) : (
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className='h-4 w-4' />
             )}
           </Button>
         )
@@ -77,24 +90,24 @@ export const createPackagingConnectionColumns = (options?: {
       cell: ({ row }) => {
         const item = row.original
         return (
-          <div className="flex items-center gap-3">
-            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border">
+          <div className='flex items-center gap-3'>
+            <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
               <img
                 src={item.image}
                 alt={item.name}
-                className="h-full w-full object-cover"
+                className='h-full w-full object-cover'
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
                   target.src = '/placeholder-image.png'
                 }}
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <div className="text-sm font-medium">{item.name}</div>
-              <div className="text-xs text-muted-foreground">
+            <div className='flex flex-col gap-1'>
+              <div className='text-sm font-medium'>{item.name}</div>
+              <div className='text-muted-foreground text-xs'>
                 SKU: {item.sku}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className='text-muted-foreground text-xs'>
                 Variant ID: {item.variantId}
               </div>
             </div>
@@ -113,21 +126,21 @@ export const createPackagingConnectionColumns = (options?: {
           // For Connected filter, show TD SKU
           if (item.hzProductImage && item.hzProductSku) {
             return (
-              <div className="flex items-center gap-3">
-                <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border">
+              <div className='flex items-center gap-3'>
+                <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
                   <img
                     src={item.hzProductImage}
-                    alt="TD SKU"
-                    className="h-full w-full object-cover"
+                    alt='TD SKU'
+                    className='h-full w-full object-cover'
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
                       target.src = '/placeholder-image.png'
                     }}
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <div className="text-sm font-medium">TD SKU</div>
-                  <div className="text-xs text-muted-foreground">
+                <div className='flex flex-col gap-1'>
+                  <div className='text-sm font-medium'>TD SKU</div>
+                  <div className='text-muted-foreground text-xs'>
                     SKU: {item.hzProductSku}
                   </div>
                 </div>
@@ -135,12 +148,12 @@ export const createPackagingConnectionColumns = (options?: {
             )
           }
           return (
-            <div className="flex items-center gap-3">
-              <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
-                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+            <div className='flex items-center gap-3'>
+              <div className='bg-muted relative flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border'>
+                <ImageIcon className='text-muted-foreground h-6 w-6' />
               </div>
-              <div className="flex flex-col gap-1">
-                <div className="text-sm text-muted-foreground">SKU: ---</div>
+              <div className='flex flex-col gap-1'>
+                <div className='text-muted-foreground text-sm'>SKU: ---</div>
               </div>
             </div>
           )
@@ -148,21 +161,21 @@ export const createPackagingConnectionColumns = (options?: {
           // For Unconnected/All, show HZ Product
           if (item.isConnected && item.hzProductImage && item.hzProductSku) {
             return (
-              <div className="flex items-center gap-3">
-                <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border">
+              <div className='flex items-center gap-3'>
+                <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
                   <img
                     src={item.hzProductImage}
-                    alt="HZ Product"
-                    className="h-full w-full object-cover"
+                    alt='HZ Product'
+                    className='h-full w-full object-cover'
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
                       target.src = '/placeholder-image.png'
                     }}
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <div className="text-sm font-medium">HZ Product</div>
-                  <div className="text-xs text-muted-foreground">
+                <div className='flex flex-col gap-1'>
+                  <div className='text-sm font-medium'>HZ Product</div>
+                  <div className='text-muted-foreground text-xs'>
                     SKU: {item.hzProductSku}
                   </div>
                 </div>
@@ -170,12 +183,12 @@ export const createPackagingConnectionColumns = (options?: {
             )
           }
           return (
-            <div className="flex items-center gap-3">
-              <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
-                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+            <div className='flex items-center gap-3'>
+              <div className='bg-muted relative flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border'>
+                <ImageIcon className='text-muted-foreground h-6 w-6' />
               </div>
-              <div className="flex flex-col gap-1">
-                <div className="text-sm text-muted-foreground">---</div>
+              <div className='flex flex-col gap-1'>
+                <div className='text-muted-foreground text-sm'>---</div>
               </div>
             </div>
           )
@@ -189,9 +202,9 @@ export const createPackagingConnectionColumns = (options?: {
       cell: ({ row }) => {
         const item = row.original
         return (
-          <div className="flex items-center gap-2">
-            <span className="text-green-600">$</span>
-            <span className="text-sm">{item.storeName}</span>
+          <div className='flex items-center gap-2'>
+            <span className='text-green-600'>$</span>
+            <span className='text-sm'>{item.storeName}</span>
           </div>
         )
       },
@@ -248,9 +261,7 @@ export const createPackagingConnectionColumns = (options?: {
       cell: ({ row }) => {
         const item = row.original
         return (
-          <div className="text-sm font-medium">
-            ${item.price.toFixed(2)}
-          </div>
+          <div className='text-sm font-medium'>${item.price.toFixed(2)}</div>
         )
       },
       size: 100,
@@ -259,18 +270,42 @@ export const createPackagingConnectionColumns = (options?: {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => {
+        const item = row.original
+
         return (
-          <PackagingConnectionRowActions
-            row={row}
-            isConnectedFilter={isConnectedFilter}
-            onConnect={onConnect}
-            onDisconnect={onDisconnect}
-          />
+          <div className='flex gap-2'>
+            {item.isConnected ? (
+              <Button
+                variant='outline'
+                size='sm'
+                className='h-7 border-red-200 px-2 text-xs text-red-500'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDisconnect?.(item)
+                }}
+              >
+                <Link2Off className='mr-1 h-3.5 w-3.5' />
+                Disconnect
+              </Button>
+            ) : (
+              <Button
+                variant='outline'
+                size='sm'
+                className='h-7 border-orange-200 bg-orange-50 px-2 text-xs text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onConnect?.(item)
+                }}
+              >
+                <Link2 className='mr-1 h-3.5 w-3.5' />
+                Connect
+              </Button>
+            )}
+          </div>
         )
       },
       enableSorting: false,
-      size: 120,
+      size: 140,
     },
   ]
 }
-

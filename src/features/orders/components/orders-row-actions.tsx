@@ -1,10 +1,5 @@
 import { type Row } from '@tanstack/react-table'
-import {
-  CreditCard,
-  Edit3,
-  Package,
-  MoreHorizontal,
-} from 'lucide-react'
+import { CreditCard, Edit3, MoreHorizontal, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -33,7 +28,7 @@ export function OrdersRowActions({
         <Button
           aria-label='Open menu'
           variant='ghost'
-          className='flex h-8 w-8 p-0 data-[state=open]:bg-muted'
+          className='data-[state=open]:bg-muted flex h-8 w-8 p-0'
           onClick={(e) => e.stopPropagation()}
         >
           <MoreHorizontal className='h-4 w-4' aria-hidden='true' />
@@ -71,7 +66,6 @@ export function OrdersRowActions({
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => {
-            // 原来 Add Package 按钮没有事件，这里仅保留占位
             console.log('Add Package for order:', order.id)
           }}
         >
@@ -82,5 +76,3 @@ export function OrdersRowActions({
     </DropdownMenu>
   )
 }
-
-

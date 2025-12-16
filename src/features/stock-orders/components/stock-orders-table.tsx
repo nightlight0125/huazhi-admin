@@ -12,7 +12,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { HelpCircle } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -170,6 +172,45 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
+          {/* Total Amount and Batch Payment - positioned at top left */}
+          {(() => {
+            const selectedRows = table.getFilteredSelectedRowModel().rows
+            const selectedCount = selectedRows.length
+            const totalAmount = selectedRows.reduce((sum, row) => {
+              return sum + (row.original.cost.total || 0)
+            }, 0)
+
+            return (
+              <div className='flex items-center justify-start gap-4 border-b bg-white px-4 py-3'>
+                <div className='flex flex-col items-start'>
+                  <div className='text-sm'>
+                    Total Amount:{' '}
+                    <span className='font-medium'>
+                      {selectedCount > 0 ? `$${totalAmount.toFixed(2)}` : '---'}
+                    </span>
+                  </div>
+                  <div className='flex items-center gap-1 text-xs text-orange-500'>
+                    <HelpCircle className='h-3 w-3' />
+                    <span>Referenced amount</span>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    if (selectedCount > 0) {
+                      // TODO: Implement batch payment dialog
+                      console.log(
+                        'Batch payment for orders:',
+                        selectedRows.map((row) => row.original.id)
+                      )
+                    }
+                  }}
+                  disabled={selectedCount === 0}
+                >
+                  Batch Payment
+                </Button>
+              </div>
+            )
+          })()}
           <div className='overflow-hidden rounded-md border'>
             <Table>
               <TableHeader>

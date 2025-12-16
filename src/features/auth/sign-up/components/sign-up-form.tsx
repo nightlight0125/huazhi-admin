@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { IconFacebook, IconGithub } from '@/assets/brand-icons'
+import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getToken, memberSignUp } from '@/lib/api/auth'
+import { encryptPassword } from '@/lib/crypto-utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,55 +20,131 @@ import {
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 
-const formSchema = z
-  .object({
-    email: z.email({
-      error: (iss) =>
-        iss.input === '' ? 'Please enter your email' : undefined,
-    }),
-    password: z
-      .string()
-      .min(1, 'Please enter your password')
-      .min(7, 'Password must be at least 7 characters long'),
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match.",
-    path: ['confirmPassword'],
-  })
+const formSchema = z.object({
+  username: z.string().min(1, 'Please enter your username'),
+  email: z.email({
+    message: 'Please enter a valid email address',
+  }),
+  name: z.string().min(1, 'Please enter your name'),
+  phone: z
+    .string()
+    .min(1, 'Please enter your phone number')
+    .regex(/^1[3-9]\d{9}$/, 'Please enter a valid phone number'),
+  password: z.string().min(1, 'Please enter your password'),
+})
 
 export function SignUpForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLFormElement>) {
   const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
+  const { auth } = useAuthStore()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      username: '',
       email: '',
+      name: '',
+      phone: '',
       password: '',
-      confirmPassword: '',
     },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    console.log('表单提交被触发！', data)
     setIsLoading(true)
-    // eslint-disable-next-line no-console
-    console.log(data)
 
-    setTimeout(() => {
+    const loadingToast = toast.loading('Creating account...')
+
+    try {
+      // 加密密码（密码+盐值，转大写后MD5加密，结果转大写）
+      const encryptedPassword = encryptPassword(data.password)
+      console.log('原始密码:', data.password)
+      console.log('加密后密码:', encryptedPassword)
+
+      // 检查当前 token 状态
+      const currentToken = auth.accessToken
+      const currentUser = auth.user
+      let token = currentToken
+
+      // 如果没有 token 或 token 已过期，先获取 token
+      if (!token || token.trim() === '') {
+        // 先调用 getToken 接口获取 token
+        token = await getToken()
+        // 临时保存 token，以便后续请求使用
+        auth.setAccessToken(token)
+      } else if (currentUser?.exp) {
+        // 检查 token 是否过期
+        const now = Date.now()
+        if (now >= currentUser.exp) {
+          // Token 已过期，重新获取
+          token = await getToken()
+          auth.setAccessToken(token)
+        }
+      }
+
+      // 获取到 token 后，调用注册接口
+      const response = await memberSignUp(
+        data.username,
+        data.email,
+        data.name,
+        data.phone,
+        encryptedPassword
+      )
+
+      toast.dismiss(loadingToast)
+
+      // 注册成功后跳转到登录页面
+      if (response.status) {
+        toast.success('Account created successfully! Please sign in.')
+        navigate({ to: '/sign-in', replace: true })
+      } else {
+        toast.error(
+          response.message || 'Failed to create account. Please try again.'
+        )
+      }
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to create account. Please try again.'
+      toast.error(errorMessage)
+      console.error('Registration error:', error)
+    } finally {
       setIsLoading(false)
-    }, 3000)
+    }
   }
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          console.log('表单验证失败:', errors)
+          // 显示第一个验证错误
+          const firstError = Object.values(errors)[0]
+          if (firstError?.message) {
+            toast.error(firstError.message)
+          }
+        })}
         className={cn('grid gap-3', className)}
         {...props}
       >
+        <FormField
+          control={form.control}
+          name='username'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input placeholder='Enter your username' {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name='email'
@@ -73,6 +153,32 @@ export function SignUpForm({
               <FormLabel>Email</FormLabel>
               <FormControl>
                 <Input placeholder='name@example.com' {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name='name'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder='Enter your name' {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name='phone'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone</FormLabel>
+              <FormControl>
+                <Input placeholder='Enter your phone number' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -91,21 +197,8 @@ export function SignUpForm({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name='confirmPassword'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
-              <FormControl>
-                <PasswordInput placeholder='********' {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button className='mt-2' disabled={isLoading}>
-          Create Account
+        <Button type='submit' className='mt-2' disabled={isLoading}>
+          {isLoading ? 'Creating...' : 'Create Account'}
         </Button>
 
         <div className='relative my-2'>
@@ -117,25 +210,6 @@ export function SignUpForm({
               Or continue with
             </span>
           </div>
-        </div>
-
-        <div className='grid grid-cols-2 gap-2'>
-          <Button
-            variant='outline'
-            className='w-full'
-            type='button'
-            disabled={isLoading}
-          >
-            <IconGithub className='h-4 w-4' /> GitHub
-          </Button>
-          <Button
-            variant='outline'
-            className='w-full'
-            type='button'
-            disabled={isLoading}
-          >
-            <IconFacebook className='h-4 w-4' /> Facebook
-          </Button>
         </div>
       </form>
     </Form>

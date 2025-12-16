@@ -161,10 +161,10 @@ export const sidebarData: SidebarData = {
               title: 'Accounts',
               url: '/users',
             },
-            {
-              title: 'Addresses',
-              url: '/addresses',
-            },
+            // {
+            //   title: 'Addresses',
+            //   url: '/addresses',
+            // },
             // {
             //   title: 'Appearance',
             //   url: '/settings/appearance',

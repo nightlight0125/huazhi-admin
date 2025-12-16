@@ -17,6 +17,7 @@ import { ThemeProvider } from './context/theme-provider'
 import { routeTree } from './routeTree.gen'
 // Styles
 import './styles/index.css'
+import 'flag-icons/css/flag-icons.min.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

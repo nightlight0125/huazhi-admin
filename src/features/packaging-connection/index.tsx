@@ -23,8 +23,8 @@ const tabs = [
     icon: Package,
   },
   {
-    value: 'stores' as TabType,
-    label: 'Stores',
+    value: 'order' as TabType,
+    label: 'Order',
     icon: Store,
   },
 ]

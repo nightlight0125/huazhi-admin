@@ -304,7 +304,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
               {/* Product Info */}
               <div className='space-y-1.5 p-2.5'>
                 {/* Product Title */}
-                <h3 className='line-clamp-2 text-sm leading-tight font-semibold'>
+                <h3 className='line-clamp-2 h-5 text-sm leading-tight font-semibold'>
                   {product.name}
                 </h3>
 
@@ -314,7 +314,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
                 </p>
 
                 {/* Price */}
-                <div className='text-base font-bold text-green-600'>
+                <div className='text-base font-bold text-orange-500'>
                   ${product.price.toFixed(2)}
                 </div>
 

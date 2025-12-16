@@ -1,8 +1,8 @@
-import path from 'path'
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import react from '@vitejs/plugin-react-swc'
+import path from 'path'
+import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -26,5 +26,12 @@ export default defineConfig({
       // 忽略一些不必要的文件变化
       ignored: ['**/node_modules/**', '**/.git/**'],
     },
+    // proxy: {
+    //   '/api': {
+    //     target: 'https://hyperzone.test.kdgalaxy.com',
+    //     changeOrigin: true,
+    //     rewrite: (path) => path.replace(/^\/api/, ''),
+    //   },
+    // },
   },
 })

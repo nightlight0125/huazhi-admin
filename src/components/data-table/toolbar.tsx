@@ -158,6 +158,49 @@ export function DataTableToolbar<TData>({
   return (
     <div className='flex flex-wrap items-start justify-between gap-2'>
       <div className='flex flex-1 flex-wrap items-center gap-2'>
+        {/* 自定义筛选区域 + Filters (下拉框) - 放在最前面 */}
+        <div className='flex flex-wrap items-center gap-2'>
+          {customFilterSlot}
+          {filters.map((filter) => {
+            const column = table.getColumn(filter.columnId)
+            if (!column || !column.columnDef) return null
+
+            // Ensure column is ready for faceted filtering
+            try {
+              // Test if getFacetedUniqueValues is available and works
+              if (typeof column.getFacetedUniqueValues === 'function') {
+                column.getFacetedUniqueValues()
+              }
+            } catch (error) {
+              console.warn(
+                `Column ${filter.columnId} is not ready for filtering:`,
+                error
+              )
+              return null
+            }
+
+            if (filter.useCategoryTree && filter.categories) {
+              return (
+                <CategoryTreeFacetedFilter
+                  key={filter.columnId}
+                  column={column}
+                  title={filter.title}
+                  categories={filter.categories}
+                />
+              )
+            }
+
+            return (
+              <DataTableFacetedFilter
+                key={filter.columnId}
+                column={column}
+                title={filter.title}
+                options={filter.options || []}
+              />
+            )
+          })}
+        </div>
+        {/* Search boxes (搜索框) - 放在下拉框后面 */}
         {showSearch && (
           <>
             {searchKey ? (
@@ -229,84 +272,45 @@ export function DataTableToolbar<TData>({
             className='h-8 w-[150px] lg:w-[250px]'
           />
         )}
-        <div className='flex flex-wrap items-center gap-2'>
-          {customFilterSlot}
-          {filters.map((filter) => {
-            const column = table.getColumn(filter.columnId)
-            if (!column || !column.columnDef) return null
-
-            // Ensure column is ready for faceted filtering
-            try {
-              // Test if getFacetedUniqueValues is available and works
-              if (typeof column.getFacetedUniqueValues === 'function') {
-                column.getFacetedUniqueValues()
-              }
-            } catch (error) {
-              console.warn(
-                `Column ${filter.columnId} is not ready for filtering:`,
-                error
-              )
-              return null
-            }
-
-            if (filter.useCategoryTree && filter.categories) {
-              return (
-                <CategoryTreeFacetedFilter
-                  key={filter.columnId}
-                  column={column}
-                  title={filter.title}
-                  categories={filter.categories}
-                />
-              )
-            }
-
-            return (
-              <DataTableFacetedFilter
-                key={filter.columnId}
-                column={column}
-                title={filter.title}
-                options={filter.options || []}
-              />
-            )
-          })}
-          {/* Date Range Picker */}
-          {dateRange?.enabled && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant='outline'
-                  className={cn(
-                    'h-8 w-[240px] justify-start text-left font-normal',
-                    !dateRangeValue && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className='mr-2 h-4 w-4' />
-                  {dateRangeValue?.from ? (
-                    dateRangeValue.to ? (
-                      <>
-                        {format(dateRangeValue.from, 'yyyy-MM-dd')} -{' '}
-                        {format(dateRangeValue.to, 'yyyy-MM-dd')}
-                      </>
-                    ) : (
-                      format(dateRangeValue.from, 'yyyy-MM-dd')
-                    )
+        {/* Date Range Picker - 紧跟在搜索框后面 */}
+        {dateRange?.enabled && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant='outline'
+                className={cn(
+                  'h-8 w-[240px] justify-start text-left font-normal',
+                  !dateRangeValue && 'text-muted-foreground'
+                )}
+              >
+                <CalendarIcon className='mr-2 h-4 w-4' />
+                {dateRangeValue?.from ? (
+                  dateRangeValue.to ? (
+                    <>
+                      {format(dateRangeValue.from, 'yyyy-MM-dd')} -{' '}
+                      {format(dateRangeValue.to, 'yyyy-MM-dd')}
+                    </>
                   ) : (
-                    <span>{dateRange.placeholder || 'Pick a date range'}</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className='w-auto p-0' align='start'>
-                <Calendar
-                  initialFocus
-                  mode='range'
-                  defaultMonth={dateRangeValue?.from}
-                  selected={dateRangeValue}
-                  onSelect={handleDateRangeChange}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-          )}
+                    format(dateRangeValue.from, 'yyyy-MM-dd')
+                  )
+                ) : (
+                  <span>{dateRange.placeholder || 'Pick a date range'}</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className='w-auto p-0' align='start'>
+              <Calendar
+                initialFocus
+                mode='range'
+                defaultMonth={dateRangeValue?.from}
+                selected={dateRangeValue}
+                onSelect={handleDateRangeChange}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
+        <div className='flex flex-wrap items-center gap-2'>
           {/* Bulk Revise */}
           {bulkRevise?.enabled && (
             <div className='flex items-center'>

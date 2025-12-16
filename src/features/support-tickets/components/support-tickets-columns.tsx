@@ -1,5 +1,7 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Pencil, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Tooltip,
@@ -8,7 +10,6 @@ import {
 } from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type SupportTicket } from '../data/schema'
-import { SupportTicketsRowActions } from './support-tickets-row-actions'
 
 export const createSupportTicketsColumns = (options?: {
   onEdit?: (ticket: SupportTicket) => void
@@ -82,7 +83,7 @@ export const createSupportTicketsColumns = (options?: {
         <DataTableColumnHeader column={column} title='Qty' />
       ),
       cell: ({ row }) => (
-        <div className='w-10 text-xs text-center'>
+        <div className='w-10 text-center text-xs'>
           {row.getValue('returnQty')}
         </div>
       ),
@@ -182,12 +183,34 @@ export const createSupportTicketsColumns = (options?: {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => {
+        const ticket = row.original
+
         return (
-          <SupportTicketsRowActions
-            row={row}
-            onEdit={onEdit}
-            onCancel={onCancel}
-          />
+          <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-7 px-2 text-xs'
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit?.(ticket)
+              }}
+            >
+              <Pencil className='mr-1 h-3.5 w-3.5' />
+              Edit
+            </Button>
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-7 border-red-200 px-2 text-xs text-red-500'
+              onClick={(e) => {
+                e.stopPropagation()
+                onCancel?.(ticket)
+              }}
+            >
+              <Trash2 className='mr-1 h-3.5 w-3.5' />
+            </Button>
+          </div>
         )
       },
       enableSorting: false,

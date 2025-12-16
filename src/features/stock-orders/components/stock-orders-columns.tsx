@@ -209,13 +209,12 @@ export const createStockOrdersColumns = (options?: {
             <Button
               variant='ghost'
               size='sm'
-              className='text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+              className='h-8 px-1.5 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300'
               onClick={() => {
                 onDelete?.(order.id)
               }}
             >
               <Trash2 className='h-4 w-4' />
-              Delete
             </Button>
           </div>
         )

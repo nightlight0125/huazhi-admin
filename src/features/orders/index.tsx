@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
+import { CountrySelect } from '@/components/country-select'
 import { DataTableToolbar } from '@/components/data-table'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
@@ -10,7 +11,6 @@ import { OrdersProvider } from './components/orders-provider'
 import { OrdersStats } from './components/orders-stats'
 import { OrdersTable } from './components/orders-table'
 import {
-  countries,
   logistics,
   orderStatuses,
   platformFulfillmentStatuses,
@@ -38,18 +38,31 @@ export function Orders() {
             <DataTableToolbar
               table={table}
               searchPlaceholder='Enter SKU id,SKU name'
+              dateRange={{
+                enabled: true,
+                columnId: 'createdAt',
+                placeholder: 'Select Date Range',
+              }}
+              customFilterSlot={
+                <CountrySelect
+                  className='min-w-[260px]'
+                  value={
+                    ((table.getColumn('country')?.getFilterValue() as
+                      | string[]
+                      | undefined) ?? [])[0]
+                  }
+                  onChange={(value) => {
+                    const column = table.getColumn('country')
+                    if (!column) return
+                    column.setFilterValue(value ? [value] : undefined)
+                  }}
+                  placeholder='Select country'
+                />
+              }
               filters={[
                 {
-                  columnId: 'country',
-                  title: 'Country',
-                  options: countries.map((c) => ({
-                    label: c.label,
-                    value: c.value,
-                  })),
-                },
-                {
                   columnId: 'store',
-                  title: 'Shop',
+                  title: 'Store',
                   options: stores.map((s) => ({
                     label: s.label,
                     value: s.value,
@@ -93,11 +106,6 @@ export function Orders() {
                     })),
                 },
               ]}
-              dateRange={{
-                enabled: true,
-                columnId: 'createdAt',
-                placeholder: 'Select Date Range',
-              }}
             />
           </div>
         )}

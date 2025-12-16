@@ -12,10 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
-import {
-  locations,
-  priceRanges,
-} from '@/features/products/data/data'
+import { locations, priceRanges } from '@/features/products/data/data'
 import { type Product } from '@/features/products/data/schema'
 
 const route = getRouteApi('/_authenticated/all-products')
@@ -93,14 +90,13 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
   )
 
   // Synced with URL states
-  const { globalFilter, onGlobalFilterChange, pagination } =
-    useTableUrlState({
-      search: route.useSearch(),
-      navigate: route.useNavigate(),
-      pagination: { defaultPage: 1, defaultPageSize: 8 },
-      globalFilter: { enabled: true, key: 'filter' },
-      columnFilters: [],
-    })
+  const { globalFilter, onGlobalFilterChange, pagination } = useTableUrlState({
+    search: route.useSearch(),
+    navigate: route.useNavigate(),
+    pagination: { defaultPage: 1, defaultPageSize: 8 },
+    globalFilter: { enabled: true, key: 'filter' },
+    columnFilters: [],
+  })
 
   // Filter and paginate data
   const filteredData = useMemo(() => {
@@ -122,17 +118,21 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
         // Check if product category matches any selected category
         // This is a simplified check - adjust based on your data structure
         if (!product.category) return false
-        
+
         // Check direct match or parent-child relationship
         return Array.from(selectedCategories).some((selectedCat) => {
           if (product.category === selectedCat) return true
           // Check if product category is a child of selected parent
-          const parentCategory = categoryTree.find((cat) => cat.value === selectedCat)
+          const parentCategory = categoryTree.find(
+            (cat) => cat.value === selectedCat
+          )
           if (parentCategory?.children) {
-            return parentCategory.children.some((child) => child.value === product.category)
+            return parentCategory.children.some(
+              (child) => child.value === product.category
+            )
           }
           // Check if selected category is a child of product's parent
-          const productParent = categoryTree.find((cat) => 
+          const productParent = categoryTree.find((cat) =>
             cat.children?.some((child) => child.value === product.category)
           )
           if (productParent?.value === selectedCat) return true
