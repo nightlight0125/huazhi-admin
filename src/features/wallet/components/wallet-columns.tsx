@@ -196,7 +196,6 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
             }}
           >
             <Eye className='mr-1 h-3.5 w-3.5' />
-            View
           </Button>
 
           {record.type === 'invoice' && record.invoiceUrl && (
@@ -233,7 +232,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
               }}
             >
               <FileText className='mr-1 h-3.5 w-3.5' />
-              Transaction
+              Trans
             </Button>
           )}
         </div>
