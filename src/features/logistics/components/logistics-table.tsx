@@ -120,18 +120,6 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
       <DataTableToolbar
         table={table}
         searchPlaceholder='please Enter SPU or Shipping From or Shipping To or Shipping Method'
-        // extraSearch={{
-        //   columnId: 'shippingFrom',
-        //   placeholder: 'please Enter Shipping From',
-        // }}
-        // extraSearch2={{
-        //   columnId: 'shippingTo',
-        //   placeholder: 'please Enter Shipping To',
-        // }}
-        // extraSearch3={{
-        //   columnId: 'shippingMethod',
-        //   placeholder: 'please Enter Shipping Method',
-        // }}
       />
       <div className='overflow-hidden rounded-md border'>
         <UITable>

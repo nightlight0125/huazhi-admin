@@ -188,6 +188,7 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
       },
       { columnId: 'store', searchKey: 'store', type: 'array' },
       { columnId: 'logistics', searchKey: 'logistics', type: 'array' },
+      { columnId: 'country', searchKey: 'country', type: 'array' },
       {
         columnId: 'shippingOrigin',
         searchKey: 'shippingOrigin',
