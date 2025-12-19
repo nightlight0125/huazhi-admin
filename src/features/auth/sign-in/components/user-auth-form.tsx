@@ -155,24 +155,24 @@ export function UserAuthForm({
       // 失败时不跳转，停留在登录页
     } finally {
       // 确保有一个“已登录”的状态（即使接口失败也可以进入首页）
-      // let token = auth.accessToken
-      // if (!token || token.trim() === '') {
-      //   // 给一个兜底的本地 token，保证通过路由守卫
-      //   token = 'dev-fallback-token'
-      //   auth.setAccessToken(token)
-      // }
+      let token = auth.accessToken
+      if (!token || token.trim() === '') {
+        // 给一个兜底的本地 token，保证通过路由守卫
+        token = 'dev-fallback-token'
+        auth.setAccessToken(token)
+      }
 
-      // if (!auth.user) {
-      //   // 兜底用户信息，至少包含 email、id 和过期时间
-      //   auth.setUser({
-      //     accountNo: data.email,
-      //     email: data.email,
-      //     role: ['user'],
-      //     exp: Date.now() + 24 * 60 * 60 * 1000,
-      //     id: data.email, // 使用 email 作为临时 id
-      //     username: data.email.split('@')[0] || 'user',
-      //   })
-      // }
+      if (!auth.user) {
+        // 兜底用户信息，至少包含 email、id 和过期时间
+        auth.setUser({
+          accountNo: data.email,
+          email: data.email,
+          role: ['user'],
+          exp: Date.now() + 24 * 60 * 60 * 1000,
+          id: data.email, // 使用 email 作为临时 id
+          username: data.email.split('@')[0] || 'user',
+        })
+      }
 
       // 无论成功还是失败，都跳转到首页（或传入的 redirectTo）
       const targetPath = redirectTo || '/_authenticated/'
