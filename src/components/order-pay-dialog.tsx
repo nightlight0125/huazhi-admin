@@ -8,21 +8,27 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { type SampleOrder } from '../data/schema'
 
-interface SampleOrdersPayDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  order: SampleOrder | null
+export type PaymentMethod = 'balance' | 'credit_card' | 'airwallex'
+
+export interface OrderPayable {
+  id: string
+  getTotalAmount: () => number
 }
 
-type PaymentMethod = 'balance' | 'credit_card' | 'airwallex'
+interface OrderPayDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  order: OrderPayable | null
+  onConfirm?: (orderId: string, paymentMethod: PaymentMethod, amount: number) => void
+}
 
-export function SampleOrdersPayDialog({
+export function OrderPayDialog({
   open,
   onOpenChange,
   order,
-}: SampleOrdersPayDialogProps) {
+  onConfirm,
+}: OrderPayDialogProps) {
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>('balance')
 
@@ -32,16 +38,20 @@ export function SampleOrdersPayDialog({
   const balance = 382.52
   const bonus = 0
   const credits = 0
-  const totalAmount = order.cost.total
+  const totalAmount = order.getTotalAmount()
   const balancePayment = totalAmount
   const numberOfOrders = 1
 
   const handleConfirm = () => {
-    console.log('Payment confirmed:', {
-      orderId: order.id,
-      paymentMethod: selectedPaymentMethod,
-      amount: totalAmount,
-    })
+    if (onConfirm) {
+      onConfirm(order.id, selectedPaymentMethod, totalAmount)
+    } else {
+      console.log('Payment confirmed:', {
+        orderId: order.id,
+        paymentMethod: selectedPaymentMethod,
+        amount: totalAmount,
+      })
+    }
     // TODO: Implement payment logic
     onOpenChange(false)
   }
@@ -176,3 +186,4 @@ export function SampleOrdersPayDialog({
     </Dialog>
   )
 }
+

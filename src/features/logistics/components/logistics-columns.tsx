@@ -41,7 +41,7 @@ export const createLogisticsColumns = (
       accessorKey: 'sku',
       size: 150,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='SKU' />
+        <DataTableColumnHeader column={column} title='SPU' />
       ),
       cell: ({ row }) => {
         const logistics = row.original

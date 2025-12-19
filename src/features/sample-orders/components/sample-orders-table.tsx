@@ -29,7 +29,7 @@ import { type SampleOrder } from '../data/schema'
 import { SampleOrdersActionsMenu } from './sample-orders-actions-menu'
 import { SampleOrdersBulkActions } from './sample-orders-bulk-actions'
 import { createSampleOrdersColumns } from './sample-orders-columns'
-import { SampleOrdersPayDialog } from './sample-orders-pay-dialog'
+import { OrderPayDialog, type OrderPayable } from '@/components/order-pay-dialog'
 import { SampleOrdersTableFooter } from './sample-orders-table-footer'
 import { EditAddressDialog, type AddressData } from '@/components/edit-address-dialog'
 
@@ -51,7 +51,7 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
   const [activeTab, setActiveTab] = useState('all')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [selectedOrderForPayment, setSelectedOrderForPayment] =
-    useState<SampleOrder | null>(null)
+    useState<OrderPayable | null>(null)
   const [editAddressDialog, setEditAddressDialog] = useState<{
     open: boolean
     order: SampleOrder | null
@@ -86,7 +86,11 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
   const handlePay = (orderId: string) => {
     const order = data.find((o) => o.id === orderId)
     if (order) {
-      setSelectedOrderForPayment(order)
+      // Convert SampleOrder to OrderPayable
+      setSelectedOrderForPayment({
+        id: order.id,
+        getTotalAmount: () => order.cost.total,
+      })
       setPayDialogOpen(true)
     }
   }
@@ -298,7 +302,7 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
 
       <SampleOrdersBulkActions table={table} />
 
-      <SampleOrdersPayDialog
+      <OrderPayDialog
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
         order={selectedOrderForPayment}
