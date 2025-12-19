@@ -1,7 +1,6 @@
 import type React from 'react'
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Cross2Icon } from '@radix-ui/react-icons'
 import { type Table } from '@tanstack/react-table'
 import { Calendar as CalendarIcon, Search } from 'lucide-react'
 import { type DateRange } from 'react-day-picker'
@@ -37,21 +36,6 @@ type DataTableToolbarProps<TData> = {
   showSearch?: boolean
   showSearchButton?: boolean
   onSearch?: () => void
-  /** 额外的搜索输入框（例如第二个搜索条件），只有外部传入时才展示 */
-  extraSearch?: {
-    columnId: string
-    placeholder?: string
-  }
-  /** 第三个搜索输入框（例如仓库、店铺等），同样按列过滤，可选 */
-  extraSearch2?: {
-    columnId: string
-    placeholder?: string
-  }
-  /** 第四个搜索输入框，同样按列过滤，可选 */
-  extraSearch3?: {
-    columnId: string
-    placeholder?: string
-  }
   filters?: {
     columnId: string
     title: string
@@ -79,7 +63,6 @@ type DataTableToolbarProps<TData> = {
     placeholder?: string
     onApply?: (type: string, value: string) => void
   }
-  /** 自定义筛选区域（例如两个输入框 + 日期选择器），会显示在 facets 之前 */
   customFilterSlot?: React.ReactNode
 }
 
@@ -90,9 +73,6 @@ export function DataTableToolbar<TData>({
   showSearch = true,
   showSearchButton = true,
   onSearch,
-  extraSearch,
-  extraSearch2,
-  extraSearch3,
   filters = [],
   dateRange,
   bulkRevise,
@@ -104,11 +84,6 @@ export function DataTableToolbar<TData>({
   const [bulkReviseType, setBulkReviseType] = useState<string>('price-change')
   const [bulkReviseValue, setBulkReviseValue] = useState<string>('')
 
-  const isFiltered =
-    table.getState().columnFilters.length > 0 ||
-    table.getState().globalFilter ||
-    (dateRange?.enabled && dateRangeValue)
-
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRangeValue(range)
     if (dateRange?.onDateRangeChange) {
@@ -119,23 +94,6 @@ export function DataTableToolbar<TData>({
       const column = table.getColumn(dateRange.columnId)
       if (column) {
         column.setFilterValue(range)
-      }
-    }
-  }
-
-  const handleReset = () => {
-    table.resetColumnFilters()
-    table.setGlobalFilter('')
-    if (dateRange?.enabled) {
-      setDateRangeValue(undefined)
-      if (dateRange.onDateRangeChange) {
-        dateRange.onDateRangeChange(undefined)
-      }
-      if (dateRange.columnId) {
-        const column = table.getColumn(dateRange.columnId)
-        if (column) {
-          column.setFilterValue(undefined)
-        }
       }
     }
   }
@@ -312,55 +270,6 @@ export function DataTableToolbar<TData>({
             )}
           </>
         )}
-        {extraSearch && (
-          <Input
-            placeholder={extraSearch.placeholder ?? 'Search...'}
-            value={
-              (table
-                .getColumn(extraSearch.columnId)
-                ?.getFilterValue() as string) ?? ''
-            }
-            onChange={(event) =>
-              table
-                .getColumn(extraSearch.columnId)
-                ?.setFilterValue(event.target.value)
-            }
-            className='h-8 w-[150px] lg:w-[250px]'
-          />
-        )}
-        {extraSearch2 && (
-          <Input
-            placeholder={extraSearch2.placeholder ?? 'Search...'}
-            value={
-              (table
-                .getColumn(extraSearch2.columnId)
-                ?.getFilterValue() as string) ?? ''
-            }
-            onChange={(event) =>
-              table
-                .getColumn(extraSearch2.columnId)
-                ?.setFilterValue(event.target.value)
-            }
-            className='h-8 w-[150px] lg:w-[250px]'
-          />
-        )}
-        {extraSearch3 && (
-          <Input
-            placeholder={extraSearch3.placeholder ?? 'Search...'}
-            value={
-              (table
-                .getColumn(extraSearch3.columnId)
-                ?.getFilterValue() as string) ?? ''
-            }
-            onChange={(event) =>
-              table
-                .getColumn(extraSearch3.columnId)
-                ?.setFilterValue(event.target.value)
-            }
-            className='h-8 w-[150px] lg:w-[250px]'
-          />
-        )}
-
         {/* 自定义筛选插槽 + 批量修改 */}
         {customFilterSlot}
         {bulkRevise?.enabled && (
@@ -392,18 +301,6 @@ export function DataTableToolbar<TData>({
               }}
             />
           </div>
-        )}
-
-        {/* Reset 按钮 */}
-        {isFiltered && (
-          <Button
-            variant='ghost'
-            onClick={handleReset}
-            className='h-8 px-2 lg:px-3'
-          >
-            Reset
-            <Cross2Icon className='ms-2 h-4 w-4' />
-          </Button>
         )}
 
         {/* Search 按钮，与输入框一起右对齐 */}

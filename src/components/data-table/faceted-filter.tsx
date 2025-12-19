@@ -49,7 +49,26 @@ export function DataTableFacetedFilter<TData, TValue>({
     console.warn('Error getting faceted unique values:', error)
   }
 
-  const selectedValues = new Set(column?.getFilterValue() as string[])
+  const rawFilterValue = column?.getFilterValue()
+  const initialSelected = Array.isArray(rawFilterValue)
+    ? (rawFilterValue as string[])
+    : rawFilterValue
+      ? [String(rawFilterValue)]
+      : []
+
+  const [selectedArray, setSelectedArray] = React.useState<string[]>(initialSelected)
+
+  // 同步外部（例如 URL）变化到本地选中状态
+  React.useEffect(() => {
+    const next = Array.isArray(rawFilterValue)
+      ? (rawFilterValue as string[])
+      : rawFilterValue
+        ? [String(rawFilterValue)]
+        : []
+    setSelectedArray(next)
+  }, [rawFilterValue])
+
+  const selectedValues = new Set(selectedArray)
 
   return (
     <Popover>
@@ -104,12 +123,14 @@ export function DataTableFacetedFilter<TData, TValue>({
                   <CommandItem
                     key={option.value}
                     onSelect={() => {
+                      const nextSelected = new Set(selectedValues)
                       if (isSelected) {
-                        selectedValues.delete(option.value)
+                        nextSelected.delete(option.value)
                       } else {
-                        selectedValues.add(option.value)
+                        nextSelected.add(option.value)
                       }
-                      const filterValues = Array.from(selectedValues)
+                      const filterValues = Array.from(nextSelected)
+                      setSelectedArray(filterValues)
                       column?.setFilterValue(
                         filterValues.length ? filterValues : undefined
                       )
