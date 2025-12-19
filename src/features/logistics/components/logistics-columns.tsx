@@ -104,14 +104,14 @@ export const createLogisticsColumns = (
     {
       accessorKey: 'shippingTime',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Shipping Time' />
+        <DataTableColumnHeader column={column} title='Time' />
       ),
       cell: ({ row }) => <div>{row.getValue('shippingTime')}</div>,
     },
     {
       accessorKey: 'shippingPrice',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Shipping Price' />
+        <DataTableColumnHeader column={column} title='Price' />
       ),
       cell: ({ row }) => {
         const price = row.getValue('shippingPrice') as number
