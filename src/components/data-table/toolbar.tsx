@@ -62,6 +62,7 @@ type DataTableToolbarProps<TData> = {
     }[]
     categories?: CategoryItem[]
     useCategoryTree?: boolean
+    afterDateRange?: boolean // 如果为 true，则显示在日历后面
   }[]
   dateRange?: {
     enabled?: boolean
@@ -160,11 +161,13 @@ export function DataTableToolbar<TData>({
   const searchColumn = searchKey ? table.getColumn(searchKey) : undefined
 
   return (
-    <div className='flex flex-wrap items-start justify-between gap-2'>
-      <div className='flex flex-1 flex-wrap items-center gap-2'>
-        {/* Filters (下拉框) - 放在最前面 */}
-        <div className='flex flex-wrap items-center gap-2'>
-          {filters.map((filter) => {
+    <div className='flex flex-wrap items-start gap-2'>
+      {/* 左侧：筛选（下拉、多选等） + 日期范围 */}
+      <div className='flex flex-wrap items-center gap-2'>
+        {/* 在日历前面的筛选 */}
+        {filters
+          .filter((filter) => !filter.afterDateRange)
+          .map((filter) => {
             const column = table.getColumn(filter.columnId)
             if (!column || !column.columnDef) return null
 
@@ -202,16 +205,98 @@ export function DataTableToolbar<TData>({
               />
             )
           })}
-        </div>
-        {/* Search boxes (搜索框) - 放在下拉框后面 */}
+
+        {/* Date Range Picker */}
+        {dateRange?.enabled && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant='outline'
+                className={cn(
+                  'h-8 w-[240px] justify-start text-left font-normal',
+                  !dateRangeValue && 'text-muted-foreground'
+                )}
+              >
+                <CalendarIcon className='mr-2 h-4 w-4' />
+                {dateRangeValue?.from ? (
+                  dateRangeValue.to ? (
+                    <>
+                      {format(dateRangeValue.from, 'yyyy-MM-dd')} -{' '}
+                      {format(dateRangeValue.to, 'yyyy-MM-dd')}
+                    </>
+                  ) : (
+                    format(dateRangeValue.from, 'yyyy-MM-dd')
+                  )
+                ) : (
+                  <span>{dateRange.placeholder || 'Pick a date range'}</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className='w-auto p-0' align='start'>
+              <Calendar
+                initialFocus
+                mode='range'
+                defaultMonth={dateRangeValue?.from}
+                selected={dateRangeValue}
+                onSelect={handleDateRangeChange}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* 在日历后面的筛选 */}
+        {filters
+          .filter((filter) => filter.afterDateRange)
+          .map((filter) => {
+            const column = table.getColumn(filter.columnId)
+            if (!column || !column.columnDef) return null
+
+            // Ensure column is ready for faceted filtering
+            try {
+              // Test if getFacetedUniqueValues is available and works
+              if (typeof column.getFacetedUniqueValues === 'function') {
+                column.getFacetedUniqueValues()
+              }
+            } catch (error) {
+              console.warn(
+                `Column ${filter.columnId} is not ready for filtering:`,
+                error
+              )
+              return null
+            }
+
+            if (filter.useCategoryTree && filter.categories) {
+              return (
+                <CategoryTreeFacetedFilter
+                  key={filter.columnId}
+                  column={column}
+                  title={filter.title}
+                  categories={filter.categories}
+                />
+              )
+            }
+
+            return (
+              <DataTableFacetedFilter
+                key={filter.columnId}
+                column={column}
+                title={filter.title}
+                options={filter.options || []}
+              />
+            )
+          })}
+      </div>
+
+      {/* 右侧：搜索 + 自定义筛选 + 批量修改 + Reset + Search 按钮，整体右对齐 */}
+      <div className='flex flex-1 flex-wrap items-center justify-end gap-2'>
+        {/* Search boxes (搜索框) */}
         {showSearch && (
           <>
             {searchKey && searchColumn ? (
               <Input
                 placeholder={searchPlaceholder}
-                value={
-                  (searchColumn.getFilterValue() as string) ?? ''
-                }
+                value={(searchColumn.getFilterValue() as string) ?? ''}
                 onChange={(event) =>
                   searchColumn.setFilterValue(event.target.value)
                 }
@@ -275,78 +360,41 @@ export function DataTableToolbar<TData>({
             className='h-8 w-[150px] lg:w-[250px]'
           />
         )}
-        {/* Date Range Picker - 紧跟在搜索框后面 */}
-        {dateRange?.enabled && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant='outline'
-                className={cn(
-                  'h-8 w-[240px] justify-start text-left font-normal',
-                  !dateRangeValue && 'text-muted-foreground'
-                )}
+
+        {/* 自定义筛选插槽 + 批量修改 */}
+        {customFilterSlot}
+        {bulkRevise?.enabled && (
+          <div className='flex items-center'>
+            <Select value={bulkReviseType} onValueChange={setBulkReviseType}>
+              <SelectTrigger
+                size='sm'
+                className='h-8 w-32 rounded-r-none border-r-0 py-0 text-xs'
               >
-                <CalendarIcon className='mr-2 h-4 w-4' />
-                {dateRangeValue?.from ? (
-                  dateRangeValue.to ? (
-                    <>
-                      {format(dateRangeValue.from, 'yyyy-MM-dd')} -{' '}
-                      {format(dateRangeValue.to, 'yyyy-MM-dd')}
-                    </>
-                  ) : (
-                    format(dateRangeValue.from, 'yyyy-MM-dd')
-                  )
-                ) : (
-                  <span>{dateRange.placeholder || 'Pick a date range'}</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className='w-auto p-0' align='start'>
-              <Calendar
-                initialFocus
-                mode='range'
-                defaultMonth={dateRangeValue?.from}
-                selected={dateRangeValue}
-                onSelect={handleDateRangeChange}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
+                <SelectValue placeholder='Select' />
+              </SelectTrigger>
+              <SelectContent>
+                {bulkRevise.options?.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder={bulkRevise?.placeholder || 'Enter value'}
+              value={bulkReviseValue}
+              onChange={(e) => setBulkReviseValue(e.target.value)}
+              className='h-8 w-32 rounded-l-none border-l-0 py-0 text-xs'
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleBulkReviseApply()
+                }
+              }}
+            />
+          </div>
         )}
-        <div className='flex flex-wrap items-center gap-2'>
-          {customFilterSlot}
-          {/* Bulk Revise */}
-          {bulkRevise?.enabled && (
-            <div className='flex items-center'>
-              <Select value={bulkReviseType} onValueChange={setBulkReviseType}>
-                <SelectTrigger
-                  size='sm'
-                  className='h-8 w-32 rounded-r-none border-r-0 py-0 text-xs'
-                >
-                  <SelectValue placeholder='Select' />
-                </SelectTrigger>
-                <SelectContent>
-                  {bulkRevise.options?.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder={bulkRevise?.placeholder || 'Enter value'}
-                value={bulkReviseValue}
-                onChange={(e) => setBulkReviseValue(e.target.value)}
-                className='h-8 w-32 rounded-l-none border-l-0 py-0 text-xs'
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleBulkReviseApply()
-                  }
-                }}
-              />
-            </div>
-          )}
-        </div>
+
+        {/* Reset 按钮 */}
         {isFiltered && (
           <Button
             variant='ghost'
@@ -357,9 +405,9 @@ export function DataTableToolbar<TData>({
             <Cross2Icon className='ms-2 h-4 w-4' />
           </Button>
         )}
-      </div>
-      {showSearchButton && (
-        <div className='flex flex-wrap items-center gap-2'>
+
+        {/* Search 按钮，与输入框一起右对齐 */}
+        {showSearchButton && (
           <Button
             onClick={handleSearch}
             className='h-8 bg-orange-500 text-white hover:bg-orange-600'
@@ -368,8 +416,8 @@ export function DataTableToolbar<TData>({
             <Search className='mr-2 h-4 w-4' />
             Search
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
