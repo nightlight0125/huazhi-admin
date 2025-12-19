@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import { CountrySelect } from '@/components/country-select'
+import countries from 'world-countries'
+import { cn } from '@/lib/utils'
 import { DataTableToolbar } from '@/components/data-table'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
@@ -14,8 +15,31 @@ import { orderStatuses, platformOrderStatuses, stores } from './data/data'
 import { orders } from './data/orders'
 import { type Order } from './data/schema'
 
+type Option = {
+  value: string
+  label: string
+  flagClass: string
+  icon?: React.ComponentType<{ className?: string }>
+}
+
 export function Orders() {
   const [table, setTable] = useState<Table<Order> | null>(null)
+
+  const countryOptions: Option[] = countries.map((country) => {
+    const code = country.cca2.toLowerCase()
+    const flagClass = `fi fi-${code}`
+
+    const FlagIcon: React.FC<{ className?: string }> = ({ className }) => (
+      <span className={cn(flagClass, className)} aria-hidden='true' />
+    )
+
+    return {
+      value: country.cca2,
+      label: country.name.common,
+      flagClass,
+      icon: FlagIcon,
+    }
+  })
 
   return (
     <OrdersProvider>
@@ -37,22 +61,6 @@ export function Orders() {
                 columnId: 'createdAt',
                 placeholder: 'Select Date Range',
               }}
-              // customFilterSlot={
-              //   <CountrySelect
-              //     className='min-w-[260px]'
-              //     value={
-              //       ((table.getColumn('country')?.getFilterValue() as
-              //         | string[]
-              //         | undefined) ?? [])[0]
-              //     }
-              //     onChange={(value) => {
-              //       const column = table.getColumn('country')
-              //       if (!column) return
-              //       column.setFilterValue(value ? [value] : undefined)
-              //     }}
-              //     placeholder='Select country'
-              //   />
-              // }
               filters={[
                 {
                   columnId: 'store',
@@ -62,7 +70,6 @@ export function Orders() {
                     value: s.value,
                   })),
                 },
-
                 {
                   columnId: 'platformOrderStatus',
                   title: 'Store Order Status',
@@ -83,25 +90,16 @@ export function Orders() {
                       icon: s.icon,
                     })),
                 },
+                {
+                  columnId: 'country',
+                  title: 'Country',
+                  options: countryOptions.map((s) => ({
+                    label: s.label,
+                    value: s.value,
+                    icon: s.icon,
+                  })),
+                },
               ]}
-            />
-          </div>
-        )}
-        {table && (
-          <div className='w-[260px]'>
-            <CountrySelect
-              className='w-full'
-              value={
-                ((table.getColumn('country')?.getFilterValue() as
-                  | string[]
-                  | undefined) ?? [])[0]
-              }
-              onChange={(value) => {
-                const column = table.getColumn('country')
-                if (!column) return
-                column.setFilterValue(value ? [value] : undefined)
-              }}
-              placeholder='Select country'
             />
           </div>
         )}
