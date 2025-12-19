@@ -28,10 +28,18 @@ interface CommissionRecordsTableProps {
   onCashOut?: () => void
 }
 
-export function CommissionRecordsTable({ data }: CommissionRecordsTableProps) {
+export function CommissionRecordsTable({
+  data,
+  totalCommission,
+}: CommissionRecordsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
+
+  const computedTotalCommission =
+    typeof totalCommission === 'number'
+      ? totalCommission
+      : data.reduce((sum, record) => sum + record.commission, 0)
 
   const table = useReactTable({
     data,
@@ -63,15 +71,25 @@ export function CommissionRecordsTable({ data }: CommissionRecordsTableProps) {
 
   return (
     <div className='space-y-4'>
-      <DataTableToolbar
-        table={table}
-        searchPlaceholder='Clents Order Number'
-        dateRange={{
-          enabled: true,
-          columnId: 'dateTime',
-          placeholder: 'Pick a date range',
-        }}
-      />
+      <div className='flex flex-wrap items-center justify-between gap-2'>
+        <DataTableToolbar
+          table={table}
+          showSearch={false}
+          showSearchButton={false}
+          dateRange={{
+            enabled: true,
+            columnId: 'dateTime',
+            placeholder: 'Pick a date range',
+          }}
+        />
+
+        <div className='text-sm text-muted-foreground'>
+          <span className='mr-1'>Total Commission:</span>
+          <span className='font-semibold text-foreground'>
+            ${computedTotalCommission.toFixed(2)}
+          </span>
+        </div>
+      </div>
 
       <div className='rounded-md border'>
         <TableComponent>

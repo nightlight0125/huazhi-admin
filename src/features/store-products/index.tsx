@@ -3,10 +3,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { AssociatedStoreProductsTable } from './components/associated-store-products-table'
+import { NotAssociatedConnectionView } from './components/not-associated-connection-view'
 import { StoreProductsDialogs } from './components/store-products-dialogs'
-import { StoreProductsPrimaryButtons } from './components/store-products-primary-buttons'
 import { StoreProductsProvider } from './components/store-products-provider'
-import { StoreProductsTable } from './components/store-products-table'
 import { storeProducts } from './data/data'
 
 type AssociateStatus = 'associated' | 'not-associated'
@@ -20,13 +20,13 @@ export function StoreProducts() {
     )
   }, [])
 
-  const notAssociatedData = useMemo(() => {
-    return storeProducts.filter(
-      (product) =>
-        product.associateStatus === 'not-associated' ||
-        product.associateStatus === undefined
-    )
-  }, [])
+  // const notAssociatedData = useMemo(() => {
+  //   return storeProducts.filter(
+  //     (product) =>
+  //       product.associateStatus === 'not-associated' ||
+  //       product.associateStatus === undefined
+  //   )
+  // }, [])
 
   return (
     <StoreProductsProvider>
@@ -35,7 +35,7 @@ export function StoreProducts() {
       </Header>
 
       <Main fluid>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>
+        {/* <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>
           <div>
             <p
               className='text-muted-foreground'
@@ -45,8 +45,7 @@ export function StoreProducts() {
               private so they can only be seen by you.
             </p>
           </div>
-          <StoreProductsPrimaryButtons />
-        </div>
+        </div> */}
         <Tabs
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as AssociateStatus)}
@@ -69,13 +68,13 @@ export function StoreProducts() {
 
           <TabsContent value='associated' className='mt-4'>
             <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-              <StoreProductsTable data={associatedData} />
+              <AssociatedStoreProductsTable data={associatedData} />
             </div>
           </TabsContent>
 
           <TabsContent value='not-associated' className='mt-4'>
             <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-              <StoreProductsTable data={notAssociatedData} />
+              <NotAssociatedConnectionView />
             </div>
           </TabsContent>
         </Tabs>

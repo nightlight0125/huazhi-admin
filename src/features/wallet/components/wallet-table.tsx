@@ -140,7 +140,7 @@ export function WalletTable({ data }: DataTableProps) {
 
         <TabsContent value={activeTab} className='space-y-4'>
           {/* Tabs 下方右侧导出按钮 */}
-          <div className='flex justify-end'>
+          <div className='flex justify-end gap-2'>
             <Button
               variant='outline'
               className='space-x-1'
@@ -150,6 +150,16 @@ export function WalletTable({ data }: DataTableProps) {
               }}
             >
               Export
+            </Button>
+            <Button
+              variant='outline'
+              className='space-x-2'
+              onClick={() => {
+                // TODO: 接入实际导出逻辑（如导出为 CSV / Excel）
+                console.log('Export wallet records (current tab):', activeTab)
+              }}
+            >
+              Download Batch
             </Button>
           </div>
 

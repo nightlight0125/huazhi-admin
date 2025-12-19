@@ -27,10 +27,10 @@ type SearchType =
 
 const searchTypes: { value: SearchType; label: string }[] = [
   { value: 'storeOrderNum', label: 'Store Order Num' },
-  { value: 'hzOrderNum', label: 'HZ Order Num' },
+  { value: 'hzOrderNum', label: 'Order Num' },
   { value: 'productName', label: 'Product Name' },
   { value: 'customerNarr', label: 'Customer Narr' },
-  { value: 'hzSkuId', label: 'HZ SKU ID' },
+  { value: 'hzSkuId', label: 'SKU ID' },
 ]
 
 export function OrdersFilterPanel() {
@@ -180,12 +180,10 @@ export function OrdersFilterPanel() {
         </Select>
       </div>
 
-      {/* Second Row */}
       <div className='flex flex-wrap items-center gap-3'>
-        {/* HZ Order Status */}
         <Select value={hzOrderStatus} onValueChange={setHzOrderStatus}>
           <SelectTrigger className='h-9 min-w-[140px]'>
-            <SelectValue placeholder='HZ Order Status' />
+            <SelectValue placeholder='Order Status' />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='pending'>Pending</SelectItem>

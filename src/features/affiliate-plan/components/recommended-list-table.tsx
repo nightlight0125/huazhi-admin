@@ -92,7 +92,8 @@ export function RecommendedListTable({ data }: RecommendedListTableProps) {
     <div className='space-y-4'>
       <DataTableToolbar
         table={table}
-        searchPlaceholder='Enter referee'
+        showSearch={false}
+        showSearchButton={false}
         dateRange={{
           enabled: true,
           columnId: 'registrationTime',

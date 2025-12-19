@@ -303,14 +303,25 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
 
               {/* Product Info */}
               <div className='space-y-1.5 p-2.5'>
-                {/* Product Title */}
-                <h3 className='line-clamp-2 text-sm leading-tight font-semibold'>
-                  {product.name}
+                <h3
+                  className='overflow-hidden text-sm font-semibold break-words'
+                  style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    lineHeight: '1.5',
+                    maxHeight: '3em',
+                    transform: 'translateZ(0)',
+                  }}
+                >
+                  {product.name.trim().replace(/\s+/g, ' ')}
                 </h3>
 
                 {/* SPU */}
                 <p className='font-mono text-xs text-gray-600'>
-                  HZ SPU : {product.sku}
+                  SPU : {product.sku}
                 </p>
 
                 {/* Price */}

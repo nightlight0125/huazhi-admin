@@ -1,7 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Eye } from 'lucide-react'
+import { Edit, Eye } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Tooltip,
@@ -207,7 +206,7 @@ export const createSourcingColumns = (
               toy
             </div>
             <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
-              TD SPU: {spu}
+              SPU: {spu}
             </div>
             <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
               Price: {priceRange}
@@ -229,7 +228,7 @@ export const createSourcingColumns = (
   {
     accessorKey: 'remark',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Remark' />
+      <DataTableColumnHeader column={column} title='Reason' />
     ),
     cell: ({ row }) => {
       const remark = (row.getValue('remark') as string | undefined) || ''
@@ -314,17 +313,24 @@ export const createSourcingColumns = (
     cell: ({ row }) => {
       const sourcing = row.original
       return (
-        <Button
-          variant='outline'
-          size='sm'
-          className='h-7 px-2 text-xs'
+        <Edit
+          className='h-3.5 w-3.5'
           onClick={(e) => {
             e.stopPropagation()
             handlers?.onEdit?.(sourcing)
           }}
-        >
-          Contact
-        </Button>
+        />
+        // <Button
+        //   variant='outline'
+        //   size='sm'
+        //   className='h-7 px-2 text-xs'
+        //   onClick={(e) => {
+        //     e.stopPropagation()
+        //     handlers?.onEdit?.(sourcing)
+        //   }}
+        // >
+        //   Contact
+        // </Button>
       )
     },
     enableHiding: false,

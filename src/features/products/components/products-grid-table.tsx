@@ -181,7 +181,7 @@ export function ProductsGridTable({
 
                 {/* SPU */}
                 <p className='font-mono text-xs text-gray-600'>
-                  HZ SPU : {item.sku}
+                  SPU : {item.sku}
                 </p>
 
                 {/* Price */}

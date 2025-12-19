@@ -62,7 +62,10 @@ const provinces = {
   ],
   France: [
     { label: 'Île-de-France', value: 'Île-de-France' },
-    { label: 'Provence-Alpes-Côte d\'Azur', value: 'Provence-Alpes-Côte d\'Azur' },
+    {
+      label: "Provence-Alpes-Côte d'Azur",
+      value: "Provence-Alpes-Côte d'Azur",
+    },
     { label: 'Auvergne-Rhône-Alpes', value: 'Auvergne-Rhône-Alpes' },
   ],
   Australia: [
@@ -154,11 +157,13 @@ export function AddressesActionDialog({
         onOpenChange(state)
       }}
     >
-      <DialogContent className='sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col'>
+      <DialogContent className='flex max-h-[90vh] flex-col overflow-hidden sm:max-w-2xl'>
         <DialogHeader className='text-start'>
           <DialogTitle>Edit The Address</DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Update the address information.' : 'Create a new address.'}
+            {isEdit
+              ? 'Update the address information.'
+              : 'Create a new address.'}
           </DialogDescription>
         </DialogHeader>
         <div className='flex-1 overflow-y-auto py-1'>
@@ -200,25 +205,6 @@ export function AddressesActionDialog({
                         <FormControl>
                           <Input
                             placeholder='Please enter phone number'
-                            autoComplete='off'
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name='company'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          <span className='text-red-500'>*</span> Company
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder='Please enter company'
                             autoComplete='off'
                             {...field}
                           />
@@ -429,4 +415,3 @@ export function AddressesActionDialog({
     </Dialog>
   )
 }
-

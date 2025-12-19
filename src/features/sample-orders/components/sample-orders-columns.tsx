@@ -86,7 +86,7 @@ export const createSampleOrdersColumns = (options?: {
                   <div className='whitespace-normal'>
                     Variant:{' '}
                     {firstProduct.productVariant
-                      ?.map((v) => `${v.name}: ${v.value}`)
+                      ?.map((v) => ` ${v.value}`)
                       .join(', ') || 'xxxx'}
                   </div>
                 </div>
@@ -105,10 +105,10 @@ export const createSampleOrdersColumns = (options?: {
         return (
           <div className='space-y-1 text-sm'>
             <div>Total: ${order.cost.total.toFixed(2)}</div>
-            <div>Product: ${order.cost.product.toFixed(2)}</div>
+            {/* <div>Product: ${order.cost.product.toFixed(2)}</div>
             <div>Shipping: ${order.cost.shipping.toFixed(2)}</div>
             <div>Other: ${order.cost.other.toFixed(2)}</div>
-            <div>Qty: {order.cost.qty}</div>
+            <div>Qty: {order.cost.qty}</div> */}
           </div>
         )
       },
@@ -121,18 +121,8 @@ export const createSampleOrdersColumns = (options?: {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
-            <div
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditAddress?.(order.id)
-              }}
-            >
-              {order.address.name}
-              <Edit className='h-3 w-3' />
-            </div>
-            {/* <div>Country: {order.address.country}</div> */}
-            {/* <div className='flex items-center gap-2'>
-              <span>Address: {order.address.address}</span>
+            <div className='flex items-center gap-2'>
+              <span> {order.address.name}</span>
               <Button
                 variant='ghost'
                 size='icon'
@@ -144,7 +134,8 @@ export const createSampleOrdersColumns = (options?: {
               >
                 <Edit className='h-3 w-3' />
               </Button>
-            </div> */}
+            </div>
+            <div>二字码</div>
           </div>
         )
       },

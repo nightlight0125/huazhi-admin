@@ -1,5 +1,10 @@
+import { useEffect, useState } from 'react'
 import { flexRender, type Table as TanstackTable } from '@tanstack/react-table'
 import { ChevronDown } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import type { ShopInfo } from '@/stores/shop-store'
+import { getUserShop } from '@/lib/api/shop'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -56,6 +61,82 @@ export function StoreListingTabs({
   variantPricingTable,
   columns,
 }: StoreListingTabsProps) {
+  const [stores, setStores] = useState<
+    Array<{ id: string; name: string; value: string }>
+  >([])
+  const [isLoadingStores, setIsLoadingStores] = useState(false)
+  const [selectedStore, setSelectedStore] = useState('')
+  const { auth } = useAuthStore()
+
+  // 获取店铺列表
+  useEffect(() => {
+    const fetchStores = async () => {
+      const userId = auth.user?.id
+      if (!userId) {
+        toast.error('User not authenticated. Please login again.')
+        return
+      }
+
+      setIsLoadingStores(true)
+      try {
+        const response = await getUserShop(userId)
+        console.log('获取店铺 API 完整响应:', response)
+        console.log('response.data:', response.data)
+
+        // 根据实际 API 响应结构处理数据
+        let shopsData: ShopInfo[] = []
+        if (response.errorCode === '0' && response.data) {
+          // response.data 是 unknown 类型，需要类型断言
+          const data = response.data as { data?: unknown }
+          console.log('response.data.data:', data.data)
+
+          // 如果 response.data.data 是数组，直接使用
+          if (Array.isArray(data.data)) {
+            shopsData = data.data as ShopInfo[]
+          }
+          // 如果 response.data.data 是对象且有 list 属性
+          else if (
+            typeof data.data === 'object' &&
+            data.data !== null &&
+            'list' in data.data
+          ) {
+            const list = (data.data as { list?: unknown[] }).list
+            shopsData = Array.isArray(list) ? (list as ShopInfo[]) : []
+          }
+          // 如果 response.data.data 是单个对象，包装成数组
+          else if (typeof data.data === 'object' && data.data !== null) {
+            shopsData = [data.data as ShopInfo]
+          }
+        }
+
+        console.log('最终解析的店铺列表:', shopsData)
+
+        // 将店铺数据转换为下拉框需要的格式
+        const storeOptions = shopsData
+          .filter((shop) => shop.id) // 过滤掉没有 id 的店铺
+          .map((shop) => ({
+            id: String(shop.id),
+            name: shop.name || shop.platform || String(shop.id),
+            value: String(shop.id),
+          }))
+
+        setStores(storeOptions)
+      } catch (error) {
+        console.error('获取店铺列表失败:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load shops. Please try again.'
+        )
+        setStores([])
+      } finally {
+        setIsLoadingStores(false)
+      }
+    }
+
+    fetchStores()
+  }, [auth.user?.id])
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <Tabs
@@ -108,7 +189,36 @@ export function StoreListingTabs({
               <div className='text-muted-foreground font-medium'>
                 * Store Selection
               </div>
-              <Input placeholder='Enter Store Name' className='h-8' />
+              <Select
+                value={selectedStore}
+                onValueChange={setSelectedStore}
+                disabled={isLoadingStores}
+              >
+                <SelectTrigger className='h-8'>
+                  <SelectValue
+                    placeholder={
+                      isLoadingStores
+                        ? 'Loading shops...'
+                        : stores.length === 0
+                          ? 'No shops available'
+                          : 'Select Store'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {stores.length === 0 && !isLoadingStores ? (
+                    <div className='text-muted-foreground px-2 py-1.5 text-sm'>
+                      No shops available
+                    </div>
+                  ) : (
+                    stores.map((store) => (
+                      <SelectItem key={store.id} value={store.value}>
+                        {store.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className='space-y-1'>

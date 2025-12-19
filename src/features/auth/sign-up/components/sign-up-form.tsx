@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { getToken, memberSignUp } from '@/lib/api/auth'
+import { getToken, memberSignUp, AuthError } from '@/lib/api/auth'
 import { encryptPassword } from '@/lib/crypto-utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -107,11 +107,26 @@ export function SignUpForm({
       }
     } catch (error) {
       toast.dismiss(loadingToast)
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to create account. Please try again.'
-      toast.error(errorMessage)
+      
+      // 如果是 AuthError 且 errorCode 为 "1001"，跳转到登录页面
+      if (error instanceof AuthError && error.errorCode === '1001') {
+        const errorMessage =
+          error.message || 'Registration failed. Please try again.'
+        toast.error(errorMessage)
+        // 跳转到登录页面
+        navigate({ to: '/sign-in', replace: true })
+      } else {
+        // 其他错误直接显示提示（errorCode 为 "1001" 的情况已经在 API 层处理了 toast）
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to create account. Please try again.'
+        // 只有在不是 AuthError 或者 errorCode 不是 "1001" 时才显示 toast
+        // （因为其他错误码已经在 API 层显示了 toast）
+        if (!(error instanceof AuthError)) {
+          toast.error(errorMessage)
+        }
+      }
       console.error('Registration error:', error)
     } finally {
       setIsLoading(false)

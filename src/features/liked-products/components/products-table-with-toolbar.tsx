@@ -105,13 +105,7 @@ export function ProductsTableWithToolbar<TData>({
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <DataTableToolbar
         table={table as Table<TData>}
-        searchPlaceholder='Product Name'
-        extraSearch={{ columnId: 'spu', placeholder: 'Search by TD SPU' }}
-        dateRange={{
-          enabled: true,
-          columnId: 'createdAt',
-          placeholder: 'Select Date Range',
-        }}
+        searchPlaceholder='Product Name，SPU'
       />
       <div className='overflow-hidden rounded-md border'>
         <UITable>

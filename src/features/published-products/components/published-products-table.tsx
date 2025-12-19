@@ -60,6 +60,30 @@ export function PublishedProductsTable({ data, status }: DataTableProps) {
     return data.filter((product) => product.status === status)
   }, [data, status])
 
+  // 根据当前 tab 状态控制列显隐
+  useEffect(() => {
+    setColumnVisibility((prev) => {
+      if (status === 'failed') {
+        return {
+          ...prev,
+          price: false,
+          weight: false,
+          reason: true,
+          time: true,
+        }
+      }
+
+      // Published / publishing 显示价格和重量，隐藏 Reason & Time
+      return {
+        ...prev,
+        price: true,
+        weight: true,
+        reason: false,
+        time: false,
+      }
+    })
+  }, [status])
+
   const table = useReactTable({
     data: filteredData,
     columns,

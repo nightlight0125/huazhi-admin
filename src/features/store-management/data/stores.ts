@@ -7,27 +7,17 @@ faker.seed(12345)
 // Sample store data
 const sampleStores: Store[] = [
   {
-    storeName: 'zeloship',
-    storeId: '1983790749921185792',
-    authorizationTime: {
-      date: 'Oct. 30, 2025',
-      time: '15:01:46',
-    },
-    createTime: {
-      date: 'Oct. 30, 2025',
-      time: '14:59:06',
-    },
-    storeStatus: 'Normal',
-    authorizationStatus: 'Normal',
-    platformType: 'Shopify',
+    name: 'zeloship',
+    id: '1983790749921185792',
+    bindtime: 'Oct. 30, 2025 15:01:46',
+    createtime: 'Oct. 30, 2025 14:59:06',
+    platform: 'Shopify',
   },
 ]
 
 // Generate more store data
 const generatedStores: Store[] = Array.from({ length: 50 }, () => {
   const platforms = ['Shopify', 'WooCommerce', 'eBay', 'Tiktok', 'Etsy', 'Amazon Store']
-  const statuses = ['Normal', 'Active', 'Inactive', 'Suspended', 'Pending']
-  const authStatuses = ['Normal', 'Active', 'Pending']
   
   const createDate = faker.date.recent({ days: 30 })
   const authDate = faker.date.between({ 
@@ -51,19 +41,11 @@ const generatedStores: Store[] = Array.from({ length: 50 }, () => {
   }
 
   return {
-    storeName: faker.company.name() + ' Store',
-    storeId: faker.string.numeric(19),
-    authorizationTime: {
-      date: formatDate(authDate),
-      time: formatTime(authDate),
-    },
-    createTime: {
-      date: formatDate(createDate),
-      time: formatTime(createDate),
-    },
-    storeStatus: faker.helpers.arrayElement(statuses),
-    authorizationStatus: faker.helpers.arrayElement(authStatuses),
-    platformType: faker.helpers.arrayElement(platforms),
+    name: faker.company.name() + ' Store',
+    id: faker.string.numeric(19),
+    bindtime: `${formatDate(authDate)} ${formatTime(authDate)}`,
+    createtime: `${formatDate(createDate)} ${formatTime(createDate)}`,
+    platform: faker.helpers.arrayElement(platforms),
   }
 })
 

@@ -37,9 +37,7 @@ export function AddressesRowActions({ row }: AddressesRowActionsProps) {
         }}
       >
         <Trash2 className='mr-1 h-3.5 w-3.5' />
-        Delete
       </Button>
     </div>
   )
 }
-

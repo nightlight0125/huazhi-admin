@@ -1,19 +1,12 @@
 import { z } from 'zod'
 
 export const storeSchema = z.object({
-  storeName: z.string(),
-  storeId: z.string(),
-  authorizationTime: z.object({
-    date: z.string(),
-    time: z.string(),
-  }),
-  createTime: z.object({
-    date: z.string(),
-    time: z.string(),
-  }),
-  storeStatus: z.string(),
-  authorizationStatus: z.string(),
-  platformType: z.string(),
+  name: z.string(),
+  id: z.string(),
+  bindtime: z.string().optional(),
+  createtime: z.string().optional(),
+  enable: z.union([z.string(), z.number()]).optional(),
+  platform: z.string().optional(),
 })
 
 export type Store = z.infer<typeof storeSchema>

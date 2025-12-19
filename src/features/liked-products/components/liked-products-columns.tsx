@@ -76,7 +76,7 @@ export const createLikedProductsColumns = (): ColumnDef<LikedProduct>[] => {
         const product = row.original
         return (
           <div className='text-xs'>
-            {product.priceMin.toFixed(2)}-{product.priceMax.toFixed(2)}
+            {product.priceMin.toFixed(2)}
           </div>
         )
       },

@@ -82,15 +82,24 @@ export function UserAuthForm({
         }
       }
 
+      // 验证 token 是否存在且有效
+      if (!token || token.trim() === '') {
+        throw new Error('Failed to get access token. Please try again.')
+      }
+
       // 获取到 token 后，调用会员登录接口
       const loginResponse = await memberLogin(data.email, encryptedPassword)
-
-      toast.dismiss(loadingToast)
-      toast.success('Login successful!')
 
       // 确保使用最新的 token（如果登录响应中有新的 token，使用新的）
       const finalToken =
         loginResponse.token || loginResponse.access_token || token
+
+      // 再次验证最终 token 是否存在
+      if (!finalToken || finalToken.trim() === '') {
+        throw new Error('Failed to get valid token. Please try again.')
+      }
+      console.log('======finalToken', finalToken)
+
       auth.setAccessToken(finalToken)
 
       // 设置用户信息（根据实际 API 响应调整）
@@ -98,16 +107,43 @@ export function UserAuthForm({
         accountId?: string
         id?: string
         email?: string
+        roleId?: string
+        hzkj_whatsapp1?: string
+        user?: {
+          id?: string
+          username?: string
+          roleId?: string
+          hzkj_whatsapp1?: string
+        }
         [key: string]: unknown
       }
+      console.log('======userData', userData)
 
       const user = {
         accountNo: userData.accountId || userData.id || data.email,
         email: userData.email || data.email,
         role: ['user'],
         exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
+        id: userData.user?.id || userData.id || '',
+        username: userData.user?.username || data.email.split('@')[0] || '',
+        roleId: userData.roleId || userData.user?.roleId || '',
+        hzkj_whatsapp1:
+          userData.user?.hzkj_whatsapp1 || userData.hzkj_whatsapp1 || '',
       }
+      console.log('======user12345678', user)
       auth.setUser(user)
+
+      toast.dismiss(loadingToast)
+      toast.success('Login successful!')
+
+      // 只有成功获取到 token 后才跳转到首页
+      // 跳转到 dashboard（_authenticated 的 index 路由）
+      if (redirectTo) {
+        navigate({ to: redirectTo as any, replace: true })
+      } else {
+        // 使用类型断言，因为路由类型可能没有正确生成
+        navigate({ to: '/_authenticated/' as any, replace: true })
+      }
     } catch (error) {
       toast.dismiss(loadingToast)
       const errorMessage =
@@ -116,6 +152,7 @@ export function UserAuthForm({
           : 'Failed to sign in. Please check your credentials.'
       toast.error(errorMessage)
       console.error('Login error:', error)
+      // 失败时不跳转，停留在登录页
     } finally {
       // 确保有一个“已登录”的状态（即使接口失败也可以进入首页）
       let token = auth.accessToken
@@ -126,12 +163,14 @@ export function UserAuthForm({
       }
 
       if (!auth.user) {
-        // 兜底用户信息，至少包含 email 和过期时间
+        // 兜底用户信息，至少包含 email、id 和过期时间
         auth.setUser({
           accountNo: data.email,
           email: data.email,
           role: ['user'],
           exp: Date.now() + 24 * 60 * 60 * 1000,
+          id: data.email, // 使用 email 作为临时 id
+          username: data.email.split('@')[0] || 'user',
         })
       }
 
@@ -197,7 +236,7 @@ export function UserAuthForm({
           </div>
         </div>
 
-        {/* <p className='text-muted-foreground text-center text-sm'>
+        <p className='text-muted-foreground text-center text-sm'>
           Don't have an account?{' '}
           <Link
             to='/sign-up'
@@ -205,7 +244,7 @@ export function UserAuthForm({
           >
             Sign up
           </Link>
-        </p> */}
+        </p>
       </form>
     </Form>
   )

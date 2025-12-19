@@ -24,8 +24,8 @@ import {
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { DataTableBulkActions } from '@/features/tasks/components/data-table-bulk-actions'
 import { type Store } from '../data/schema'
-import { createStoresColumns } from './stores-columns'
 import { EditStoreNameDialog } from './edit-store-name-dialog'
+import { createStoresColumns } from './stores-columns'
 
 const route = getRouteApi('/_authenticated/store-management')
 
@@ -65,7 +65,7 @@ export function StoresTable({ data }: DataTableProps) {
 
   const handleConfirmEdit = (newStoreName: string) => {
     if (editingStore) {
-      console.log('Update store name:', editingStore.storeId, newStoreName)
+      console.log('Update store name:', editingStore.id, newStoreName)
       // TODO: 实现实际的更新逻辑
       // 这里可以调用 API 更新 store name
     }
@@ -95,8 +95,8 @@ export function StoresTable({ data }: DataTableProps) {
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     globalFilterFn: (row, _columnId, filterValue) => {
-      const storeId = String(row.getValue('storeId')).toLowerCase()
-      const storeName = String(row.getValue('storeName')).toLowerCase()
+      const storeId = String(row.getValue('id') || '').toLowerCase()
+      const storeName = String(row.getValue('name') || '').toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
 
       return storeId.includes(searchValue) || storeName.includes(searchValue)
@@ -135,7 +135,7 @@ export function StoresTable({ data }: DataTableProps) {
                       colSpan={header.colSpan}
                       className={
                         header.column.id === 'select' ||
-                        header.column.id === 'storeName'
+                        header.column.id === 'name'
                           ? 'pr-2 pl-1'
                           : undefined
                       }
@@ -171,7 +171,7 @@ export function StoresTable({ data }: DataTableProps) {
                       key={cell.id}
                       className={
                         cell.column.id === 'select' ||
-                        cell.column.id === 'storeName'
+                        cell.column.id === 'name'
                           ? 'pr-2 pl-1'
                           : undefined
                       }
@@ -216,7 +216,7 @@ export function StoresTable({ data }: DataTableProps) {
               setEditingStore(null)
             }
           }}
-          storeName={editingStore.storeName}
+          storeName={editingStore.name}
           onConfirm={handleConfirmEdit}
         />
       )}

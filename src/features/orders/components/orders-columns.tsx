@@ -140,7 +140,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'orderNumbers',
-      header: 'Store/HZ No.',
+      header: 'Store/No.',
       cell: ({ row }) => {
         const order = row.original
         return (
@@ -154,7 +154,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'orderTimes',
-      header: 'Store/HZ Time',
+      header: 'Store/Time',
       cell: ({ row }) => {
         const order = row.original
         return (
@@ -216,6 +216,7 @@ export const createOrdersColumns = (options?: {
                 <Edit className='h-3 w-3' />
               </Button>
             </div>
+            <div>二字码</div>
           </div>
         )
       },
@@ -237,7 +238,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'platformHZStatus',
-      header: 'Platform/HZ Status',
+      header: 'Platform/Status',
       cell: ({ row }) => {
         const order = row.original
         const status = order.platformOrderStatus
@@ -310,15 +311,6 @@ export const createOrdersColumns = (options?: {
     {
       id: 'platformOrderStatus',
       accessorFn: (row) => row.platformOrderStatus || '',
-      header: () => null,
-      cell: () => null,
-      enableHiding: false,
-      enableSorting: false,
-      size: 0,
-    },
-    {
-      id: 'platformFulfillmentStatus',
-      accessorFn: (row) => row.platformFulfillmentStatus || '',
       header: () => null,
       cell: () => null,
       enableHiding: false,

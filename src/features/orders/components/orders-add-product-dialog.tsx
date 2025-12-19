@@ -104,16 +104,15 @@ export function OrdersAddProductDialog({
                 placeholder='Please enter the product title'
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                disabled={true}
               />
             </div>
 
             <div className='space-y-2'>
               <Label htmlFor='imageUrl'>Image URL</Label>
-              <Input
-                id='imageUrl'
-                placeholder='Please enter the image URL'
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+              <img
+                src='https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png'
+                alt='Product Image'
               />
             </div>
           </div>

@@ -94,7 +94,7 @@ export const createStoreProductsColumns = (
   {
     accessorKey: 'hzPrice',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='HZ Price' />
+      <DataTableColumnHeader column={column} title='Price' />
     ),
     cell: ({ row }) => {
       const price = row.getValue('hzPrice') as number | null
@@ -164,6 +164,16 @@ export const createStoreProductsColumns = (
     ),
     cell: ({ row }) => {
       const value = (row.getValue('associateStatus') as string) || '-'
+      return <div className='text-xs'>{value}</div>
+    },
+  },
+  {
+    accessorKey: 'status',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Status' />
+    ),
+    cell: ({ row }) => {
+      const value = (row.getValue('status') as string) || '-'
       return <div className='text-xs'>{value}</div>
     },
   },

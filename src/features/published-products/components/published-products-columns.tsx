@@ -73,7 +73,7 @@ export const publishedProductsColumns: ColumnDef<PublishedProduct>[] = [
       return (
         <div className='space-y-0.5 text-xs'>
           <div className='font-medium text-green-600'>
-            TD: ${product.tdPrice.toFixed(2)}
+            HZ:${product.tdPrice.toFixed(2)}
           </div>
           <div className='font-medium text-green-600'>
             Your: {product.yourPrice}
@@ -90,6 +90,46 @@ export const publishedProductsColumns: ColumnDef<PublishedProduct>[] = [
     cell: ({ row }) => {
       const weight = row.getValue('weight') as number
       return <div className='text-xs'>{weight}</div>
+    },
+  },
+  {
+    accessorKey: 'reason',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Reason' />
+    ),
+    cell: ({ row }) => {
+      const product = row.original
+      if (product.status !== 'failed') {
+        return <div className='text-muted-foreground text-xs'>-</div>
+      }
+      // 这里可以根据真实数据返回失败原因，目前先使用占位文案
+      return (
+        <div className='text-xs text-red-500'>
+          Sync failed. Please check store configuration.
+        </div>
+      )
+    },
+    enableSorting: false,
+  },
+  {
+    accessorKey: 'time',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Time' />
+    ),
+    cell: ({ row }) => {
+      const product = row.original
+      const time = product.updatedAt ?? product.createdAt
+      if (!time) {
+        return <div className='text-muted-foreground text-xs'>-</div>
+      }
+      const dateStr = time.toLocaleDateString()
+      const timeStr = time.toLocaleTimeString()
+      return (
+        <div className='flex flex-col text-xs'>
+          <span>{dateStr}</span>
+          <span className='text-muted-foreground'>{timeStr}</span>
+        </div>
+      )
     },
   },
   {

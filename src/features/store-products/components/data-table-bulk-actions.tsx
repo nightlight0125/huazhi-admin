@@ -126,7 +126,7 @@ export function DataTableBulkActions<TData>({
               Sort by Store Price
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => console.log('Sort by hz price')}>
-              Sort by HZ Price
+              Sort by Price
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
