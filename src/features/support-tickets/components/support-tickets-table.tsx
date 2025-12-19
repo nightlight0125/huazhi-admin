@@ -139,7 +139,7 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
         searchPlaceholder='please support ticket number'
         extraSearch={{
           columnId: 'supportTicketNo',
-          placeholder: 'please Enter HZ Order No.',
+          placeholder: 'please Enter Order No.',
         }}
         filters={[
           {

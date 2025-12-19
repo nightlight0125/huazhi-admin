@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/select'
 import { CategoryTreeFacetedFilter } from './category-tree-faceted-filter'
 import { DataTableFacetedFilter } from './faceted-filter'
-import { DataTableViewOptions } from './view-options'
 
 type CategoryItem = {
   label: string
@@ -36,6 +35,7 @@ type DataTableToolbarProps<TData> = {
   searchPlaceholder?: string
   searchKey?: string
   showSearch?: boolean
+  showSearchButton?: boolean
   onSearch?: () => void
   /** 额外的搜索输入框（例如第二个搜索条件），只有外部传入时才展示 */
   extraSearch?: {
@@ -87,6 +87,7 @@ export function DataTableToolbar<TData>({
   searchPlaceholder = 'Filter...',
   searchKey,
   showSearch = true,
+  showSearchButton = true,
   onSearch,
   extraSearch,
   extraSearch2,
@@ -155,6 +156,9 @@ export function DataTableToolbar<TData>({
     }
   }
 
+  // Avoid accessing non-existent columns (will trigger tanstack table warnings)
+  const searchColumn = searchKey ? table.getColumn(searchKey) : undefined
+
   return (
     <div className='flex flex-wrap items-start justify-between gap-2'>
       <div className='flex flex-1 flex-wrap items-center gap-2'>
@@ -202,14 +206,14 @@ export function DataTableToolbar<TData>({
         {/* Search boxes (搜索框) - 放在下拉框后面 */}
         {showSearch && (
           <>
-            {searchKey ? (
+            {searchKey && searchColumn ? (
               <Input
                 placeholder={searchPlaceholder}
                 value={
-                  (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
+                  (searchColumn.getFilterValue() as string) ?? ''
                 }
                 onChange={(event) =>
-                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                  searchColumn.setFilterValue(event.target.value)
                 }
                 className='h-8 w-[150px] lg:w-[250px]'
               />
@@ -354,17 +358,18 @@ export function DataTableToolbar<TData>({
           </Button>
         )}
       </div>
-      <div className='flex flex-wrap items-center gap-2'>
-        <Button
-          onClick={handleSearch}
-          className='h-8 bg-orange-500 text-white hover:bg-orange-600'
-          size='sm'
-        >
-          <Search className='mr-2 h-4 w-4' />
-          Search
-        </Button>
-        <DataTableViewOptions table={table} />
-      </div>
+      {showSearchButton && (
+        <div className='flex flex-wrap items-center gap-2'>
+          <Button
+            onClick={handleSearch}
+            className='h-8 bg-orange-500 text-white hover:bg-orange-600'
+            size='sm'
+          >
+            <Search className='mr-2 h-4 w-4' />
+            Search
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

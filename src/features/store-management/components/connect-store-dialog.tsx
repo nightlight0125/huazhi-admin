@@ -1,3 +1,7 @@
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { shopifyCallback, shopifyOAuth } from '@/lib/api/shop'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,14 +24,151 @@ export function ConnectStoreDialog({
   platformName,
   onNext,
 }: ConnectStoreDialogProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const user = useAuthStore((state) => state.auth.user)
+
+  // 处理 OAuth 回调
+  const handleCallback = useCallback(
+    async (code: string, shop: string, state: string) => {
+      try {
+        setIsLoading(true)
+
+        // 调用回调接口
+        await shopifyCallback(code, shop, state)
+
+        toast.success('Store connected successfully!')
+        onNext()
+        onOpenChange(false)
+      } catch (error) {
+        console.error('Callback error:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to complete OAuth. Please try again.'
+        )
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [onNext, onOpenChange]
+  )
+
   const handleCancel = () => {
     onOpenChange(false)
   }
 
-  const handleNext = () => {
-    onNext()
-    onOpenChange(false)
+  const handleNext = async () => {
+    if (platformName !== 'Shopify') {
+      // 如果不是 Shopify，直接调用 onNext
+      onNext()
+      onOpenChange(false)
+      return
+    }
+
+    if (!user?.id) {
+      toast.error('User ID not found. Please login again.')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const shop = 'wlsstore4.myshopify.com'
+      const state = user.id
+
+      // 1. 获取 OAuth URL
+      const oauthUrl = await shopifyOAuth(shop, state)
+      console.log('OAuth URL:', oauthUrl)
+
+      // 2. 打开 OAuth URL（新窗口）
+      const authWindow = window.open(
+        oauthUrl,
+        'Shopify OAuth',
+        'width=600,height=700,scrollbars=yes,resizable=yes'
+      )
+
+      if (!authWindow) {
+        throw new Error('Failed to open OAuth window. Please allow popups.')
+      }
+
+      // 3. 监听窗口关闭或消息，获取 code
+      const checkAuthWindow = setInterval(() => {
+        try {
+          // 检查窗口是否已关闭
+          if (authWindow.closed) {
+            clearInterval(checkAuthWindow)
+            setIsLoading(false)
+            // 如果窗口关闭但没有收到回调，可能是用户取消了授权
+            toast.info('OAuth process cancelled or completed')
+            return
+          }
+
+          // 尝试从窗口 URL 中获取 code（如果同源）
+          // 注意：由于跨域限制，通常无法直接读取窗口 URL
+          // 这里需要后端回调处理，或者使用 postMessage
+        } catch (error) {
+          // 跨域访问会失败，这是正常的
+        }
+      }, 1000)
+
+      // 4. 监听来自 OAuth 窗口的消息（如果使用 postMessage）
+      const messageHandler = (event: MessageEvent) => {
+        // 验证消息来源（安全考虑）
+        if (event.origin !== window.location.origin) {
+          return
+        }
+
+        if (event.data.type === 'shopify-oauth-callback') {
+          const { code } = event.data
+          if (code) {
+            clearInterval(checkAuthWindow)
+            window.removeEventListener('message', messageHandler)
+            authWindow.close()
+            handleCallback(code, shop, state)
+          }
+        }
+      }
+
+      window.addEventListener('message', messageHandler)
+
+      // 5. 设置超时
+      setTimeout(() => {
+        clearInterval(checkAuthWindow)
+        window.removeEventListener('message', messageHandler)
+        if (!authWindow.closed) {
+          authWindow.close()
+          setIsLoading(false)
+          toast.error('OAuth timeout. Please try again.')
+        }
+      }, 300000) // 5 分钟超时
+    } catch (error) {
+      console.error('OAuth error:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to start OAuth process. Please try again.'
+      )
+      setIsLoading(false)
+    }
   }
+
+  // 检查 URL 参数中是否有 code（如果是从回调页面返回的）
+  useEffect(() => {
+    if (!open || platformName !== 'Shopify' || !user?.id) {
+      return
+    }
+
+    const urlParams = new URLSearchParams(window.location.search)
+    const code = urlParams.get('code')
+    const shop = urlParams.get('shop')
+    const state = urlParams.get('state')
+
+    if (code && shop && state && user.id === state) {
+      // 清除 URL 参数
+      window.history.replaceState({}, '', window.location.pathname)
+      handleCallback(code, shop, state)
+    }
+  }, [open, platformName, user?.id, handleCallback])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,10 +184,12 @@ export function ConnectStoreDialog({
         </div>
 
         <DialogFooter>
-          <Button variant='outline' onClick={handleCancel}>
+          <Button variant='outline' onClick={handleCancel} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleNext}>Next</Button>
+          <Button onClick={handleNext} disabled={isLoading}>
+            {isLoading ? 'Connecting...' : 'Next'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

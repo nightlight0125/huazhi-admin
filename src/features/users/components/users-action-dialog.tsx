@@ -1,9 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { showSubmittedData } from '@/lib/show-submitted-data'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { addAccount, queryRole, type RoleItem } from '@/lib/api/users'
+import { encryptPassword } from '@/lib/crypto-utils'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,21 +28,21 @@ import {
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 import { SelectDropdown } from '@/components/select-dropdown'
-import { roles } from '../data/data'
 import { type User } from '../data/schema'
 
 const formSchema = z
   .object({
-    firstName: z.string().min(1, '姓名为必填项'),
-    lastName: z.string().min(1, '姓名为必填项'),
-    username: z.string().min(1, '用户名为必填项'),
-    phoneNumber: z.string().min(1, '手机号为必填项'),
-    email: z.email({
-      error: (iss) => (iss.input === '' ? '邮箱为必填项' : undefined),
-    }),
+    name: z.string().min(1, 'First name is required'),
+    surname: z.string().min(1, 'Last name is required'),
+    username: z.string().min(1, 'Username is required'),
+    phone: z.string().min(1, 'Phone number is required'),
+    email: z
+      .string()
+      .email('Please enter a valid email address')
+      .min(1, 'Email is required'),
     password: z.string().transform((pwd) => pwd.trim()),
-    role: z.string().min(1, '角色为必填项'),
-    confirmPassword: z.string().transform((pwd) => pwd.trim()),
+    roleId: z.string().min(1, 'Role is required'),
+    customerId: z.string().optional(),
     isEdit: z.boolean(),
   })
   .refine(
@@ -47,50 +51,21 @@ const formSchema = z
       return data.password.length > 0
     },
     {
-      message: '密码为必填项',
+      message: 'Password is required',
       path: ['password'],
     }
   )
   .refine(
     ({ isEdit, password }) => {
       if (isEdit && !password) return true
-      return password.length >= 8
+      return password.length >= 0
     },
     {
-      message: '密码至少需要8个字符',
+      message: 'Password must be at least 0 characters',
       path: ['password'],
     }
   )
-  .refine(
-    ({ isEdit, password }) => {
-      if (isEdit && !password) return true
-      return /[a-z]/.test(password)
-    },
-    {
-      message: '密码必须包含至少一个小写字母',
-      path: ['password'],
-    }
-  )
-  .refine(
-    ({ isEdit, password }) => {
-      if (isEdit && !password) return true
-      return /\d/.test(password)
-    },
-    {
-      message: '密码必须包含至少一个数字',
-      path: ['password'],
-    }
-  )
-  .refine(
-    ({ isEdit, password, confirmPassword }) => {
-      if (isEdit && !password) return true
-      return password === confirmPassword
-    },
-    {
-      message: '密码不匹配',
-      path: ['confirmPassword'],
-    }
-  )
+
 type UserForm = z.infer<typeof formSchema>
 
 type UserActionDialogProps = {
@@ -104,36 +79,120 @@ export function UsersActionDialog({
   open,
   onOpenChange,
 }: UserActionDialogProps) {
+  const [roles, setRoles] = useState<RoleItem[]>([])
+  const [isLoadingRoles, setIsLoadingRoles] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { auth } = useAuthStore()
   const isEdit = !!currentRow
+
+  // 获取角色列表
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (!open) return // 只在对话框打开时获取
+
+      setIsLoadingRoles(true)
+      try {
+        const roleList = await queryRole(1, 100) // 获取前100个角色
+        setRoles(roleList)
+      } catch (error) {
+        console.error('Failed to fetch roles:', error)
+        toast.error('Failed to load roles. Please try again.')
+      } finally {
+        setIsLoadingRoles(false)
+      }
+    }
+
+    fetchRoles()
+  }, [open])
+
+  // 将角色数据转换为下拉选项格式
+  const roleOptions = roles.map((role) => ({
+    label: role.name || role.number || role.id,
+    value: role.id,
+  }))
+
   const form = useForm<UserForm>({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit
       ? {
-          ...currentRow,
+          name: currentRow.firstName || '',
+          surname: currentRow.lastName || '',
+          username: currentRow.username || '',
+          email: currentRow.email || '',
+          phone: currentRow.phoneNumber || '',
+          roleId: currentRow.role || '',
           password: '',
-          confirmPassword: '',
+          customerId: '',
           isEdit,
         }
       : {
-          firstName: '',
-          lastName: '',
+          name: '',
+          surname: '',
           username: '',
           email: '',
-          role: '',
-          phoneNumber: '',
+          phone: '',
+          roleId: '',
           password: '',
-          confirmPassword: '',
+          customerId: '',
           isEdit,
         },
   })
 
-  const onSubmit = (values: UserForm) => {
-    form.reset()
-    showSubmittedData(values)
-    onOpenChange(false)
-  }
+  const onSubmit = async (values: UserForm) => {
+    if (isEdit) {
+      // TODO: 实现编辑用户的逻辑
+      toast.info('Edit functionality is not implemented yet')
+      return
+    }
 
-  const isPasswordTouched = !!form.formState.dirtyFields.password
+    // 获取当前登录用户的 id 作为 customerId
+    const currentUserId = auth.user?.id
+    if (!currentUserId) {
+      toast.error('User not authenticated. Please login again.')
+      return
+    }
+
+    // 验证必填字段
+    if (!values.roleId) {
+      toast.error('Please select a role')
+      return
+    }
+
+    setIsSubmitting(true)
+    const loadingToast = toast.loading('Creating user...')
+
+    try {
+      // 加密密码
+      const encryptedPassword = encryptPassword(values.password)
+
+      // 调用添加账户 API
+      await addAccount({
+        username: values.username,
+        email: values.email,
+        surname: values.surname,
+        name: values.name,
+        phone: values.phone,
+        password: encryptedPassword,
+        roleId: Number(values.roleId),
+        customerId: Number(currentUserId),
+      })
+
+      toast.dismiss(loadingToast)
+      toast.success('User created successfully!')
+      form.reset()
+      onOpenChange(false)
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to create user. Please try again.'
+      toast.error(errorMessage)
+      console.error('Create user error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <Dialog
@@ -145,10 +204,11 @@ export function UsersActionDialog({
     >
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader className='text-start'>
-          <DialogTitle>{isEdit ? '编辑用户' : '添加新用户'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit User' : 'Add New User'}</DialogTitle>
           <DialogDescription>
-            {isEdit ? '在此更新用户信息。' : '在此创建新用户。'}
-            完成后点击保存。
+            {isEdit
+              ? 'Update the user information.'
+              : 'Create a new user account.'}
           </DialogDescription>
         </DialogHeader>
         <div className='h-[26.25rem] w-[calc(100%+0.75rem)] overflow-y-auto py-1 pe-3'>
@@ -160,15 +220,13 @@ export function UsersActionDialog({
             >
               <FormField
                 control={form.control}
-                name='firstName'
+                name='name'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>
-                      名
-                    </FormLabel>
+                    <FormLabel className='col-span-2 text-end'>Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='张'
+                        placeholder='Enter first name'
                         className='col-span-4'
                         autoComplete='off'
                         {...field}
@@ -180,15 +238,15 @@ export function UsersActionDialog({
               />
               <FormField
                 control={form.control}
-                name='lastName'
+                name='surname'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>
-                      姓
+                      Surname
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='三'
+                        placeholder='Enter last name'
                         className='col-span-4'
                         autoComplete='off'
                         {...field}
@@ -204,11 +262,11 @@ export function UsersActionDialog({
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>
-                      用户名
+                      Username
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='zhangsan'
+                        placeholder='Enter username'
                         className='col-span-4'
                         {...field}
                       />
@@ -222,10 +280,11 @@ export function UsersActionDialog({
                 name='email'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>邮箱</FormLabel>
+                    <FormLabel className='col-span-2 text-end'>Email</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='zhangsan@example.com'
+                        type='email'
+                        placeholder='user@example.com'
                         className='col-span-4'
                         {...field}
                       />
@@ -236,15 +295,13 @@ export function UsersActionDialog({
               />
               <FormField
                 control={form.control}
-                name='phoneNumber'
+                name='phone'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>
-                      手机号
-                    </FormLabel>
+                    <FormLabel className='col-span-2 text-end'>Phone</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='+86 138 0013 8000'
+                        placeholder='Enter phone number'
                         className='col-span-4'
                         {...field}
                       />
@@ -255,20 +312,22 @@ export function UsersActionDialog({
               />
               <FormField
                 control={form.control}
-                name='role'
+                name='roleId'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>角色</FormLabel>
-                    <SelectDropdown
-                      defaultValue={field.value}
-                      onValueChange={field.onChange}
-                      placeholder='选择角色'
-                      className='col-span-4'
-                      items={roles.map(({ label, value }) => ({
-                        label,
-                        value,
-                      }))}
-                    />
+                    <FormLabel className='col-span-2 text-end'>Role</FormLabel>
+                    <FormControl>
+                      <SelectDropdown
+                        defaultValue={field.value}
+                        onValueChange={field.onChange}
+                        placeholder={
+                          isLoadingRoles ? 'Loading roles...' : 'Select role'
+                        }
+                        className='col-span-4'
+                        disabled={isLoadingRoles}
+                        items={roleOptions}
+                      />
+                    </FormControl>
                     <FormMessage className='col-span-4 col-start-3' />
                   </FormItem>
                 )}
@@ -279,31 +338,11 @@ export function UsersActionDialog({
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>
-                      密码
+                      Password
                     </FormLabel>
                     <FormControl>
                       <PasswordInput
-                        placeholder='例如：MyP@ssw0rd123'
-                        className='col-span-4'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='confirmPassword'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>
-                      确认密码
-                    </FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        disabled={!isPasswordTouched}
-                        placeholder='例如：MyP@ssw0rd123'
+                        placeholder='Enter password (min. 8 characters)'
                         className='col-span-4'
                         {...field}
                       />
@@ -316,8 +355,12 @@ export function UsersActionDialog({
           </Form>
         </div>
         <DialogFooter>
-          <Button type='submit' form='user-form'>
-            保存更改
+          <Button type='submit' form='user-form' disabled={isSubmitting}>
+            {isSubmitting
+              ? 'Creating...'
+              : isEdit
+                ? 'Save Changes'
+                : 'Create User'}
           </Button>
         </DialogFooter>
       </DialogContent>

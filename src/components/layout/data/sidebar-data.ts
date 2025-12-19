@@ -154,11 +154,15 @@ export const sidebarData: SidebarData = {
           icon: Settings,
           items: [
             {
-              title: 'Logistics',
+              title: 'Profile',
+              url: '/settings',
+            },
+            {
+              title: 'Shipping Plan',
               url: '/logistics',
             },
             {
-              title: 'Accounts',
+              title: 'Sub-Account',
               url: '/users',
             },
             // {
@@ -169,10 +173,7 @@ export const sidebarData: SidebarData = {
             //   title: 'Appearance',
             //   url: '/settings/appearance',
             // },
-            {
-              title: 'Profile',
-              url: '/settings',
-            },
+           
             {
               title: 'Notifications',
               url: '/settings/notifications',

@@ -10,13 +10,7 @@ import { OrdersPrimaryButtons } from './components/orders-primary-buttons'
 import { OrdersProvider } from './components/orders-provider'
 import { OrdersStats } from './components/orders-stats'
 import { OrdersTable } from './components/orders-table'
-import {
-  logistics,
-  orderStatuses,
-  platformFulfillmentStatuses,
-  platformOrderStatuses,
-  stores,
-} from './data/data'
+import { orderStatuses, platformOrderStatuses, stores } from './data/data'
 import { orders } from './data/orders'
 import { type Order } from './data/schema'
 
@@ -37,7 +31,7 @@ export function Orders() {
           <div className='mb-6'>
             <DataTableToolbar
               table={table}
-              searchPlaceholder='Enter SKU id,SKU name'
+              searchPlaceholder='Order No.\SPU\Name'
               dateRange={{
                 enabled: true,
                 columnId: 'createdAt',
@@ -68,17 +62,10 @@ export function Orders() {
                     value: s.value,
                   })),
                 },
-                {
-                  columnId: 'logistics',
-                  title: 'Logistics',
-                  options: logistics.map((l) => ({
-                    label: l.label,
-                    value: l.value,
-                  })),
-                },
+
                 {
                   columnId: 'platformOrderStatus',
-                  title: 'Platform Order Status',
+                  title: 'Store Order Status',
                   options: platformOrderStatuses.map((s) => ({
                     label: s.label,
                     value: s.value,
@@ -86,17 +73,8 @@ export function Orders() {
                   })),
                 },
                 {
-                  columnId: 'platformFulfillmentStatus',
-                  title: 'Platform Fulfillment Status',
-                  options: platformFulfillmentStatuses.map((s) => ({
-                    label: s.label,
-                    value: s.value,
-                    icon: s.icon,
-                  })),
-                },
-                {
                   columnId: 'status',
-                  title: 'HZ Order Status',
+                  title: 'Order Status',
                   options: orderStatuses
                     .filter((s) => s.value !== 'all')
                     .map((s) => ({

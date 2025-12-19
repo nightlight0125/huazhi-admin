@@ -119,18 +119,17 @@ export const createPackagingConnectionColumns = (options?: {
     {
       accessorKey: isConnectedFilter ? 'tdSku' : 'hzProduct',
       id: isConnectedFilter ? 'tdSku' : 'hzProduct',
-      header: isConnectedFilter ? 'TD SKU' : 'HZ Product',
+      header: isConnectedFilter ? 'SKU' : 'Product',
       cell: ({ row }) => {
         const item = row.original
         if (isConnectedFilter) {
-          // For Connected filter, show TD SKU
           if (item.hzProductImage && item.hzProductSku) {
             return (
               <div className='flex items-center gap-3'>
                 <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
                   <img
                     src={item.hzProductImage}
-                    alt='TD SKU'
+                    alt='SKU'
                     className='h-full w-full object-cover'
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
@@ -139,7 +138,7 @@ export const createPackagingConnectionColumns = (options?: {
                   />
                 </div>
                 <div className='flex flex-col gap-1'>
-                  <div className='text-sm font-medium'>TD SKU</div>
+                  <div className='text-sm font-medium'>SKU</div>
                   <div className='text-muted-foreground text-xs'>
                     SKU: {item.hzProductSku}
                   </div>
@@ -158,14 +157,13 @@ export const createPackagingConnectionColumns = (options?: {
             </div>
           )
         } else {
-          // For Unconnected/All, show HZ Product
           if (item.isConnected && item.hzProductImage && item.hzProductSku) {
             return (
               <div className='flex items-center gap-3'>
                 <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
                   <img
                     src={item.hzProductImage}
-                    alt='HZ Product'
+                    alt='Product'
                     className='h-full w-full object-cover'
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
@@ -174,7 +172,7 @@ export const createPackagingConnectionColumns = (options?: {
                   />
                 </div>
                 <div className='flex flex-col gap-1'>
-                  <div className='text-sm font-medium'>HZ Product</div>
+                  <div className='text-sm font-medium'>Product</div>
                   <div className='text-muted-foreground text-xs'>
                     SKU: {item.hzProductSku}
                   </div>

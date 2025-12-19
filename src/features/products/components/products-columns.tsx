@@ -1,11 +1,11 @@
+import { format } from 'date-fns'
 import { type ColumnDef } from '@tanstack/react-table'
+import { zhCN } from 'date-fns/locale'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { categories, locations } from '../data/data'
 import { type Product } from '../data/schema'
 import { DataTableRowActions } from './data-table-row-actions'
-import { format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
 
 export const productsColumns: ColumnDef<Product>[] = [
   {
@@ -37,7 +37,7 @@ export const productsColumns: ColumnDef<Product>[] = [
     header: '头图',
     cell: ({ row }) => {
       const image = row.getValue('image') as string
-      
+
       return (
         <div className='flex items-center space-x-2'>
           <div className='relative size-12 overflow-hidden rounded-md border'>
@@ -60,7 +60,7 @@ export const productsColumns: ColumnDef<Product>[] = [
     ),
     cell: ({ row }) => {
       const name = row.getValue('name') as string
-      
+
       return (
         <div className='max-w-48'>
           <span className='font-medium'>{name}</span>
@@ -84,9 +84,7 @@ export const productsColumns: ColumnDef<Product>[] = [
 
       return (
         <div className='flex w-20 items-center gap-2'>
-          {location.icon && (
-            <location.icon />
-          )}
+          {location.icon && <location.icon />}
           <span className='text-sm'>{location.label}</span>
         </div>
       )
@@ -117,11 +115,7 @@ export const productsColumns: ColumnDef<Product>[] = [
     ),
     cell: ({ row }) => {
       const sku = row.getValue('sku') as string
-      return (
-        <div className='w-24 font-mono text-sm'>
-          {sku}
-        </div>
-      )
+      return <div className='w-24 font-mono text-sm'>{sku}</div>
     },
   },
   {
@@ -140,9 +134,7 @@ export const productsColumns: ColumnDef<Product>[] = [
 
       return (
         <div className='flex items-center gap-2'>
-          {category.icon && (
-            <category.icon />
-          )}
+          {category.icon && <category.icon />}
           <span className='text-sm'>{category.label}</span>
         </div>
       )

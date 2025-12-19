@@ -23,6 +23,11 @@ const tabs = [
     icon: Package,
   },
   {
+    value: 'store' as TabType,
+    label: 'Store',
+    icon: Package,
+  },
+  {
     value: 'order' as TabType,
     label: 'Order',
     icon: Store,

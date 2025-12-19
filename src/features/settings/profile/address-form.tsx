@@ -180,20 +180,6 @@ function AddressFields({
 
       <FormField
         control={form.control}
-        name='company'
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Company</FormLabel>
-            <FormControl>
-              <Input placeholder='Please enter company' {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
         name='address1'
         render={({ field }) => (
           <FormItem>
@@ -430,7 +416,7 @@ export function AddressForm() {
                         </FormControl>
                         <div className='space-y-1 leading-none'>
                           <FormLabel className='cursor-pointer text-red-500'>
-                            同步收货地址
+                            Default Shipping Address
                           </FormLabel>
                         </div>
                       </FormItem>

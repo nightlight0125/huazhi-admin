@@ -1,6 +1,6 @@
 import { type SVGProps } from 'react'
 import { Item, Root as Radio } from '@radix-ui/react-radio-group'
-import { CircleCheck, RotateCcw, Settings } from 'lucide-react'
+import { CircleCheck, Laptop, RotateCcw } from 'lucide-react'
 import { IconDir } from '@/assets/custom/icon-dir'
 import { IconLayoutCompact } from '@/assets/custom/icon-layout-compact'
 import { IconLayoutDefault } from '@/assets/custom/icon-layout-default'
@@ -50,7 +50,7 @@ export function ConfigDrawer() {
           aria-describedby='config-drawer-description'
           className='rounded-full'
         >
-          <Settings aria-hidden='true' />
+          <Laptop aria-hidden='true' />
         </Button>
       </SheetTrigger>
       <SheetContent className='flex flex-col'>

@@ -21,7 +21,7 @@ function mapApiDataToUser(apiData: unknown): User {
     id: String(data.id || data.hzkj_account_record_id || ''),
     firstName: String(data.firstName || data.name || ''),
     lastName: String(data.lastName || ''),
-    username: String(data.username || data.account || ''),
+    username: String(data.hzkj_username || data.username || data.account || ''),
     email: String(data.hzkj_email || data.email || ''),
     phoneNumber: String(
       data.hzkj_phone || data.phone || data.phoneNumber || ''

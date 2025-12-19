@@ -63,9 +63,7 @@ export function SupportTicketsToolbar({
 
   return (
     <div className='dark:bg-card space-y-3 rounded-lg border bg-white p-4'>
-      {/* First Row: Support Tickets NO. and HZ Order NO. */}
       <div className='flex flex-wrap items-center gap-3'>
-        {/* Support Tickets NO. */}
         <div className='flex items-center gap-2'>
           <label className='text-sm font-medium whitespace-nowrap'>
             Support Tickets NO.
@@ -83,13 +81,12 @@ export function SupportTicketsToolbar({
           />
         </div>
 
-        {/* HZ Order NO. */}
         <div className='flex items-center gap-2'>
           <label className='text-sm font-medium whitespace-nowrap'>
-            HZ Order NO.
+            Order NO.
           </label>
           <Input
-            placeholder='Enter HZ order number'
+            placeholder='Enter order number'
             value={hzOrderNo}
             onChange={(e) => setHzOrderNo(e.target.value)}
             onKeyDown={(e) => {

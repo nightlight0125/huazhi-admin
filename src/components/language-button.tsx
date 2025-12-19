@@ -18,10 +18,7 @@ export function LanguageButton() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>
         <DropdownMenuItem>English</DropdownMenuItem>
-        <DropdownMenuItem>中文</DropdownMenuItem>
-        <DropdownMenuItem>日本語</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
-

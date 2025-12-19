@@ -1,4 +1,16 @@
+import { toast } from 'sonner'
 import { apiClient } from '../api-client'
+
+// 自定义错误类，用于携带 errorCode 信息
+export class AuthError extends Error {
+  constructor(
+    message: string,
+    public errorCode?: string
+  ) {
+    super(message)
+    this.name = 'AuthError'
+  }
+}
 
 // 生成随机 nonce (UUID v4)
 export function generateNonce(): string {
@@ -82,9 +94,6 @@ export async function memberLogin(
 
   const res = response.data
 
-  // 检查响应状态：
-  // 1. status 为 false
-  // 2. 或 errorCode 不为空且不为 "0"
   const hasErrorCode =
     typeof res.errorCode === 'string' &&
     res.errorCode.trim() !== '' &&
@@ -99,9 +108,7 @@ export async function memberLogin(
   return res
 }
 
-// 获取 Token API
-// 注意：根据接口文档，获取 token 只需要 username，不需要 password
-// 如果需要先验证密码，可能需要先调用验证接口
+
 export async function getToken(
 ): Promise<string> {
   const requestData: GetTokenRequest =
@@ -114,16 +121,7 @@ export async function getToken(
     timestamp: formatTimestamp(),
     language: 'zh_CN',
   }
-  // {
-  //   "client_id": "HuaZhiQD",
-  //   "client_secret": "Dc1598837132xcs@",
-  //   "username": "xuchushun",
-  //   "accountId": "2299284867814356992",
-  //   "nonce": "fd59fda9-2985-4b26-b28c-6956b7105101",
-  //   "timestamp": "2025-12-10 16:07:00",
-  //   "language": "zh_CN"
-  // }
-
+ 
   try {
     console.log('getToken 请求数据:', JSON.stringify(requestData, null, 2))
     
@@ -226,8 +224,6 @@ export async function memberSignUp(
     },
   }
 
-  console.log('注册请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<SignUpResponse>(
     '/v2/hzkj/base/member/add',
     requestData
@@ -239,7 +235,17 @@ export async function memberSignUp(
   if (!response.data.status) {
     const errorMessage =
       response.data.message || 'Registration failed. Please try again.'
-    throw new Error(errorMessage)
+    const errorCode = response.data.errorCode
+
+    // 如果是 errorCode 为 "1001"，抛出错误以便上层处理导航
+    if (errorCode === '1001') {
+      // errorCode 为 "1001" 时，抛出错误以便上层处理跳转
+      throw new AuthError(errorMessage, errorCode)
+    } else {
+      // 其他错误码直接提示
+      toast.error(errorMessage)
+      throw new AuthError(errorMessage, errorCode)
+    }
   }
 
   return response.data

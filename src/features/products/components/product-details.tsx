@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import {
   getCoreRowModel,
@@ -11,13 +11,19 @@ import {
 } from '@tanstack/react-table'
 import {
   ArrowLeft,
+  ChevronDown,
   Copy,
   Palette,
   Plus,
   ShoppingCart,
   Store,
   Tag,
+  Truck,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import type { ShopInfo } from '@/stores/shop-store'
+import { getUserShop } from '@/lib/api/shop'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -25,7 +31,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -79,18 +84,23 @@ export function ProductDetails() {
   const productData = product as Product | PackagingProduct
 
   const [selectedQuantity, setSelectedQuantity] = useState(1)
-  const [selectedTo] = useState('usa')
+  const [selectedTo, setSelectedTo] = useState('usa')
   const [selectedColor, setSelectedColor] = useState('')
   const [selectedSize, setSelectedSize] = useState('')
   const [selectedThumbnail, setSelectedThumbnail] = useState(0)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const [selectedStore, setSelectedStore] = useState('')
+  const [stores, setStores] = useState<
+    Array<{ id: string; name: string; value: string }>
+  >([])
+  const [isLoadingStores, setIsLoadingStores] = useState(false)
+  const { auth } = useAuthStore()
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
     useState(false)
-  // const [selectedSellingPlatform, setSelectedSellingPlatform] =
-  //   useState('shopify')
-  // const [selectedShippingMethod, setSelectedShippingMethod] =
-  //   useState('tdpacket-electro')
+  const [selectedSellingPlatform, setSelectedSellingPlatform] =
+    useState('shopify')
+  const [selectedShippingMethod, setSelectedShippingMethod] =
+    useState('tdpacket-electro')
   const [isShippingOptionsDialogOpen, setIsShippingOptionsDialogOpen] =
     useState(false)
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
@@ -160,12 +170,76 @@ export function ProductDetails() {
     )
   }
 
-  // 模拟店铺数据
-  const stores = [
-    { id: 'store1', name: '我的主店铺', value: 'store1' },
-    { id: 'store2', name: '精品店铺', value: 'store2' },
-    { id: 'store3', name: '特价店铺', value: 'store3' },
-  ]
+  // 当发布弹框打开时，获取店铺列表
+  useEffect(() => {
+    const fetchStores = async () => {
+      if (!isPublishDialogOpen) return
+
+      const userId = auth.user?.id
+      if (!userId) {
+        toast.error('User not authenticated. Please login again.')
+        return
+      }
+
+      setIsLoadingStores(true)
+      try {
+        const response = await getUserShop(userId)
+        console.log('获取店铺 API 完整响应:', response)
+        console.log('response.data:', response.data)
+
+        // 根据实际 API 响应结构处理数据
+        let shopsData: ShopInfo[] = []
+        if (response.errorCode === '0' && response.data) {
+          // response.data 是 unknown 类型，需要类型断言
+          const data = response.data as { data?: unknown }
+          console.log('response.data.data:', data.data)
+
+          // 如果 response.data.data 是数组，直接使用
+          if (Array.isArray(data.data)) {
+            shopsData = data.data as ShopInfo[]
+          }
+          // 如果 response.data.data 是对象且有 list 属性
+          else if (
+            typeof data.data === 'object' &&
+            data.data !== null &&
+            'list' in data.data
+          ) {
+            const list = (data.data as { list?: unknown[] }).list
+            shopsData = Array.isArray(list) ? (list as ShopInfo[]) : []
+          }
+          // 如果 response.data.data 是单个对象，包装成数组
+          else if (typeof data.data === 'object' && data.data !== null) {
+            shopsData = [data.data as ShopInfo]
+          }
+        }
+
+        console.log('最终解析的店铺列表:', shopsData)
+
+        // 将店铺数据转换为下拉框需要的格式
+        const storeOptions = shopsData
+          .filter((shop) => shop.id) // 过滤掉没有 id 的店铺
+          .map((shop) => ({
+            id: String(shop.id),
+            name: shop.name || shop.platform || String(shop.id),
+            value: String(shop.id),
+          }))
+
+        setStores(storeOptions)
+      } catch (error) {
+        console.error('获取店铺列表失败:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load shops. Please try again.'
+        )
+        setStores([])
+      } finally {
+        setIsLoadingStores(false)
+      }
+    }
+
+    fetchStores()
+  }, [isPublishDialogOpen, auth.user?.id])
 
   const totalPrice = productData.price * selectedQuantity
 
@@ -188,6 +262,20 @@ export function ProductDetails() {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
+
+  // 处理点击发布到店铺按钮：检查是否选择了color和size
+  const handlePublishToStoreClick = () => {
+    if (!selectedColor) {
+      toast.error('Please select a color')
+      return
+    }
+    if (!selectedSize) {
+      toast.error('Please select a size')
+      return
+    }
+    // 如果都选择了，打开Dialog
+    setIsPublishDialogOpen(true)
+  }
 
   // 处理发布到店铺：关闭弹框并显示 StoreListingTabs 组件
   const handlePublishToStore = () => {
@@ -299,7 +387,7 @@ export function ProductDetails() {
                       </h2>
                       <div className='flex items-center gap-2 text-sm'>
                         <span className='text-muted-foreground'>
-                          HZ SPU: {productData.sku}
+                          SPU: {productData.sku}
                         </span>
                         <button
                           onClick={handleCopySPU}
@@ -408,133 +496,146 @@ export function ProductDetails() {
                       </div>
                     </div>
 
-                    {/* 销售平台、发货地和物流方式 - 水平布局 */}
-                    {/* <div className='flex items-start gap-1.5 border-y py-3'>
-                      <div
-                        className='flex flex-1 cursor-pointer items-center gap-1.5'
-                        onClick={() => setIsShippingOptionsDialogOpen(true)}
-                      >
-                        <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                          <Store className='h-3.5 w-3.5 text-gray-600' />
-                        </div>
-                        <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                          <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
-                            <span className='whitespace-nowrap'>ship from</span>
-                            <ChevronDown className='h-2.5 w-2.5 shrink-0' />
-                          </div>
-                          <Select
-                            value={selectedSellingPlatform}
-                            onValueChange={setSelectedSellingPlatform}
+                    {/* 销售平台、发货地和物流方式 - 仅在非 Packaging Products 场景下展示 */}
+                    {!isFromPackagingProducts && (
+                      <>
+                        <div className='flex items-start gap-1.5 border-y py-3'>
+                          <div
+                            className='flex flex-1 cursor-pointer items-center gap-1.5'
+                            onClick={() => setIsShippingOptionsDialogOpen(true)}
                           >
-                            <SelectTrigger className='pointer-events-none h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='shopify'>Shopify</SelectItem>
-                              <SelectItem value='woocommerce'>
-                                WooCommerce
-                              </SelectItem>
-                              <SelectItem value='ebay'>eBay</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className='h-8 w-px shrink-0 bg-gray-200' />
-
-                      <div
-                        className='flex flex-1 cursor-pointer items-center gap-1.5'
-                        onClick={() => setIsShippingOptionsDialogOpen(true)}
-                      >
-                        <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                          <Truck className='h-3.5 w-3.5 text-gray-600' />
-                        </div>
-                        <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                          <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
-                            <span className='whitespace-nowrap'>Ship To</span>
-                            <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                            <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
+                              <Store className='h-3.5 w-3.5 text-gray-600' />
+                            </div>
+                            <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
+                              <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                                <span className='whitespace-nowrap'>
+                                  ship from
+                                </span>
+                                <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                              </div>
+                              <Select
+                                value={selectedSellingPlatform}
+                                onValueChange={setSelectedSellingPlatform}
+                              >
+                                <SelectTrigger className='pointer-events-none h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value='shopify'>
+                                    Shopify
+                                  </SelectItem>
+                                  <SelectItem value='woocommerce'>
+                                    WooCommerce
+                                  </SelectItem>
+                                  <SelectItem value='ebay'>eBay</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <Select
-                            value={selectedTo}
-                            onValueChange={setSelectedTo}
+
+                          <div className='h-8 w-px shrink-0 bg-gray-200' />
+
+                          <div
+                            className='flex flex-1 cursor-pointer items-center gap-1.5'
+                            onClick={() => setIsShippingOptionsDialogOpen(true)}
                           >
-                            <SelectTrigger className='pointer-events-none h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
-                              <SelectValue placeholder='选择目的地' />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='usa'>United States</SelectItem>
-                              <SelectItem value='uk'>United Kingdom</SelectItem>
-                              <SelectItem value='canada'>Canada</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className='h-8 w-px shrink-0 bg-gray-200' />
-
-                      <div className='flex flex-1 items-center gap-1.5'>
-                        <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                          <Truck className='h-3.5 w-3.5 text-gray-600' />
-                        </div>
-                        <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                          <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
-                            <span className='whitespace-nowrap'>
-                              By Shipping Method
-                            </span>
-                            <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                            <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
+                              <Truck className='h-3.5 w-3.5 text-gray-600' />
+                            </div>
+                            <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
+                              <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                                <span className='whitespace-nowrap'>
+                                  Ship To
+                                </span>
+                                <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                              </div>
+                              <Select
+                                value={selectedTo}
+                                onValueChange={setSelectedTo}
+                              >
+                                <SelectTrigger className='pointer-events-none h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
+                                  <SelectValue placeholder='选择目的地' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value='usa'>
+                                    United States
+                                  </SelectItem>
+                                  <SelectItem value='uk'>
+                                    United Kingdom
+                                  </SelectItem>
+                                  <SelectItem value='canada'>Canada</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div className='flex items-center gap-1'>
-                            <Select
-                              value={selectedShippingMethod}
-                              onValueChange={setSelectedShippingMethod}
-                            >
-                              <SelectTrigger className='h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value='tdpacket-electro'>
-                                  TDPacket Electro
-                                </SelectItem>
-                                <SelectItem value='standard'>
-                                  Standard Shipping
-                                </SelectItem>
-                                <SelectItem value='express'>
-                                  Express Shipping
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <div className='flex shrink-0 items-center gap-0.5'>
-                              <div className='h-1.5 w-1.5 rounded-full bg-green-500' />
-                              <span className='text-[10px] whitespace-nowrap text-green-600'>
-                                Available
-                              </span>
+
+                          <div className='h-8 w-px shrink-0 bg-gray-200' />
+
+                          <div className='flex flex-1 items-center gap-1.5'>
+                            <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
+                              <Truck className='h-3.5 w-3.5 text-gray-600' />
+                            </div>
+                            <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
+                              <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                                <span className='whitespace-nowrap'>
+                                  By Shipping Method
+                                </span>
+                                <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                              </div>
+                              <div className='flex items-center gap-1'>
+                                <Select
+                                  value={selectedShippingMethod}
+                                  onValueChange={setSelectedShippingMethod}
+                                >
+                                  <SelectTrigger className='h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value='tdpacket-electro'>
+                                      TDPacket Electro
+                                    </SelectItem>
+                                    <SelectItem value='standard'>
+                                      Standard Shipping
+                                    </SelectItem>
+                                    <SelectItem value='express'>
+                                      Express Shipping
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <div className='flex shrink-0 items-center gap-0.5'>
+                                  <div className='h-1.5 w-1.5 rounded-full bg-green-500' />
+                                  <span className='text-[10px] whitespace-nowrap text-green-600'>
+                                    Available
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div> */}
 
-                    {/* 预计时间和费用 */}
-                    {/* <div className='space-y-2 border-t pt-4'>
-                      <div className='text-sm'>
-                        <span className='text-muted-foreground'>
-                          Estimated Processing Time:{' '}
-                        </span>
-                        <span>1-3 days for 80% orders</span>
-                      </div>
-                      <div className='text-sm'>
-                        <span className='text-muted-foreground'>
-                          Estimated Shipping Time:{' '}
-                        </span>
-                        <span>8-15 days</span>
-                      </div>
-                      <div className='text-sm'>
-                        <span className='text-muted-foreground'>
-                          Shipping Fee:{' '}
-                        </span>
-                        <span className='font-semibold'>$6.99</span>
-                      </div>
-                    </div> */}
+                        <div className='space-y-2 border-t pt-4'>
+                          <div className='text-sm'>
+                            <span className='text-muted-foreground'>
+                              Estimated Processing Time:{' '}
+                            </span>
+                            <span>1-3 days for 80% orders</span>
+                          </div>
+                          <div className='text-sm'>
+                            <span className='text-muted-foreground'>
+                              Estimated Shipping Time:{' '}
+                            </span>
+                            <span>8-15 days</span>
+                          </div>
+                          <div className='text-sm'>
+                            <span className='text-muted-foreground'>
+                              Shipping Fee:{' '}
+                            </span>
+                            <span className='font-semibold'>$6.99</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -584,14 +685,19 @@ export function ProductDetails() {
                     open={isPublishDialogOpen}
                     onOpenChange={setIsPublishDialogOpen}
                   >
-                    <DialogTrigger asChild>
-                      {!isFromPackagingProducts ? (
-                        <Button className='w-full' size='lg'>
+                    {!isFromPackagingProducts ? (
+                      <Button
+                        className='w-full'
+                        size='lg'
+                        onClick={handlePublishToStoreClick}
+                      >
+                        {/* 添加这个div来统一布局 */}
+                        <div className='flex w-full items-center justify-start'>
                           <Store className='mr-2 h-4 w-4' />
-                          Publish To Store
-                        </Button>
-                      ) : null}
-                    </DialogTrigger>
+                          <span>Publish To Store</span>
+                        </div>
+                      </Button>
+                    ) : null}
                     <DialogContent className='sm:max-w-md'>
                       <DialogHeader>
                         <DialogTitle>Publish To Store</DialogTitle>
@@ -602,16 +708,34 @@ export function ProductDetails() {
                           <Select
                             value={selectedStore}
                             onValueChange={setSelectedStore}
+                            disabled={isLoadingStores}
                           >
                             <SelectTrigger id='store-select'>
-                              <SelectValue placeholder='Select Store to Publish' />
+                              <SelectValue
+                                placeholder={
+                                  isLoadingStores
+                                    ? 'Loading shops...'
+                                    : stores.length === 0
+                                      ? 'No shops available'
+                                      : 'Select Store to Publish'
+                                }
+                              />
                             </SelectTrigger>
                             <SelectContent>
-                              {stores.map((store) => (
-                                <SelectItem key={store.id} value={store.value}>
-                                  {store.name}
-                                </SelectItem>
-                              ))}
+                              {stores.length === 0 && !isLoadingStores ? (
+                                <div className='text-muted-foreground px-2 py-1.5 text-sm'>
+                                  No shops available
+                                </div>
+                              ) : (
+                                stores.map((store) => (
+                                  <SelectItem
+                                    key={store.id}
+                                    value={store.value}
+                                  >
+                                    {store.name}
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
@@ -654,8 +778,11 @@ export function ProductDetails() {
                       size='lg'
                       onClick={handleBuySampleClick}
                     >
-                      <ShoppingCart className='mr-2 h-4 w-4' />
-                      Buy Sample
+                      {/* 使用相同的div结构 */}
+                      <div className='flex w-full items-center justify-start'>
+                        <ShoppingCart className='mr-2 h-4 w-4' />
+                        <span>Buy Sample</span>
+                      </div>
                     </Button>
                   ) : null}
                   {!isFromPackagingProducts ? (
@@ -665,14 +792,18 @@ export function ProductDetails() {
                       size='lg'
                       onClick={handleBuyStockClick}
                     >
-                      <Tag className='mr-2 h-4 w-4' />
-                      Buy Stock
+                      <div className='flex w-full items-center justify-start'>
+                        <Tag className='mr-2 h-4 w-4' />
+                        <span>Buy Stock</span>
+                      </div>
                     </Button>
                   ) : null}
 
                   <Button variant='outline' className='w-full' size='lg'>
-                    <Plus className='mr-2 h-4 w-4' />
-                    Add To My
+                    <div className='flex w-full items-center justify-start'>
+                      <Plus className='mr-2 h-4 w-4' />
+                      <span>My Packaging</span>
+                    </div>
                   </Button>
 
                   {isFromPackagingProducts && (
@@ -684,8 +815,10 @@ export function ProductDetails() {
                         navigate({ to: `/products/${productData.id}/design` })
                       }}
                     >
-                      <Palette className='mr-2 h-4 w-4' />
-                      Design
+                      <div className='flex w-full items-center justify-start'>
+                        <Palette className='mr-2 h-4 w-4' />
+                        <span>Design</span>
+                      </div>
                     </Button>
                   )}
                 </div>

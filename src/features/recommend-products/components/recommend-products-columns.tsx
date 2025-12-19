@@ -76,7 +76,7 @@ export const recommendProductsColumns: ColumnDef<RecommendProduct>[] = [
       const product = row.original
       return (
         <div className='text-xs font-medium text-green-600'>
-          {product.priceMin.toFixed(2)}-{product.priceMax.toFixed(2)}
+          {product.priceMin.toFixed(2)}
         </div>
       )
     },

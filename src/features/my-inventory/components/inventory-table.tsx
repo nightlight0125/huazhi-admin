@@ -98,15 +98,14 @@ export function InventoryTable({ data }: InventoryTableProps) {
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <DataTableToolbar
         table={table}
-        searchPlaceholder='please Enter SPU'
-        extraSearch2={{
-          columnId: 'warehouse',
-          placeholder: 'please Enter Warehouse',
-        }}
-        extraSearch={{
-          columnId: 'sku',
-          placeholder: 'please Enter HZ SKU',
-        }}
+        searchPlaceholder='please Enter SPU, SKU'
+        filters={[
+          {
+            columnId: 'warehouse',
+            title: 'warehouse',
+            options: [],
+          },
+        ]}
       />
       <div className='overflow-hidden rounded-md border'>
         <UITable>

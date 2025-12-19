@@ -54,7 +54,7 @@ export const createSupportTicketsColumns = (options?: {
     },
     {
       id: 'hzOrder',
-      header: 'HZ Order',
+      header: 'Order',
       cell: ({ row }) => {
         const ticket = row.original
         return (
@@ -66,8 +66,8 @@ export const createSupportTicketsColumns = (options?: {
               </div>
             </div>
             <div className='space-y-0.5 text-sm'>
-              <div>HZ Order NO: {ticket.hzOrderNo}</div>
-              <div>HZ SKU: {ticket.hzSku}</div>
+              <div>Order NO: {ticket.hzOrderNo}</div>
+              <div>SKU: {ticket.hzSku}</div>
               <div>Variant: {ticket.variant}</div>
               <div>QTY: {ticket.qty}</div>
               <div>Total Price: ${ticket.totalPrice}</div>

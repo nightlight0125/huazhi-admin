@@ -3,18 +3,10 @@ import { useNavigate } from '@tanstack/react-router'
 import { Heart, ShoppingCart, Store } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
 import { FilterToolbar } from '@/components/filter-toolbar'
 import { ImageSearchInput } from '@/components/image-search-input'
 import { PriceRangePopover } from '@/components/price-range-popover'
-import { locations, suppliers } from '@/features/products/data/data'
 import { type Product } from '@/features/products/data/schema'
 
 // Category tree data
@@ -84,12 +76,13 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   const [selectedPriceRange, setSelectedPriceRange] = useState<
     { min: number; max: number } | undefined
   >(undefined)
-  const [selectedLocation, setSelectedLocation] = useState<string | undefined>(
-    undefined
-  )
-  const [selectedSupplier, setSelectedSupplier] = useState<string | undefined>(
-    undefined
-  )
+  // TODO: Location and supplier filters will be implemented in the future
+  // const [selectedLocation, setSelectedLocation] = useState<string | undefined>(
+  //   undefined
+  // )
+  // const [selectedSupplier, setSelectedSupplier] = useState<string | undefined>(
+  //   undefined
+  // )
 
   // Synced with URL states
   const { globalFilter, onGlobalFilterChange, pagination } = useTableUrlState({
@@ -152,11 +145,12 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     }
 
     // Apply location filter
-    if (selectedLocation) {
-      result = result.filter(
-        (product) => product.shippingLocation === selectedLocation
-      )
-    }
+    // TODO: Implement location filter when selectedLocation is used
+    // if (selectedLocation) {
+    //   result = result.filter(
+    //     (product) => product.shippingLocation === selectedLocation
+    //   )
+    // }
 
     return result
   }, [
@@ -164,7 +158,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     globalFilter,
     selectedCategories,
     selectedPriceRange,
-    selectedLocation,
+    // selectedLocation,
   ])
 
   const pageSize = pagination.pageSize || 8
@@ -197,17 +191,18 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     })
   }
 
-  const locationOptions = [
-    { label: ' Ship from anywhere', value: 'all' },
-    ...locations.map((loc) => ({ label: loc.label, value: loc.value })),
-  ]
+  // TODO: Location and supplier options will be used when filters are implemented
+  // const locationOptions = [
+  //   { label: ' Ship from anywhere', value: 'all' },
+  //   ...locations.map((loc) => ({ label: loc.label, value: loc.value })),
+  // ]
 
-  const supplierOptions = [
-    { label: 'All suppliers', value: 'all' },
-    ...suppliers
-      .filter((s) => s.value !== 'all')
-      .map((s) => ({ label: s.label, value: s.value })),
-  ]
+  // const supplierOptions = [
+  //   { label: 'All suppliers', value: 'all' },
+  //   ...suppliers
+  //     .filter((s) => s.value !== 'all')
+  //     .map((s) => ({ label: s.label, value: s.value })),
+  // ]
 
   return (
     <div className='space-y-4'>
@@ -236,42 +231,6 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
             value={selectedPriceRange}
             onChange={setSelectedPriceRange}
           />,
-          <Select
-            key='location'
-            value={selectedLocation || 'all'}
-            onValueChange={(value) =>
-              setSelectedLocation(value === 'all' ? undefined : value)
-            }
-          >
-            <SelectTrigger className='min-w-[160px] border-dashed'>
-              <SelectValue placeholder='Ship from anywhere' />
-            </SelectTrigger>
-            <SelectContent>
-              {locationOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>,
-          <Select
-            key='supplier'
-            value={selectedSupplier || 'all'}
-            onValueChange={(value) =>
-              setSelectedSupplier(value === 'all' ? undefined : value)
-            }
-          >
-            <SelectTrigger className='min-w-[140px] border-dashed'>
-              <SelectValue placeholder='All suppliers' />
-            </SelectTrigger>
-            <SelectContent>
-              {supplierOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>,
         ]}
       />
 
@@ -304,13 +263,13 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
               {/* Product Info */}
               <div className='space-y-1.5 p-2.5'>
                 {/* Product Title */}
-                <h3 className='line-clamp-2 h-5 text-sm leading-tight font-semibold'>
+                <h3 className='line-clamp-2 h-10 text-sm leading-tight font-semibold'>
                   {product.name}
                 </h3>
 
                 {/* SPU */}
                 <p className='font-mono text-xs text-gray-600'>
-                  HZ SPU : {product.sku}
+                  SPU : {product.sku}
                 </p>
 
                 {/* Price */}

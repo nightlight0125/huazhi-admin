@@ -1,6 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { DataTableColumnHeader } from '@/components/data-table'
 import { Checkbox } from '@/components/ui/checkbox'
+import { DataTableColumnHeader } from '@/components/data-table'
 import { type InventoryItem } from '../data/schema'
 
 export const inventoryColumns: ColumnDef<InventoryItem>[] = [
@@ -38,7 +38,7 @@ export const inventoryColumns: ColumnDef<InventoryItem>[] = [
   {
     accessorKey: 'sku',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='HZ SKU' />
+      <DataTableColumnHeader column={column} title='SKU' />
     ),
     cell: ({ row }) => <div>{row.getValue('sku')}</div>,
   },
@@ -50,9 +50,7 @@ export const inventoryColumns: ColumnDef<InventoryItem>[] = [
     cell: ({ row }) => {
       const price = row.getValue<number>('price') ?? 0
       return (
-        <div className='font-medium text-green-600'>
-          ${price.toFixed(2)}
-        </div>
+        <div className='font-medium text-green-600'>${price.toFixed(2)}</div>
       )
     },
   },

@@ -1,11 +1,14 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type Logistics } from '../data/schema'
 
-export const createLogisticsColumns = (): ColumnDef<Logistics>[] => {
+export const createLogisticsColumns = (
+  onEditShippingTo?: (row: Logistics) => void
+): ColumnDef<Logistics>[] => {
   return [
     {
       id: 'select',
@@ -36,6 +39,7 @@ export const createLogisticsColumns = (): ColumnDef<Logistics>[] => {
     },
     {
       accessorKey: 'sku',
+      size: 150,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='SKU' />
       ),
@@ -43,7 +47,7 @@ export const createLogisticsColumns = (): ColumnDef<Logistics>[] => {
         const logistics = row.original
         return (
           <div className='flex items-center gap-3'>
-            <div className='bg-muted h-16 w-16 flex-shrink-0 rounded border overflow-hidden'>
+            <div className='bg-muted h-16 w-16 flex-shrink-0 overflow-hidden rounded border'>
               {logistics.productImage ? (
                 <img
                   src={logistics.productImage}
@@ -61,12 +65,13 @@ export const createLogisticsColumns = (): ColumnDef<Logistics>[] => {
             </div>
             <div className='space-y-0.5 text-sm'>
               <div className='font-medium'>{logistics.sku}</div>
-              <div className='text-muted-foreground'>Variant: {logistics.variant}</div>
+              <div className='text-muted-foreground'>
+                Variant: {logistics.variant}
+              </div>
             </div>
           </div>
         )
       },
-      size: 350,
     },
     {
       accessorKey: 'qty',
@@ -119,16 +124,23 @@ export const createLogisticsColumns = (): ColumnDef<Logistics>[] => {
       cell: ({ row }) => {
         const logistics = row.original
         return (
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={() => {
-              // TODO: Implement set as default functionality
-              console.log('Set as default:', logistics)
-            }}
-          >
-            Set As Default
-          </Button>
+          <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-7 px-2 text-xs'
+              onClick={() => onEditShippingTo?.(logistics)}
+            >
+              <Pencil className='mr-1 h-3.5 w-3.5' />
+            </Button>
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-7 border-red-200 px-2 text-xs text-red-500'
+            >
+              <Trash2 className='mr-1 h-3.5 w-3.5' />
+            </Button>
+          </div>
         )
       },
       enableSorting: false,
@@ -136,4 +148,3 @@ export const createLogisticsColumns = (): ColumnDef<Logistics>[] => {
     },
   ]
 }
-

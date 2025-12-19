@@ -82,7 +82,7 @@ function ProductDetailRow({
                         </Button>
                       )}
                       <div
-                        style={{ width: '150px', wordBreak: 'break-all' }}
+                        style={{ width: '220px', wordBreak: 'break-all' }}
                         className='text-[12px]'
                       >
                         {index === 0

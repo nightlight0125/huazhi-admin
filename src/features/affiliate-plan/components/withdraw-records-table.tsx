@@ -125,7 +125,8 @@ export function WithdrawRecordsTable({ data }: WithdrawRecordsTableProps) {
     <div className='space-y-4'>
       <DataTableToolbar
         table={table}
-        searchPlaceholder='Enter Type'
+        showSearch={false}
+        showSearchButton={false}
         dateRange={{
           enabled: true,
           columnId: 'dateTime',
