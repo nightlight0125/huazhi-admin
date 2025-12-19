@@ -37,22 +37,22 @@ export function Orders() {
                 columnId: 'createdAt',
                 placeholder: 'Select Date Range',
               }}
-              customFilterSlot={
-                <CountrySelect
-                  className='min-w-[260px]'
-                  value={
-                    ((table.getColumn('country')?.getFilterValue() as
-                      | string[]
-                      | undefined) ?? [])[0]
-                  }
-                  onChange={(value) => {
-                    const column = table.getColumn('country')
-                    if (!column) return
-                    column.setFilterValue(value ? [value] : undefined)
-                  }}
-                  placeholder='Select country'
-                />
-              }
+              // customFilterSlot={
+              //   <CountrySelect
+              //     className='min-w-[260px]'
+              //     value={
+              //       ((table.getColumn('country')?.getFilterValue() as
+              //         | string[]
+              //         | undefined) ?? [])[0]
+              //     }
+              //     onChange={(value) => {
+              //       const column = table.getColumn('country')
+              //       if (!column) return
+              //       column.setFilterValue(value ? [value] : undefined)
+              //     }}
+              //     placeholder='Select country'
+              //   />
+              // }
               filters={[
                 {
                   columnId: 'store',
@@ -84,6 +84,24 @@ export function Orders() {
                     })),
                 },
               ]}
+            />
+          </div>
+        )}
+        {table && (
+          <div className='w-[260px]'>
+            <CountrySelect
+              className='w-full'
+              value={
+                ((table.getColumn('country')?.getFilterValue() as
+                  | string[]
+                  | undefined) ?? [])[0]
+              }
+              onChange={(value) => {
+                const column = table.getColumn('country')
+                if (!column) return
+                column.setFilterValue(value ? [value] : undefined)
+              }}
+              placeholder='Select country'
             />
           </div>
         )}
