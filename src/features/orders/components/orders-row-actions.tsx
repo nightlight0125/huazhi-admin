@@ -13,12 +13,14 @@ interface OrdersRowActionsProps {
   row: Row<Order>
   onModifyProduct?: (orderId: string) => void
   onEditAddress?: (orderId: string) => void
+  onPay?: (orderId: string) => void
 }
 
 export function OrdersRowActions({
   row,
   onModifyProduct,
   onEditAddress,
+  onPay,
 }: OrdersRowActionsProps) {
   const order = row.original
 
@@ -41,8 +43,7 @@ export function OrdersRowActions({
       >
         <DropdownMenuItem
           onClick={() => {
-            // 原来 Pay 按钮没有事件，这里仅保留占位
-            console.log('Pay order:', order.id)
+            onPay?.(order.id)
           }}
         >
           <CreditCard className='mr-2 h-4 w-4' />

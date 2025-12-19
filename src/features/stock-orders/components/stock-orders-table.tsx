@@ -29,7 +29,7 @@ import { type StockOrder } from '../data/schema'
 import { StockOrdersActionsMenu } from './stock-orders-actions-menu'
 import { StockOrdersBulkActions } from './stock-orders-bulk-actions'
 import { createStockOrdersColumns } from './stock-orders-columns'
-import { StockOrdersPayDialog } from './stock-orders-pay-dialog'
+import { OrderPayDialog, type OrderPayable } from '@/components/order-pay-dialog'
 import { StockOrdersTableFooter } from './stock-orders-table-footer'
 
 const route = getRouteApi('/_authenticated/stock-orders/')
@@ -49,7 +49,7 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
   const [activeTab, setActiveTab] = useState('all')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [selectedOrderForPayment, setSelectedOrderForPayment] =
-    useState<StockOrder | null>(null)
+    useState<OrderPayable | null>(null)
 
   // Synced with URL states
   const {
@@ -77,7 +77,11 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
   const handlePay = (orderId: string) => {
     const order = data.find((o) => o.id === orderId)
     if (order) {
-      setSelectedOrderForPayment(order)
+      // Convert StockOrder to OrderPayable
+      setSelectedOrderForPayment({
+        id: order.id,
+        getTotalAmount: () => order.cost.total,
+      })
       setPayDialogOpen(true)
     }
   }
@@ -273,7 +277,7 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
 
       <StockOrdersBulkActions table={table} />
 
-      <StockOrdersPayDialog
+      <OrderPayDialog
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
         order={selectedOrderForPayment}

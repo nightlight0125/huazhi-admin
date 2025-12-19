@@ -28,6 +28,7 @@ import { orderStatuses } from '../data/data'
 import { type Order, type OrderProduct } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { OrdersBatchPaymentDialog } from './orders-batch-payment-dialog'
+import { OrderPayDialog, type OrderPayable } from '@/components/order-pay-dialog'
 import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
 import { OrdersEditCustomerNameDialog } from './orders-edit-customer-name-dialog'
@@ -155,6 +156,9 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     order: null,
   })
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [payDialogOpen, setPayDialogOpen] = useState(false)
+  const [selectedOrderForPayment, setSelectedOrderForPayment] =
+    useState<OrderPayable | null>(null)
 
   // Synced with URL states
   const {
@@ -268,6 +272,18 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     setEditCustomerNameDialog({ open: false, order: null })
   }
 
+  const handlePay = (orderId: string) => {
+    const order = data.find((o) => o.id === orderId)
+    if (order) {
+      // Convert Order to OrderPayable
+      setSelectedOrderForPayment({
+        id: order.id,
+        getTotalAmount: () => order.totalCost,
+      })
+      setPayDialogOpen(true)
+    }
+  }
+
   const columns = useMemo(
     () =>
       createOrdersColumns({
@@ -291,6 +307,7 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
         },
         onEditAddress: handleEditAddress,
         onEditCustomerName: handleEditCustomerName,
+        onPay: handlePay,
       }),
     [expandedRows, data]
   )
@@ -528,6 +545,12 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
         selectedOrders={table
           .getFilteredSelectedRowModel()
           .rows.map((row) => row.original)}
+      />
+
+      <OrderPayDialog
+        open={payDialogOpen}
+        onOpenChange={setPayDialogOpen}
+        order={selectedOrderForPayment}
       />
     </div>
   )

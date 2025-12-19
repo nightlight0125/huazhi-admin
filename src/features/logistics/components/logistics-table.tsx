@@ -119,7 +119,7 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
     <div className='space-y-4'>
       <DataTableToolbar
         table={table}
-        searchPlaceholder='please Enter SKU or Shipping From or Shipping To or Shipping Method'
+        searchPlaceholder='please Enter SPU or Shipping From or Shipping To or Shipping Method'
         // extraSearch={{
         //   columnId: 'shippingFrom',
         //   placeholder: 'please Enter Shipping From',

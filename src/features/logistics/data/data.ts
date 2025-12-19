@@ -8,7 +8,7 @@ const shippingToLocations = ['USA', 'UK', 'Canada', 'Australia', 'Germany', 'Fra
 export const logisticsData: Logistics[] = Array.from({ length: 50 }, () => {
   return {
     id: `LOG-${faker.string.alphanumeric(8).toUpperCase()}`,
-    sku: `SKU:${faker.string.numeric(7)}`,
+    sku: `SPU:${faker.string.numeric(7)}`,
     variant: `POD/${faker.number.int({ min: 5, max: 12 })}*${faker.number.int({ min: 8, max: 14 })}/Customized on demand`,
     qty: faker.number.int({ min: 1, max: 10 }),
     shippingMethod: faker.helpers.arrayElement(shippingMethods),
