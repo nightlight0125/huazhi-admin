@@ -136,11 +136,7 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     <div className='space-y-4'>
       <DataTableToolbar
         table={table}
-        searchPlaceholder='please support ticket number'
-        extraSearch={{
-          columnId: 'supportTicketNo',
-          placeholder: 'please Enter Order No.',
-        }}
+        searchPlaceholder='enter ticket number Order No'
         filters={[
           {
             columnId: 'storeName',

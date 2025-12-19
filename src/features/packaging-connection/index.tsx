@@ -14,7 +14,7 @@ import {
 import { packagingConnections } from './data/data'
 import { type PackagingProduct, type StoreSku } from './data/schema'
 
-type TabType = 'products' | 'stores'
+type TabType = 'products' | 'stores' | 'order'
 
 const tabs = [
   {
@@ -23,14 +23,14 @@ const tabs = [
     icon: Package,
   },
   {
-    value: 'store' as TabType,
-    label: 'Store',
-    icon: Package,
-  },
-  {
     value: 'order' as TabType,
     label: 'Order',
     icon: Store,
+  },
+  {
+    value: 'stores' as TabType,
+    label: 'Store',
+    icon: Package,
   },
 ]
 
@@ -159,7 +159,7 @@ export function PackagingConnection() {
             onValueChange={(value) => setActiveTab(value as TabType)}
             className='w-full'
           >
-            <TabsList className='mb-4 grid h-9 w-fit grid-cols-2 gap-1'>
+            <TabsList className='mb-4 inline-flex h-9 items-center gap-1'>
               {tabs.map((tab) => {
                 return (
                   <TabsTrigger
@@ -187,14 +187,14 @@ export function PackagingConnection() {
                       },
                       ...(tab.value === 'stores'
                         ? [
-                            {
-                              columnId: 'status',
-                              title: 'Status',
-                              options: [
-                                { label: 'Connected', value: 'connected' },
-                                { label: 'Unconnected', value: 'unconnected' },
-                              ],
-                            },
+                          {
+                            columnId: 'status',
+                            title: 'Status',
+                            options: [
+                              { label: 'Connected', value: 'connected' },
+                              { label: 'Unconnected', value: 'unconnected' },
+                            ],
+                          },
                           ]
                         : []),
                     ]}
