@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -111,10 +111,6 @@ export function ProductsConnectionDialog({
     connections.find((c) => c.storeProductId === storeProductId)
       ?.teemDropProductId
 
-  const getConnectedStoreProductId = (teemDropProductId: string) =>
-    connections.find((c) => c.teemDropProductId === teemDropProductId)
-      ?.storeProductId
-
   const isStoreConnected = (storeProductId: string) =>
     connections.some((c) => c.storeProductId === storeProductId)
 
@@ -124,6 +120,118 @@ export function ProductsConnectionDialog({
         c.storeProductId === selectedStoreProductId &&
         c.teemDropProductId === teemDropProductId
     )
+
+  /* ---------- sorted Store Products and TeemDrop Products ---------- */
+
+  // 统一的排序逻辑：根据连接关系，使得左侧第 i 个 Store Product 和右侧第 i 个 TeemDrop Product 尽量对齐
+  // 如果它们已连接，则显示在相同位置；如果未连接，则按原始顺序填充
+  const { sortedStoreProducts, sortedTeemDropProducts } = useMemo(() => {
+    // 创建连接映射
+    const storeToTeemDrop = new Map<string, string>()
+    const teemDropToStore = new Map<string, string>()
+    connections.forEach((conn) => {
+      storeToTeemDrop.set(conn.storeProductId, conn.teemDropProductId)
+      teemDropToStore.set(conn.teemDropProductId, conn.storeProductId)
+    })
+
+    // 记录已使用的产品
+    const usedStoreIds = new Set<string>()
+    const usedTeemDropIds = new Set<string>()
+
+    // 获取下一个未使用的 Store Product（按原始顺序）
+    let storeCursor = 0
+    const getNextUnusedStore = (): StoreProduct | null => {
+      while (
+        storeCursor < mockStoreProducts.length &&
+        usedStoreIds.has(mockStoreProducts[storeCursor].id)
+      ) {
+        storeCursor++
+      }
+      if (storeCursor >= mockStoreProducts.length) return null
+      const product = mockStoreProducts[storeCursor]
+      storeCursor++
+      usedStoreIds.add(product.id)
+      return product
+    }
+
+    // 获取下一个未使用的 TeemDrop Product（按原始顺序）
+    let teemDropCursor = 0
+    const getNextUnusedTeemDrop = (): TeemDropProduct | null => {
+      while (
+        teemDropCursor < mockTeemDropProducts.length &&
+        usedTeemDropIds.has(mockTeemDropProducts[teemDropCursor].id)
+      ) {
+        teemDropCursor++
+      }
+      if (teemDropCursor >= mockTeemDropProducts.length) return null
+      const product = mockTeemDropProducts[teemDropCursor]
+      teemDropCursor++
+      usedTeemDropIds.add(product.id)
+      return product
+    }
+
+    const sortedStores: StoreProduct[] = []
+    const sortedTeemDrops: TeemDropProduct[] = []
+
+    // 最大长度：取两个列表的最大值
+    const maxLength = Math.max(
+      mockStoreProducts.length,
+      mockTeemDropProducts.length
+    )
+
+    // 按位置对齐排序
+    for (let i = 0; i < maxLength; i++) {
+      // 尝试找到已连接的对
+      let foundPair = false
+
+      // 先检查未使用的 Store Product 是否有连接
+      for (const store of mockStoreProducts) {
+        if (usedStoreIds.has(store.id)) continue
+
+        const connectedTeemDropId = storeToTeemDrop.get(store.id)
+        if (connectedTeemDropId && !usedTeemDropIds.has(connectedTeemDropId)) {
+          const teemDrop = mockTeemDropProducts.find(
+            (p) => p.id === connectedTeemDropId
+          )
+          if (teemDrop) {
+            sortedStores.push(store)
+            sortedTeemDrops.push(teemDrop)
+            usedStoreIds.add(store.id)
+            usedTeemDropIds.add(teemDrop.id)
+            foundPair = true
+            break
+          }
+        }
+      }
+
+      // 如果没有找到已连接的对，则按原始顺序填充
+      if (!foundPair) {
+        const nextStore = getNextUnusedStore()
+        const nextTeemDrop = getNextUnusedTeemDrop()
+
+        if (nextStore) sortedStores.push(nextStore)
+        if (nextTeemDrop) sortedTeemDrops.push(nextTeemDrop)
+      }
+    }
+
+    // 追加剩余未使用的产品
+    mockStoreProducts.forEach((product) => {
+      if (!usedStoreIds.has(product.id)) {
+        sortedStores.push(product)
+      }
+    })
+
+    mockTeemDropProducts.forEach((product) => {
+      if (!usedTeemDropIds.has(product.id)) {
+        sortedTeemDrops.push(product)
+      }
+    })
+
+    return {
+      sortedStoreProducts: sortedStores,
+      sortedTeemDropProducts: sortedTeemDrops,
+    }
+  }, [connections])
 
   /* ---------- core logic ---------- */
 
@@ -173,15 +281,21 @@ export function ProductsConnectionDialog({
           <div className='flex flex-1 flex-col overflow-hidden'>
             <h3 className='mb-4 text-sm font-semibold'>Store Products</h3>
             <div className='flex-1 space-y-3 overflow-y-auto'>
-              {mockStoreProducts.map((product) => {
+              {sortedStoreProducts.map((product, index) => {
                 const selected = selectedStoreProductId === product.id
                 const connected = isStoreConnected(product.id)
+                // 检查这个产品是否连接到对应位置的 TeemDrop Product
+                const teemDropProductAtSameIndex = sortedTeemDropProducts[index]
+                const isConnectedToSameIndex =
+                  teemDropProductAtSameIndex &&
+                  getConnectedTeemDropId(product.id) ===
+                    teemDropProductAtSameIndex.id
 
                 return (
                   <div
                     key={product.id}
                     onClick={() => setSelectedStoreProductId(product.id)}
-                    className={`cursor-pointer rounded-lg border p-3 transition ${selected ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
+                    className={`cursor-pointer rounded-lg border p-3 transition ${selected || isConnectedToSameIndex ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
                   >
                     <div className='flex gap-3'>
                       <img
@@ -195,7 +309,7 @@ export function ProductsConnectionDialog({
                         </p>
                       </div>
                       {connected && (
-                        <span className='text-primary text-xs'>Connected</span>
+                        <span className='text-primary text-xs'>Unbind</span>
                       )}
                     </div>
                   </div>
@@ -206,10 +320,19 @@ export function ProductsConnectionDialog({
 
           {/* ================= 中间 ================= */}
           <div className='flex w-12 flex-col items-center pt-10'>
-            {mockStoreProducts.map((p) => (
+            {sortedStoreProducts.map((p, index) => (
               <div key={p.id} className='flex h-[88px] items-center'>
-                {getConnectedTeemDropId(p.id) ? (
-                  <Link2 className='text-primary h-5 w-5' />
+                {getConnectedTeemDropId(p.id) &&
+                sortedTeemDropProducts[index] &&
+                getConnectedTeemDropId(p.id) ===
+                  sortedTeemDropProducts[index].id ? (
+                  <div className='flex w-12 items-center justify-center'>
+                    <div className='flex items-center gap-1'>
+                      <div className='h-px w-3 border-t border-dashed border-orange-500' />
+                      <Link2 className='h-4 w-4 text-orange-500' />
+                      <div className='h-px w-3 border-t border-dashed border-orange-500' />
+                    </div>
+                  </div>
                 ) : (
                   <Link2 className='text-muted-foreground h-5 w-5 opacity-30' />
                 )}
@@ -221,15 +344,20 @@ export function ProductsConnectionDialog({
           <div className='flex flex-1 flex-col overflow-hidden'>
             <h3 className='mb-4 text-sm font-semibold'>TeemDrop Products</h3>
             <div className='flex-1 space-y-3 overflow-y-auto'>
-              {mockTeemDropProducts.map((product) => {
-                const connectedStore = getConnectedStoreProductId(product.id)
+              {sortedTeemDropProducts.map((product, index) => {
                 const active = isConnectedToSelected(product.id)
+                // 检查这个产品是否连接到对应位置的 Store Product
+                const storeProductAtSameIndex = sortedStoreProducts[index]
+                const isConnectedToSameIndex =
+                  storeProductAtSameIndex &&
+                  getConnectedTeemDropId(storeProductAtSameIndex.id) ===
+                    product.id
 
                 return (
                   <div
                     key={product.id}
                     onClick={() => handleConnect(product.id)}
-                    className={`cursor-pointer rounded-lg border p-3 transition ${active ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
+                    className={`cursor-pointer rounded-lg border p-3 transition ${active || isConnectedToSameIndex ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
                   >
                     <div className='flex gap-3'>
                       <img
@@ -242,9 +370,6 @@ export function ProductsConnectionDialog({
                           SKU: {product.tdSku}
                         </p>
                       </div>
-                      {connectedStore && (
-                        <span className='text-primary text-xs'>Connected</span>
-                      )}
                     </div>
                   </div>
                 )
