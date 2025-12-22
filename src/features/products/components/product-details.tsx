@@ -62,8 +62,20 @@ export function ProductDetails() {
   })
   const search = useSearch({ from: '/_authenticated/products/$productId' })
   const navigate = useNavigate()
-  const isFromPackagingProducts = search.from === 'packaging-products'
-  const isFromLikedProducts = search.from === 'liked-products'
+  const from = search.from as string | undefined
+  const isFromPackagingProducts = from?.startsWith('packaging-products') ?? false
+  const isFromLikedProducts = from === 'liked-products'
+  const isFromWinningProducts = from === 'winning-products'
+  const isFromAllProducts = from === 'all-products'
+  const shouldShowCollectionButton = isFromWinningProducts || isFromAllProducts
+  const packagingTab =
+    from === 'packaging-products-my'
+      ? 'my-packaging'
+      : from === 'packaging-products'
+        ? 'packaging-products'
+        : undefined
+  const shouldShowBuyStockInPackaging =
+    isFromPackagingProducts && packagingTab === 'my-packaging'
 
   // 查找产品数据 - 先查找普通产品，再查找包装产品
   let regularProduct = products.find((p) => p.id === productId)
@@ -785,7 +797,7 @@ export function ProductDetails() {
                       </div>
                     </Button>
                   ) : null}
-                  {!isFromPackagingProducts ? (
+                  {shouldShowBuyStockInPackaging || !isFromPackagingProducts ? (
                     <Button
                       variant='outline'
                       className='w-full'
@@ -802,7 +814,11 @@ export function ProductDetails() {
                   <Button variant='outline' className='w-full' size='lg'>
                     <div className='flex w-full items-center justify-start'>
                       <Plus className='mr-2 h-4 w-4' />
-                      <span>My Packaging</span>
+                      <span>
+                        {shouldShowCollectionButton
+                          ? 'Collection'
+                          : 'My Packaging'}
+                      </span>
                     </div>
                   </Button>
 

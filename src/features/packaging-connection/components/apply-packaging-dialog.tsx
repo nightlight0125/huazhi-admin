@@ -1,15 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
 
 // 模拟包装产品数据
@@ -158,13 +152,18 @@ export function ApplyPackagingDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='flex max-h-[90vh] flex-col overflow-hidden sm:max-w-4xl'>
-        <DialogHeader>
-          <DialogTitle>Apply Packaging to Product</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side='right'
+        className='flex h-full w-full flex-col sm:!w-[65vw] sm:!max-w-none lg:!w-[960px]'
+      >
+        <div className='border-b px-4 py-3'>
+          <h2 className='text-lg leading-tight font-semibold'>
+            Apply Packaging to Product
+          </h2>
+        </div>
 
-        <div className='flex-1 space-y-6 overflow-y-auto py-4'>
+        <div className='flex-1 space-y-6 overflow-y-auto px-4 py-4'>
           {/* 产品详情区域 */}
           <div className='bg-muted/50 space-y-3 rounded-lg p-4'>
             <div className='flex items-center gap-3'>
@@ -266,7 +265,7 @@ export function ApplyPackagingDialog({
           {/* 包装产品列表 */}
           <div className='space-y-3'>
             <h3 className='text-sm font-medium'>Packaging Products</h3>
-            <div className='grid max-h-[400px] grid-cols-3 gap-4 overflow-y-auto'>
+            <div className='grid max-h-[400px] grid-cols-2 gap-4 overflow-y-auto md:grid-cols-3'>
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
@@ -316,18 +315,18 @@ export function ApplyPackagingDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <div className='flex justify-end gap-2 border-t px-4 py-3'>
           <Button variant='outline' onClick={handleCancel}>
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
-            className='bg-purple-600 text-white hover:bg-purple-700'
+            className='bg-orange-600 text-white hover:bg-orange-700'
           >
             Confirm
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }

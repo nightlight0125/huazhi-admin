@@ -12,6 +12,11 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { type Order } from '../data/schema'
 
 // 平台订单状态样式映射
@@ -185,12 +190,18 @@ export const createOrdersColumns = (options?: {
           order.productList?.reduce((sum, p) => sum + p.totalPrice, 0) || 0
 
         return (
-          <div className='space-y-1 text-sm'>
-            <div>Total: ${order.totalCost.toFixed(2)}</div>
-            <div>Product: ${productTotal.toFixed(2)}</div>
-            <div>Shipping: ${order.shippingCost.toFixed(2)}</div>
-            <div>Qty: {totalQty}</div>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='cursor-default space-y-1 text-sm'>
+                <div>Total: ${order.totalCost.toFixed(2)}</div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className='space-y-0.5 text-xs'>
+              <div>Product: ${productTotal.toFixed(2)}</div>
+              <div>Shipping: ${order.shippingCost.toFixed(2)}</div>
+              <div>Qty: {totalQty}</div>
+            </TooltipContent>
+          </Tooltip>
         )
       },
       size: 150,

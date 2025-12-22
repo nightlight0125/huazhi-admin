@@ -20,6 +20,7 @@ const route = getRouteApi('/_authenticated/packaging-products/')
 
 type PackagingProductsGridProps = {
   data: PackagingProduct[]
+  tab?: 'packaging-products' | 'my-packaging'
 }
 
 const categoryFilters = [
@@ -58,7 +59,7 @@ const columns: ColumnDef<PackagingProduct>[] = [
   },
 ]
 
-export function PackagingProductsGrid({ data }: PackagingProductsGridProps) {
+export function PackagingProductsGrid({ data, tab = 'packaging-products' }: PackagingProductsGridProps) {
   const nav = useNavigate()
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -143,6 +144,10 @@ export function PackagingProductsGrid({ data }: PackagingProductsGridProps) {
       <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
         {table.getRowModel().rows.map((row) => {
           const product = row.original
+          const from =
+            tab === 'my-packaging'
+              ? 'packaging-products-my'
+              : 'packaging-products'
           return (
             <div
               key={product.id}
@@ -151,7 +156,7 @@ export function PackagingProductsGrid({ data }: PackagingProductsGridProps) {
                 nav({
                   to: '/products/$productId',
                   params: { productId: product.id },
-                  search: { from: 'packaging-products' },
+                  search: { from },
                 })
               }
             >
