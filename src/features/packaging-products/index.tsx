@@ -42,11 +42,11 @@ export function PackagingProducts() {
             </TabsList>
 
             <TabsContent value='packaging-products' className='mt-0'>
-              <PackagingProductsGrid data={packagingProducts} />
+              <PackagingProductsGrid data={packagingProducts} tab='packaging-products' />
             </TabsContent>
 
             <TabsContent value='my-packaging' className='mt-0'>
-              <PackagingProductsGrid data={packagingProducts} />
+              <PackagingProductsGrid data={packagingProducts} tab='my-packaging' />
             </TabsContent>
           </Tabs>
         </div>

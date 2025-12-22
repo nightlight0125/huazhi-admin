@@ -70,6 +70,14 @@ export const createStoresColumns = (
     },
   },
   {
+    accessorKey: 'platform',
+    size: 140,
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Store Type' />
+    ),
+    cell: ({ row }) => <div>{row.getValue('platform') || '-'}</div>,
+  },
+  {
     accessorKey: 'id',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store ID' />
@@ -157,14 +165,7 @@ export const createStoresColumns = (
       )
     },
   },
-  {
-    accessorKey: 'platform',
-    size: 140,
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Platform Type' />
-    ),
-    cell: ({ row }) => <div>{row.getValue('platform') || '-'}</div>,
-  },
+
   {
     id: 'actions',
     size: 60,

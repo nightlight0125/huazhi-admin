@@ -33,6 +33,12 @@ const methodOptions = [
   { label: 'DS Express line', value: 'express' },
 ]
 
+const spuOptions = [
+  { label: 'SPU001', value: 'SPU001' },
+  { label: 'SPU002', value: 'SPU002' },
+  { label: 'SPU003', value: 'SPU003' },
+]
+
 const shippingPlanItemSchema = z.object({
   from: z.string().min(1, 'Country is required'),
   method: z.string().min(1, 'Method is required'),
@@ -40,6 +46,7 @@ const shippingPlanItemSchema = z.object({
 
 const shippingPlanFormSchema = z.object({
   sku: z.string().min(1, 'SKU is required'),
+  spu: z.string().optional(),
   to: z.string().min(1, 'Destination is required'),
   plans: z
     .array(shippingPlanItemSchema)
@@ -61,6 +68,7 @@ export function ShippingPlanDialog({
     resolver: zodResolver(shippingPlanFormSchema),
     defaultValues: {
       sku: '',
+      spu: '',
       to: '',
       plans: [{ from: 'FR', method: 'standard' }],
     },
@@ -77,6 +85,7 @@ export function ShippingPlanDialog({
     if (!open) {
       form.reset({
         sku: '',
+        spu: '',
         to: '',
         plans: [{ from: 'FR', method: 'standard' }],
       })
@@ -118,6 +127,26 @@ export function ShippingPlanDialog({
                     Choose your shipping straightly
                   </div>
                 </div>
+
+                {/* SPU 下拉框（单个，不随 plans 遍历） */}
+                <FormField
+                  control={form.control}
+                  name='spu'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SPU</FormLabel>
+                      <SelectDropdown
+                        defaultValue={field.value}
+                        onValueChange={field.onChange}
+                        placeholder='Select SPU'
+                        items={spuOptions}
+                        className='w-full'
+                        isControlled
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className='space-y-2'>
                   {fields.map((field, index) => (

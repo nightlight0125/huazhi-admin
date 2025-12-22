@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import countries from 'world-countries'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,7 +18,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { countries, shippingOrigins } from '@/features/orders/data/data'
+import { shippingOrigins } from '@/features/orders/data/data'
+
+type CountryOption = {
+  value: string
+  label: string
+  flagClass: string
+}
+
+const countryOptions: CountryOption[] = countries.map((country) => {
+  const code = country.cca2.toLowerCase()
+  const flagClass = `fi fi-${code}`
+
+  return {
+    value: country.cca2,
+    label: country.name.common,
+    flagClass,
+  }
+})
 
 export interface AddressData {
   customerName: string
@@ -75,7 +94,7 @@ export function EditAddressDialog({
       setCity(initialData.city || '')
       // Find country value by label, or use the country string directly
       const countryValue =
-        countries.find((c) => c.label === initialData.country)?.value ||
+        countryOptions.find((c) => c.label === initialData.country)?.value ||
         initialData.country ||
         ''
       setCountry(countryValue)
@@ -106,7 +125,7 @@ export function EditAddressDialog({
 
     // Convert value back to label for country and warehouse
     const countryLabel =
-      countries.find((c) => c.value === country)?.label || country
+      countryOptions.find((c) => c.value === country)?.label || country
     const warehouseLabel =
       shippingOrigins.find((o) => o.value === warehouse)?.label || warehouse
 
@@ -131,7 +150,11 @@ export function EditAddressDialog({
       setAddress(initialData.address || '')
       setAddress2(initialData.address2 || '')
       setCity(initialData.city || '')
-      setCountry(initialData.country || '')
+      const countryValue =
+        countryOptions.find((c) => c.label === initialData.country)?.value ||
+        initialData.country ||
+        ''
+      setCountry(countryValue)
       setProvince(initialData.province || '')
       setPostcode(initialData.postalCode || '')
       setPhone(initialData.phoneNumber || '')
@@ -210,11 +233,15 @@ export function EditAddressDialog({
                   <SelectValue placeholder='Select country' />
                 </SelectTrigger>
                 <SelectContent>
-                  {countries.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
+                {countryOptions.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    <span
+                      className={cn(c.flagClass, 'mr-2')}
+                      aria-hidden='true'
+                    />
+                    {c.label}
+                  </SelectItem>
+                ))}
                 </SelectContent>
               </Select>
             </div>

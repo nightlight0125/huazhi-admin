@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { Heart, ShoppingCart, Store } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
@@ -69,6 +69,7 @@ type ProductsGridProps = {
 
 export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   const nav = useNavigate()
+  const location = useLocation()
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     new Set()
@@ -243,13 +244,21 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
             <div
               key={product.id}
               className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
-              onClick={() =>
+              onClick={() => {
+                // 根据当前路由确定来源
+                let fromValue: string | undefined = undefined
+                if (location.pathname.includes('/winning-products')) {
+                  fromValue = 'winning-products'
+                } else if (location.pathname.includes('/all-products')) {
+                  fromValue = 'all-products'
+                }
+
                 nav({
                   to: '/products/$productId',
                   params: { productId: product.id },
-                  search: { from: undefined },
+                  search: { from: fromValue },
                 })
-              }
+              }}
             >
               {/* Product Image */}
               <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
@@ -269,7 +278,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
 
                 {/* SPU */}
                 <p className='font-mono text-xs text-gray-600'>
-                  SPU : {product.sku}
+                  SPU:{product.sku}
                 </p>
 
                 {/* Price */}

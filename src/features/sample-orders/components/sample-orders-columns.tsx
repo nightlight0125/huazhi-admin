@@ -5,6 +5,11 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { type SampleOrder } from '../data/schema'
 
 export const createSampleOrdersColumns = (options?: {
@@ -82,7 +87,7 @@ export const createSampleOrdersColumns = (options?: {
                   </div>
                 )}
                 <div className='min-w-0 flex-1 text-sm leading-snug break-words'>
-                  <div>SKU: {order.sku}</div>
+                  <div>{order.sku}</div>
                   <div className='whitespace-normal'>
                     Variant:{' '}
                     {firstProduct.productVariant
@@ -103,13 +108,19 @@ export const createSampleOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original
         return (
-          <div className='space-y-1 text-sm'>
-            <div>Total: ${order.cost.total.toFixed(2)}</div>
-            {/* <div>Product: ${order.cost.product.toFixed(2)}</div>
-            <div>Shipping: ${order.cost.shipping.toFixed(2)}</div>
-            <div>Other: ${order.cost.other.toFixed(2)}</div>
-            <div>Qty: {order.cost.qty}</div> */}
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='cursor-default space-y-1 text-sm'>
+                <div>Total: ${order.cost.total.toFixed(2)}</div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className='space-y-0.5 text-xs'>
+              <div>Product: ${order.cost.product.toFixed(2)}</div>
+              <div>Shipping: ${order.cost.shipping.toFixed(2)}</div>
+              <div>Other: ${order.cost.other.toFixed(2)}</div>
+              <div>Qty: {order.cost.qty}</div>
+            </TooltipContent>
+          </Tooltip>
         )
       },
       size: 150,

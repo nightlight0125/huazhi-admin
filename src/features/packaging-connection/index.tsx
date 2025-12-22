@@ -36,6 +36,9 @@ const tabs = [
 
 export function PackagingConnection() {
   const [activeTab, setActiveTab] = useState<TabType>('products')
+  const [statusTab, setStatusTab] = useState<
+    'all' | 'connected' | 'unconnected'
+  >('all')
   const [connectDialogOpen, setConnectDialogOpen] = useState(false)
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
   const [selectedStoreSku, setSelectedStoreSku] = useState<StoreSku | null>(
@@ -43,65 +46,6 @@ export function PackagingConnection() {
   )
   const [storeSkuToDisconnect, setStoreSkuToDisconnect] =
     useState<StoreSku | null>(null)
-  // Note: These filters are currently used in filteredData but setter functions are not used
-  // They may be needed for future custom filtering beyond DataTableToolbar
-  const [statusFilter] = useState<'connected' | 'unconnected' | 'all'>('all')
-  const [searchFilters] = useState<{
-    storeName1?: string
-    storeName2?: string
-    storeSku?: string
-    productName?: string
-    status?: 'connected' | 'unconnected'
-  }>({})
-
-  const filteredData = useMemo(() => {
-    let filtered = [...packagingConnections]
-
-    // Apply status filter
-    if (statusFilter === 'connected') {
-      filtered = filtered.filter((item) => item.isConnected)
-    } else if (statusFilter === 'unconnected') {
-      filtered = filtered.filter((item) => !item.isConnected)
-    }
-
-    // Apply search filters
-    if (searchFilters.storeName1) {
-      filtered = filtered.filter((item) =>
-        item.storeName
-          .toLowerCase()
-          .includes(searchFilters.storeName1!.toLowerCase())
-      )
-    }
-
-    if (searchFilters.storeName2) {
-      filtered = filtered.filter((item) =>
-        item.storeName
-          .toLowerCase()
-          .includes(searchFilters.storeName2!.toLowerCase())
-      )
-    }
-
-    if (searchFilters.storeSku) {
-      const searchTerm = searchFilters.storeSku.toLowerCase()
-      filtered = filtered.filter(
-        (item) =>
-          item.sku.toLowerCase().includes(searchTerm) ||
-          item.name.toLowerCase().includes(searchTerm)
-      )
-    }
-
-    if (searchFilters.productName) {
-      const searchTerm = searchFilters.productName.toLowerCase()
-      filtered = filtered.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchTerm) ||
-          item.sku.toLowerCase().includes(searchTerm) ||
-          (item.hzProductSku?.toLowerCase().includes(searchTerm) ?? false)
-      )
-    }
-
-    return filtered
-  }, [statusFilter, searchFilters])
 
   const handleConnect = (storeSku: StoreSku) => {
     setSelectedStoreSku(storeSku)
@@ -129,7 +73,7 @@ export function PackagingConnection() {
   }
 
   const { table, expandedRows, handleExpand } = usePackagingConnectionTable(
-    filteredData,
+    packagingConnections,
     {
       onConnect: handleConnect,
       onDisconnect: handleDisconnect,
@@ -146,6 +90,21 @@ export function PackagingConnection() {
       value: storeName,
     }))
   }, [])
+
+  const handleStatusTabChange = (status: 'connected' | 'unconnected') => {
+    const nextStatus =
+      statusTab === status ? ('all' as const) : (status as typeof statusTab)
+    setStatusTab(nextStatus)
+
+    const statusColumn = table.getColumn('status')
+    if (!statusColumn) return
+
+    if (nextStatus === 'all') {
+      statusColumn.setFilterValue(undefined)
+    } else {
+      statusColumn.setFilterValue([nextStatus])
+    }
+  }
 
   return (
     <>
@@ -176,6 +135,33 @@ export function PackagingConnection() {
             {tabs.map((tab) => (
               <TabsContent key={tab.value} value={tab.value} className='mt-0'>
                 <div className='space-y-4'>
+                  <div className='flex items-center gap-2'>
+                    <Tabs
+                      value={statusTab}
+                      onValueChange={(value) =>
+                        handleStatusTabChange(
+                          value as 'connected' | 'unconnected'
+                        )
+                      }
+                      className='w-fit'
+                    >
+                      <TabsList className='h-8 gap-1'>
+                        <TabsTrigger
+                          value='connected'
+                          className='data-[state=active]:text-primary px-3 py-1.5 text-xs'
+                        >
+                          Connected
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value='unconnected'
+                          className='data-[state=active]:text-primary px-3 py-1.5 text-xs'
+                        >
+                          Unconnected
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+
                   <DataTableToolbar
                     table={table}
                     showSearch={false}
@@ -185,22 +171,10 @@ export function PackagingConnection() {
                         title: 'Store Name',
                         options: storeNameOptions,
                       },
-                      ...(tab.value === 'stores'
-                        ? [
-                          {
-                            columnId: 'status',
-                            title: 'Status',
-                            options: [
-                              { label: 'Connected', value: 'connected' },
-                              { label: 'Unconnected', value: 'unconnected' },
-                            ],
-                          },
-                          ]
-                        : []),
                     ]}
                   />
                   <PackagingConnectionTable
-                    data={filteredData}
+                    data={packagingConnections}
                     table={table}
                     expandedRows={expandedRows}
                     onExpand={handleExpand}

@@ -23,8 +23,8 @@ import {
 } from '@/components/ui/table'
 import { DataTablePagination } from '@/components/data-table'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
-import { createPackagingConnectionColumns } from './packaging-connection-columns'
 import { PackagingConnectionBulkActions } from './packaging-connection-bulk-actions'
+import { createPackagingConnectionColumns } from './packaging-connection-columns'
 
 type DataTableProps = {
   data: StoreSku[]
@@ -226,8 +226,8 @@ export function PackagingConnectionTable({
                                                 }}
                                               />
                                             </div>
-                                            <div className='flex flex-col gap-1'>
-                                              <div className='line-clamp-2 text-sm font-medium'>
+                                            <div className='flex max-w-[300px] flex-col gap-1'>
+                                              <div className='text-sm font-medium break-words whitespace-normal'>
                                                 {pkg.name}
                                               </div>
                                               <div className='text-muted-foreground text-xs'>
