@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import countries from 'world-countries'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -54,17 +56,37 @@ const defaultShippingOptions: ShippingOption[] = [
   },
 ]
 
+type CountryOption = {
+  value: string
+  label: string
+  flagClass: string
+}
+
+const countryOptions: CountryOption[] = countries.map((country) => {
+  const code = country.cca2.toLowerCase()
+  const flagClass = `fi fi-${code}`
+
+  return {
+    value: country.cca2,
+    label: country.name.common,
+    flagClass,
+  }
+})
+
 export function ShippingOptionsDialog({
   open,
   onOpenChange,
-  defaultFrom = 'Hangzhou',
-  defaultTo = 'France',
+  defaultFrom = 'China',
+  defaultTo = 'FR',
   defaultQuantity = 1,
   shippingOptions = defaultShippingOptions,
   onSelect,
 }: ShippingOptionsDialogProps) {
   const [from, setFrom] = useState(defaultFrom)
   const [to, setTo] = useState(defaultTo)
+
+  // Find selected country option for display
+  const selectedCountry = countryOptions.find((c) => c.value === to)
   const [quantity, setQuantity] = useState(defaultQuantity)
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
 
@@ -82,34 +104,54 @@ export function ShippingOptionsDialog({
 
         <div className='space-y-4 py-4'>
           {/* 顶部三个输入框 */}
-          <div className='grid grid-cols-3 gap-3'>
-            <div className='space-y-1'>
+          <div className='grid grid-cols-3 gap-2'>
+            <div className='min-w-0 space-y-1'>
               <label className='text-sm font-medium'>From</label>
               <Select value={from} onValueChange={setFrom}>
-                <SelectTrigger>
+                <SelectTrigger className='w-full'>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='Hangzhou'>Hangzhou</SelectItem>
-                  <SelectItem value='Shanghai'>Shanghai</SelectItem>
-                  <SelectItem value='Beijing'>Beijing</SelectItem>
-                  <SelectItem value='Guangzhou'>Guangzhou</SelectItem>
+                  <SelectItem value='China'>China</SelectItem>
+                  <SelectItem value='USA'>USA</SelectItem>
+                  <SelectItem value='EU'>EU</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className='space-y-1'>
+            <div className='min-w-0 space-y-1'>
               <label className='text-sm font-medium'>To</label>
               <Select value={to} onValueChange={setTo}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className='w-full'>
+                  <SelectValue>
+                    {selectedCountry ? (
+                      <div className='flex min-w-0 items-center gap-1.5'>
+                        <span
+                          className={cn(
+                            selectedCountry.flagClass,
+                            'flex-shrink-0 shrink-0'
+                          )}
+                          aria-hidden='true'
+                        />
+                        <span className='min-w-0 flex-1 truncate'>
+                          {selectedCountry.label}
+                        </span>
+                      </div>
+                    ) : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='France'>France</SelectItem>
-                  <SelectItem value='United States'>United States</SelectItem>
-                  <SelectItem value='United Kingdom'>United Kingdom</SelectItem>
-                  <SelectItem value='Germany'>Germany</SelectItem>
-                  <SelectItem value='Canada'>Canada</SelectItem>
+                  {countryOptions.map((country) => (
+                    <SelectItem key={country.value} value={country.value}>
+                      <div className='flex items-center gap-2'>
+                        <span
+                          className={cn(country.flagClass, 'mr-1')}
+                          aria-hidden='true'
+                        />
+                        <span>{country.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -172,4 +214,3 @@ export function ShippingOptionsDialog({
     </Dialog>
   )
 }
-

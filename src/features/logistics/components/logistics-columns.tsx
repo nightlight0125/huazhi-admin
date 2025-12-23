@@ -74,26 +74,13 @@ export const createLogisticsColumns = (
       },
     },
     {
-      accessorKey: 'qty',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Qty' />
-      ),
-      cell: ({ row }) => <div>{row.getValue('qty')}</div>,
-    },
-    {
       accessorKey: 'shippingMethod',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='Shipping Method' />
       ),
       cell: ({ row }) => <div>{row.getValue('shippingMethod')}</div>,
     },
-    // {
-    //   accessorKey: 'shippingFrom',
-    //   header: ({ column }) => (
-    //     <DataTableColumnHeader column={column} title='Shipping From' />
-    //   ),
-    //   cell: ({ row }) => <div>{row.getValue('shippingFrom')}</div>,
-    // },
+
     {
       accessorKey: 'shippingTo',
       header: ({ column }) => (
@@ -107,16 +94,6 @@ export const createLogisticsColumns = (
         <DataTableColumnHeader column={column} title='Time' />
       ),
       cell: ({ row }) => <div>{row.getValue('shippingTime')}</div>,
-    },
-    {
-      accessorKey: 'shippingPrice',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title='Price' />
-      ),
-      cell: ({ row }) => {
-        const price = row.getValue('shippingPrice') as number
-        return <div>${price.toFixed(2)}</div>
-      },
     },
     {
       id: 'actions',
