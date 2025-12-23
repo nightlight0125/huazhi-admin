@@ -57,6 +57,7 @@ import { likedProductsData } from '@/features/liked-products/data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
+import { ProductPurchase } from '@/features/products/components/product-purchase'
 import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
 import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
@@ -151,9 +152,9 @@ export function ProductDetails() {
     'sample'
   )
 
+  const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false)
+
   const selectedCountry = countryOptions.find((c) => c.value === selectedTo)
-  const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
-  const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false)
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
     string[]
@@ -183,20 +184,14 @@ export function ProductDetails() {
 
   // 处理 Buy Sample 按钮点击：打开 Add to Cart 弹框（模式为 sample）
   const handleBuySampleClick = () => {
-    navigate({
-      to: '/products/$productId/purchase',
-      params: { productId },
-      search: { mode: 'sample', from },
-    })
+    setSelectedBuyType('sample')
+    setIsPurchaseDialogOpen(true)
   }
 
   // 处理 Buy Stock 按钮点击：打开 Add to Cart 弹框（模式为 stock）
   const handleBuyStockClick = () => {
-    navigate({
-      to: '/products/$productId/purchase',
-      params: { productId },
-      search: { mode: 'stock', from },
-    })
+    setSelectedBuyType('stock')
+    setIsPurchaseDialogOpen(true)
   }
 
   // 带选择状态的点击封装
@@ -1023,6 +1018,20 @@ export function ProductDetails() {
         onView={handleBrandView}
       />
 
+      {/* Add to Cart 弹框（受控，对当前详情页进行覆盖） */}
+      <ProductPurchase
+        open={isPurchaseDialogOpen}
+        onOpenChange={setIsPurchaseDialogOpen}
+        mode={selectedBuyType}
+        product={{
+          id: productData.id,
+          name: productData.name,
+          image: productData.image,
+          price: productData.price,
+          sku: productData.sku,
+        }}
+      />
+
       {/* 物流选择弹框 */}
       <ShippingOptionsDialog
         open={isShippingOptionsDialogOpen}
@@ -1035,95 +1044,7 @@ export function ProductDetails() {
         }}
       />
 
-      {/* 地址已存在提示弹框 */}
-      <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Shipping Address</DialogTitle>
-          </DialogHeader>
-          <p className='text-muted-foreground text-sm'>
-            There is already a shipping address, which will be used to place an
-            order for samples.
-          </p>
-          <div className='flex justify-end gap-2 pt-4'>
-            <Button
-              variant='outline'
-              onClick={() => setIsAddressDialogOpen(false)}
-            >
-              cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setIsAddressDialogOpen(false)
-                navigate({ to: `/products/PROD-1513/purchase` as any })
-              }}
-            >
-              next
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* 仓库已选择提示弹框 */}
-      <Dialog
-        open={isWarehouseDialogOpen}
-        onOpenChange={setIsWarehouseDialogOpen}
-      >
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Warehouse</DialogTitle>
-          </DialogHeader>
-          <p className='text-muted-foreground text-sm'>
-            There is already a shipping warehouse, which will be used to prepare
-            inventory.
-          </p>
-          <div className='flex justify-end gap-2 pt-4'>
-            <Button
-              variant='outline'
-              onClick={() => setIsWarehouseDialogOpen(false)}
-            >
-              cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setIsWarehouseDialogOpen(false)
-                navigate({ to: `/products/PROD-1513/purchase` as any })
-              }}
-            >
-              next
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* 地址已存在提示弹框 */}
-      <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Shipping Address</DialogTitle>
-          </DialogHeader>
-          <p className='text-muted-foreground text-sm'>
-            There is already a shipping address, which will be used to place an
-            order for samples.
-          </p>
-          <div className='flex justify-end gap-2 pt-4'>
-            <Button
-              variant='outline'
-              onClick={() => setIsAddressDialogOpen(false)}
-            >
-              cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setIsAddressDialogOpen(false)
-                navigate({ to: `/products/PROD-1513/purchase` as any })
-              }}
-            >
-              next
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* 旧的地址/仓库跳转弹框已不再需要，逻辑由 Add to Cart 弹框接管 */}
     </div>
   )
 }

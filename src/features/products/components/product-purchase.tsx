@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
@@ -10,15 +10,28 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { products } from '../data/data'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import type { Product } from '../data/schema'
 
-export function ProductPurchase() {
-  const { productId } = useParams({
-    from: '/_authenticated/products/$productId/purchase',
-  })
-  const search = useSearch({
-    from: '/_authenticated/products/$productId/purchase',
-  })
+type ProductPurchaseProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  mode: 'sample' | 'stock'
+  product: Pick<Product, 'id' | 'name' | 'image' | 'price' | 'sku'>
+}
+
+export function ProductPurchase({
+  open,
+  onOpenChange,
+  mode,
+  product,
+}: ProductPurchaseProps) {
   const navigate = useNavigate()
 
   // 状态管理
@@ -40,38 +53,43 @@ export function ProductPurchase() {
     { id: '4', lightSource: 'halloween', lightColor: 'black', quantity: 1 },
   ])
 
-  // 查找产品数据
-  const product = products.find((p) => p.id === productId)
-
-  if (!product) {
-    return null
-  }
-
   const totalPrice = (
     selectedVariants.reduce((sum, v) => sum + v.quantity * product.price, 0) ||
     0
   ).toFixed(2)
 
-  const mode = (search.mode as 'sample' | 'stock' | undefined) ?? 'sample'
+  // 仓库选择（示例选项，可后续接 API）
+  const [selectedWarehouse, setSelectedWarehouse] = useState<
+    string | undefined
+  >()
+  const warehouseOptions = [
+    { value: 'gz', label: 'Guangzhou Warehouse' },
+    { value: 'us', label: 'USA Warehouse' },
+    { value: 'eu', label: 'EU Warehouse' },
+  ]
 
-  // Buy Now：根据模式跳转到不同页面
+  // 是否已有收货地址（后续可从接口/状态中读取）
+  const hasShippingAddress = false
+
+  // Buy Now：根据模式跳转到不同页面；若 sample 模式下无地址则先跳转到地址设置页
   const handleBuyNow = () => {
     if (mode === 'sample') {
+      if (!hasShippingAddress) {
+        navigate({ to: '/settings' })
+        return
+      }
       navigate({ to: '/sample-orders' })
     } else {
+      if (!selectedWarehouse) {
+        // 未选择仓库时不跳转，可根据需要改为 toast
+        return
+      }
       navigate({ to: '/stock-orders' })
     }
   }
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate({ to: `/products/${productId}` })
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='sm:max-w-2xl lg:max-w-3xl'>
         <DialogHeader>
           <DialogTitle className='text-lg'>
@@ -278,10 +296,39 @@ export function ProductPurchase() {
         {/* 底部操作按钮区域，贴近弹框底部（不再包含 Total） */}
         <div className='mt-4 flex flex-col gap-3 border-t pt-3 md:flex-row md:items-center md:justify-between'>
           <div className='space-y-1 text-sm md:mr-auto'>
-            {mode === 'sample' && (
-              <div>Shipping Address: 广东省广州市天河区</div>
+            {mode === 'sample' &&
+              (hasShippingAddress ? (
+                <div>Shipping Address: 广东省广州市天河区</div>
+              ) : (
+                <button
+                  type='button'
+                  className='text-primary text-left text-sm underline underline-offset-2'
+                  onClick={() => navigate({ to: '/settings' })}
+                >
+                  Please go to Settings to set your shipping address
+                </button>
+              ))}
+
+            {mode === 'stock' && (
+              <div className='flex items-center gap-2'>
+                <span>Shipping Warehouse:</span>
+                <Select
+                  value={selectedWarehouse}
+                  onValueChange={setSelectedWarehouse}
+                >
+                  <SelectTrigger className='h-8 w-[200px] text-xs'>
+                    <SelectValue placeholder='Please select warehouse' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouseOptions.map((wh) => (
+                      <SelectItem key={wh.value} value={wh.value}>
+                        {wh.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
-            {mode === 'stock' && <div>Shipping Warehouse: 广州仓库</div>}
           </div>
           <div className='flex flex-wrap justify-end gap-2'>
             <Button
