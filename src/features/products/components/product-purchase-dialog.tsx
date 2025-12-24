@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { Minus, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
 import {
@@ -18,17 +19,27 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { products } from '../data/data'
+import type {
+  ConfirmOrderItem,
+  ConfirmOrderPayload,
+} from './confirm-order-view'
 
-export function ProductPurchase() {
-  const { productId } = useParams({
-    from: '/_authenticated/products/$productId/purchase',
-  })
-  const search = useSearch({
-    from: '/_authenticated/products/$productId/purchase',
-  })
+interface ProductPurchaseDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  productId: string
+  mode: 'sample' | 'stock'
+  onConfirmOrder?: (payload: ConfirmOrderPayload) => void
+}
+
+export function ProductPurchaseDialog({
+  open,
+  onOpenChange,
+  productId,
+  mode,
+  onConfirmOrder,
+}: ProductPurchaseDialogProps) {
   const navigate = useNavigate()
-
-  // 状态管理
 
   // 产品变体选择状态
   const [selectedLightSource, setSelectedLightSource] = useState('christmas')
@@ -59,8 +70,6 @@ export function ProductPurchase() {
     0
   ).toFixed(2)
 
-  const mode = (search.mode as 'sample' | 'stock' | undefined) ?? 'sample'
-
   // 仓库选择（示例选项，可后续接 API）
   const [selectedWarehouse, setSelectedWarehouse] = useState<
     string | undefined
@@ -74,32 +83,66 @@ export function ProductPurchase() {
   // 是否已有收货地址（后续可从接口/状态中读取）
   const hasShippingAddress = false
 
-  // Buy Now：根据模式跳转到不同页面；若 sample 模式下无地址则先跳转到地址设置页
+  // Buy Now：sample 走本页 Confirm Order，stock 直接跳转到 /stock-orders
   const handleBuyNow = () => {
-    if (mode === 'sample') {
-      if (!hasShippingAddress) {
-        navigate({ to: '/settings' })
-        return
-      }
-      navigate({ to: '/sample-orders' })
-    } else {
+    // stock 订单：必须选择仓库，然后直接跳转到 Stock Orders 列表
+    if (mode === 'stock') {
       if (!selectedWarehouse) {
-        // 未选择仓库时不跳转，可根据需要改为 toast
+        toast.error('Please select a shipping warehouse')
         return
       }
+
       navigate({ to: '/stock-orders' })
+      return
+    }
+
+    // 构建确认订单数据
+    const orderItems: ConfirmOrderItem[] = selectedVariants.map((variant) => {
+      const displayName = `${variant.lightSource
+        .charAt(0)
+        .toUpperCase()}${variant.lightSource.slice(1)} pattern ${
+        variant.lightSource === 'christmas' ? 'lights' : 'light'
+      }-${variant.lightColor.charAt(0).toUpperCase()}${variant.lightColor.slice(
+        1
+      )} shell`
+      const sku = `${product.sku}-${displayName}`
+      const itemPrice = product.price
+      const itemTotal = itemPrice * variant.quantity
+
+      return {
+        id: variant.id,
+        image: product.image,
+        name: `${product.name} - ${displayName}`,
+        sku: sku,
+        price: itemPrice,
+        discountedPrice: itemPrice, // 可以根据需要添加折扣逻辑
+        weight: 45, // 示例重量，后续可以从产品数据中获取
+        quantity: variant.quantity,
+        fee: itemTotal,
+      }
+    })
+
+    const payload: ConfirmOrderPayload = {
+      productId: productId,
+      items: orderItems,
+      mode: mode,
+      totalPrice: parseFloat(totalPrice),
+      discountedTotalPrice: parseFloat(totalPrice), // 可以根据需要添加折扣逻辑
+      selectedWarehouse: selectedWarehouse,
+      hasShippingAddress: hasShippingAddress,
+    }
+
+    // sample 订单：调用回调在当前路由展示 Confirm Order
+    if (onConfirmOrder) {
+      onConfirmOrder(payload)
+    } else {
+      // 如果没有提供回调，保持原有行为（向后兼容）
+      navigate({ to: '/sample-orders' })
     }
   }
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate({ to: `/products/${productId}` })
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='sm:max-w-2xl lg:max-w-3xl'>
         <DialogHeader>
           <DialogTitle className='text-lg'>
@@ -306,7 +349,7 @@ export function ProductPurchase() {
         {/* 底部操作按钮区域，贴近弹框底部（不再包含 Total） */}
         <div className='mt-4 flex flex-col gap-3 border-t pt-3 md:flex-row md:items-center md:justify-between'>
           <div className='space-y-1 text-sm md:mr-auto'>
-            {mode === 'sample' &&
+            {/* {mode === 'sample' &&
               (hasShippingAddress ? (
                 <div>Shipping Address: 广东省广州市天河区</div>
               ) : (
@@ -317,7 +360,7 @@ export function ProductPurchase() {
                 >
                   Please go to Settings to set your shipping address
                 </button>
-              ))}
+              ))} */}
 
             {mode === 'stock' && (
               <div className='flex items-center gap-2'>

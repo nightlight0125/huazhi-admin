@@ -15,7 +15,6 @@ import {
   Copy,
   Heart,
   Palette,
-  Plus,
   ShoppingCart,
   Store,
   Tag,
@@ -30,6 +29,14 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -37,6 +44,12 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -57,13 +70,14 @@ import { likedProductsData } from '@/features/liked-products/data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
-import { ProductPurchase } from '@/features/products/components/product-purchase'
 import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
 import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
 import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
 import { products } from '../data/data'
 import { type Product } from '../data/schema'
+import { ProductPurchaseDialog } from './product-purchase-dialog'
+import { ConfirmOrderView, type ConfirmOrderPayload } from './confirm-order-view'
 
 export function ProductDetails() {
   const { productId } = useParams({
@@ -142,19 +156,70 @@ export function ProductDetails() {
   const [selectedSellingPlatform, setSelectedSellingPlatform] =
     useState('shopify')
   const [isShipFromSelectOpen, setIsShipFromSelectOpen] = useState(false)
+
+  // Ship From 选项
+  const shipFromOptions = [
+    { label: 'China', value: 'shopify' },
+    { label: 'USA', value: 'woocommerce' },
+    { label: 'EU', value: 'ebay' },
+  ]
   const [isShipToSelectOpen, setIsShipToSelectOpen] = useState(false)
   const [selectedShippingMethod, setSelectedShippingMethod] =
-    useState('tdpacket-electro')
+    useState('tdpacket-sensitive')
+  const [isShippingMethodOpen, setIsShippingMethodOpen] = useState(false)
   const [isShippingOptionsDialogOpen, setIsShippingOptionsDialogOpen] =
     useState(false)
+
+  // 物流方式选项数据
+  const shippingMethodOptions = [
+    {
+      id: 'tdpacket-sensitive',
+      title: 'TDPacket Sensitive',
+      cost: '$30.12',
+      deliveryTime: '12-18 Day(s)',
+    },
+    {
+      id: 'tdpacket-electro',
+      title: 'TDPacket Electro',
+      cost: '$31.12',
+      deliveryTime: '8-15 Day(s)',
+    },
+    {
+      id: 'yun-electro-econo',
+      title: 'YUN-Electro-Econo',
+      cost: '$38.27',
+      deliveryTime: '8-15 Day(s)',
+    },
+    {
+      id: 'tdpacket-pure-battery',
+      title: 'TDPacket Pure battery',
+      cost: '$40.05',
+      deliveryTime: '15-20 Day(s)',
+    },
+    {
+      id: 'yun-fast-electro',
+      title: 'YUN-Fast-Electro',
+      cost: '$46.01',
+      deliveryTime: '5-8 Day(s)',
+    },
+  ]
+
+  const selectedShippingMethodData = shippingMethodOptions.find(
+    (method) => method.id === selectedShippingMethod
+  )
 
   const [selectedBuyType, setSelectedBuyType] = useState<'sample' | 'stock'>(
     'sample'
   )
-
   const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false)
+  const [purchaseMode, setPurchaseMode] = useState<'sample' | 'stock'>('sample')
+  const [viewMode, setViewMode] = useState<'details' | 'confirm'>('details')
+  const [confirmOrderPayload, setConfirmOrderPayload] =
+    useState<ConfirmOrderPayload | null>(null)
 
   const selectedCountry = countryOptions.find((c) => c.value === selectedTo)
+  const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
+  const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false)
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
     string[]
@@ -183,26 +248,30 @@ export function ProductDetails() {
   }
 
   // 处理 Buy Sample 按钮点击：打开 Add to Cart 弹框（模式为 sample）
-  const handleBuySampleClick = () => {
+  const handleBuySampleButtonClick = () => {
     setSelectedBuyType('sample')
+    setPurchaseMode('sample')
     setIsPurchaseDialogOpen(true)
   }
 
   // 处理 Buy Stock 按钮点击：打开 Add to Cart 弹框（模式为 stock）
-  const handleBuyStockClick = () => {
+  const handleBuyStockButtonClick = () => {
     setSelectedBuyType('stock')
+    setPurchaseMode('stock')
     setIsPurchaseDialogOpen(true)
   }
 
-  // 带选择状态的点击封装
-  const handleBuySampleButtonClick = () => {
-    setSelectedBuyType('sample')
-    handleBuySampleClick()
+  // 处理确认订单回调
+  const handleConfirmOrder = (payload: ConfirmOrderPayload) => {
+    setConfirmOrderPayload(payload)
+    setIsPurchaseDialogOpen(false)
+    setViewMode('confirm')
   }
 
-  const handleBuyStockButtonClick = () => {
-    setSelectedBuyType('stock')
-    handleBuyStockClick()
+  // 返回产品详情视图
+  const handleBackToDetails = () => {
+    setViewMode('details')
+    setConfirmOrderPayload(null)
   }
 
   if (!product) {
@@ -314,7 +383,8 @@ export function ProductDetails() {
 
   // 处理点击发布到店铺按钮：直接打开发布弹框（不再强制选择颜色和尺寸）
   const handlePublishToStoreClick = () => {
-    setIsPublishDialogOpen(true)
+    // setIsPublishDialogOpen(true)
+    setIsStoreListingOpen(true)
   }
 
   // 处理发布到店铺：关闭弹框并显示 StoreListingTabs 组件
@@ -356,6 +426,16 @@ export function ProductDetails() {
     console.log('查看品牌项目:', brandItem)
     // 这里可以添加查看品牌项目的逻辑
     alert(`查看品牌项目: ${brandItem.name}`)
+  }
+
+  // 如果是确认订单视图，直接返回确认订单组件
+  if (viewMode === 'confirm' && confirmOrderPayload) {
+    return (
+      <ConfirmOrderView
+        orderData={confirmOrderPayload}
+        onBack={handleBackToDetails}
+      />
+    )
   }
 
   return (
@@ -540,153 +620,244 @@ export function ProductDetails() {
                     {!isFromPackagingProducts && (
                       <>
                         <div className='flex items-start gap-1.5 border-y py-3'>
-                          <Select
-                            value={selectedSellingPlatform}
-                            onValueChange={setSelectedSellingPlatform}
+                          <Popover
                             open={isShipFromSelectOpen}
                             onOpenChange={setIsShipFromSelectOpen}
                           >
-                            <div
-                              className='flex flex-1 cursor-pointer items-center gap-1.5'
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setIsShipFromSelectOpen(true)
-                              }}
-                            >
-                              <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                                <Store className='h-3.5 w-3.5 text-gray-600' />
-                              </div>
-                              <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                                <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
-                                  <span className='whitespace-nowrap'>
-                                    ship from
-                                  </span>
-                                  <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                            <PopoverTrigger asChild>
+                              <div
+                                className='flex flex-1 cursor-pointer items-center gap-1.5'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setIsShipFromSelectOpen(true)
+                                }}
+                              >
+                                <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
+                                  <Store className='h-3.5 w-3.5 text-gray-600' />
                                 </div>
-                                <SelectTrigger className='pointer-events-none h-auto w-full border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
-                                  <SelectValue />
-                                </SelectTrigger>
+                                <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
+                                  <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                                    <span className='whitespace-nowrap'>
+                                      ship from
+                                    </span>
+                                    <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                                  </div>
+                                  <div className='text-xs font-bold'>
+                                    {shipFromOptions.find(
+                                      (opt) =>
+                                        opt.value === selectedSellingPlatform
+                                    )?.label || 'Select...'}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                            <SelectContent>
-                              <SelectItem value='shopify'>China</SelectItem>
-                              <SelectItem value='woocommerce'>USA</SelectItem>
-                              <SelectItem value='ebay'>EU</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className='w-[200px] p-0'
+                              align='start'
+                            >
+                              <Command>
+                                <CommandInput placeholder='Search...' />
+                                <CommandList>
+                                  <CommandEmpty>No results found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {shipFromOptions.map((option) => (
+                                      <CommandItem
+                                        key={option.value}
+                                        value={option.label}
+                                        onSelect={() => {
+                                          setSelectedSellingPlatform(
+                                            option.value
+                                          )
+                                          setIsShipFromSelectOpen(false)
+                                        }}
+                                      >
+                                        {option.label}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
 
                           <div className='h-8 w-px shrink-0 bg-gray-200' />
 
-                          <Select
-                            value={selectedTo}
-                            onValueChange={setSelectedTo}
+                          <Popover
                             open={isShipToSelectOpen}
                             onOpenChange={setIsShipToSelectOpen}
                           >
-                            <div
-                              className='flex flex-1 cursor-pointer items-center gap-1.5'
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setIsShipToSelectOpen(true)
-                              }}
-                            >
-                              <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                                <Truck className='h-3.5 w-3.5 text-gray-600' />
-                              </div>
-                              <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                                <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
-                                  <span className='whitespace-nowrap'>
-                                    Ship To
-                                  </span>
-                                  <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                            <PopoverTrigger asChild>
+                              <div
+                                className='flex flex-1 cursor-pointer items-center gap-1.5'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setIsShipToSelectOpen(true)
+                                }}
+                              >
+                                <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
+                                  <Truck className='h-3.5 w-3.5 text-gray-600' />
                                 </div>
-                                <SelectTrigger className='pointer-events-none h-auto w-full max-w-[100px] border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
-                                  <SelectValue>
-                                    {selectedCountry ? (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className='flex min-w-0 items-center gap-1.5'>
-                                            <span
-                                              className={cn(
-                                                selectedCountry.flagClass,
-                                                'flex-shrink-0 shrink-0'
-                                              )}
-                                              aria-hidden='true'
-                                            />
-                                            <span className='min-w-0 flex-1 truncate'>
-                                              {selectedCountry.label}
-                                            </span>
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          {selectedCountry.label}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    ) : null}
-                                  </SelectValue>
-                                </SelectTrigger>
-                              </div>
-                            </div>
-                            <SelectContent>
-                              {countryOptions.map((country) => (
-                                <SelectItem
-                                  key={country.value}
-                                  value={country.value}
-                                >
-                                  <div className='flex items-center gap-2'>
-                                    <span
-                                      className={cn(country.flagClass, 'mr-1')}
-                                      aria-hidden='true'
-                                    />
-                                    <span>{country.label}</span>
+                                <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
+                                  <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                                    <span className='whitespace-nowrap'>
+                                      Ship To
+                                    </span>
+                                    <ChevronDown className='h-2.5 w-2.5 shrink-0' />
                                   </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                                  {selectedCountry ? (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className='flex max-w-[100px] min-w-0 items-center gap-1.5'>
+                                          <span
+                                            className={cn(
+                                              selectedCountry.flagClass,
+                                              'flex-shrink-0 shrink-0'
+                                            )}
+                                            aria-hidden='true'
+                                          />
+                                          <span className='min-w-0 flex-1 truncate text-xs font-bold'>
+                                            {selectedCountry.label}
+                                          </span>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {selectedCountry.label}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  ) : (
+                                    <span className='text-xs font-bold'>
+                                      Select...
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className='w-[280px] p-0'
+                              align='start'
+                            >
+                              <Command>
+                                <CommandInput placeholder='Search country...' />
+                                <CommandList>
+                                  <CommandEmpty>No results found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {countryOptions.map((country) => (
+                                      <CommandItem
+                                        key={country.value}
+                                        value={country.label}
+                                        onSelect={() => {
+                                          setSelectedTo(country.value)
+                                          setIsShipToSelectOpen(false)
+                                        }}
+                                      >
+                                        <div className='flex items-center gap-2'>
+                                          <span
+                                            className={cn(
+                                              country.flagClass,
+                                              'mr-1'
+                                            )}
+                                            aria-hidden='true'
+                                          />
+                                          <span>{country.label}</span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
 
                           <div className='h-8 w-px shrink-0 bg-gray-200' />
 
-                          <div className='flex flex-1 items-center gap-1.5'>
-                            <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                              <Truck className='h-3.5 w-3.5 text-gray-600' />
-                            </div>
-                            <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                              <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
-                                <span className='whitespace-nowrap'>
-                                  By Shipping Method
-                                </span>
-                                <ChevronDown className='h-2.5 w-2.5 shrink-0' />
-                              </div>
-                              <div className='flex items-center gap-1'>
-                                <Select
-                                  value={selectedShippingMethod}
-                                  onValueChange={setSelectedShippingMethod}
-                                >
-                                  <SelectTrigger className='h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0 [&_span]:text-xs [&_span]:font-bold [&>svg]:hidden'>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value='tdpacket-electro'>
-                                      TDPacket Electro
-                                    </SelectItem>
-                                    <SelectItem value='standard'>
-                                      Standard Shipping
-                                    </SelectItem>
-                                    <SelectItem value='express'>
-                                      Express Shipping
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <div className='flex shrink-0 items-center gap-0.5'>
-                                  <div className='h-1.5 w-1.5 rounded-full bg-green-500' />
-                                  <span className='text-[10px] whitespace-nowrap text-green-600'>
-                                    Available
-                                  </span>
+                          <Popover
+                            open={isShippingMethodOpen}
+                            onOpenChange={setIsShippingMethodOpen}
+                          >
+                            <PopoverTrigger asChild>
+                              <div
+                                className='flex flex-1 cursor-pointer items-center gap-1.5'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setIsShippingMethodOpen(true)
+                                }}
+                              >
+                                <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
+                                  <Truck className='h-3.5 w-3.5 text-gray-600' />
+                                </div>
+                                <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
+                                  <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                                    <span className='whitespace-nowrap'>
+                                      By Shipping Method
+                                    </span>
+                                    <ChevronDown className='h-2.5 w-2.5 shrink-0' />
+                                  </div>
+                                  <div className='flex items-center gap-1'>
+                                    <span className='text-xs font-bold'>
+                                      {selectedShippingMethodData?.title ||
+                                        'Select...'}
+                                    </span>
+                                    <div className='flex shrink-0 items-center gap-0.5'>
+                                      <div className='h-1.5 w-1.5 rounded-full bg-green-500' />
+                                      <span className='text-[10px] whitespace-nowrap text-green-600'>
+                                        Available
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className='w-[450px] p-0'
+                              align='start'
+                            >
+                              <div className='p-4'>
+                                <RadioGroup
+                                  value={selectedShippingMethod}
+                                  onValueChange={(value) => {
+                                    setSelectedShippingMethod(value)
+                                    setIsShippingMethodOpen(false)
+                                  }}
+                                >
+                                  {/* 表头 */}
+                                  <div className='mb-2 grid grid-cols-[1fr_auto_auto] gap-4 border-b pb-2 text-sm font-medium text-gray-700'>
+                                    <div>Shipping Method</div>
+                                    <div className='text-center'>
+                                      Total Shipping Cost
+                                    </div>
+                                    <div className='text-right'>
+                                      Delivery Time
+                                    </div>
+                                  </div>
+                                  {/* 选项列表 */}
+                                  <div className='space-y-0'>
+                                    {shippingMethodOptions.map((method) => (
+                                      <label
+                                        key={method.id}
+                                        className='flex cursor-pointer items-center gap-4 border-b py-3 last:border-b-0 hover:bg-gray-50'
+                                      >
+                                        <RadioGroupItem
+                                          value={method.id}
+                                          className='ml-1'
+                                        />
+                                        <div className='grid flex-1 grid-cols-[1fr_auto_auto] gap-4 text-sm'>
+                                          <div className='font-medium'>
+                                            {method.title}
+                                          </div>
+                                          <div className='text-center'>
+                                            {method.cost}
+                                          </div>
+                                          <div className='text-right'>
+                                            {method.deliveryTime}
+                                          </div>
+                                        </div>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </RadioGroup>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                         </div>
 
                         <div className='space-y-2 border-t pt-4'>
@@ -883,7 +1054,6 @@ export function ProductDetails() {
                     <Button variant='outline' className='w-full' size='lg'>
                       <div className='flex w-full items-center justify-start'>
                         <Heart className='mr-2 h-4 w-4' />
-                        <Plus className='mr-2 h-4 w-4' />
                         <span>
                           {shouldShowCollectionButton
                             ? 'Collection'
@@ -1018,20 +1188,6 @@ export function ProductDetails() {
         onView={handleBrandView}
       />
 
-      {/* Add to Cart 弹框（受控，对当前详情页进行覆盖） */}
-      <ProductPurchase
-        open={isPurchaseDialogOpen}
-        onOpenChange={setIsPurchaseDialogOpen}
-        mode={selectedBuyType}
-        product={{
-          id: productData.id,
-          name: productData.name,
-          image: productData.image,
-          price: productData.price,
-          sku: productData.sku,
-        }}
-      />
-
       {/* 物流选择弹框 */}
       <ShippingOptionsDialog
         open={isShippingOptionsDialogOpen}
@@ -1044,7 +1200,103 @@ export function ProductDetails() {
         }}
       />
 
-      {/* 旧的地址/仓库跳转弹框已不再需要，逻辑由 Add to Cart 弹框接管 */}
+      {/* 地址已存在提示弹框 */}
+      <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Shipping Address</DialogTitle>
+          </DialogHeader>
+          <p className='text-muted-foreground text-sm'>
+            There is already a shipping address, which will be used to place an
+            order for samples.
+          </p>
+          <div className='flex justify-end gap-2 pt-4'>
+            <Button
+              variant='outline'
+              onClick={() => setIsAddressDialogOpen(false)}
+            >
+              cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsAddressDialogOpen(false)
+                navigate({ to: `/products/PROD-1513/purchase` as any })
+              }}
+            >
+              next
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 仓库已选择提示弹框 */}
+      <Dialog
+        open={isWarehouseDialogOpen}
+        onOpenChange={setIsWarehouseDialogOpen}
+      >
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Warehouse</DialogTitle>
+          </DialogHeader>
+          <p className='text-muted-foreground text-sm'>
+            There is already a shipping warehouse, which will be used to prepare
+            inventory.
+          </p>
+          <div className='flex justify-end gap-2 pt-4'>
+            <Button
+              variant='outline'
+              onClick={() => setIsWarehouseDialogOpen(false)}
+            >
+              cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsWarehouseDialogOpen(false)
+                navigate({ to: `/products/PROD-1513/purchase` as any })
+              }}
+            >
+              next
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 地址已存在提示弹框 */}
+      <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Shipping Address</DialogTitle>
+          </DialogHeader>
+          <p className='text-muted-foreground text-sm'>
+            There is already a shipping address, which will be used to place an
+            order for samples.
+          </p>
+          <div className='flex justify-end gap-2 pt-4'>
+            <Button
+              variant='outline'
+              onClick={() => setIsAddressDialogOpen(false)}
+            >
+              cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsAddressDialogOpen(false)
+                navigate({ to: `/products/PROD-1513/purchase` as any })
+              }}
+            >
+              next
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ProductPurchaseDialog
+        open={isPurchaseDialogOpen}
+        onOpenChange={setIsPurchaseDialogOpen}
+        productId={productId}
+        mode={purchaseMode}
+        onConfirmOrder={handleConfirmOrder}
+      />
     </div>
   )
 }
