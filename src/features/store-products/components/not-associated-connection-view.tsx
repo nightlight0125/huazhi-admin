@@ -239,34 +239,6 @@ export function NotAssociatedConnectionView() {
     setSelectedStoreProductId(storeProductId)
   }
 
-  // TODO: 这些函数将在后续功能中使用
-  // const handleConnect = (teemDropProductId: string) => {
-  //   if (!selectedStoreProductId) return
-  //   const existingConnection = connections.find(
-  //     (c) => c.storeProductId === selectedStoreProductId
-  //   )
-  //   if (existingConnection) {
-  //     setConnections(
-  //       connections.map((c) =>
-  //         c.storeProductId === selectedStoreProductId
-  //           ? { ...c, teemDropProductId }
-  //           : c
-  //       )
-  //     )
-  //   } else {
-  //     setConnections([
-  //       ...connections,
-  //       { storeProductId: selectedStoreProductId, teemDropProductId },
-  //     ])
-  //   }
-  // }
-
-  // const handleDisconnect = (storeProductId: string) => {
-  //   setConnections(
-  //     connections.filter((c) => c.storeProductId !== storeProductId)
-  //   )
-  // }
-
   const isConnected = (storeProductId: string, teemDropProductId: string) => {
     return connections.some(
       (c) =>
