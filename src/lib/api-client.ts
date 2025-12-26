@@ -7,8 +7,8 @@ import axios, {
 
 // 创建 axios 实例
 export const apiClient: AxiosInstance = axios.create({
-  // baseURL: 'https://hyperzone.test.kdgalaxy.com/kapi',
-  baseURL: 'https://dcptest.zmi.cn/ierp/kapi',
+  baseURL: 'https://hyperzone.test.kdgalaxy.com/kapi',
+  // baseURL: 'http://47.242.207.93/kapi/',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

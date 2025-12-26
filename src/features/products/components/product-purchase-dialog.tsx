@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Minus, Plus } from 'lucide-react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
 import {
@@ -83,17 +82,13 @@ export function ProductPurchaseDialog({
   // 是否已有收货地址（后续可从接口/状态中读取）
   const hasShippingAddress = false
 
-  // Buy Now：sample 走本页 Confirm Order，stock 直接跳转到 /stock-orders
+  // Buy Now：根据模式处理确认订单；不再在此处跳转路由
   const handleBuyNow = () => {
-    // stock 订单：必须选择仓库，然后直接跳转到 Stock Orders 列表
     if (mode === 'stock') {
       if (!selectedWarehouse) {
-        toast.error('Please select a shipping warehouse')
+        // 未选择仓库时不跳转，可根据需要改为 toast
         return
       }
-
-      navigate({ to: '/stock-orders' })
-      return
     }
 
     // 构建确认订单数据
@@ -132,12 +127,16 @@ export function ProductPurchaseDialog({
       hasShippingAddress: hasShippingAddress,
     }
 
-    // sample 订单：调用回调在当前路由展示 Confirm Order
+    // 调用回调而不是跳转路由
     if (onConfirmOrder) {
       onConfirmOrder(payload)
     } else {
       // 如果没有提供回调，保持原有行为（向后兼容）
-      navigate({ to: '/sample-orders' })
+      if (mode === 'sample') {
+        navigate({ to: '/sample-orders' })
+      } else {
+        navigate({ to: '/stock-orders' })
+      }
     }
   }
 
