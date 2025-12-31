@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from '@tanstack/react-router'
-import { showSubmittedData } from '@/lib/show-submitted-data'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -12,23 +15,15 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from '@/components/ui/form'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 
 const notificationsFormSchema = z.object({
-  type: z.enum(['all', 'mentions', 'none'], {
-    error: (iss) =>
-      iss.input === undefined
-        ? 'Please select a notification type.'
-        : undefined,
-  }),
   mobile: z.boolean().default(false).optional(),
   communication_emails: z.boolean().default(false).optional(),
   social_emails: z.boolean().default(false).optional(),
   marketing_emails: z.boolean().default(false).optional(),
-  security_emails: z.boolean(),
+  security_emails: z.boolean().default(false).optional(),
 })
 
 type NotificationsFormValues = z.infer<typeof notificationsFormSchema>
@@ -41,58 +36,143 @@ const defaultValues: Partial<NotificationsFormValues> = {
   security_emails: true,
 }
 
+interface NotificationData {
+  hzkj_security_emails: boolean
+  hzkj_communication_emails: boolean
+  hzkj_marketing_emails: boolean
+  hzkj_social_emails: boolean
+}
+
+interface GetNotificationsResponse {
+  data?: {
+    rows: NotificationData[]
+    totalCount?: number
+  }
+  rows?: NotificationData[]
+  totalCount?: number
+  errorCode: string
+  message: string | null
+  status: boolean
+}
+
 export function NotificationsForm() {
+  const { auth } = useAuthStore()
+  const [isLoading, setIsLoading] = useState(true)
   const form = useForm<NotificationsFormValues>({
     resolver: zodResolver(notificationsFormSchema),
     defaultValues,
   })
 
+  // 加载通知设置数据
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const userId = auth.user?.id
+        if (!userId) {
+          setIsLoading(false)
+          return
+        }
+
+        // 调用获取通知设置的 API
+        const response = await apiClient.post<GetNotificationsResponse>(
+          '/v2/hzkj/hzkj_member/hzkj_member_customer/getNotifications',
+          {
+            data: {
+              id: userId,
+            },
+            pageSize: 10,
+            pageNo: 1,
+          }
+        )
+
+        const rows = response.data?.data?.rows || response.data?.rows
+        if (response.data?.status && rows && rows.length > 0) {
+          const notificationData = rows[0]
+          const formData = {
+            communication_emails: Boolean(
+              notificationData.hzkj_communication_emails
+            ),
+            marketing_emails: Boolean(notificationData.hzkj_marketing_emails),
+            social_emails: Boolean(notificationData.hzkj_social_emails),
+            security_emails: Boolean(notificationData.hzkj_security_emails),
+            mobile: false,
+          }
+
+          console.log('回填的表单数据:', formData)
+
+          form.reset(formData)
+        }
+      } catch (error) {
+        console.error('Failed to load notifications:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void loadNotifications()
+  }, [auth.user?.id])
+
+  const boolToString = (value: boolean | undefined): string => {
+    return value ? '1' : '0'
+  }
+
+  const onSubmit = async (data: NotificationsFormValues) => {
+    try {
+      const userId = auth.user?.id
+      if (!userId) {
+        toast.error('User not authenticated. Please login again.')
+        return
+      }
+
+      const requestData = {
+        data: [
+          {
+            id: userId,
+            hzkj_security_emails: boolToString(data.security_emails),
+            hzkj_communication_emails: boolToString(data.communication_emails),
+            hzkj_marketing_emails: boolToString(data.marketing_emails),
+            hzkj_social_emails: boolToString(data.social_emails),
+          },
+        ],
+      }
+
+      // 调用 API
+      const response = await apiClient.post(
+        '/v2/hzkj/hzkj_member/hzkj_member_customer/saveNotifications',
+        requestData
+      )
+
+      if (response.data?.status !== false) {
+        toast.success('Notifications updated successfully')
+        form.setValue('mobile', false)
+      } else {
+        const errorMessage =
+          response.data?.message || 'Failed to update notifications'
+        toast.error(errorMessage)
+      }
+    } catch (error) {
+      console.error('Failed to update notifications:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update notifications. Please try again.'
+      )
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center py-8'>
+        <div className='text-muted-foreground text-sm'>
+          Loading notifications...
+        </div>
+      </div>
+    )
+  }
+
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((data) => showSubmittedData(data))}
-        className='space-y-8'
-      >
-        <FormField
-          control={form.control}
-          name='type'
-          render={({ field }) => (
-            <FormItem className='relative space-y-3'>
-              <FormLabel>Notify me about...</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className='flex flex-col gap-2'
-                >
-                  <FormItem className='flex items-center'>
-                    <FormControl>
-                      <RadioGroupItem value='all' />
-                    </FormControl>
-                    <FormLabel className='font-normal'>
-                      All new messages
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className='flex items-center'>
-                    <FormControl>
-                      <RadioGroupItem value='mentions' />
-                    </FormControl>
-                    <FormLabel className='font-normal'>
-                      Direct messages and mentions
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className='flex items-center'>
-                    <FormControl>
-                      <RadioGroupItem value='none' />
-                    </FormControl>
-                    <FormLabel className='font-normal'>Nothing</FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
         <div className='relative'>
           <h3 className='mb-4 text-lg font-medium'>Email Notifications</h3>
           <div className='space-y-4'>
@@ -111,7 +191,7 @@ export function NotificationsForm() {
                   </div>
                   <FormControl>
                     <Switch
-                      checked={field.value}
+                      checked={field.value ?? false}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -133,7 +213,7 @@ export function NotificationsForm() {
                   </div>
                   <FormControl>
                     <Switch
-                      checked={field.value}
+                      checked={field.value ?? false}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -153,7 +233,7 @@ export function NotificationsForm() {
                   </div>
                   <FormControl>
                     <Switch
-                      checked={field.value}
+                      checked={field.value ?? false}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -173,9 +253,8 @@ export function NotificationsForm() {
                   </div>
                   <FormControl>
                     <Switch
-                      checked={field.value}
+                      checked={field.value ?? false}
                       onCheckedChange={field.onChange}
-                      disabled
                       aria-readonly
                     />
                   </FormControl>

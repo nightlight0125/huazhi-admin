@@ -36,6 +36,7 @@ type DataTableToolbarProps<TData> = {
   showSearch?: boolean
   showSearchButton?: boolean
   onSearch?: () => void
+  onFilterChange?: () => void // 过滤器变化时的回调
   filters?: {
     columnId: string
     title: string
@@ -73,6 +74,7 @@ export function DataTableToolbar<TData>({
   showSearch = true,
   showSearchButton = true,
   onSearch,
+  onFilterChange,
   filters = [],
   dateRange,
   bulkRevise,
@@ -160,6 +162,8 @@ export function DataTableToolbar<TData>({
                 column={column}
                 title={filter.title}
                 options={filter.options || []}
+                onFilterChange={onFilterChange}
+                columnFilters={table.getState().columnFilters}
               />
             )
           })}

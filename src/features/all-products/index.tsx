@@ -5,7 +5,7 @@ import { getProductsList } from '@/lib/api/products'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProductsGrid } from '../products/components/products-grid'
+import { AllProductsGrid } from './components/all-products-grid'
 import { ProductsProvider } from '../products/components/products-provider'
 import type { Product } from '../products/data/schema'
 import { productCategories, shippingLocations } from '../products/data/schema'
@@ -98,7 +98,7 @@ export function AllProducts() {
       </Header>
 
       <Main fluid>
-        <ProductsGrid data={products} search={search} navigate={navigate} />
+        <AllProductsGrid data={products} />
       </Main>
     </ProductsProvider>
   )

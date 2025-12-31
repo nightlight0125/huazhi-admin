@@ -27,17 +27,6 @@ apiClient.interceptors.request.use(
       }
     }
     
-    if (import.meta.env.DEV) {
-      console.log('API 请求:', {
-        url: config.url,
-        method: config.method,
-        baseURL: config.baseURL,
-        fullURL: `${config.baseURL}${config.url}`,
-        data: config.data,
-        headers: config.headers,
-      })
-    }
-    
     return config
   },
   (error) => {

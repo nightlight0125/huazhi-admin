@@ -11,6 +11,8 @@ export const logisticsSchema = z.object({
   shippingTime: z.string(),
   shippingPrice: z.number(),
   productImage: z.string().optional(),
+  pic: z.string().optional(), // 后端字段名
+  entryId: z.string().optional(),
 })
 
 export type Logistics = z.infer<typeof logisticsSchema>

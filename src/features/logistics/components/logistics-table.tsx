@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
   type VisibilityState,
@@ -8,11 +7,10 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   TableBody,
   TableCell,
@@ -26,20 +24,26 @@ import { type Logistics } from '../data/schema'
 import { EditShippingToDialog } from './edit-shipping-to-dialog'
 import { createLogisticsColumns } from './logistics-columns'
 
-const route = getRouteApi('/_authenticated/logistics/')
-
 type LogisticsTableProps = {
   data: Logistics[]
+  search: Record<string, unknown>
+  navigate: NavigateFn
+  totalCount: number
+  onRefresh?: () => void
 }
 
-export function LogisticsTable({ data }: LogisticsTableProps) {
-  // Local UI-only states
+export function LogisticsTable({
+  data,
+  search,
+  navigate,
+  totalCount,
+  onRefresh,
+}: LogisticsTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [editingRow, setEditingRow] = useState<Logistics | null>(null)
 
-  // Synced with URL states
   const {
     globalFilter,
     onGlobalFilterChange,
@@ -49,8 +53,8 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
     onPaginationChange,
     ensurePageInRange,
   } = useTableUrlState({
-    search: route.useSearch(),
-    navigate: route.useNavigate(),
+    search,
+    navigate,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [
@@ -64,9 +68,15 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
     ],
   })
 
-  const columns = createLogisticsColumns((row) => {
-    setEditingRow(row)
-  })
+  const columns = createLogisticsColumns(
+    (row) => {
+      setEditingRow(row)
+    },
+    onRefresh
+  )
+
+  // 计算总页数
+  const pageCount = Math.ceil(totalCount / pagination.pageSize)
 
   const table = useReactTable({
     data,
@@ -80,6 +90,8 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
       pagination,
     },
     enableRowSelection: true,
+    manualPagination: true,
+    pageCount,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -101,7 +113,6 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -110,7 +121,6 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
     onColumnFiltersChange,
   })
 
-  const pageCount = table.getPageCount()
   useEffect(() => {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
@@ -140,7 +150,16 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {data.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  暂无数据
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -179,18 +198,9 @@ export function LogisticsTable({ data }: LogisticsTableProps) {
             setEditingRow(null)
           }
         }}
-        onSubmit={(row, values) => {
-          // TODO: 接入实际更新逻辑（如调用接口并刷新数据）
-          // 这里只做一个简单的日志，方便后续接入
-          // eslint-disable-next-line no-console
-          console.log(
-            'Update shipping info for row:',
-            row.id,
-            'shippingTo =>',
-            values.shippingTo,
-            'shippingMethod =>',
-            values.shippingMethod
-          )
+        onSubmit={() => {
+          // notify parent to refresh if provided
+          onRefresh?.()
         }}
       />
     </div>

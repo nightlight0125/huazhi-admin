@@ -20,16 +20,28 @@ function mapApiDataToUser(apiData: unknown): User {
   return {
     id: String(data.id || data.hzkj_account_record_id || ''),
     firstName: String(data.firstName || data.name || ''),
-    lastName: String(data.lastName || ''),
+    lastName: String(data.hzkj_surname || data.lastName || data.surname || ''),
     username: String(data.hzkj_username || data.username || data.account || ''),
     email: String(data.hzkj_email || data.email || ''),
     phoneNumber: String(
       data.hzkj_phone || data.phone || data.phoneNumber || ''
     ),
-    status: data.enable === '1' ? 'active' : 'inactive',
-    role: String(data.hzkj_role_name || ''),
-    createdAt: data.createdAt ? new Date(data.createdAt as string) : new Date(),
-    updatedAt: data.updatedAt ? new Date(data.updatedAt as string) : new Date(),
+    status: (data.enable === '1' ? 'active' : 'inactive') as
+      | 'active'
+      | 'inactive',
+    role: String(data.hzkj_role_name || data.role || ''),
+    roleId: String(data.hzkj_role_id || data.roleId || ''),
+    surname: String(data.hzkj_surname || data.surname || ''),
+    createdAt: data.createdAt
+      ? new Date(data.createdAt as string)
+      : data.createtime
+        ? new Date(data.createtime as string)
+        : new Date(),
+    updatedAt: data.updatedAt
+      ? new Date(data.updatedAt as string)
+      : data.modifytime
+        ? new Date(data.modifytime as string)
+        : new Date(),
   }
 }
 
@@ -38,52 +50,126 @@ export function Users() {
   const navigate = route.useNavigate()
   const { auth } = useAuthStore()
   const [users, setUsers] = useState<User[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
-  // 从URL参数或auth store获取hzkj_member_id，如果没有则使用默认值
-  // TODO: 从登录响应中获取实际的hzkj_member_id
-  const hzkj_member_id = '2333521702035667968' // 临时使用测试值
+  const hzkj_member_id = '2333521702035667968'
 
   // 获取分页参数
   const pageNo = (search.page as number) || 1
   const pageSize = (search.pageSize as number) || 10
 
-  useEffect(() => {
-    async function fetchUsers() {
-      if (!auth.accessToken) {
-        console.warn('No access token available')
-        setIsLoading(false)
-        return
-      }
-
-      setIsLoading(true)
-      try {
-        const rows = await queryAccount(hzkj_member_id, pageNo, pageSize)
-
-        if (Array.isArray(rows) && rows.length > 0) {
-          const mappedUsers = rows.map(mapApiDataToUser)
-          setUsers(mappedUsers)
-        } else {
-          setUsers([])
-        }
-      } catch (error) {
-        console.error('Failed to fetch users:', error)
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load users. Please try again.'
-        )
-        setUsers([])
-      } finally {
-        setIsLoading(false)
-      }
+  const fetchUsers = async (filters?: {
+    role?: string[]
+    status?: string[]
+    username?: string
+  }) => {
+    if (!auth.accessToken) {
+      console.warn('No access token available')
+      setIsLoading(false)
+      return
     }
 
+    // 优先使用传入的 filters，否则从 search 读取
+    // 这样可以同时支持多个过滤器的组合筛选
+    const username = filters?.username ?? (search.username as string) ?? ''
+    const roleFilter = filters?.role ?? (search.role as string[]) ?? []
+    const statusFilter = filters?.status ?? (search.status as string[]) ?? []
+    const hzkj_role_id = roleFilter.length > 0 ? roleFilter[0] : undefined
+    const hzkj_queryParams = username.trim() || '*'
+
+    console.log('Filter values:', {
+      roleFilter,
+      hzkj_role_id,
+      statusFilter,
+      username,
+      filters,
+      searchRole: search.role,
+      searchStatus: search.status,
+    })
+
+    // 转换 status 过滤器为 enable 参数
+    // active -> "1", inactive -> "0"
+    let enable: string | undefined = undefined
+    if (statusFilter.length > 0) {
+      const status = statusFilter[0]
+      enable =
+        status === 'active' ? '1' : status === 'inactive' ? '0' : undefined
+    }
+
+    console.log('API request params:', {
+      hzkj_member_id,
+      pageNo,
+      pageSize,
+      hzkj_role_id,
+      hzkj_queryParams,
+      enable,
+    })
+
+    setIsLoading(true)
+    try {
+      const result = await queryAccount(hzkj_member_id, pageNo, pageSize, {
+        hzkj_role_id,
+        hzkj_queryParams,
+        enable,
+      })
+      console.log('rows', result.rows)
+      console.log('totalCount', result.totalCount)
+
+      if (Array.isArray(result.rows) && result.rows.length > 0) {
+        const mappedUsers = result.rows.map(mapApiDataToUser)
+        setUsers(mappedUsers)
+      } else {
+        setUsers([])
+      }
+      setTotalCount(result.totalCount)
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load users. Please try again.'
+      )
+      setUsers([])
+      setTotalCount(0)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 序列化过滤器参数以确保变化能被检测到
+  const roleFilterStr = JSON.stringify(search.role || [])
+  const statusFilterStr = JSON.stringify(search.status || [])
+  const usernameStr = String(search.username || '')
+
+  // 调试：监听 search 对象的变化
+  useEffect(() => {
+    console.log('Search object changed:', {
+      search,
+      role: search.role,
+      status: search.status,
+      username: search.username,
+      roleFilterStr,
+      statusFilterStr,
+      usernameStr,
+    })
+  }, [search, roleFilterStr, statusFilterStr, usernameStr])
+
+  useEffect(() => {
     fetchUsers()
-  }, [auth.accessToken, hzkj_member_id, pageNo, pageSize])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    auth.accessToken,
+    hzkj_member_id,
+    pageNo,
+    pageSize,
+    usernameStr,
+    roleFilterStr,
+    statusFilterStr,
+  ])
 
   return (
-    <UsersProvider>
+    <UsersProvider onRefresh={fetchUsers}>
       <Header fixed>
         <HeaderActions />
       </Header>
@@ -98,7 +184,13 @@ export function Users() {
               <p className='text-muted-foreground'>Loading users...</p>
             </div>
           ) : (
-            <UsersTable data={users} search={search} navigate={navigate} />
+            <UsersTable
+              data={users}
+              search={search}
+              navigate={navigate}
+              totalCount={totalCount}
+              onFiltersChange={fetchUsers}
+            />
           )}
         </div>
       </Main>

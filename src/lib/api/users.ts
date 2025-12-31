@@ -4,6 +4,9 @@ import { apiClient } from '../api-client'
 export interface QueryAccountRequest {
   data: {
     hzkj_member_id: string
+    hzkj_role_id?: string
+    hzkj_queryParams?: string
+    enable?: string
   }
   pageSize: number
   pageNo: number
@@ -15,6 +18,7 @@ export interface QueryAccountResponse {
     list?: unknown[]
     rows?: unknown[]
     total?: number
+    totalCount?: number
     pageNo?: number
     pageSize?: number
     [key: string]: unknown
@@ -25,15 +29,28 @@ export interface QueryAccountResponse {
   [key: string]: unknown
 }
 
+export interface QueryAccountResult {
+  rows: unknown[]
+  totalCount: number
+}
+
 // 查询账户列表 API
 export async function queryAccount(
   hzkj_member_id: string,
   pageNo: number = 1,
-  pageSize: number = 10
-): Promise<unknown[]> {
+  pageSize: number = 10,
+  options?: {
+    hzkj_role_id?: string
+    hzkj_queryParams?: string
+    enable?: string
+  }
+): Promise<QueryAccountResult> {
   const requestData: QueryAccountRequest = {
     data: {
       hzkj_member_id,
+      ...(options?.hzkj_role_id && { hzkj_role_id: options.hzkj_role_id }),
+      hzkj_queryParams: options?.hzkj_queryParams || '*',
+      ...(options?.enable && { enable: options.enable }),
     },
     pageSize,
     pageNo,
@@ -55,9 +72,14 @@ export async function queryAccount(
     throw new Error(errorMessage)
   }
 
-  // 返回 rows 数组，如果没有 rows 则返回 list，如果都没有则返回空数组
-  const rows = response.data.data?.rows 
-  return Array.isArray(rows) ? rows : []
+  // 返回 rows 数组和 totalCount
+  const rows = response.data.data?.rows || response.data.data?.list
+  const totalCount = response.data.data?.totalCount || response.data.data?.total || 0
+  
+  return {
+    rows: Array.isArray(rows) ? rows : [],
+    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+  }
 }
 
 // 角色数据接口
@@ -109,14 +131,11 @@ export async function queryRole(
     pageNo,
   }
 
-  console.log('查询角色请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QueryRoleResponse>(
     '/v2/hzkj/hzkj_member/hzkj_role/queryRole',
     requestData
   )
 
-  console.log('查询角色响应:', response.data)
 
   // 检查响应状态
   if (!response.data.status) {
@@ -125,7 +144,6 @@ export async function queryRole(
     throw new Error(errorMessage)
   }
 
-  // 返回 rows 数组，如果没有 rows 则返回空数组
   const rows = response.data.data?.rows
   return Array.isArray(rows) ? rows : []
 }
@@ -208,8 +226,8 @@ export interface AddAccountRequest {
     name: string
     phone: string
     password: string
-    roleId: number
-    customerId: number
+    roleId: number | string
+    customerId: number | string
   }
 }
 
@@ -251,10 +269,8 @@ export async function addAccount(
 
 // 重置密码请求参数
 export interface UpdatePasswordRequest {
-  data: {
-    id: number
-    newpassword: string
-  }
+  accountId: string
+  newPassword: string
 }
 
 // 重置密码响应
@@ -268,14 +284,12 @@ export interface UpdatePasswordResponse {
 
 // 重置密码 API
 export async function updatePassword(
-  userId: number,
+  accountId: string | number,
   newPassword: string
 ): Promise<UpdatePasswordResponse> {
   const requestData: UpdatePasswordRequest = {
-    data: {
-      id: userId,
-      newpassword: newPassword,
-    },
+    accountId: String(accountId),
+    newPassword: newPassword,
   }
 
   console.log('重置密码请求数据:', JSON.stringify(requestData, null, 2))
@@ -356,6 +370,7 @@ export interface UpdateProfileRow {
   hzkj_emailfield3: string
   hzkj_whatsapp1?: string
   hzkj_remark1?: string
+  hzkj_timezone_id?: string
   [key: string]: unknown
 }
 
@@ -399,4 +414,594 @@ export async function updateProfile(
   return response.data
 }
 
+// 查询客户用户请求参数
+export interface QueryCustomerUserRequest {
+  data: {
+    id: string
+  }
+  pageSize: number
+  pageNo: number
+}
+
+// 客户用户数据接口
+export interface CustomerUserItem {
+  hzkj_biz_user_id?: string
+  hzkj_biz_user_number?: string
+  hzkj_biz_user_name?: string
+  hzkj_biz_user_username?: string
+  hzkj_biz_user_email?: string
+  hzkj_biz_user_phone?: string
+  hzkj_biz_user_gender?: string
+  hzkj_biz_user_gender_title?: string
+  hzkj_biz_user_picturefield?: string
+  [key: string]: unknown
+}
+
+// 查询客户用户响应
+export interface QueryCustomerUserResponse {
+  data?: {
+    rows?: CustomerUserItem[]
+    list?: CustomerUserItem[]
+    pageNo?: number
+    pageSize?: number
+    totalCount?: number
+    filter?: string
+    lastPage?: boolean
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询客户用户 API
+export async function queryCustomerUser(
+  id: string,
+  pageNo: number = 1,
+  pageSize: number = 10
+): Promise<CustomerUserItem | null> {
+  const requestData: QueryCustomerUserRequest = {
+    data: {
+      id,
+    },
+    pageSize,
+    pageNo,
+  }
+
+  console.log('查询客户用户请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<QueryCustomerUserResponse>(
+    '/v2/hzkj/hzkj_member/hzkj_member_customer/queryCustomerUser',
+    requestData
+  )
+
+  console.log('查询客户用户响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to query customer user. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回 rows 数组中的第一个，如果没有 rows 则返回 list 中的第一个，如果都没有则返回 null
+  const rows = response.data.data?.rows || response.data.data?.list
+  if (Array.isArray(rows) && rows.length > 0) {
+    return rows[0] as CustomerUserItem
+  }
+
+  return null
+}
+
+// 更新账户信息请求参数
+export interface UpdateAccountInfoRequest {
+  data: Array<{
+    id: string
+    name?: string
+    hzkj_avatar?: string
+    hzkj_username?: string
+    hzkj_surname?: string
+    hzkj_role_id?: string
+    [key: string]: unknown
+  }>
+}
+
+// 更新账户信息响应
+export interface UpdateAccountInfoResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 更新账户信息 API
+export async function updateAccountInfo(
+  accountData: UpdateAccountInfoRequest['data'][0]
+): Promise<UpdateAccountInfoResponse> {
+  const requestData: UpdateAccountInfoRequest = {
+    data: [accountData],
+  }
+
+  console.log('更新账户信息请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<UpdateAccountInfoResponse>(
+    '/v2/hzkj/hzkj_member/hzkj_account_record/updateAccountInfo',
+    requestData
+  )
+
+  console.log('更新账户信息响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to update account info. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 删除账户请求参数
+export interface DeleteAccountRequest {
+  customerId: string
+  accountId: string
+}
+
+// 删除账户响应
+export interface DeleteAccountResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 删除账户 API
+export async function deleteAccount(
+  customerId: string,
+  accountId: string
+): Promise<DeleteAccountResponse> {
+  const requestData: DeleteAccountRequest = {
+    customerId,
+    accountId,
+  }
+
+  console.log('删除账户请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<DeleteAccountResponse>(
+    '/v2/hzkj/hzkj_ordercenter/member/deleteAccount',
+    requestData
+  )
+
+  console.log('删除账户响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to delete account. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 时区数据接口
+export interface TimezoneItem {
+  id: string
+  name: string
+  [key: string]: unknown
+}
+
+// 查询时区请求参数
+export interface QueryTimezoneRequest {
+  data: Record<string, unknown>
+  pageSize: number
+  pageNo: number
+}
+
+// 查询时区响应
+export interface QueryTimezoneResponse {
+  data?: {
+    filter?: string
+    lastPage?: boolean
+    pageNo?: number
+    pageSize?: number
+    rows?: TimezoneItem[]
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询时区列表 API
+export async function queryAdmininteTimezone(
+  pageNo: number = 1,
+  pageSize: number = 100
+): Promise<TimezoneItem[]> {
+  const requestData: QueryTimezoneRequest = {
+    data: {},
+    pageSize,
+    pageNo,
+  }
+
+  console.log('查询时区请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<QueryTimezoneResponse>(
+    '/v2/hzkj/base/inte_timezone/queryAdmininteTimezone',
+    requestData
+  )
+
+  console.log('查询时区响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to query timezones. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回 rows 数组，如果没有 rows 则返回空数组
+  const rows = response.data.data?.rows
+  return Array.isArray(rows) ? rows : []
+}
+
+// 地址数据接口
+export interface AddressItem {
+  hzkj_customer_first_name2?: string
+  hzkj_customer_last_name2?: string
+  hzkj_phone_number?: string
+  hzkj_emailfield?: string
+  hzkj_bill_city?: string
+  hzkj_bill_adress?: string
+  hzkj_bill_adress2?: string
+  hzkj_textfield3?: string
+  hzkj_tax_id2?: string
+  hzkj_synchronize_adress?: boolean
+  hzkj_customer_first_name?: string
+  hzkj_customer_last_name?: string
+  hzkj_phone?: string
+  hzkj_adress_emailfield?: string
+  hzkj_city?: string
+  hzkj_address2?: string
+  hzkj_textfield?: string
+  hzkj_tax_id1?: string
+  hzkj_textfield1?: string
+  hzkj_country2_number?: string
+  hzkj_admindivision2_number?: string
+  hzkj_admindivision2_id?: string | number
+  hzkj_country_number?: string
+  hzkj_admindivision_number?: string
+  hzkj_admindivision_id?: string | number
+  [key: string]: unknown
+}
+
+// 获取地址响应
+export interface GetAddressResponse {
+  data?: {
+    lastPage?: boolean
+    pageNo?: number
+    pageSize?: number
+    rows?: AddressItem[]
+    totalCount?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 获取地址 API
+export async function getAddress(
+  id: string | number,
+  pageNo: number = 1,
+  pageSize: number = 10
+): Promise<AddressItem | null> {
+  const response = await apiClient.get<GetAddressResponse>(
+    '/v2/hzkj/hzkj_member/hzkj_member_customer/getAddress',
+    {
+      params: {
+        id: String(id),
+        pageNo,
+        pageSize,
+      },
+    }
+  )
+
+  console.log('获取地址响应:', response.data)
+  console.log('响应数据类型:', typeof response.data)
+  console.log('响应数据 keys:', Object.keys(response.data || {}))
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to get address. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回 rows 数组中的第一个，如果没有则返回 null
+  // 根据实际响应结构：response.data.data.rows
+  const innerData = response.data.data
+  console.log('innerData 对象:', innerData)
+  const rows = innerData?.rows
+  console.log('rows 数据:', rows)
+  console.log('rows 是否为数组:', Array.isArray(rows))
+  console.log('rows 长度:', Array.isArray(rows) ? rows.length : 0)
+  
+  if (Array.isArray(rows) && rows.length > 0) {
+    const firstRow = rows[0] as AddressItem
+    console.log('返回的第一行数据:', firstRow)
+    console.log('第一行数据的 keys:', Object.keys(firstRow || {}))
+    return firstRow
+  }
+
+  console.warn('没有找到地址数据，rows 为空或不是数组')
+  return null
+}
+
+// 行政区划级别数据接口
+export interface AdmindivisionLevelItem {
+  id: string
+  number?: string
+  name: string
+  level?: number
+  country_name?: string
+  country_number?: string
+  country_id?: string
+  [key: string]: unknown
+}
+
+// 查询行政区划级别请求参数
+export interface QueryAdmindivisionLevelRequest {
+  data: {
+    country_id: number | string
+  }
+  pageSize: number
+  pageNo: number
+}
+
+// 查询行政区划级别响应
+export interface QueryAdmindivisionLevelResponse {
+  data?: {
+    filter?: string
+    lastPage?: boolean
+    pageNo?: number
+    pageSize?: number
+    rows?: AdmindivisionLevelItem[]
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询行政区划级别 API
+export async function queryAdmindivisionLevel(
+  countryId: number | string,
+  pageNo: number = 1,
+  pageSize: number = 10
+): Promise<AdmindivisionLevelItem[]> {
+  const requestData: QueryAdmindivisionLevelRequest = {
+    data: {
+      country_id: countryId,
+    },
+    pageSize,
+    pageNo,
+  }
+
+  console.log('查询行政区划级别请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<QueryAdmindivisionLevelResponse>(
+    '/v2/hzkj/base/bd_admindivisionlevel/queryAdmindivisionlevel',
+    requestData
+  )
+
+  console.log('查询行政区划级别响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query administrative division levels. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回 rows 数组，如果没有 rows 则返回空数组
+  const rows = response.data.data?.rows
+  return Array.isArray(rows) ? rows : []
+}
+
+// 行政区划数据接口
+export interface AdmindivisionItem {
+  id: string
+  number?: string
+  name: string
+  level?: number
+  country_id?: string | number
+  parent_id?: string | number
+  [key: string]: unknown
+}
+
+// 查询行政区划请求参数
+export interface QueryAdmindivisionRequest {
+  data: {
+    country_id: number | string
+    basedatafield_id?: number | string
+    parent_id?: number | string
+  }
+  pageSize: number
+  pageNo: number
+}
+
+// 查询行政区划响应
+export interface QueryAdmindivisionResponse {
+  data?: {
+    filter?: string
+    lastPage?: boolean
+    pageNo?: number
+    pageSize?: number
+    rows?: AdmindivisionItem[]
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询行政区划 API
+export async function queryAdmindivision(
+  countryId: number | string,
+  basedatafieldId?: number | string,
+  parentId?: number | string,
+  pageNo: number = 1,
+  pageSize: number = 100
+): Promise<AdmindivisionItem[]> {
+  const requestData: QueryAdmindivisionRequest = {
+    data: {
+      country_id: countryId,
+      ...(basedatafieldId !== undefined && { basedatafield_id: basedatafieldId }),
+      ...(parentId !== undefined && { parent_id: parentId }),
+    },
+    pageSize,
+    pageNo,
+  }
+
+  console.log('查询行政区划请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<QueryAdmindivisionResponse>(
+    '/v2/hzkj/base/bd_admindivision/queryAdmindivision',
+    requestData
+  )
+
+  console.log('查询行政区划响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query administrative divisions. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回 rows 数组，如果没有 rows 则返回空数组
+  const rows = response.data.data?.rows
+  return Array.isArray(rows) ? rows : []
+}
+
+// 更新账单地址请求参数
+export interface UpdateBillAddressRequest {
+  data: Array<{
+    id: string | number
+    hzkj_customer_first_name2?: string
+    hzkj_customer_last_name2?: string
+    hzkj_phone_number?: string
+    hzkj_emailfield?: string
+    hzkj_bill_city?: string
+    hzkj_bill_adress?: string
+    hzkj_bill_adress2?: string
+    hzkj_textfield3?: string
+    hzkj_tax_id2?: string
+    hzkj_country2_id?: string | number
+    hzkj_admindivision2_id?: string | number
+    [key: string]: unknown
+  }>
+}
+
+// 更新账单地址响应
+export interface UpdateBillAddressResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 更新账单地址 API
+export async function updateBillAddress(
+  addressData: UpdateBillAddressRequest['data'][0]
+): Promise<UpdateBillAddressResponse> {
+  const requestData: UpdateBillAddressRequest = {
+    data: [addressData],
+  }
+
+  console.log('更新账单地址请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<UpdateBillAddressResponse>(
+    '/v2/hzkj/hzkj_member/hzkj_member_customer/updateBillAdress',
+    requestData
+  )
+
+  console.log('更新账单地址响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to update billing address. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 更新收货地址请求参数
+export interface UpdateAddressRequest {
+  data: Array<{
+    id: string | number
+    hzkj_customer_first_name?: string
+    hzkj_customer_last_name?: string
+    hzkj_phone?: string
+    hzkj_adress_emailfield?: string
+    hzkj_city?: string
+    hzkj_textfield?: string
+    hzkj_address2?: string
+    hzkj_textfield1?: string
+    hzkj_tax_id1?: string
+    hzkj_country_id?: string | number
+    hzkj_admindivision_id?: string | number
+    [key: string]: unknown
+  }>
+}
+
+// 更新收货地址响应
+export interface UpdateAddressResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 更新收货地址 API
+export async function updateAddress(
+  addressData: UpdateAddressRequest['data'][0]
+): Promise<UpdateAddressResponse> {
+  const requestData: UpdateAddressRequest = {
+    data: [addressData],
+  }
+
+  console.log('更新收货地址请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<UpdateAddressResponse>(
+    '/v2/hzkj/hzkj_member/hzkj_member_customer/updateAdress',
+    requestData
+  )
+
+  console.log('更新收货地址响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to update address. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
 

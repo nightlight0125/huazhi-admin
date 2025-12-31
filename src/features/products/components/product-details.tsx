@@ -24,6 +24,7 @@ import { toast } from 'sonner'
 import countries from 'world-countries'
 import { useAuthStore } from '@/stores/auth-store'
 import type { ShopInfo } from '@/stores/shop-store'
+import { querySkuByCustomer, type SkuRecordItem } from '@/lib/api/products'
 import { getUserShop } from '@/lib/api/shop'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -76,8 +77,11 @@ import { mockVariantPricingData } from '@/features/store-management/components/v
 import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
 import { products } from '../data/data'
 import { type Product } from '../data/schema'
+import {
+  ConfirmOrderView,
+  type ConfirmOrderPayload,
+} from './confirm-order-view'
 import { ProductPurchaseDialog } from './product-purchase-dialog'
-import { ConfirmOrderView, type ConfirmOrderPayload } from './confirm-order-view'
 
 export function ProductDetails() {
   const { productId } = useParams({
@@ -233,11 +237,54 @@ export function ProductDetails() {
   )
   const [storeListingColumnFilters, setStoreListingColumnFilters] =
     useState<ColumnFiltersState>([])
+  const [skuRecords, setSkuRecords] = useState<SkuRecordItem[]>([])
+  const [isLoadingSku, setIsLoadingSku] = useState(false)
 
   // 颜色选项
   const colorOptions = ['White', 'Pink', 'Purple', 'Dark Green', 'Black']
   // 尺寸选项
   const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL']
+
+  // 获取 SKU 记录
+  useEffect(() => {
+    const fetchSkuRecords = async () => {
+      if (!productId) return
+
+      const userId = auth.user?.id
+      const customerId = userId ? Number(userId) : 0
+      if (isNaN(customerId)) {
+        console.warn('Invalid user ID, using 0 as customer ID')
+      }
+
+      setIsLoadingSku(true)
+      try {
+        const records = await querySkuByCustomer(
+          // productId,
+          // customerId,
+
+          '2366744063564104704',
+          0,
+          '0',
+          1,
+          10
+        )
+        setSkuRecords(records)
+        console.log('SKU 记录:', records)
+      } catch (error) {
+        console.error('Failed to fetch SKU records:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load SKU records. Please try again.'
+        )
+        setSkuRecords([])
+      } finally {
+        setIsLoadingSku(false)
+      }
+    }
+
+    void fetchSkuRecords()
+  }, [productId, auth.user?.id])
 
   // 复制SPU功能
   const handleCopySPU = () => {

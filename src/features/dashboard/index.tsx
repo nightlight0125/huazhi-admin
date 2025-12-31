@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { queryCustomerUser, type CustomerUserItem } from '@/lib/api/users'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { HeaderActions } from '@/components/header-actions'
@@ -35,8 +38,56 @@ const notifications = [
 ]
 
 export function Dashboard() {
-  const user = useAuthStore((state) => state.auth.user)
-  console.log('======user12345678', user)
+  const authUser = useAuthStore((state) => state.auth.user)
+  const [customerUser, setCustomerUser] = useState<CustomerUserItem | null>(
+    null
+  )
+
+  // 获取客户用户信息
+  useEffect(() => {
+    const fetchCustomerUser = async () => {
+      const userId = authUser?.id
+      if (!userId) {
+        console.warn('No user ID available')
+        return
+      }
+
+      try {
+        const userData = await queryCustomerUser(userId, 1, 10)
+        setCustomerUser(userData)
+        console.log('客户用户数据:', userData)
+      } catch (error) {
+        console.error('Failed to fetch customer user:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load customer user. Please try again.'
+        )
+        setCustomerUser(null)
+      }
+    }
+
+    void fetchCustomerUser()
+  }, [authUser?.id])
+
+  // 使用 API 返回的数据，如果没有则使用 auth store 的数据作为后备
+  const user = customerUser
+    ? {
+        username:
+          customerUser.hzkj_biz_user_username ||
+          customerUser.hzkj_biz_user_name ||
+          '',
+        phone: customerUser.hzkj_biz_user_phone || '',
+        email: customerUser.hzkj_biz_user_email || '',
+        picture: customerUser.hzkj_biz_user_picturefield || '',
+      }
+    : {
+        username: authUser?.username || '',
+        phone: authUser?.phone || '',
+        email: authUser?.email || '',
+        picture: '',
+      }
+
   return (
     <>
       <Header>
@@ -198,11 +249,19 @@ export function Dashboard() {
                     <CardContent className='flex items-center justify-between py-3'>
                       <div className='flex items-center gap-3'>
                         <div className='flex flex-col items-center gap-1'>
-                          <div className='bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full text-xl font-bold'>
-                            {user?.username?.charAt(0)}
-                          </div>
+                          {user.picture ? (
+                            <img
+                              src={user.picture}
+                              alt={user.username}
+                              className='h-12 w-12 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div className='bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full text-xl font-bold'>
+                              {user.username?.charAt(0)?.toUpperCase() || 'U'}
+                            </div>
+                          )}
                           <p className='text-sm font-semibold'>
-                            {user?.username}
+                            {user.username || ''}
                           </p>
                         </div>
                         <div className='flex flex-col gap-0.5'>

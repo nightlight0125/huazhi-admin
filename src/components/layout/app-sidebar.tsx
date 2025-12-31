@@ -145,7 +145,6 @@ export function AppSidebar() {
     []
   )
 
-  // 获取菜单权限
   useEffect(() => {
     const fetchMenuPermissions = async () => {
       if (!roleId) {
@@ -156,10 +155,7 @@ export function AppSidebar() {
       try {
         const permissions = await queryMenu(roleId)
         setMenuPermissions(permissions)
-        console.log('菜单权限数据:', permissions)
       } catch (error) {
-        console.error('获取菜单权限失败:', error)
-        // 如果接口调用失败，使用硬编码规则
         setMenuPermissions([])
       }
     }
@@ -167,7 +163,6 @@ export function AppSidebar() {
     fetchMenuPermissions()
   }, [roleId])
 
-  // 根据 roleId 和菜单权限过滤菜单
   const filteredNavGroups = useMemo(() => {
     return filterNavGroups(sidebarData.navGroups, roleId, menuPermissions)
   }, [roleId, menuPermissions])
@@ -176,10 +171,6 @@ export function AppSidebar() {
     <Sidebar collapsible={collapsible} variant={variant}>
       <SidebarHeader className='pb-1'>
         <TeamSwitcher teams={sidebarData.teams} />
-
-        {/* Replace <TeamSwitch /> with the following <AppTitle />
-         /* if you want to use the normal app title instead of TeamSwitch dropdown */}
-        {/* <AppTitle /> */}
       </SidebarHeader>
       <SidebarContent className='gap-0'>
         {filteredNavGroups.map((props) => (

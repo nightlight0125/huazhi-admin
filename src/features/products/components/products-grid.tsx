@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import { Heart, ShoppingCart, Store } from 'lucide-react'
+import { toast } from 'sonner'
+import { queryGoodClassList, type GoodClassItem } from '@/lib/api/products'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
@@ -9,57 +11,88 @@ import { ImageSearchInput } from '@/components/image-search-input'
 import { PriceRangePopover } from '@/components/price-range-popover'
 import { type Product } from '@/features/products/data/schema'
 
-// Category tree data
-const categoryTree = [
-  {
-    label: 'Animals & Pet Supplies',
-    value: 'animals-pet-supplies',
-    children: [
-      { label: 'Live Animals', value: 'live-animals' },
-      { label: 'Pet Supplies', value: 'pet-supplies' },
-    ],
-  },
-  {
-    label: 'Apparel & Accessories',
-    value: 'apparel-accessories',
-    children: [
-      { label: 'Clothing', value: 'clothing' },
-      { label: 'Accessories', value: 'accessories' },
-    ],
-  },
-  {
-    label: 'Arts & Entertainment',
-    value: 'arts-entertainment',
-    children: [
-      { label: 'Art Supplies', value: 'art-supplies' },
-      { label: 'Entertainment', value: 'entertainment' },
-    ],
-  },
-  {
-    label: 'Baby & Toddler',
-    value: 'baby-toddler',
-    children: [
-      { label: 'Baby Care', value: 'baby-care' },
-      { label: 'Toddler Items', value: 'toddler-items' },
-    ],
-  },
-  {
-    label: 'Business & Industrial',
-    value: 'business-industrial',
-    children: [
-      { label: 'Office Supplies', value: 'office-supplies' },
-      { label: 'Industrial Equipment', value: 'industrial-equipment' },
-    ],
-  },
-  {
-    label: 'Cameras & Optics',
-    value: 'cameras-optics',
-    children: [
-      { label: 'Cameras', value: 'cameras' },
-      { label: 'Optics', value: 'optics' },
-    ],
-  },
-]
+// Category item type
+type CategoryItem = {
+  label: string
+  value: string
+  children?: CategoryItem[]
+}
+
+// Convert API data to category tree structure
+function convertToCategoryTree(items: GoodClassItem[]): CategoryItem[] {
+  if (!Array.isArray(items) || items.length === 0) {
+    return []
+  }
+
+  // Create a map for quick lookup
+  const itemMap = new Map<string, GoodClassItem>()
+  items.forEach((item) => {
+    const id = String(item.id || item.number || '')
+    if (id) {
+      itemMap.set(id, item)
+    }
+  })
+
+  // Build tree structure
+  const tree: CategoryItem[] = []
+  const processed = new Set<string>()
+
+  // First pass: find root items (items with hzkj_parent_id === "0" or empty)
+  items.forEach((item) => {
+    const id = String(item.id || item.number || '')
+    if (!id || processed.has(id)) return
+
+    // Use hzkj_parent_id, fallback to parent_id for backward compatibility
+    const parentId = String(item.hzkj_parent_id || item.parent_id || '')
+
+    // Root items: parent_id is "0" or empty, or parent not in the list
+    if (parentId === '0' || !parentId || !itemMap.has(parentId)) {
+      const categoryItem: CategoryItem = {
+        label: String(item.name || item.number || ''),
+        value: id,
+      }
+      tree.push(categoryItem)
+      processed.add(id)
+    }
+  })
+
+  // Second pass: add children recursively
+  const addChildren = (parent: CategoryItem) => {
+    items.forEach((item) => {
+      const id = String(item.id || item.number || '')
+      // Use hzkj_parent_id, fallback to parent_id for backward compatibility
+      const parentId = String(item.hzkj_parent_id || item.parent_id || '')
+
+      // If this item's parent matches the current parent and hasn't been processed
+      if (id && parentId === parent.value && !processed.has(id)) {
+        if (!parent.children) {
+          parent.children = []
+        }
+        const categoryItem: CategoryItem = {
+          label: String(item.name || item.number || ''),
+          value: id,
+        }
+        parent.children.push(categoryItem)
+        processed.add(id)
+        // Recursively add children of this item
+        addChildren(categoryItem)
+      }
+    })
+  }
+
+  // Add children to all root items
+  tree.forEach(addChildren)
+
+  // If no tree structure found, return flat list
+  if (tree.length === 0) {
+    return items.map((item) => ({
+      label: String(item.name || item.number || ''),
+      value: String(item.id || item.number || ''),
+    }))
+  }
+
+  return tree
+}
 
 type ProductsGridProps = {
   data: Product[]
@@ -77,6 +110,28 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   const [selectedPriceRange, setSelectedPriceRange] = useState<
     { min: number; max: number } | undefined
   >(undefined)
+  const [categoryTree, setCategoryTree] = useState<CategoryItem[]>([])
+
+  // Fetch category data from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categories = await queryGoodClassList('00000001', 1, 100)
+        const tree = convertToCategoryTree(categories)
+        setCategoryTree(tree)
+      } catch (error) {
+        console.error('Failed to fetch categories:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load categories. Please try again.'
+        )
+        setCategoryTree([])
+      }
+    }
+
+    void fetchCategories()
+  }, [])
   // TODO: Location and supplier filters will be implemented in the future
   // const [selectedLocation, setSelectedLocation] = useState<string | undefined>(
   //   undefined
@@ -159,6 +214,7 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     globalFilter,
     selectedCategories,
     selectedPriceRange,
+    categoryTree,
     // selectedLocation,
   ])
 

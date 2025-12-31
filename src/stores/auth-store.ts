@@ -12,7 +12,8 @@ interface AuthUser {
   username: string
   roleId?: string
   hzkj_whatsapp1?: string
-  phone?: string
+  phone?: string,
+  customerId?: string,
 }
 
 interface AuthState {

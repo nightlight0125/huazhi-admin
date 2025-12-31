@@ -29,12 +29,17 @@ type DataTableFacetedFilterProps<TData, TValue> = {
     value: string
     icon?: React.ComponentType<{ className?: string }>
   }[]
+  onFilterChange?: () => void
+  // 直接从 table 获取 columnFilters，因为 column.getFilterValue() 可能不准确
+  columnFilters?: Array<{ id: string; value: unknown }>
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
   options,
+  onFilterChange,
+  columnFilters,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   // Safely get faceted values with error handling
   let facets: Map<string | number, number> = new Map()
@@ -49,26 +54,78 @@ export function DataTableFacetedFilter<TData, TValue>({
     console.warn('Error getting faceted unique values:', error)
   }
 
-  const rawFilterValue = column?.getFilterValue()
-  const initialSelected = Array.isArray(rawFilterValue)
-    ? (rawFilterValue as string[])
-    : rawFilterValue
-      ? [String(rawFilterValue)]
-      : []
+  // 优先从 columnFilters prop 获取值（更可靠），否则从 column.getFilterValue() 获取
+  const getFilterValueFromProps = React.useCallback(() => {
+    if (columnFilters && column) {
+      const filter = columnFilters.find((f) => f.id === column.id)
+      if (filter) {
+        const result = Array.isArray(filter.value) ? (filter.value as string[]) : filter.value ? [String(filter.value)] : []
+        console.log(`[${title}] getFilterValueFromProps:`, { columnFilters, columnId: column.id, filter, result })
+        return result
+      }
+    }
+    return []
+  }, [columnFilters, column, title])
 
-  const [selectedArray, setSelectedArray] = React.useState<string[]>(initialSelected)
+  // 从 column.getFilterValue() 获取值（作为后备）
+  const getFilterValueFromColumn = React.useCallback(() => {
+    const value = column?.getFilterValue()
+    const result = Array.isArray(value) ? (value as string[]) : value ? [String(value)] : []
+    console.log(`[${title}] getFilterValueFromColumn:`, { value, result })
+    return result
+  }, [column, title])
 
-  // 同步外部（例如 URL）变化到本地选中状态
+  // 优先使用 columnFilters prop 的值（如果找到了），否则使用 column.getFilterValue()
+  const externalFilterValue = getFilterValueFromProps()
+  const columnFilterValue = getFilterValueFromColumn()
+  // 如果 externalFilterValue 找到了 filter（即使值是空数组），也优先使用它
+  const hasExternalFilter = columnFilters && column && columnFilters.some((f) => f.id === column.id)
+  const rawFilterValue = hasExternalFilter ? externalFilterValue : columnFilterValue
+
+  console.log(`[${title}] rawFilterValue computed:`, {
+    externalFilterValue,
+    columnFilterValue,
+    hasExternalFilter,
+    rawFilterValue,
+    columnFilters,
+    columnId: column?.id,
+  })
+
+  // 使用本地状态作为单一数据源
+  const [localSelected, setLocalSelected] = React.useState<string[]>(rawFilterValue)
+  
+  // 使用 ref 来跟踪是否是用户操作导致的更新
+  const isUserActionRef = React.useRef(false)
+  
+  // 当外部 filterValue 变化时（例如从 URL 同步），同步到本地状态
   React.useEffect(() => {
-    const next = Array.isArray(rawFilterValue)
-      ? (rawFilterValue as string[])
-      : rawFilterValue
-        ? [String(rawFilterValue)]
-        : []
-    setSelectedArray(next)
-  }, [rawFilterValue])
+    // 如果是用户操作导致的更新，跳过同步（用户操作已经更新了 localSelected）
+    if (isUserActionRef.current) {
+      isUserActionRef.current = false
+      return
+    }
+    
+    const currentStr = JSON.stringify([...rawFilterValue].sort())
+    const currentLocalStr = JSON.stringify([...localSelected].sort())
+    
+    console.log(`[${title}] useEffect sync check:`, {
+      rawFilterValue,
+      localSelected,
+      currentStr,
+      currentLocalStr,
+      willUpdate: currentStr !== currentLocalStr,
+      isUserAction: isUserActionRef.current,
+    })
+    
+    // 只有当外部值和本地状态不一致时才同步
+    if (currentStr !== currentLocalStr) {
+      console.log(`[${title}] Updating localSelected from:`, localSelected, 'to:', rawFilterValue)
+      setLocalSelected(rawFilterValue)
+    }
+  }, [rawFilterValue, localSelected, title])
 
-  const selectedValues = new Set(selectedArray)
+  // 直接使用 localSelected
+  const selectedValues = new Set(localSelected)
 
   return (
     <Popover>
@@ -130,10 +187,20 @@ export function DataTableFacetedFilter<TData, TValue>({
                         nextSelected.add(option.value)
                       }
                       const filterValues = Array.from(nextSelected)
-                      setSelectedArray(filterValues)
+                      
+                      // 标记这是用户操作
+                      isUserActionRef.current = true
+                      
+                      // 先更新本地状态（立即显示选中状态）
+                      setLocalSelected(filterValues)
+                      
+                      // 然后更新 column 的 filterValue（这会触发 onColumnFiltersChange）
                       column?.setFilterValue(
                         filterValues.length ? filterValues : undefined
                       )
+                      
+                      // 通知父组件过滤器已变化
+                      onFilterChange?.()
                     }}
                   >
                     <div
@@ -164,7 +231,10 @@ export function DataTableFacetedFilter<TData, TValue>({
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
-                    onSelect={() => column?.setFilterValue(undefined)}
+                    onSelect={() => {
+                      column?.setFilterValue(undefined)
+                      onFilterChange?.()
+                    }}
                     className='justify-center text-center'
                   >
                     Clear filters

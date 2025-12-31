@@ -6,8 +6,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { addAccount, queryRole, type RoleItem } from '@/lib/api/users'
-import { encryptPassword } from '@/lib/crypto-utils'
+import {
+  addAccount,
+  queryRole,
+  updateAccountInfo,
+  type RoleItem,
+} from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,6 +33,7 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { type User } from '../data/schema'
+import { useUsers } from './users-provider'
 
 const formSchema = z
   .object({
@@ -83,16 +88,16 @@ export function UsersActionDialog({
   const [isLoadingRoles, setIsLoadingRoles] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { auth } = useAuthStore()
+  const { onRefresh } = useUsers()
   const isEdit = !!currentRow
 
-  // 获取角色列表
   useEffect(() => {
     const fetchRoles = async () => {
-      if (!open) return // 只在对话框打开时获取
+      if (!open) return
 
       setIsLoadingRoles(true)
       try {
-        const roleList = await queryRole(1, 100) // 获取前100个角色
+        const roleList = await queryRole(1, 100)
         setRoles(roleList)
       } catch (error) {
         console.error('Failed to fetch roles:', error)
@@ -105,9 +110,8 @@ export function UsersActionDialog({
     fetchRoles()
   }, [open])
 
-  // 将角色数据转换为下拉选项格式
   const roleOptions = roles.map((role) => ({
-    label: role.name || role.number || role.id,
+    label: role.name,
     value: role.id,
   }))
 
@@ -116,11 +120,11 @@ export function UsersActionDialog({
     defaultValues: isEdit
       ? {
           name: currentRow.firstName || '',
-          surname: currentRow.lastName || '',
+          surname: currentRow.surname || currentRow.lastName || '',
           username: currentRow.username || '',
           email: currentRow.email || '',
           phone: currentRow.phoneNumber || '',
-          roleId: currentRow.role || '',
+          roleId: currentRow.roleId || currentRow.role || '',
           password: '',
           customerId: '',
           isEdit,
@@ -140,13 +144,49 @@ export function UsersActionDialog({
 
   const onSubmit = async (values: UserForm) => {
     if (isEdit) {
-      // TODO: 实现编辑用户的逻辑
-      toast.info('Edit functionality is not implemented yet')
+      console.log('values', values)
+
+      if (!currentRow) {
+        toast.error('User data is missing')
+        return
+      }
+
+      setIsSubmitting(true)
+      const loadingToast = toast.loading('Updating user...')
+
+      try {
+        const fullName = `${values.name} ${values.surname}`.trim()
+
+        await updateAccountInfo({
+          id: currentRow.id,
+          name: fullName || values.username,
+          hzkj_username: values.username,
+          hzkj_surname: values.surname || values.name || '',
+          hzkj_role_id: values.roleId || '',
+        })
+
+        toast.dismiss(loadingToast)
+        toast.success('User updated successfully!')
+        form.reset()
+        onOpenChange(false)
+        // 刷新用户列表
+        onRefresh?.()
+      } catch (error) {
+        toast.dismiss(loadingToast)
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to update user. Please try again.'
+        toast.error(errorMessage)
+        console.error('Update user error:', error)
+      } finally {
+        setIsSubmitting(false)
+      }
       return
     }
 
     // 获取当前登录用户的 id 作为 customerId
-    const currentUserId = auth.user?.id
+    const currentUserId = auth.user?.customerId
     if (!currentUserId) {
       toast.error('User not authenticated. Please login again.')
       return
@@ -161,26 +201,27 @@ export function UsersActionDialog({
     setIsSubmitting(true)
     const loadingToast = toast.loading('Creating user...')
 
-    try {
-      // 加密密码
-      const encryptedPassword = encryptPassword(values.password)
+    console.log('values.roleId', values.roleId)
 
-      // 调用添加账户 API
+    try {
+      // const encryptedPassword = encryptPassword(values.password)
       await addAccount({
         username: values.username,
         email: values.email,
         surname: values.surname,
         name: values.name,
         phone: values.phone,
-        password: encryptedPassword,
-        roleId: Number(values.roleId),
-        customerId: Number(currentUserId),
+        password: values.password,
+        roleId: values.roleId,
+        customerId: currentUserId,
       })
 
       toast.dismiss(loadingToast)
       toast.success('User created successfully!')
       form.reset()
       onOpenChange(false)
+      // 刷新用户列表
+      onRefresh?.()
     } catch (error) {
       toast.dismiss(loadingToast)
       const errorMessage =
@@ -332,25 +373,27 @@ export function UsersActionDialog({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name='password'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>
-                      Password
-                    </FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        placeholder='Enter password (min. 8 characters)'
-                        className='col-span-4'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
+              {!isEdit && (
+                <FormField
+                  control={form.control}
+                  name='password'
+                  render={({ field }) => (
+                    <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                      <FormLabel className='col-span-2 text-end'>
+                        Password
+                      </FormLabel>
+                      <FormControl>
+                        <PasswordInput
+                          placeholder='Enter password (min. 6 characters)'
+                          className='col-span-4'
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage className='col-span-4 col-start-3' />
+                    </FormItem>
+                  )}
+                />
+              )}
             </form>
           </Form>
         </div>

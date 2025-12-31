@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -16,8 +17,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+// Input replaced by SelectDropdown for country selection
 import { SelectDropdown } from '@/components/select-dropdown'
+import { toast } from 'sonner'
+import { getStatesList, getLogsList } from '@/lib/api/logistics'
+import { apiClient } from '@/lib/api-client'
 import { type Logistics } from '../data/schema'
 
 const editShippingSchema = z.object({
@@ -34,10 +38,7 @@ interface EditShippingToDialogProps {
   onSubmit?: (row: Logistics, values: EditShippingValues) => void
 }
 
-const shippingMethodOptions = [
-  { label: 'DS Standard line', value: 'DS Standard line' },
-  { label: 'DS Express line', value: 'DS Express line' },
-]
+// shippingMethodOptions replaced by methodOptions loaded from API
 
 export function EditShippingToDialog({
   open,
@@ -45,6 +46,50 @@ export function EditShippingToDialog({
   onOpenChange,
   onSubmit,
 }: EditShippingToDialogProps) {
+  const [countryOptions, setCountryOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([])
+  const [methodOptions, setMethodOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([])
+  const [statesData, setStatesData] = useState<
+    Array<{ id: string; hzkj_code?: string; hzkj_name?: string }>
+  >([])
+  const [isLoadingData, setIsLoadingData] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // load states and channels when dialog opens
+  useEffect(() => {
+    if (!open) return
+    const load = async () => {
+      setIsLoadingData(true)
+      try {
+        const [states, channels] = await Promise.all([
+          getStatesList(),
+          getLogsList(),
+        ])
+        setStatesData(states)
+        const countryOpts = states.map((s) => ({
+          label: s.hzkj_name || s.name || '',
+          value: s.id || '', // use id so we can send destinationId directly
+        }))
+        setCountryOptions(countryOpts)
+        const channelOpts = channels.map((c) => ({
+          label: c.name || '',
+          value: c.id || '',
+        }))
+        setMethodOptions(channelOpts)
+      } catch (error) {
+        console.error('Failed to load states/channels:', error)
+        toast.error('Failed to load countries or channels')
+      } finally {
+        setIsLoadingData(false)
+      }
+    }
+
+    load()
+  }, [open])
+
   const form = useForm<EditShippingValues>({
     resolver: zodResolver(editShippingSchema),
     defaultValues: {
@@ -66,10 +111,47 @@ export function EditShippingToDialog({
   }
 
   const handleSubmit = (values: EditShippingValues) => {
-    if (row && onSubmit) {
-      onSubmit(row, values)
+    // call API to add freight for this row
+    const doSubmit = async () => {
+      if (!row) return
+      setIsSubmitting(true)
+      const loadingToast = toast.loading('Adding freight...')
+      try {
+        // values.shippingTo is destinationId (state.id), values.shippingMethod is channelId
+        const rawEntryId =
+          (row as any).entryId ??
+          (row as any).entry_id ??
+          (row as any).data?.entryId ??
+          (row as any).data?.entry_id ??
+          (row as any).entryIdStr ??
+          (row as any).entryid ??
+          ''
+
+        const payload = {
+          id: String(row.id),
+          entryId: String(rawEntryId ?? ''),
+          destinationId: String(values.shippingTo),
+          channelId: String(values.shippingMethod),
+        }
+
+        await apiClient.post('/v2/hzkj/hzkj_logistics/hzkj_cus_freight/add', payload)
+
+        toast.dismiss(loadingToast)
+        toast.success('Added successfully')
+        onOpenChange(false)
+        // notify parent to refresh
+        onSubmit?.(row, values)
+      } catch (error) {
+        toast.dismiss(loadingToast)
+        const msg = error instanceof Error ? error.message : 'Add failed'
+        toast.error(msg)
+        console.error('Add freight error:', error)
+      } finally {
+        setIsSubmitting(false)
+      }
     }
-    onOpenChange(false)
+
+    doSubmit()
   }
 
   return (
@@ -98,10 +180,13 @@ export function EditShippingToDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Shipping To</FormLabel>
-                  <Input
-                    placeholder='Enter shipping to'
-                    autoComplete='off'
-                    {...field}
+                  <SelectDropdown
+                    defaultValue={field.value}
+                    onValueChange={field.onChange}
+                    placeholder='Select country'
+                    items={countryOptions}
+                    isControlled
+                    className='w-full'
                   />
                   <FormMessage />
                 </FormItem>
@@ -118,7 +203,7 @@ export function EditShippingToDialog({
                     defaultValue={field.value}
                     onValueChange={field.onChange}
                     placeholder='Select shipping method'
-                    items={shippingMethodOptions}
+                    items={methodOptions}
                     isControlled
                     className='w-full'
                   />

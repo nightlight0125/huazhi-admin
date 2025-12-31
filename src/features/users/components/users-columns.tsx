@@ -1,12 +1,14 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { Trash2, UserPen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { LongText } from '@/components/long-text'
 import { callTypes, roles } from '../data/data'
 import { type User } from '../data/schema'
-import { DataTableRowActions } from './data-table-row-actions'
+import { useUsers } from './users-provider'
 
 export const usersColumns: ColumnDef<User>[] = [
   {
@@ -109,6 +111,7 @@ export const usersColumns: ColumnDef<User>[] = [
     enableSorting: false,
   },
   {
+    id: 'role',
     accessorKey: 'role',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='role' />
@@ -127,13 +130,46 @@ export const usersColumns: ColumnDef<User>[] = [
       )
     },
     filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
+      // 使用 roleId 进行过滤匹配，因为过滤器的 value 是 role.id
+      const roleId = row.original.roleId
+      return Array.isArray(value) && value.includes(roleId)
     },
     enableSorting: false,
     enableHiding: false,
   },
   {
     id: 'actions',
-    cell: DataTableRowActions,
+    cell: ({ row }) => {
+      const { setOpen, setCurrentRow } = useUsers()
+      return (
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='ghost'
+            size='sm'
+            className='h-8 w-8 p-0'
+            onClick={() => {
+              console.log('row.original', row.original)
+              setCurrentRow(row.original)
+              setOpen('edit')
+            }}
+          >
+            <UserPen className='h-4 w-4' />
+            <span className='sr-only'>编辑</span>
+          </Button>
+          <Button
+            variant='ghost'
+            size='sm'
+            className='text-destructive hover:text-destructive h-8 w-8 p-0'
+            onClick={() => {
+              setCurrentRow(row.original)
+              setOpen('delete')
+            }}
+          >
+            <Trash2 className='h-4 w-4' />
+            <span className='sr-only'>删除</span>
+          </Button>
+        </div>
+      )
+    },
   },
 ]

@@ -1,7 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { addCusFreight, getLogsList, getStatesList } from '@/lib/api/logistics'
+import { getProductsList, type ApiProductItem } from '@/lib/api/products'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,35 +23,15 @@ import {
 } from '@/components/ui/form'
 import { SelectDropdown } from '@/components/select-dropdown'
 
-const countryOptions = [
-  { label: 'France [FR]', value: 'FR' },
-  { label: 'United Kingdom [GB]', value: 'GB' },
-  { label: 'Belgium [BE]', value: 'BE' },
-  { label: 'Canada [CA]', value: 'CA' },
-  { label: 'United States [US]', value: 'US' },
-  { label: 'Switzerland [CH]', value: 'CH' },
-]
-
-const methodOptions = [
-  { label: 'DS Standard line', value: 'standard' },
-  { label: 'DS Express line', value: 'express' },
-]
-
-const spuOptions = [
-  { label: 'SPU001', value: 'SPU001' },
-  { label: 'SPU002', value: 'SPU002' },
-  { label: 'SPU003', value: 'SPU003' },
-]
-
 const shippingPlanItemSchema = z.object({
   from: z.string().min(1, 'Country is required'),
   method: z.string().min(1, 'Method is required'),
 })
 
 const shippingPlanFormSchema = z.object({
-  sku: z.string().min(1, 'SKU is required'),
-  spu: z.string().optional(),
-  to: z.string().min(1, 'Destination is required'),
+  sku: z.string().optional(),
+  spu: z.string().min(1, 'SPU is required'),
+  to: z.string().optional(),
   plans: z
     .array(shippingPlanItemSchema)
     .min(1, 'At least one plan is required'),
@@ -58,19 +42,35 @@ type ShippingPlanFormValues = z.infer<typeof shippingPlanFormSchema>
 interface ShippingPlanDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void // 提交成功后的回调
 }
 
 export function ShippingPlanDialog({
   open,
   onOpenChange,
+  onSuccess,
 }: ShippingPlanDialogProps) {
+  const { auth } = useAuthStore()
+  const [countryOptions, setCountryOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([])
+  const [methodOptions, setMethodOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([])
+  const [statesData, setStatesData] = useState<
+    Array<{ id: string; hzkj_code?: string; hzkj_name?: string }>
+  >([])
+  const [productsData, setProductsData] = useState<ApiProductItem[]>([])
+  const [isLoadingStates, setIsLoadingStates] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const form = useForm<ShippingPlanFormValues>({
     resolver: zodResolver(shippingPlanFormSchema),
     defaultValues: {
       sku: '',
       spu: '',
       to: '',
-      plans: [{ from: 'FR', method: 'standard' }],
+      plans: [{ from: '', method: '' }],
     },
     mode: 'onChange',
   })
@@ -80,6 +80,61 @@ export function ShippingPlanDialog({
     name: 'plans',
   })
 
+  // 加载州/省列表和自定义渠道列表
+  useEffect(() => {
+    if (open) {
+      const loadData = async () => {
+        setIsLoadingStates(true)
+        try {
+          const [statesData, channelsData, productsData] = await Promise.all([
+            getStatesList(),
+            getLogsList(),
+            getProductsList({
+              pageNo: 1,
+              pageSize: 1000,
+            }),
+          ])
+
+          // 提取产品数据
+          // const productsData = productsResponse?.data?.products || []
+
+          console.log('statesData', statesData)
+          console.log('channelsData', channelsData)
+          console.log('productsData', productsData)
+
+          // 保存states原始数据，用于提交时查找id
+          setStatesData(statesData)
+
+          // 保存产品数据
+          setProductsData(productsData || [])
+
+          // 使用states数据作为国家下拉框选项（from字段）
+          const countryOpts = statesData.map((state) => ({
+            label: state.hzkj_name || state.name || '',
+            value: state.hzkj_code || state.id || '',
+          }))
+          setCountryOptions(countryOpts)
+          console.log('countryOptions:', countryOpts)
+
+          // 使用channels数据作为方法下拉框选项（method字段）
+          const channelOpts = channelsData.map((channel) => ({
+            label: channel.name || '',
+            value: channel.id || '',
+          }))
+          setMethodOptions(channelOpts)
+          console.log('method options (from channels):', channelOpts)
+        } catch (error) {
+          console.error('Failed to load data:', error)
+          toast.error('Failed to load data. Please try again.')
+        } finally {
+          setIsLoadingStates(false)
+        }
+      }
+
+      loadData()
+    }
+  }, [open])
+
   // 当弹框关闭时重置表单
   useEffect(() => {
     if (!open) {
@@ -87,17 +142,89 @@ export function ShippingPlanDialog({
         sku: '',
         spu: '',
         to: '',
-        plans: [{ from: 'FR', method: 'standard' }],
+        plans: [{ from: '', method: '' }],
       })
     }
   }, [open, form])
 
-  const handleSubmit = (values: ShippingPlanFormValues) => {
-    // TODO: 将 values 提交给后端
-    // values.plans 是一个 list，可直接传给接口
-    // eslint-disable-next-line no-console
-    console.log('Shipping plan submitted:', values)
-    onOpenChange(false)
+  const handleSubmit = async (values: ShippingPlanFormValues) => {
+    console.log('表单提交，values:', values)
+
+    if (!auth.user?.id) {
+      toast.error('User not authenticated')
+      return
+    }
+
+    if (!values.spu) {
+      toast.error('Please select SPU')
+      return
+    }
+
+    // 检查是否有有效的计划
+    const validPlans = values.plans.filter((plan) => plan.from && plan.method)
+    if (validPlans.length === 0) {
+      toast.error(
+        'Please add at least one shipping plan with country and method'
+      )
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      // 构建 destination 对象：key 是州/省的 id，value 是自定义渠道的 id
+      const destination: Record<string, string> = {}
+      values.plans.forEach((plan) => {
+        if (plan.from && plan.method) {
+          // plan.from 是国家代码（hzkj_code），需要找到对应的州/省 id
+          const state = statesData.find(
+            (s) => s.hzkj_code === plan.from || s.id === plan.from
+          )
+          if (state) {
+            // key 是州/省的 id，value 是自定义渠道的 id（plan.method）
+            destination[state.id] = plan.method
+          } else {
+            console.warn('未找到对应的州/省，plan.from:', plan.from)
+          }
+        }
+      })
+
+      console.log('构建的 destination:', destination)
+      console.log('statesData:', statesData)
+
+      if (Object.keys(destination).length === 0) {
+        toast.error('Please select valid country and method for shipping plans')
+        setIsSubmitting(false)
+        return
+      }
+
+      const requestData = {
+        customerId: auth.user?.customerId,
+        spuId: values.spu, // 使用表单中选择的 SPU
+        destination,
+      }
+
+      console.log(
+        '准备调用接口，请求数据:',
+        JSON.stringify(requestData, null, 2)
+      )
+
+      // 调用新增接口
+      await addCusFreight(requestData)
+
+      toast.success('Shipping plan added successfully')
+      onOpenChange(false)
+      // 触发刷新回调
+      onSuccess?.()
+    } catch (error) {
+      console.error('Failed to submit shipping plan:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to add shipping plan. Please try again.'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -139,7 +266,10 @@ export function ShippingPlanDialog({
                         defaultValue={field.value}
                         onValueChange={field.onChange}
                         placeholder='Select SPU'
-                        items={spuOptions}
+                        items={productsData.map((product) => ({
+                          label: product.name || '',
+                          value: product.id || '',
+                        }))}
                         className='w-full'
                         isControlled
                       />
@@ -190,6 +320,7 @@ export function ShippingPlanDialog({
                                   items={methodOptions}
                                   className='w-full'
                                   isControlled
+                                  disabled={isLoadingStates}
                                 />
                                 <FormMessage />
                               </FormItem>
@@ -238,8 +369,12 @@ export function ShippingPlanDialog({
           >
             Cancel
           </Button>
-          <Button type='submit' form='shipping-plan-form'>
-            Confirm
+          <Button
+            type='submit'
+            form='shipping-plan-form'
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Submitting...' : 'Confirm'}
           </Button>
         </DialogFooter>
       </DialogContent>
