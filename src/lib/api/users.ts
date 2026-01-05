@@ -711,11 +711,6 @@ export async function getAddress(
       },
     }
   )
-
-  console.log('获取地址响应:', response.data)
-  console.log('响应数据类型:', typeof response.data)
-  console.log('响应数据 keys:', Object.keys(response.data || {}))
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -723,23 +718,14 @@ export async function getAddress(
     throw new Error(errorMessage)
   }
 
-  // 返回 rows 数组中的第一个，如果没有则返回 null
-  // 根据实际响应结构：response.data.data.rows
   const innerData = response.data.data
-  console.log('innerData 对象:', innerData)
   const rows = innerData?.rows
-  console.log('rows 数据:', rows)
-  console.log('rows 是否为数组:', Array.isArray(rows))
-  console.log('rows 长度:', Array.isArray(rows) ? rows.length : 0)
   
   if (Array.isArray(rows) && rows.length > 0) {
     const firstRow = rows[0] as AddressItem
-    console.log('返回的第一行数据:', firstRow)
-    console.log('第一行数据的 keys:', Object.keys(firstRow || {}))
     return firstRow
   }
 
-  console.warn('没有找到地址数据，rows 为空或不是数组')
   return null
 }
 

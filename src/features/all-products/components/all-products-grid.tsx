@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { Heart, Search, ShoppingCart, Store } from 'lucide-react'
 import { toast } from 'sonner'
-import { queryGoodClassList, type GoodClassItem } from '@/lib/api/products'
+import { useAuthStore } from '@/stores/auth-store'
+import { getStatesList, type StateItem } from '@/lib/api/logistics'
+import {
+  collectProduct,
+  queryGoodClassList,
+  type GoodClassItem,
+} from '@/lib/api/products'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
-import { locations, priceRanges } from '@/features/products/data/data'
+import { priceRanges } from '@/features/products/data/data'
 import { type Product } from '@/features/products/data/schema'
 
 const route = getRouteApi('/_authenticated/all-products')
@@ -108,6 +114,7 @@ function convertToCategoryTree(items: GoodClassItem[]): CategoryItem[] {
 
 export function AllProductsGrid({ data }: AllProductsGridProps) {
   const navigate = useNavigate()
+  const { auth } = useAuthStore()
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     new Set()
@@ -205,19 +212,41 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
   const endIndex = startIndex + pageSize
   const paginatedData = filteredData.slice(startIndex, endIndex)
 
-  const toggleFavorite = (productId: string) => {
-    setSelectedItems((prev) => {
-      const next = new Set(prev)
-      if (next.has(productId)) {
-        next.delete(productId)
-      } else {
-        next.add(productId)
-      }
-      return next
-    })
+  const [locationOptions, setLocationOptions] = useState<StateItem[]>([])
+
+  const toggleFavorite = async (productId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Please login first')
+      return
+    }
+
+    try {
+      // 调用收藏产品 API
+      await collectProduct(productId, String(customerId))
+
+      // 更新本地状态
+      setSelectedItems((prev) => {
+        const next = new Set(prev)
+        if (next.has(productId)) {
+          next.delete(productId)
+          toast.success('Product removed from favorites')
+        } else {
+          next.add(productId)
+          toast.success('Product added to favorites')
+        }
+        return next
+      })
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update favorite status. Please try again.'
+      )
+    }
   }
 
-  // Suppliers options
   const suppliers = [
     { label: 'All suppliers', value: 'all' },
     { label: 'Supplier A', value: 'supplier-a' },
@@ -242,10 +271,13 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
     ...priceRanges.map((range) => ({ label: range.label, value: range.value })),
   ]
 
-  const locationOptions = [
-    { label: 'Ship from anywhere', value: 'all' },
-    ...locations.map((loc) => ({ label: loc.label, value: loc.value })),
-  ]
+  useEffect(() => {
+    const fetchLocationOptions = async () => {
+      const locationOptions = await getStatesList()
+      setLocationOptions(locationOptions)
+    }
+    void fetchLocationOptions()
+  }, [])
 
   return (
     <div className='space-y-4'>
@@ -260,12 +292,7 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
             className='pl-9'
           />
         </div>
-        {/* <Button variant='outline' size='lg'>
-          <Search className='h-3.5 w-3.5' />
-          Search
-        </Button> */}
 
-        {/* Filter Dropdowns */}
         <div className='flex flex-wrap items-center gap-2'>
           <CategoryTreeFilterPopover
             title='All categories'
@@ -303,8 +330,8 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
             </SelectTrigger>
             <SelectContent>
               {locationOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+                <SelectItem key={option.id} value={option.id}>
+                  {option.hzkj_name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -330,7 +357,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
         </div>
       </div>
 
-      {/* Grid Layout */}
       <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
         {paginatedData.map((product) => {
           const isFavorite = selectedItems.has(product.id)
@@ -347,7 +373,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
                 })
               }
             >
-              {/* Product Image */}
               <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
                 <img
                   src={product.image}
@@ -356,7 +381,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
                 />
               </div>
 
-              {/* Product Info */}
               <div className='space-y-1.5 p-2.5'>
                 <h3
                   className='overflow-hidden text-sm font-semibold break-words'
@@ -374,17 +398,14 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
                   {product.name.trim().replace(/\s+/g, ' ')}
                 </h3>
 
-                {/* SPU */}
                 <p className='font-mono text-xs text-gray-600'>
-                  SPU : {product.sku}
+                  SPU:{product.sku}
                 </p>
 
-                {/* Price */}
                 <div className='text-base font-bold'>
                   ${product.price.toFixed(2)}
                 </div>
 
-                {/* Action Buttons - Bottom */}
                 <div className='flex gap-1.5 pt-1.5'>
                   <Button
                     variant='outline'
@@ -434,11 +455,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
           )
         })}
       </div>
-
-      {/* Pagination */}
-      {/* {filteredData.length > 0 && <DataTablePagination table={mockTable} />} */}
-
-      {/* No Results */}
       {filteredData.length === 0 && (
         <div className='text-muted-foreground flex h-24 items-center justify-center'>
           No products found.

@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -46,7 +44,7 @@ type SourcingFormDialogProps = {
     productLink: string
     price?: string
     remark?: string
-    productImage?: File
+    productImage?: string
   }) => void
 }
 
@@ -59,11 +57,6 @@ export function SourcingFormDialog({
   initialValues,
   onSubmit,
 }: SourcingFormDialogProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    initialValues?.imageUrl ?? null
-  )
-
   const formSchema = useMemo(() => {
     let base = z.object({
       productName: z.string().min(1, 'Product name is required'),
@@ -79,7 +72,7 @@ export function SourcingFormDialog({
           (val) => !val || (!Number.isNaN(Number(val)) && Number(val) >= 0),
           { message: 'Price must be a valid number' }
         ),
-      productImage: z.instanceof(File).optional(),
+      productImage: z.string().url('Please enter a valid image URL').optional(),
       remark: z
         .string()
         .max(250, 'Remark must be less than 250 characters')
@@ -87,10 +80,13 @@ export function SourcingFormDialog({
     })
 
     if (requireImage) {
-      base = base.refine((data) => data.productImage !== undefined, {
-        message: 'Product image is required',
-        path: ['productImage'],
-      }) as typeof base
+      base = base.refine(
+        (data) => data.productImage !== undefined && data.productImage !== '',
+        {
+          message: 'Product image URL is required',
+          path: ['productImage'],
+        }
+      ) as typeof base
     }
 
     return base
@@ -105,6 +101,7 @@ export function SourcingFormDialog({
       productLink: initialValues?.productLink ?? '',
       price: initialValues?.price ?? '',
       remark: initialValues?.remark ?? '',
+      productImage: initialValues?.imageUrl ?? '',
     },
   })
 
@@ -115,53 +112,12 @@ export function SourcingFormDialog({
       productLink: initialValues?.productLink ?? '',
       price: initialValues?.price ?? '',
       remark: initialValues?.remark ?? '',
-      productImage: undefined,
+      productImage: initialValues?.imageUrl ?? '',
     })
-    setImagePreview(initialValues?.imageUrl ?? null)
   }, [initialValues, form])
 
   const remarkValue = form.watch('remark') || ''
   const remarkLength = remarkValue.length
-
-  const handleFileSelect = useCallback(
-    (files: FileList | null) => {
-      if (!files || files.length === 0) return
-
-      const file = files[0]
-      if (file.type.startsWith('image/')) {
-        form.setValue('productImage', file, { shouldValidate: true })
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          const result = e.target?.result as string
-          if (result) {
-            setImagePreview(result)
-          }
-        }
-        reader.readAsDataURL(file)
-      }
-    },
-    [form]
-  )
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      handleFileSelect(e.dataTransfer.files)
-    },
-    [handleFileSelect]
-  )
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-  }, [])
-
-  const removeImage = () => {
-    setImagePreview(null)
-    form.setValue('productImage', undefined, { shouldValidate: true })
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
 
   const internalSubmit = (values: FormValues) => {
     onSubmit({
@@ -169,14 +125,13 @@ export function SourcingFormDialog({
       productLink: values.productLink,
       price: values.price,
       remark: values.remark,
-      productImage: values.productImage,
+      productImage: values.productImage as string | undefined,
     })
   }
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       form.reset()
-      setImagePreview(initialValues?.imageUrl ?? null)
     }
     onOpenChange(newOpen)
   }
@@ -257,57 +212,14 @@ export function SourcingFormDialog({
             <FormField
               control={form.control}
               name='productImage'
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>
                     {requireImage && <span className='text-red-500'>*</span>}{' '}
-                    Product Image
+                    Product Image URL
                   </FormLabel>
                   <FormControl>
-                    <div className='space-y-2'>
-                      {imagePreview ? (
-                        <div className='relative'>
-                          <div className='rounded-lg border p-3'>
-                            <img
-                              src={imagePreview}
-                              alt='Product preview'
-                              className='h-32 w-full rounded object-cover'
-                            />
-                          </div>
-                          <Button
-                            type='button'
-                            variant='destructive'
-                            size='icon'
-                            className='absolute top-2 right-2 h-6 w-6'
-                            onClick={removeImage}
-                          >
-                            <Plus className='h-4 w-4 rotate-45' />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div
-                          className={cn(
-                            'cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors',
-                            'hover:border-primary/50'
-                          )}
-                          onDrop={handleDrop}
-                          onDragOver={handleDragOver}
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          <Plus className='text-muted-foreground mx-auto mb-2 h-8 w-8' />
-                          <p className='text-muted-foreground text-sm'>
-                            Upload
-                          </p>
-                          <input
-                            ref={fileInputRef}
-                            type='file'
-                            accept='image/*'
-                            className='hidden'
-                            onChange={(e) => handleFileSelect(e.target.files)}
-                          />
-                        </div>
-                      )}
-                    </div>
+                    <Input placeholder='Please enter image URL...' {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

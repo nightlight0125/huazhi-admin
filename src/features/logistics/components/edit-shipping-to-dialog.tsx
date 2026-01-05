@@ -1,7 +1,10 @@
-import { z } from 'zod'
 import { useEffect, useState } from 'react'
+import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
+import { apiClient } from '@/lib/api-client'
+import { getLogsList, getStatesList } from '@/lib/api/logistics'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,9 +22,6 @@ import {
 } from '@/components/ui/form'
 // Input replaced by SelectDropdown for country selection
 import { SelectDropdown } from '@/components/select-dropdown'
-import { toast } from 'sonner'
-import { getStatesList, getLogsList } from '@/lib/api/logistics'
-import { apiClient } from '@/lib/api-client'
 import { type Logistics } from '../data/schema'
 
 const editShippingSchema = z.object({
@@ -52,11 +52,11 @@ export function EditShippingToDialog({
   const [methodOptions, setMethodOptions] = useState<
     Array<{ label: string; value: string }>
   >([])
-  const [statesData, setStatesData] = useState<
+  const [, setStatesData] = useState<
     Array<{ id: string; hzkj_code?: string; hzkj_name?: string }>
   >([])
-  const [isLoadingData, setIsLoadingData] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [, setIsLoadingData] = useState(false)
+  const [, setIsSubmitting] = useState(false)
 
   // load states and channels when dialog opens
   useEffect(() => {
@@ -134,7 +134,10 @@ export function EditShippingToDialog({
           channelId: String(values.shippingMethod),
         }
 
-        await apiClient.post('/v2/hzkj/hzkj_logistics/hzkj_cus_freight/add', payload)
+        await apiClient.post(
+          '/v2/hzkj/hzkj_logistics/hzkj_cus_freight/add',
+          payload
+        )
 
         toast.dismiss(loadingToast)
         toast.success('Added successfully')
@@ -230,4 +233,3 @@ export function EditShippingToDialog({
     </Dialog>
   )
 }
-

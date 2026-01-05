@@ -3,6 +3,7 @@ import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getRecommendProductsList } from '@/lib/api/products'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -17,11 +18,37 @@ export function CollectionProducts() {
   const navigate = route.useNavigate()
   const [data, setData] = useState<LikedProduct[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
 
-  const columns = useMemo(() => createLikedProductsColumns(), [])
+  // 获取分页状态和搜索状态（从 URL）
+  const { pagination, globalFilter } = useTableUrlState({
+    search,
+    navigate: navigate as any,
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
+    globalFilter: { enabled: true, key: 'filter' },
+    columnFilters: [],
+  })
+
+  // 刷新数据的函数
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1)
+  }
+
+  const columns = useMemo(
+    () => createLikedProductsColumns(handleRefresh),
+    [handleRefresh]
+  )
 
   // 加载推荐产品数据（收藏产品）
-  useFetchCollectionProducts(setData, setIsLoading)
+  useFetchCollectionProducts(
+    setData,
+    setIsLoading,
+    refreshKey,
+    pagination,
+    setTotalCount,
+    globalFilter
+  )
 
   return (
     <>
@@ -43,6 +70,7 @@ export function CollectionProducts() {
               columns={columns}
               search={search}
               navigate={navigate}
+              totalCount={totalCount}
             />
           )}
         </div>
@@ -54,40 +82,57 @@ export function CollectionProducts() {
 // 获取推荐产品数据
 export function useFetchCollectionProducts(
   setData: (data: LikedProduct[]) => void,
-  setIsLoading: (loading: boolean) => void
+  setIsLoading: (loading: boolean) => void,
+  refreshKey: number = 0,
+  pagination?: { pageIndex: number; pageSize: number },
+  setTotalCount?: (count: number) => void,
+  globalFilter?: string
 ) {
   const { auth } = useAuthStore()
 
   useEffect(() => {
     const fetchData = async () => {
-      // const customerId = auth.user?.id
-      const customerId = '2333521702035667968'
+      const customerId = auth.user?.customerId
+
       if (!customerId) {
-        toast.error('User not authenticated. Please login again.')
         setIsLoading(false)
+        setData([])
+        setTotalCount?.(0)
         return
       }
+
+      // 使用分页参数，如果没有则使用默认值
+      const pageNo = pagination ? pagination.pageIndex + 1 : 1
+      const pageSize = pagination?.pageSize || 10
+
+      // 使用搜索参数，如果没有则使用空字符串
+      const nameOrCode = globalFilter?.trim() || ''
 
       setIsLoading(true)
       try {
         const response = await getRecommendProductsList({
-          customerId,
-          pageSize: 5,
-          pageNo: 1,
-          nameOrCode: '',
+          customerId: String(customerId),
+          pageSize,
+          pageNo,
+          nameOrCode,
         })
 
         console.log('API Response:', response)
-        
+
         // API 返回的数据在 response.data.data 中
-        const apiProducts = (response.data as any)?.data || response.data?.products || []
+        const apiProducts =
+          (response.data as any)?.data || response.data?.products || []
         console.log('apiProducts:', apiProducts)
-        
+
+        // 获取总数
+        const total = response.data?.totalCount || 0
+        setTotalCount?.(total)
+
         const likedProducts: LikedProduct[] = apiProducts.map((item: any) => ({
           id: item.id || String(item.id) || '',
-          name: item.name || item.enname || '',
+          name: item.name || '',
           image: item.picture || '',
-          description: item.enname || item.name || '',
+          description: item.enname || '',
           spu: item.number || '',
           priceMin: item.price || 0,
           priceMax: item.price || 0,
@@ -104,11 +149,22 @@ export function useFetchCollectionProducts(
             : 'Failed to load collection products. Please try again.'
         )
         setData([])
+        setTotalCount?.(0)
       } finally {
         setIsLoading(false)
       }
     }
 
     void fetchData()
-  }, [auth.user?.id, setData, setIsLoading])
+  }, [
+    auth.user?.id,
+    auth.user?.customerId,
+    setData,
+    setIsLoading,
+    refreshKey,
+    pagination?.pageIndex,
+    pagination?.pageSize,
+    globalFilter,
+    setTotalCount,
+  ])
 }

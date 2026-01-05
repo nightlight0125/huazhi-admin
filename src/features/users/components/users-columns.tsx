@@ -104,8 +104,8 @@ export const usersColumns: ColumnDef<User>[] = [
         </div>
       )
     },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
+    filterFn: (row, _id, value) => {
+      return value.includes(row.getValue(_id))
     },
     enableHiding: false,
     enableSorting: false,
@@ -129,10 +129,14 @@ export const usersColumns: ColumnDef<User>[] = [
         </div>
       )
     },
-    filterFn: (row, id, value) => {
+    filterFn: (row, _id, value) => {
       // 使用 roleId 进行过滤匹配，因为过滤器的 value 是 role.id
-      const roleId = row.original.roleId
-      return Array.isArray(value) && value.includes(roleId)
+      // 确保类型一致：将 roleId 转换为字符串，value 数组中的值也应该是字符串
+      const roleId = String(row.original.roleId || '')
+      const filterValues = Array.isArray(value) 
+        ? value.map(v => String(v))
+        : []
+      return filterValues.includes(roleId)
     },
     enableSorting: false,
     enableHiding: false,

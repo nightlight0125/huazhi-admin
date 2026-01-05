@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   ColumnFiltersState,
   OnChangeFn,
   PaginationState,
 } from '@tanstack/react-table'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type SearchRecord = Record<string, unknown>
 
@@ -110,27 +110,20 @@ export function useTableUrlState(
   const [columnFilters, setColumnFilters] =
     useState<ColumnFiltersState>(initialColumnFilters)
 
-  // 同步 URL 变化到 columnFilters 状态
-  // 使用 useRef 来跟踪是否是内部更新，避免循环
   const isInternalUpdateRef = useRef(false)
   const prevInitialFiltersRef = useRef<string>(JSON.stringify(initialColumnFilters))
   
   useEffect(() => {
-    // 如果是内部更新（用户操作），跳过同步
     if (isInternalUpdateRef.current) {
       isInternalUpdateRef.current = false
-      // 更新 ref，避免下次误判
-      prevInitialFiltersRef.current = JSON.stringify(initialColumnFilters)
       return
     }
     
-    // 深度比较，只有真正变化时才更新
     const currentStr = JSON.stringify(initialColumnFilters)
     if (prevInitialFiltersRef.current !== currentStr) {
       prevInitialFiltersRef.current = currentStr
       setColumnFilters(initialColumnFilters)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialColumnFilters])
 
   const pagination: PaginationState = useMemo(() => {
@@ -184,7 +177,6 @@ export function useTableUrlState(
   const onColumnFiltersChange: OnChangeFn<ColumnFiltersState> = (updater) => {
     const next =
       typeof updater === 'function' ? updater(columnFilters) : updater
-    // 标记这是内部更新，避免 useEffect 再次同步
     isInternalUpdateRef.current = true
     setColumnFilters(next)
 
@@ -205,6 +197,8 @@ export function useTableUrlState(
         patch[cfg.searchKey] = value.length > 0 ? serialize(value) : undefined
       }
     }
+
+    prevInitialFiltersRef.current = JSON.stringify(next)
 
     navigate({
       search: (prev) => ({

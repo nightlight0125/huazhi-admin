@@ -24,7 +24,12 @@ import { toast } from 'sonner'
 import countries from 'world-countries'
 import { useAuthStore } from '@/stores/auth-store'
 import type { ShopInfo } from '@/stores/shop-store'
-import { querySkuByCustomer, type SkuRecordItem } from '@/lib/api/products'
+import {
+  getProduct,
+  querySkuByCustomer,
+  type ApiProductItem,
+  type SkuRecordItem,
+} from '@/lib/api/products'
 import { getUserShop } from '@/lib/api/shop'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -69,7 +74,6 @@ import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { type BrandItem } from '@/features/brands/data/schema'
 import { likedProductsData } from '@/features/liked-products/data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
-import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
 import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
@@ -108,23 +112,138 @@ export function ProductDetails() {
     isFromPackagingProducts && packagingTab === 'my-packaging'
   )
 
-  // 查找产品数据 - 先查找普通产品，再查找包装产品
-  let regularProduct = products.find((p) => p.id === productId)
+  // 状态声明
+  const [apiProduct, setApiProduct] = useState<ApiProductItem | null>(null)
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false)
+  const [richTextContent, setRichTextContent] = useState<string>('')
+
+  // 从 API 获取产品详情
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!productId) return
+
+      setIsLoadingProduct(true)
+      try {
+        const productData = await getProduct(productId)
+        setApiProduct(productData)
+        // 提取富文本内容
+        if (productData) {
+          const richtext = (productData as Record<string, unknown>)
+            .hzkj_richtextfield
+          setRichTextContent(typeof richtext === 'string' ? richtext : '')
+        } else {
+          setRichTextContent('')
+        }
+      } catch (error) {
+        console.error('Failed to fetch product:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load product. Please try again.'
+        )
+        setApiProduct(null)
+        setRichTextContent('')
+      } finally {
+        setIsLoadingProduct(false)
+      }
+    }
+
+    void fetchProduct()
+  }, [productId])
+
+  // 辅助函数：从可能的多语言对象中提取名称
+  const extractName = (name: unknown): string => {
+    if (typeof name === 'string') {
+      return name
+    }
+    if (name && typeof name === 'object') {
+      // 如果是对象，尝试获取 zh_CN 或 GLang 或第一个字符串值
+      const nameObj = name as Record<string, unknown>
+      return (
+        (nameObj.zh_CN as string) ||
+        (nameObj.GLang as string) ||
+        (nameObj.en as string) ||
+        (Object.values(nameObj).find((v) => typeof v === 'string') as string) ||
+        ''
+      )
+    }
+    return ''
+  }
+
+  // 将 API 返回的产品数据转换为组件需要的格式
+  const convertApiProductToProduct = (
+    apiProduct: ApiProductItem | null
+  ): Product | null => {
+    if (!apiProduct) return null
+
+    // 尝试从本地数据中找到匹配的产品以获取完整信息
+    const localProduct = products.find((p) => p.id === apiProduct.id)
+    if (localProduct) {
+      return localProduct
+    }
+
+    // 提取名称（处理可能是对象的情况）
+    const productName = extractName(apiProduct.name)
+    // 处理图片 URL（确保不是空字符串）
+    const productImage =
+      apiProduct.picture && apiProduct.picture.trim() !== ''
+        ? apiProduct.picture
+        : 'https://via.placeholder.com/400?text=No+Image'
+
+    // 如果没有本地数据，创建一个基本的产品对象
+    const picUrl = apiProduct.hzkj_picurl_tag
+    const purPrice = apiProduct.hzkj_pur_price
+
+    return {
+      id: apiProduct.id,
+      name: productName,
+      image:
+        (typeof picUrl === 'string' ? picUrl : productImage) ||
+        'https://via.placeholder.com/400?text=No+Image',
+      shippingLocation: 'china', // 默认值
+      price: (typeof purPrice === 'number' ? purPrice : apiProduct.price) ?? 0, // 如果 price 不存在，默认为 0
+      sku: apiProduct.number || apiProduct.id,
+      category: 'electronics', // 默认值
+      sales: 0,
+      isPublic: true,
+      isRecommended: false,
+      isFavorite: false,
+      isMyStore: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  }
+
+  // 优先使用 API 数据，如果没有则使用本地数据
+  const apiProductConverted = convertApiProductToProduct(apiProduct)
+
+  let regularProduct =
+    apiProductConverted || products.find((p) => p.id === productId)
   const packagingProduct = packagingProducts.find((p) => p.id === productId)
 
-  // 如果从 liked-products 跳转过来，尝试通过 SPU 匹配产品
   if (isFromLikedProducts && !regularProduct) {
     const likedProduct = likedProductsData.find((p) => p.id === productId)
     if (likedProduct) {
-      // 通过 SPU 匹配 products 中的产品
       regularProduct = products.find((p) => p.sku === likedProduct.spu)
     }
   }
 
   const product = regularProduct || packagingProduct
 
-  // 类型辅助：获取产品的共同属性
-  const productData = product as Product | PackagingProduct
+  // 确保 productData 的名称是字符串（处理可能是对象的情况）
+  const productData = product
+    ? {
+        ...product,
+        name:
+          typeof product.name === 'string'
+            ? product.name
+            : extractName(product.name),
+        image:
+          product.image && product.image.trim() !== ''
+            ? product.image
+            : 'https://via.placeholder.com/400?text=No+Image',
+      }
+    : null
 
   type CountryOption = {
     value: string
@@ -237,8 +356,8 @@ export function ProductDetails() {
   )
   const [storeListingColumnFilters, setStoreListingColumnFilters] =
     useState<ColumnFiltersState>([])
-  const [skuRecords, setSkuRecords] = useState<SkuRecordItem[]>([])
-  const [isLoadingSku, setIsLoadingSku] = useState(false)
+  const [, setSkuRecords] = useState<SkuRecordItem[]>([])
+  const [, setIsLoadingSku] = useState(false)
 
   // 颜色选项
   const colorOptions = ['White', 'Pink', 'Purple', 'Dark Green', 'Black']
@@ -294,18 +413,20 @@ export function ProductDetails() {
     }
   }
 
-  // 处理 Buy Sample 按钮点击：打开 Add to Cart 弹框（模式为 sample）
   const handleBuySampleButtonClick = () => {
+    console.log('handleBuySampleButtonClick called')
     setSelectedBuyType('sample')
     setPurchaseMode('sample')
     setIsPurchaseDialogOpen(true)
+    console.log('isPurchaseDialogOpen set to true')
   }
 
-  // 处理 Buy Stock 按钮点击：打开 Add to Cart 弹框（模式为 stock）
   const handleBuyStockButtonClick = () => {
+    console.log('handleBuyStockButtonClick called')
     setSelectedBuyType('stock')
     setPurchaseMode('stock')
     setIsPurchaseDialogOpen(true)
+    console.log('isPurchaseDialogOpen set to true')
   }
 
   // 处理确认订单回调
@@ -321,20 +442,6 @@ export function ProductDetails() {
     setConfirmOrderPayload(null)
   }
 
-  if (!product) {
-    return (
-      <div className='flex h-96 items-center justify-center'>
-        <div className='text-center'>
-          <h2 className='mb-2 text-2xl font-bold'>产品未找到</h2>
-          <p className='text-muted-foreground mb-4'>请检查产品ID是否正确</p>
-          <Button onClick={() => navigate({ to: '/products' })}>
-            返回产品列表
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   // 当发布弹框打开时，获取店铺列表
   useEffect(() => {
     const fetchStores = async () => {
@@ -342,7 +449,8 @@ export function ProductDetails() {
 
       const userId = auth.user?.id
       if (!userId) {
-        toast.error('User not authenticated. Please login again.')
+        setIsLoadingStores(false)
+        setStores([])
         return
       }
 
@@ -406,9 +514,7 @@ export function ProductDetails() {
     fetchStores()
   }, [isPublishDialogOpen, auth.user?.id])
 
-  const totalPrice = productData.price * selectedQuantity
-
-  // 为 StoreListingTabs 准备 Variant Pricing 表格
+  // 为 StoreListingTabs 准备 Variant Pricing 表格（必须在早期 return 之前）
   const variantPricingColumns = useMemo(() => createVariantPricingColumns(), [])
   const variantPricingData = useMemo(() => mockVariantPricingData, [])
   const variantPricingTable = useReactTable<VariantPricing>({
@@ -438,6 +544,11 @@ export function ProductDetails() {
   const handlePublishToStore = () => {
     if (!selectedStore) {
       alert('请选择一个店铺')
+      return
+    }
+
+    if (!productData) {
+      toast.error('Product data is not available')
       return
     }
 
@@ -485,6 +596,52 @@ export function ProductDetails() {
     )
   }
 
+  // 早期返回必须在所有 Hooks 之后
+  if (isLoadingProduct) {
+    return (
+      <div className='flex h-96 items-center justify-center'>
+        <div className='text-center'>
+          <p className='text-muted-foreground'>Loading product...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!product) {
+    return (
+      <div className='flex h-96 items-center justify-center'>
+        <div className='text-center'>
+          <h2 className='mb-2 text-2xl font-bold'>product not found</h2>
+          <p className='text-muted-foreground mb-4'>
+            Please check the product ID is correct
+          </p>
+          <Button onClick={() => navigate({ to: '/products' })}>
+            Back to product list
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // 确保 productData 存在且名称是字符串
+  if (!productData) {
+    return (
+      <div className='flex h-96 items-center justify-center'>
+        <div className='text-center'>
+          <h2 className='mb-2 text-2xl font-bold'>
+            product data not available
+          </h2>
+          <p className='text-muted-foreground mb-4'>Please try again later</p>
+          <Button onClick={() => navigate({ to: '/products' })}>
+            Back to product list
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const totalPrice = (productData.price ?? 0) * selectedQuantity
+
   return (
     <div className='container mx-auto px-4 py-6'>
       {/* 返回按钮 */}
@@ -509,11 +666,17 @@ export function ProductDetails() {
                 <div className='flex flex-col'>
                   {/* 主图片 */}
                   <div className='aspect-square overflow-hidden rounded-t-lg md:rounded-t-none md:rounded-l-lg'>
-                    <img
-                      src={productData.image}
-                      alt={productData.name}
-                      className='h-full w-full object-cover'
-                    />
+                    {productData.image ? (
+                      <img
+                        src={productData.image}
+                        alt={productData.name || 'Product'}
+                        className='h-full w-full object-cover'
+                      />
+                    ) : (
+                      <div className='flex h-full w-full items-center justify-center bg-gray-100 text-gray-400'>
+                        No Image
+                      </div>
+                    )}
                   </div>
 
                   {/* 缩略图轮播 */}
@@ -533,11 +696,17 @@ export function ProductDetails() {
                           }`}
                           onClick={() => setSelectedThumbnail(index)}
                         >
-                          <img
-                            src={img}
-                            alt={`${productData.name} ${index + 1}`}
-                            className='h-full w-full object-cover'
-                          />
+                          {img && img.trim() !== '' ? (
+                            <img
+                              src={img}
+                              alt={`${productData.name || 'Product'} ${index + 1}`}
+                              className='h-full w-full object-cover'
+                            />
+                          ) : (
+                            <div className='flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-400'>
+                              No Image
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -569,7 +738,7 @@ export function ProductDetails() {
                     {/* 价格和MOQ */}
                     <div className='flex items-center gap-4'>
                       <div className='text-3xl font-bold text-orange-500'>
-                        ${productData.price.toFixed(2)}
+                        ${(productData?.price ?? 0).toFixed(2)}
                       </div>
                       <div className='rounded border border-gray-300 bg-gray-50 px-3 py-1 text-sm'>
                         MOQ: 1
@@ -659,7 +828,45 @@ export function ProductDetails() {
                             +
                           </Button>
                         </div>
-                        <span className='text-sm text-gray-600'>158g</span>
+                        {(() => {
+                          const weight = apiProduct
+                            ? (apiProduct as Record<string, unknown>)
+                                .hzkj_pack_weight
+                            : null
+
+                          if (!weight) {
+                            return (
+                              <span className='text-sm text-gray-600'>
+                                158g
+                              </span>
+                            )
+                          }
+
+                          // 解析单个产品重量（克）
+                          const singleWeight =
+                            typeof weight === 'number'
+                              ? weight
+                              : parseFloat(
+                                  String(weight).replace(/[^0-9.]/g, '')
+                                ) || 0
+
+                          if (!singleWeight) {
+                            return (
+                              <span className='text-sm text-gray-600'>
+                                158g
+                              </span>
+                            )
+                          }
+
+                          // 计算总重量 = 单个重量 × 数量
+                          const totalWeight = singleWeight * selectedQuantity
+
+                          return (
+                            <span className='text-sm text-gray-600'>
+                              {totalWeight}g
+                            </span>
+                          )
+                        })()}
                       </div>
                     </div>
 
@@ -956,7 +1163,7 @@ export function ProductDetails() {
                   <div className='flex items-center justify-between'>
                     <span className='text-muted-foreground'>Product Price</span>
                     <span className='font-medium'>
-                      ${productData.price.toFixed(2)}
+                      ${(productData?.price ?? 0).toFixed(2)}
                     </span>
                   </div>
                   <div className='flex items-center justify-between'>
@@ -1072,7 +1279,12 @@ export function ProductDetails() {
                         selectedBuyType === 'sample' && 'bg-muted'
                       )}
                       size='lg'
-                      onClick={handleBuySampleButtonClick}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        console.log('Buy Sample button clicked')
+                        handleBuySampleButtonClick()
+                      }}
                     >
                       <div className='flex w-full items-center justify-start'>
                         <ShoppingCart className='mr-2 h-4 w-4' />
@@ -1088,7 +1300,12 @@ export function ProductDetails() {
                         selectedBuyType === 'stock' && 'bg-muted'
                       )}
                       size='lg'
-                      onClick={handleBuyStockButtonClick}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        console.log('Buy Stock button clicked')
+                        handleBuyStockButtonClick()
+                      }}
                     >
                       <div className='flex w-full items-center justify-start'>
                         <Tag className='mr-2 h-4 w-4' />
@@ -1193,17 +1410,26 @@ export function ProductDetails() {
         </CardHeader>
         <CardContent>
           <div className='prose max-w-none'>
-            <p className='text-muted-foreground leading-relaxed'>
-              多层设计：配备三个梯子和多个平台层，让小型动物可以奔跑、攀爬和玩耍，这个小型动物笼子是一个仓鼠游乐场豪宅。
-              五层设置提供了充足的空间，让您的宠物可以自由活动，同时保持清洁和有序的环境。
-            </p>
-            <p className='text-muted-foreground mt-4 leading-relaxed'>
-              高品质材料：采用天然木材制作，安全无毒，为您的宠物提供健康的生活环境。
-              易于清洁的设计让日常维护变得简单，可拆卸的组件便于深度清洁。
-            </p>
-            <p className='text-muted-foreground mt-4 leading-relaxed'>
-              多功能存储：底部配有储物架，可以存放宠物用品和食物，让您的生活空间更加整洁有序。
-            </p>
+            {richTextContent ? (
+              <div
+                className='text-muted-foreground leading-relaxed'
+                dangerouslySetInnerHTML={{ __html: richTextContent }}
+              />
+            ) : (
+              <>
+                <p className='text-muted-foreground leading-relaxed'>
+                  多层设计：配备三个梯子和多个平台层，让小型动物可以奔跑、攀爬和玩耍，这个小型动物笼子是一个仓鼠游乐场豪宅。
+                  五层设置提供了充足的空间，让您的宠物可以自由活动，同时保持清洁和有序的环境。
+                </p>
+                <p className='text-muted-foreground mt-4 leading-relaxed'>
+                  高品质材料：采用天然木材制作，安全无毒，为您的宠物提供健康的生活环境。
+                  易于清洁的设计让日常维护变得简单，可拆卸的组件便于深度清洁。
+                </p>
+                <p className='text-muted-foreground mt-4 leading-relaxed'>
+                  多功能存储：底部配有储物架，可以存放宠物用品和食物，让您的生活空间更加整洁有序。
+                </p>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1216,11 +1442,11 @@ export function ProductDetails() {
           id: productData.id,
           productImage: productData.image,
           productName: productData.name,
-          price: productData.price,
+          price: productData?.price ?? 0,
           shippingFrom: 'beijing',
           shippingMethod: 'ds-economy-uk',
           shippingCost: 3.07,
-          totalAmount: productData.price + 3.07,
+          totalAmount: (productData?.price ?? 0) + 3.07,
           brandConnections: {
             logo: { connected: false },
             card: { connected: false },

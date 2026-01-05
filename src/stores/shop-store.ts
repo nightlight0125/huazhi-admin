@@ -1,6 +1,6 @@
-import { create } from 'zustand'
 import { getUserShop } from '@/lib/api/shop'
-import { useAuthStore } from './auth-store'
+import { useAuthStore } from '@/stores/auth-store'
+import { create } from 'zustand'
 
 // 店铺信息接口
 export interface ShopInfo {
@@ -28,20 +28,14 @@ export const useShopStore = create<ShopState>()((set, get) => ({
     isLoading: false,
     error: null,
     fetchShopInfo: async (userId?: string) => {
-      // 如果没有传入 userId，从 auth store 获取
       let targetUserId = userId
       if (!targetUserId) {
         const { auth } = useAuthStore.getState()
         targetUserId = auth.user?.id
       }
-
       if (!targetUserId) {
         set((state) => ({
-          shop: {
-            ...state.shop,
-            error: 'User not authenticated',
-            isLoading: false,
-          },
+          shop: { ...state.shop, isLoading: false, error: 'User ID is required' },
         }))
         return
       }

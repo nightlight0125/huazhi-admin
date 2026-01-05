@@ -119,10 +119,6 @@ export function NotificationsForm() {
   const onSubmit = async (data: NotificationsFormValues) => {
     try {
       const userId = auth.user?.id
-      if (!userId) {
-        toast.error('User not authenticated. Please login again.')
-        return
-      }
 
       const requestData = {
         data: [

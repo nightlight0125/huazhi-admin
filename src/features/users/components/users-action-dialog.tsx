@@ -10,7 +10,6 @@ import {
   addAccount,
   queryRole,
   updateAccountInfo,
-  type RoleItem,
 } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import {
@@ -84,31 +83,30 @@ export function UsersActionDialog({
   open,
   onOpenChange,
 }: UserActionDialogProps) {
-  const [roles, setRoles] = useState<RoleItem[]>([])
-  const [isLoadingRoles, setIsLoadingRoles] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { auth } = useAuthStore()
   const { onRefresh } = useUsers()
   const isEdit = !!currentRow
 
+  // 从 auth-store 获取角色列表（登录时已加载）
+  const roles = auth.roles
+
+  // 如果角色列表为空且对话框打开，尝试加载（作为后备）
   useEffect(() => {
-    const fetchRoles = async () => {
-      if (!open) return
-
-      setIsLoadingRoles(true)
-      try {
-        const roleList = await queryRole(1, 100)
-        setRoles(roleList)
-      } catch (error) {
-        console.error('Failed to fetch roles:', error)
-        toast.error('Failed to load roles. Please try again.')
-      } finally {
-        setIsLoadingRoles(false)
+    if (open && roles.length === 0) {
+      const fetchRoles = async () => {
+        try {
+          const roleList = await queryRole(1, 100)
+          auth.setRoles(roleList)
+        } catch (error) {
+          console.error('Failed to fetch roles:', error)
+          toast.error('Failed to load roles. Please try again.')
+        }
       }
+      fetchRoles()
     }
-
-    fetchRoles()
-  }, [open])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, roles.length])
 
   const roleOptions = roles.map((role) => ({
     label: role.name,
@@ -188,7 +186,7 @@ export function UsersActionDialog({
     // 获取当前登录用户的 id 作为 customerId
     const currentUserId = auth.user?.customerId
     if (!currentUserId) {
-      toast.error('User not authenticated. Please login again.')
+      toast.error('Customer ID is required')
       return
     }
 
@@ -361,11 +359,9 @@ export function UsersActionDialog({
                       <SelectDropdown
                         defaultValue={field.value}
                         onValueChange={field.onChange}
-                        placeholder={
-                          isLoadingRoles ? 'Loading roles...' : 'Select role'
-                        }
+                        placeholder={'Select role'}
                         className='col-span-4'
-                        disabled={isLoadingRoles}
+                        disabled={roles.length === 0}
                         items={roleOptions}
                       />
                     </FormControl>

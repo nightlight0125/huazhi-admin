@@ -13,6 +13,16 @@ type AuthenticatedLayoutProps = {
 
 export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+
+  // 在应用启动时验证登录状态（可选）
+  // 如果后端有专门的检查登录状态接口，可以在这里调用
+  // 注意：由于每个 API 请求都会在拦截器中检查，这里可以省略
+  // useEffect(() => {
+  //   validateLoginStatus().catch(() => {
+  //     // 验证失败已在 validateLoginStatus 中处理
+  //   })
+  // }, [])
+
   return (
     <SearchProvider>
       <LayoutProvider>

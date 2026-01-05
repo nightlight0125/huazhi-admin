@@ -25,10 +25,6 @@ export function UsersDeleteDialog({
   const handleDelete = async () => {
     // 获取当前登录用户的 id 作为 customerId
     const currentUserId = auth.user?.customerId
-    if (!currentUserId) {
-      toast.error('User not authenticated. Please login again.')
-      return
-    }
 
     const loadingToast = toast.loading('Deleting user...')
 

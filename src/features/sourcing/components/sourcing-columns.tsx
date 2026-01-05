@@ -1,5 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Edit, Eye } from 'lucide-react'
+import { Edit, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -14,37 +14,25 @@ import { type Sourcing } from '../data/schema'
 type SourcingColumnHandlers = {
   onEdit?: (sourcing: Sourcing) => void
   onRemarkClick?: (sourcing: Sourcing) => void
+  onDelete?: (sourcing: Sourcing) => void
 }
 
-// 状态到颜色/样式的映射（与其他列表保持一致）
 function getSourcingStatusVariant(
   status: string
 ): 'default' | 'secondary' | 'destructive' | 'outline' {
-  const lower = status.toLowerCase()
-
-  if (lower === 'completed') return 'default'
-  if (lower === 'processing') return 'secondary'
-  if (lower === 'failed') return 'destructive'
+  if (status === '0') return 'default'
+  if (status === '1') return 'secondary'
   return 'secondary'
 }
 
 function getSourcingStatusClassName(status: string): string {
-  const lower = status.toLowerCase()
-
-  // Completed - 浅绿色背景，白色文字
-  if (lower === 'completed') {
+  if (status === '0') {
     return 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white'
   }
-  // Processing - 浅紫色背景，白色文字
-  if (lower === 'processing') {
-    return 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white'
-  }
-  // Failed - 浅红色背景，白色文字
-  if (lower === 'failed') {
-    return 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white'
+  if (status === '1') {
+    return 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
   }
 
-  // 默认灰色
   return 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
 }
 
@@ -203,22 +191,25 @@ export const createSourcingColumns = (
 
           <div className='min-w-0 flex-1'>
             <div className='truncate text-[10px] leading-tight font-medium text-gray-900'>
-              toy
+              {/* {sourcing.spuName || productName} */}不知道这个展示什么
             </div>
             <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
-              SPU: {spu}
+              SPU: {sourcing.spuName || spu}
             </div>
             <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
-              Price: {priceRange}
+              Price:{' '}
+              {sourcing.price !== undefined
+                ? `$${sourcing.price.toFixed(2)}`
+                : priceRange}
             </div>
           </div>
 
           {/* 眼睛图标 */}
-          {productId && (
+          {/* {productId && (
             <div className='flex-shrink-0'>
               <Eye className='h-3 w-3 text-gray-400' />
             </div>
-          )}
+          )} */}
         </div>
       )
     },
@@ -313,13 +304,24 @@ export const createSourcingColumns = (
     cell: ({ row }) => {
       const sourcing = row.original
       return (
-        <Edit
-          className='h-3.5 w-3.5'
-          onClick={(e) => {
-            e.stopPropagation()
-            handlers?.onEdit?.(sourcing)
-          }}
-        />
+        <>
+          <div className='flex items-center gap-2'>
+            <Edit
+              className='h-3.5 w-3.5 cursor-pointer'
+              onClick={(e) => {
+                e.stopPropagation()
+                handlers?.onEdit?.(sourcing)
+              }}
+            />
+            <Trash2
+              className='h-3.5 w-3.5 cursor-pointer text-red-500'
+              onClick={(e) => {
+                e.stopPropagation()
+                handlers?.onDelete?.(sourcing)
+              }}
+            />
+          </div>
+        </>
         // <Button
         //   variant='outline'
         //   size='sm'

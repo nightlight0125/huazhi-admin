@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import { Heart, ShoppingCart, Store } from 'lucide-react'
 import { toast } from 'sonner'
-import { queryGoodClassList, type GoodClassItem } from '@/lib/api/products'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  collectProduct,
+  queryGoodClassList,
+  type GoodClassItem,
+} from '@/lib/api/products'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
@@ -132,13 +137,6 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
 
     void fetchCategories()
   }, [])
-  // TODO: Location and supplier filters will be implemented in the future
-  // const [selectedLocation, setSelectedLocation] = useState<string | undefined>(
-  //   undefined
-  // )
-  // const [selectedSupplier, setSelectedSupplier] = useState<string | undefined>(
-  //   undefined
-  // )
 
   // Synced with URL states
   const { globalFilter, onGlobalFilterChange, pagination } = useTableUrlState({
@@ -163,7 +161,6 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
       })
     }
 
-    // Apply category filter
     if (selectedCategories.size > 0) {
       result = result.filter((product) => {
         // Check if product category matches any selected category
@@ -224,16 +221,39 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   const endIndex = startIndex + pageSize
   const paginatedData = filteredData.slice(startIndex, endIndex)
 
-  const toggleFavorite = (productId: string) => {
-    setSelectedItems((prev) => {
-      const next = new Set(prev)
-      if (next.has(productId)) {
-        next.delete(productId)
-      } else {
-        next.add(productId)
-      }
-      return next
-    })
+  const { auth } = useAuthStore()
+
+  const toggleFavorite = async (productId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Please login first')
+      return
+    }
+
+    try {
+      // 调用收藏产品 API
+      await collectProduct(productId, String(customerId))
+
+      // 更新本地状态
+      setSelectedItems((prev) => {
+        const next = new Set(prev)
+        if (next.has(productId)) {
+          next.delete(productId)
+          toast.success('Product removed from favorites')
+        } else {
+          next.add(productId)
+          toast.success('Product added to favorites')
+        }
+        return next
+      })
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update favorite. Please try again.'
+      )
+    }
   }
 
   const handleCategoryChange = (value: string, checked: boolean) => {

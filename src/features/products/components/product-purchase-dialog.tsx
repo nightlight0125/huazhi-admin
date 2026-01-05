@@ -60,13 +60,31 @@ export function ProductPurchaseDialog({
   // 查找产品数据
   const product = products.find((p) => p.id === productId)
 
-  if (!product) {
-    return null
+  // 即使找不到产品，也显示对话框（使用默认值）
+  const defaultProduct = {
+    id: productId,
+    name: 'Product',
+    price: 0,
+    image: '',
+    sku: productId,
+    category: 'electronics' as const,
+    shippingLocation: 'china' as const,
+    sales: 0,
+    isPublic: true,
+    isRecommended: false,
+    isFavorite: false,
+    isMyStore: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 
+  const displayProduct = product || defaultProduct
+
   const totalPrice = (
-    selectedVariants.reduce((sum, v) => sum + v.quantity * product.price, 0) ||
-    0
+    selectedVariants.reduce(
+      (sum, v) => sum + v.quantity * displayProduct.price,
+      0
+    ) || 0
   ).toFixed(2)
 
   // 仓库选择（示例选项，可后续接 API）
@@ -100,14 +118,14 @@ export function ProductPurchaseDialog({
       }-${variant.lightColor.charAt(0).toUpperCase()}${variant.lightColor.slice(
         1
       )} shell`
-      const sku = `${product.sku}-${displayName}`
-      const itemPrice = product.price
+      const sku = `${displayProduct.sku}-${displayName}`
+      const itemPrice = displayProduct.price
       const itemTotal = itemPrice * variant.quantity
 
       return {
         id: variant.id,
-        image: product.image,
-        name: `${product.name} - ${displayName}`,
+        image: displayProduct.image,
+        name: `${displayProduct.name} - ${displayName}`,
         sku: sku,
         price: itemPrice,
         discountedPrice: itemPrice, // 可以根据需要添加折扣逻辑
@@ -157,8 +175,8 @@ export function ProductPurchaseDialog({
               <div className='w-full max-w-[240px] md:col-span-3'>
                 <div className='aspect-square overflow-hidden rounded-lg border bg-gray-100'>
                   <img
-                    src={product.image}
-                    alt={product.name}
+                    src={displayProduct.image}
+                    alt={displayProduct.name}
                     className='h-full w-full object-cover'
                   />
                 </div>
@@ -166,15 +184,15 @@ export function ProductPurchaseDialog({
 
               {/* 右侧：产品标题、价格、SPU */}
               <div className='flex flex-col justify-center space-y-2 md:col-span-9'>
-                <h2 className='text-xl font-semibold'>{product.name}</h2>
+                <h2 className='text-xl font-semibold'>{displayProduct.name}</h2>
                 <div className='text-muted-foreground text-sm'>
                   Product Price:{' '}
                   <span className='text-primary text-2xl font-bold'>
-                    ${product.price.toFixed(2)}
+                    ${displayProduct.price.toFixed(2)}
                   </span>
                 </div>
                 <div className='text-muted-foreground text-sm'>
-                  SPU: <span className='font-medium'>{product.sku}</span>
+                  SPU: <span className='font-medium'>{displayProduct.sku}</span>
                 </div>
               </div>
             </div>
@@ -247,7 +265,7 @@ export function ProductPurchaseDialog({
                       }-${variant.lightColor
                         .charAt(0)
                         .toUpperCase()}${variant.lightColor.slice(1)} shell`
-                      const sku = `${product.sku}-${displayName}`
+                      const sku = `${displayProduct.sku}-${displayName}`
 
                       return (
                         <div
@@ -255,7 +273,7 @@ export function ProductPurchaseDialog({
                           className='flex items-center gap-3 rounded-lg border p-3'
                         >
                           <img
-                            src={product.image}
+                            src={displayProduct.image}
                             alt={displayName}
                             className='h-12 w-12 rounded object-cover'
                           />
@@ -267,7 +285,7 @@ export function ProductPurchaseDialog({
                               SKU: {sku}
                             </div>
                             <div className='text-primary text-sm font-semibold'>
-                              ${product.price.toFixed(2)}
+                              ${displayProduct.price.toFixed(2)}
                             </div>
                           </div>
                           <div className='flex items-center gap-2'>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -10,7 +10,8 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { queryRole, type RoleItem } from '@/lib/api/users'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryRole } from '@/lib/api/users'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import { Input } from '@/components/ui/input'
@@ -55,28 +56,30 @@ export function UsersTable({
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
-  const [roles, setRoles] = useState<RoleItem[]>([])
   const [searchInputValue, setSearchInputValue] = useState<string>('')
-  // 用于跟踪是否是用户操作导致的过滤器变化（避免初始化时触发）
   const isInitialMount = useRef(true)
   const prevColumnFiltersRef = useRef<string>('')
 
-  // 获取角色列表
+  const { auth } = useAuthStore()
+  const roles = auth.roles
+
+  // 如果角色列表为空，尝试加载（作为后备）
   useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        const roleList = await queryRole(1, 100)
-        setRoles(roleList)
-      } catch (error) {
-        console.error('Failed to fetch roles:', error)
+    if (roles.length === 0) {
+      const fetchRoles = async () => {
+        try {
+          const roleList = await queryRole(1, 100)
+          auth.setRoles(roleList)
+        } catch (error) {}
       }
+      fetchRoles()
     }
-    fetchRoles()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roles.length])
 
   const {
     columnFilters,
-    onColumnFiltersChange: originalOnColumnFiltersChange,
+    onColumnFiltersChange,
     pagination,
     onPaginationChange,
     ensurePageInRange,
@@ -88,7 +91,24 @@ export function UsersTable({
     columnFilters: [
       { columnId: 'username', searchKey: 'username', type: 'string' },
       { columnId: 'status', searchKey: 'status', type: 'array' },
-      { columnId: 'role', searchKey: 'role', type: 'array' },
+      {
+        columnId: 'role',
+        searchKey: 'role',
+        type: 'array',
+        // 在源头处理：确保 role 值始终是字符串数组
+        deserialize: (value: unknown) => {
+          if (Array.isArray(value)) {
+            return value.map((v) => String(v))
+          }
+          return []
+        },
+        serialize: (value: unknown) => {
+          if (Array.isArray(value)) {
+            return value.map((v) => String(v))
+          }
+          return []
+        },
+      },
     ],
   })
 
@@ -100,6 +120,34 @@ export function UsersTable({
   }, [search.username])
 
   const pageCount = Math.ceil(totalCount / pagination.pageSize)
+
+  const roleOptions = useMemo(
+    () =>
+      roles.map((role) => ({
+        label: role.name,
+        value: String(role.id),
+      })),
+    [roles]
+  )
+
+  const filters = useMemo(
+    () => [
+      {
+        columnId: 'status',
+        title: 'status',
+        options: [
+          { label: 'Active', value: 'active' },
+          { label: 'Inactive', value: 'inactive' },
+        ],
+      },
+      {
+        columnId: 'role',
+        title: 'role',
+        options: roleOptions,
+      },
+    ],
+    [roleOptions]
+  )
 
   const table = useReactTable({
     data,
@@ -115,7 +163,7 @@ export function UsersTable({
     manualPagination: true, // 启用服务端分页
     pageCount, // 设置总页数
     onPaginationChange,
-    onColumnFiltersChange: originalOnColumnFiltersChange,
+    onColumnFiltersChange,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -130,6 +178,24 @@ export function UsersTable({
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
+  // 提取过滤器值转换逻辑
+  const extractFilters = useMemo(() => {
+    const roleFilter = columnFilters.find((f) => f.id === 'role')
+    const statusFilter = columnFilters.find((f) => f.id === 'status')
+
+    return {
+      role:
+        Array.isArray(roleFilter?.value) && roleFilter.value.length > 0
+          ? roleFilter.value
+          : undefined,
+      status:
+        Array.isArray(statusFilter?.value) && statusFilter.value.length > 0
+          ? statusFilter.value
+          : undefined,
+      username: searchInputValue || undefined,
+    }
+  }, [columnFilters, searchInputValue])
+
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false
@@ -143,70 +209,15 @@ export function UsersTable({
     }
 
     prevColumnFiltersRef.current = currentFiltersStr
+    onFiltersChange?.(extractFilters)
+  }, [columnFilters, onFiltersChange, extractFilters])
 
-    if (!onFiltersChange) return
-
-    const roleFilter = columnFilters.find((f) => f.id === 'role')
-    const statusFilter = columnFilters.find((f) => f.id === 'status')
-
-    const role = Array.isArray(roleFilter?.value)
-      ? roleFilter.value.length > 0
-        ? roleFilter.value
-        : undefined
-      : undefined
-    const status = Array.isArray(statusFilter?.value)
-      ? statusFilter.value.length > 0
-        ? statusFilter.value
-        : undefined
-      : undefined
-
-    console.log('Filter values from columnFilters:', {
-      columnFilters,
-      roleFilter,
-      statusFilter,
-      role,
-      status,
-      searchInputValue,
-    })
-
-    onFiltersChange({
-      role,
-      status,
-      username: searchInputValue || undefined,
-    })
-  }, [columnFilters, onFiltersChange, searchInputValue])
-
-  const handleFilterChange = () => {}
-
-  // 处理搜索按钮点击
   const handleSearchClick = () => {
     const usernameColumn = table.getColumn('username')
     if (usernameColumn) {
       usernameColumn.setFilterValue(searchInputValue)
     }
-
-    if (onFiltersChange) {
-      // 从 columnFilters 状态中提取值（更可靠）
-      const roleFilter = columnFilters.find((f) => f.id === 'role')
-      const statusFilter = columnFilters.find((f) => f.id === 'status')
-
-      const role = Array.isArray(roleFilter?.value)
-        ? roleFilter.value.length > 0
-          ? roleFilter.value
-          : undefined
-        : undefined
-      const status = Array.isArray(statusFilter?.value)
-        ? statusFilter.value.length > 0
-          ? statusFilter.value
-          : undefined
-        : undefined
-
-      onFiltersChange({
-        role,
-        status,
-        username: searchInputValue || undefined,
-      })
-    }
+    onFiltersChange?.(extractFilters)
   }
 
   return (
@@ -217,25 +228,8 @@ export function UsersTable({
         searchKey='username'
         showSearchButton={true}
         onSearch={handleSearchClick}
-        onFilterChange={handleFilterChange}
-        filters={[
-          {
-            columnId: 'status',
-            title: 'status',
-            options: [
-              { label: 'Active', value: 'active' },
-              { label: 'Inactive', value: 'inactive' },
-            ],
-          },
-          {
-            columnId: 'role',
-            title: 'role',
-            options: roles.map((role) => ({
-              label: role.name,
-              value: role.id,
-            })),
-          },
-        ]}
+        onFilterChange={() => {}}
+        filters={filters}
         customFilterSlot={
           <Input
             type='text'

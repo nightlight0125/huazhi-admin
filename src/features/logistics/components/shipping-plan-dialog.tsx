@@ -86,7 +86,7 @@ export function ShippingPlanDialog({
       const loadData = async () => {
         setIsLoadingStates(true)
         try {
-          const [statesData, channelsData, productsData] = await Promise.all([
+          const [statesData, channelsData, productsResponse] = await Promise.all([
             getStatesList(),
             getLogsList(),
             getProductsList({
@@ -95,27 +95,14 @@ export function ShippingPlanDialog({
             }),
           ])
 
-          // 提取产品数据
-          // const productsData = productsResponse?.data?.products || []
-
-          console.log('statesData', statesData)
-          console.log('channelsData', channelsData)
-          console.log('productsData', productsData)
-
-          // 保存states原始数据，用于提交时查找id
           setStatesData(statesData)
+          setProductsData(productsResponse.data?.products || [])
 
-          // 保存产品数据
-          setProductsData(productsData || [])
-
-          // 使用states数据作为国家下拉框选项（from字段）
           const countryOpts = statesData.map((state) => ({
             label: state.hzkj_name || state.name || '',
             value: state.hzkj_code || state.id || '',
           }))
           setCountryOptions(countryOpts)
-          console.log('countryOptions:', countryOpts)
-
           // 使用channels数据作为方法下拉框选项（method字段）
           const channelOpts = channelsData.map((channel) => ({
             label: channel.name || '',
@@ -148,13 +135,6 @@ export function ShippingPlanDialog({
   }, [open, form])
 
   const handleSubmit = async (values: ShippingPlanFormValues) => {
-    console.log('表单提交，values:', values)
-
-    if (!auth.user?.id) {
-      toast.error('User not authenticated')
-      return
-    }
-
     if (!values.spu) {
       toast.error('Please select SPU')
       return
@@ -197,8 +177,15 @@ export function ShippingPlanDialog({
         return
       }
 
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        toast.error('Customer ID is required')
+        setIsSubmitting(false)
+        return
+      }
+
       const requestData = {
-        customerId: auth.user?.customerId,
+        customerId,
         spuId: values.spu, // 使用表单中选择的 SPU
         destination,
       }

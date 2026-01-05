@@ -34,7 +34,6 @@ export interface GetStatesListResponse {
   [key: string]: unknown
 }
 
-// 查询州/省列表 API
 export async function getStatesList(
   pageNo: number = 1,
   pageSize: number = 1000
@@ -45,14 +44,12 @@ export async function getStatesList(
     pageNo,
   }
 
-  console.log('查询州/省列表请求数据:', JSON.stringify(requestData, null, 2))
 
   const response = await apiClient.post<GetStatesListResponse>(
     '/v2/hzkj/hzkj_logistics/hzkj_state/getStatesList',
     requestData
   )
 
-  console.log('查询州/省列表响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -61,12 +58,10 @@ export async function getStatesList(
     throw new Error(errorMessage)
   }
 
-  // 返回 rows 数组，如果没有 rows 则返回空数组
   const rows = response.data.data?.rows
   return Array.isArray(rows) ? rows : []
 }
 
-// 自定义渠道数据接口
 export interface CustomChannelItem {
   id: string
   number?: string
@@ -74,14 +69,11 @@ export interface CustomChannelItem {
   [key: string]: unknown
 }
 
-// 查询自定义渠道列表请求参数
 export interface GetLogsListRequest {
   data: Record<string, unknown>
   pageSize: number
   pageNo: number
 }
-
-// 查询自定义渠道列表响应
 export interface GetLogsListResponse {
   data?: {
     filter?: string
@@ -109,14 +101,11 @@ export async function getLogsList(
     pageNo,
   }
 
-  console.log('查询自定义渠道列表请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<GetLogsListResponse>(
     '/v2/hzkj/hzkj_logistics/hzkj_custom_channel/getLogsList',
     requestData
   )
 
-  console.log('查询自定义渠道列表响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -151,14 +140,12 @@ export interface AddCusFreightResponse {
 export async function addCusFreight(
   requestData: AddCusFreightRequest
 ): Promise<AddCusFreightResponse> {
-  console.log('新增运费自定义渠道请求数据:', JSON.stringify(requestData, null, 2))
 
   const response = await apiClient.post<AddCusFreightResponse>(
     '/v2/hzkj/hzkj_logistics/hzkj_cus_freight/addCus',
     requestData
   )
 
-  console.log('新增运费自定义渠道响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -214,14 +201,12 @@ export interface GetCusListResponse {
 export async function getCusList(
   params: GetCusListRequest
 ): Promise<{ rows: CusFreightItem[]; totalCount: number }> {
-  console.log('查询运费自定义渠道列表请求数据:', JSON.stringify(params, null, 2))
 
   const response = await apiClient.post<GetCusListResponse>(
     '/v2/hzkj/hzkj_logistics/hzkj_cus_freight/getCusList',
     params
   )
 
-  console.log('查询运费自定义渠道列表响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -233,15 +218,15 @@ export async function getCusList(
 
   // 数据在 response.data.data.data 中（根据日志显示）
   const dataObj = response.data.data
-  let rows: unknown[] = []
+  let rows: CusFreightItem[] = []
   
   // 尝试多种可能的数据结构
   if (Array.isArray(dataObj?.data)) {
-    rows = dataObj.data
+    rows = dataObj.data as CusFreightItem[]
   } else if (Array.isArray(dataObj?.rows)) {
-    rows = dataObj.rows
+    rows = dataObj.rows as CusFreightItem[]
   } else if (Array.isArray(dataObj)) {
-    rows = dataObj
+    rows = dataObj as CusFreightItem[]
   }
   
   const totalCount = dataObj?.totalCount || 0

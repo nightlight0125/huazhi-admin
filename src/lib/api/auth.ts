@@ -251,3 +251,71 @@ export async function memberSignUp(
   return response.data
 }
 
+// 检查登录状态请求参数
+export interface GetUserStatusRequest {
+  accountId: string
+}
+
+// 检查登录状态响应
+export interface GetUserStatusResponse {
+  status: boolean
+  data?: {
+    isValid?: boolean
+    userId?: string
+    accountId?: string
+    [key: string]: unknown
+  }
+  message?: string
+  errorCode?: string
+  [key: string]: unknown
+}
+
+/**
+ * 检查登录状态 API
+ * 调用后端 getUserStatus 接口验证当前用户的登录状态
+ */
+export async function checkLoginStatus(): Promise<GetUserStatusResponse> {
+  const { useAuthStore } = await import('@/stores/auth-store')
+  const { auth } = useAuthStore.getState()
+  
+  // 如果没有用户信息或 accountId，直接返回未认证
+  if (!auth.user?.accountNo && !auth.user?.id) {
+    return {
+      status: false,
+      message: 'User not authenticated',
+    }
+  }
+
+  // 使用 accountNo 或 id 作为 accountId
+  const accountId = auth.user.accountNo || auth.user.id
+
+  try {
+    const requestData: GetUserStatusRequest = {
+      accountId,
+    }
+
+    const response = await apiClient.post<GetUserStatusResponse>(
+      '/v2/hzkj/hzkj_member/member/getUserStatus',
+      requestData
+    )
+
+    // 如果接口返回 status 为 false，说明登录状态无效
+    if (!response.data.status) {
+      return {
+        status: false,
+        message: response.data.message || 'Login status invalid',
+        errorCode: response.data.errorCode,
+      }
+    }
+
+    return response.data
+  } catch (error) {
+    // 如果请求失败（如 401），说明 token 无效
+    console.error('Failed to check login status:', error)
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to check login status',
+    }
+  }
+}
+

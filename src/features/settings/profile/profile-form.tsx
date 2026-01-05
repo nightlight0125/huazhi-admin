@@ -151,10 +151,9 @@ export function ProfileForm() {
       try {
         const userId = auth.user?.id
         if (!userId) {
-          toast.error('User not authenticated. Please login again.')
+          console.warn('User ID is not available')
           return
         }
-
         const response = await getProfileInfo(userId)
         const rows = response.data?.rows
         const profile =
@@ -234,12 +233,11 @@ export function ProfileForm() {
           onSubmit={form.handleSubmit(async (values) => {
             try {
               const userId = auth.user?.id
-              if (!userId) {
-                toast.error('User not authenticated. Please login again.')
+              const rowId = profileIdRef.current ?? userId
+              if (!rowId) {
+                toast.error('User ID is required')
                 return
               }
-
-              const rowId = profileIdRef.current ?? userId
 
               await updateProfile([
                 {
@@ -390,7 +388,7 @@ export function ProfileForm() {
             try {
               const accountId = auth.user?.id
               if (!accountId) {
-                toast.error('User not authenticated. Please login again.')
+                toast.error('Account ID is required')
                 return
               }
 

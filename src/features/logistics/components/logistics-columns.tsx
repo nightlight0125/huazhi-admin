@@ -145,7 +145,7 @@ function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
-      const handleConfirm = async () => {
+  const handleConfirm = async () => {
     setLoading(true)
     const loadingToast = toast.loading('Deleting...')
     try {

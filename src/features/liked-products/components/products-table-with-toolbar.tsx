@@ -31,6 +31,7 @@ type ProductsTableWithToolbarProps<TData> = {
   search: any
   navigate: any
   globalFilterFn?: (row: any, _columnId: string, filterValue: string) => boolean
+  totalCount?: number // 服务端分页的总数
 }
 
 export function ProductsTableWithToolbar<TData>({
@@ -39,6 +40,7 @@ export function ProductsTableWithToolbar<TData>({
   search,
   navigate,
   globalFilterFn,
+  totalCount,
 }: ProductsTableWithToolbarProps<TData>) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -62,6 +64,12 @@ export function ProductsTableWithToolbar<TData>({
     columnFilters: [],
   })
 
+  // 如果是服务端分页，计算总页数
+  const pageCount =
+    totalCount !== undefined
+      ? Math.ceil(totalCount / pagination.pageSize)
+      : undefined
+
   const table = useReactTable({
     data,
     columns,
@@ -74,6 +82,8 @@ export function ProductsTableWithToolbar<TData>({
       pagination,
     },
     enableRowSelection: true,
+    manualPagination: totalCount !== undefined, // 如果提供了 totalCount，启用服务端分页
+    pageCount, // 设置总页数
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -87,7 +97,8 @@ export function ProductsTableWithToolbar<TData>({
       }),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel:
+      totalCount === undefined ? getPaginationRowModel() : undefined, // 服务端分页时不使用客户端分页模型
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -96,10 +107,13 @@ export function ProductsTableWithToolbar<TData>({
     onColumnFiltersChange,
   })
 
-  const pageCount = table.getPageCount()
+  const finalPageCount = pageCount ?? table.getPageCount()
+
   useEffect(() => {
-    ensurePageInRange(pageCount)
-  }, [pageCount, ensurePageInRange])
+    if (finalPageCount !== undefined) {
+      ensurePageInRange(finalPageCount)
+    }
+  }, [finalPageCount, ensurePageInRange])
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>

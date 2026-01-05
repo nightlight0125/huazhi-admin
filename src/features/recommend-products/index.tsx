@@ -3,11 +3,12 @@ import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getRecommendProductsList } from '@/lib/api/products'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProductsTableWithToolbar } from '../liked-products/components/products-table-with-toolbar'
-import { recommendProductsColumns } from './components/recommend-products-columns'
+import { createRecommendProductsColumns } from './components/recommend-products-columns'
 import type { RecommendProduct } from './data/schema'
 
 const route = getRouteApi('/_authenticated/recommend-products/')
@@ -18,38 +19,62 @@ export function RecommendProducts() {
   const { auth } = useAuthStore()
   const [data, setData] = useState<RecommendProduct[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // 获取分页状态和搜索状态（从 URL）
+  const { pagination, globalFilter } = useTableUrlState({
+    search,
+    navigate: navigate as any,
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
+    globalFilter: { enabled: true, key: 'filter' },
+    columnFilters: [],
+  })
 
   useEffect(() => {
     const fetchData = async () => {
-      const customerId = auth.user?.id
+      const customerId = auth.user?.customerId
       if (!customerId) {
-        toast.error('User not authenticated. Please login again.')
         setIsLoading(false)
         return
       }
 
+      const pageNo = pagination.pageIndex + 1
+      const pageSize = pagination.pageSize
+
       setIsLoading(true)
       try {
         const response = await getRecommendProductsList({
-          customerId,
-          pageSize: 2,
-          pageNo: 1,
-          nameOrCode: '',
+          customerId: String(customerId),
+          pageSize,
+          pageNo,
+          nameOrCode: globalFilter || '',
         })
 
-        const apiProducts = response.data?.products || []
-        const products: RecommendProduct[] = apiProducts.map((item) => ({
-          id: item.id,
-          name: item.name || item.enname || '',
-          image: item.picture || '',
-          description: item.enname || item.name || '',
-          spu: item.number || '',
-          priceMin: item.price || 0,
-          priceMax: item.price || 0,
-          addDate: new Date(),
-        }))
+        // 后端返回的数据在 data.data 中
+        const apiProducts = response.data?.data || response.data?.products || []
+        const products: RecommendProduct[] = apiProducts.map((item: any) => {
+          // 解析日期，如果后端返回了 date 字段
+          let addDate = new Date()
+          if (item.date) {
+            const parsedDate = new Date(item.date)
+            if (!isNaN(parsedDate.getTime())) {
+              addDate = parsedDate
+            }
+          }
+
+          return {
+            id: item.id,
+            name: item.name || item.enname || '',
+            image: item.picture || '',
+            spu: item.number || '', // SPU 使用 number 字段
+            priceMin: item.price || 0,
+            addDate,
+          }
+        })
 
         setData(products)
+        setTotalCount(response.data?.totalCount || 0)
       } catch (error) {
         console.error('获取推荐产品列表失败:', error)
         toast.error(
@@ -58,13 +83,29 @@ export function RecommendProducts() {
             : 'Failed to load recommend products. Please try again.'
         )
         setData([])
+        setTotalCount(0)
       } finally {
         setIsLoading(false)
       }
     }
 
     void fetchData()
-  }, [auth.user?.id])
+  }, [
+    auth.user?.customerId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    globalFilter,
+    refreshKey,
+  ])
+
+  // 刷新数据的函数
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1)
+  }
+
+  const columns = createRecommendProductsColumns({
+    onDeleteSuccess: handleRefresh,
+  })
 
   return (
     <>
@@ -83,9 +124,10 @@ export function RecommendProducts() {
           ) : (
             <ProductsTableWithToolbar
               data={data}
-              columns={recommendProductsColumns}
+              columns={columns}
               search={search}
               navigate={navigate}
+              totalCount={totalCount}
             />
           )}
         </div>

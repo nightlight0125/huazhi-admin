@@ -65,7 +65,8 @@ export function StoreProductsImportDialog({
 
       const userId = auth.user?.id
       if (!userId) {
-        toast.error('User not authenticated. Please login again.')
+        setIsLoadingShops(false)
+        setShops([])
         return
       }
 

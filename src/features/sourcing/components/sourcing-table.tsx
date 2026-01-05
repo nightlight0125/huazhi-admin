@@ -12,7 +12,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { Plus } from 'lucide-react'
+import { AlertTriangle, Plus } from 'lucide-react'
+import { toast } from 'sonner'
+import { delBill } from '@/lib/api/sourcing'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { ImageSearchInput } from '@/components/image-search-input'
 import { products } from '@/features/products/data/data'
@@ -43,9 +46,11 @@ const route = getRouteApi('/_authenticated/sourcing/')
 
 type DataTableProps = {
   data: Sourcing[]
+  onRefresh?: () => void
+  totalCount?: number
 }
 
-export function SourcingTable({ data }: DataTableProps) {
+export function SourcingTable({ data, onRefresh, totalCount }: DataTableProps) {
   const navigate = route.useNavigate()
 
   // Local UI-only states
@@ -58,6 +63,11 @@ export function SourcingTable({ data }: DataTableProps) {
   const [editingSourcing, setEditingSourcing] = useState<Sourcing | null>(null)
   const [isRemarkDialogOpen, setIsRemarkDialogOpen] = useState(false)
   const [remarkSourcing, setRemarkSourcing] = useState<Sourcing | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [deletingSourcing, setDeletingSourcing] = useState<Sourcing | null>(
+    null
+  )
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Synced with URL states
   const {
@@ -76,6 +86,41 @@ export function SourcingTable({ data }: DataTableProps) {
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
+  // 打开删除确认对话框
+  const handleDeleteClick = (sourcing: Sourcing) => {
+    setDeletingSourcing(sourcing)
+    setIsDeleteDialogOpen(true)
+  }
+
+  // 确认删除
+  const handleConfirmDelete = async () => {
+    if (!deletingSourcing?.id) {
+      toast.error('Cannot delete: missing bill ID')
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      await delBill({
+        billId: [deletingSourcing.id],
+      })
+
+      toast.success('Sourcing request deleted successfully')
+      setIsDeleteDialogOpen(false)
+      setDeletingSourcing(null)
+      onRefresh?.()
+    } catch (error) {
+      console.error('Failed to delete sourcing request:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete sourcing request. Please try again.'
+      )
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const columns = createSourcingColumns({
     onEdit: (sourcing) => {
       setEditingSourcing(sourcing)
@@ -86,7 +131,14 @@ export function SourcingTable({ data }: DataTableProps) {
       setRemarkSourcing(sourcing)
       setIsRemarkDialogOpen(true)
     },
+    onDelete: handleDeleteClick,
   })
+
+  // 如果是服务端分页，计算总页数
+  const pageCount =
+    totalCount !== undefined
+      ? Math.ceil(totalCount / pagination.pageSize)
+      : undefined
 
   const table = useReactTable({
     data,
@@ -100,6 +152,8 @@ export function SourcingTable({ data }: DataTableProps) {
       pagination,
     },
     enableRowSelection: true,
+    manualPagination: totalCount !== undefined, // 如果提供了 totalCount，启用服务端分页
+    pageCount, // 设置总页数
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -114,7 +168,8 @@ export function SourcingTable({ data }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel:
+      totalCount === undefined ? getPaginationRowModel() : undefined, // 服务端分页时不使用客户端分页模型
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -123,10 +178,12 @@ export function SourcingTable({ data }: DataTableProps) {
     onColumnFiltersChange,
   })
 
-  const pageCount = table.getPageCount()
+  const finalPageCount = pageCount ?? table.getPageCount()
   useEffect(() => {
-    ensurePageInRange(pageCount)
-  }, [pageCount, ensurePageInRange])
+    if (finalPageCount !== undefined) {
+      ensurePageInRange(finalPageCount)
+    }
+  }, [finalPageCount, ensurePageInRange])
 
   const linkedProduct = remarkSourcing?.productId
     ? products.find((p) => p && (p as any).id === remarkSourcing.productId)
@@ -153,9 +210,7 @@ export function SourcingTable({ data }: DataTableProps) {
             <ImageSearchInput
               value={globalFilter || ''}
               onChange={(e) => onGlobalFilterChange?.(e.target.value)}
-              onImageSearchClick={() => {
-                /* 打开上传图片 / 图片搜索弹窗 */
-              }}
+              onImageSearchClick={() => {}}
             />
           }
           filters={[
@@ -227,6 +282,9 @@ export function SourcingTable({ data }: DataTableProps) {
       <NewSourcingDialog
         open={isNewSourcingDialogOpen}
         onOpenChange={setIsNewSourcingDialogOpen}
+        onSuccess={() => {
+          onRefresh?.()
+        }}
       />
 
       <EditSourcingDialog
@@ -241,6 +299,48 @@ export function SourcingTable({ data }: DataTableProps) {
       />
 
       <DataTableBulkActions table={table} />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) {
+            setDeletingSourcing(null)
+          }
+        }}
+        handleConfirm={handleConfirmDelete}
+        destructive
+        isLoading={isDeleting}
+        title={
+          <span className='text-destructive'>
+            <AlertTriangle
+              className='stroke-destructive me-1 inline-block'
+              size={18}
+            />{' '}
+            Delete Sourcing Request
+          </span>
+        }
+        desc={
+          deletingSourcing ? (
+            <>
+              <p className='mb-2'>
+                Are you sure you want to delete this sourcing request?
+                <br />
+                This action cannot be undone.
+              </p>
+              {deletingSourcing.sourcingId && (
+                <p className='text-muted-foreground text-sm'>
+                  Sourcing ID: <strong>{deletingSourcing.sourcingId}</strong>
+                </p>
+              )}
+            </>
+          ) : (
+            'Are you sure you want to delete this sourcing request? This action cannot be undone.'
+          )
+        }
+        confirmText='Delete'
+      />
 
       {/* Remark 点击后的预览弹框 */}
       <Dialog

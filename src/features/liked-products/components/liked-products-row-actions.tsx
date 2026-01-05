@@ -2,16 +2,20 @@ import { useState } from 'react'
 import { type Row } from '@tanstack/react-table'
 import { Store, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/auth-store'
 import { delRecommendProducts } from '@/lib/api/products'
+import { Button } from '@/components/ui/button'
 import { type LikedProduct } from '../data/schema'
 
 type LikedProductsRowActionsProps = {
   row: Row<LikedProduct>
+  onDeleteSuccess?: () => void
 }
 
-export function LikedProductsRowActions({ row }: LikedProductsRowActionsProps) {
+export function LikedProductsRowActions({
+  row,
+  onDeleteSuccess,
+}: LikedProductsRowActionsProps) {
   const product = row.original
   const { auth } = useAuthStore()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -38,20 +42,23 @@ export function LikedProductsRowActions({ row }: LikedProductsRowActionsProps) {
         onClick={async (e) => {
           e.stopPropagation()
 
-          const customerId = auth.user?.id
+          const customerId = auth.user?.customerId
+
           if (!customerId) {
-            toast.error('User not authenticated. Please login again.')
+            toast.error('Customer ID is required')
             return
           }
 
           try {
             setIsDeleting(true)
             await delRecommendProducts({
-              customerId,
+              customerId: String(customerId),
               productIds: [product.id],
             })
 
             toast.success('Product removed from collection successfully.')
+            // 触发刷新列表
+            onDeleteSuccess?.()
           } catch (error) {
             console.error('删除收藏商品失败:', error)
             toast.error(

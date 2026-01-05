@@ -68,12 +68,9 @@ export function LogisticsTable({
     ],
   })
 
-  const columns = createLogisticsColumns(
-    (row) => {
-      setEditingRow(row)
-    },
-    onRefresh
-  )
+  const columns = createLogisticsColumns((row) => {
+    setEditingRow(row)
+  }, onRefresh)
 
   // 计算总页数
   const pageCount = Math.ceil(totalCount / pagination.pageSize)

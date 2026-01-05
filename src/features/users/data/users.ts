@@ -6,6 +6,12 @@ faker.seed(67890)
 export const users = Array.from({ length: 500 }, () => {
   const firstName = faker.person.firstName()
   const lastName = faker.person.lastName()
+  const role = faker.helpers.arrayElement([
+    'superadmin',
+    'admin',
+    'cashier',
+    'manager',
+  ])
   return {
     id: faker.string.uuid(),
     firstName,
@@ -19,12 +25,9 @@ export const users = Array.from({ length: 500 }, () => {
       'active',
       'inactive',
     ]),
-    role: faker.helpers.arrayElement([
-      'superadmin',
-      'admin',
-      'cashier',
-      'manager',
-    ]),
+    role,
+    surname: lastName,
+    roleId: role,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
   }

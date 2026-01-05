@@ -122,18 +122,14 @@ export function DataTableToolbar<TData>({
 
   return (
     <div className='flex flex-wrap items-start gap-2'>
-      {/* 左侧：筛选（下拉、多选等） + 日期范围 */}
       <div className='flex flex-wrap items-center gap-2'>
-        {/* 在日历前面的筛选 */}
         {filters
           .filter((filter) => !filter.afterDateRange)
           .map((filter) => {
             const column = table.getColumn(filter.columnId)
             if (!column || !column.columnDef) return null
 
-            // Ensure column is ready for faceted filtering
             try {
-              // Test if getFacetedUniqueValues is available and works
               if (typeof column.getFacetedUniqueValues === 'function') {
                 column.getFacetedUniqueValues()
               }
@@ -168,7 +164,6 @@ export function DataTableToolbar<TData>({
             )
           })}
 
-        {/* Date Range Picker */}
         {dateRange?.enabled && (
           <Popover>
             <PopoverTrigger asChild>
@@ -207,16 +202,13 @@ export function DataTableToolbar<TData>({
           </Popover>
         )}
 
-        {/* 在日历后面的筛选 */}
         {filters
           .filter((filter) => filter.afterDateRange)
           .map((filter) => {
             const column = table.getColumn(filter.columnId)
             if (!column || !column.columnDef) return null
 
-            // Ensure column is ready for faceted filtering
             try {
-              // Test if getFacetedUniqueValues is available and works
               if (typeof column.getFacetedUniqueValues === 'function') {
                 column.getFacetedUniqueValues()
               }
@@ -250,9 +242,7 @@ export function DataTableToolbar<TData>({
           })}
       </div>
 
-      {/* 右侧：搜索 + 自定义筛选 + 批量修改 + Reset + Search 按钮，整体右对齐 */}
       <div className='flex flex-1 flex-wrap items-center justify-end gap-2'>
-        {/* Search boxes (搜索框) */}
         {showSearch && (
           <>
             {searchKey && searchColumn ? (
@@ -274,7 +264,6 @@ export function DataTableToolbar<TData>({
             )}
           </>
         )}
-        {/* 自定义筛选插槽 + 批量修改 */}
         {customFilterSlot}
         {bulkRevise?.enabled && (
           <div className='flex items-center'>
@@ -307,7 +296,6 @@ export function DataTableToolbar<TData>({
           </div>
         )}
 
-        {/* Search 按钮，与输入框一起右对齐 */}
         {showSearchButton && (
           <Button
             onClick={handleSearch}

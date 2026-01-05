@@ -55,10 +55,8 @@ export async function getProductsList(
       response.data.message || 'Failed to get products list. Please try again.'
     throw new Error(errorMessage)
   }
-  console.log('response.data.products', response.data)
-  console.log('response.data.products', response.data.data?.products)
 
-  return response.data.data?.products
+  return response.data
 }
 
 // 获取推荐产品列表请求参数
@@ -77,7 +75,8 @@ export interface GetRecommendProductsListResponse {
     pageNo: number
     pageSize: number
     totalCount: number
-    products?: ApiProductItem[]
+    data?: ApiProductItem[] // 后端返回的产品数组在 data.data 中
+    products?: ApiProductItem[] // 保留向后兼容
   }
   errorCode?: string
   message?: string
@@ -294,5 +293,102 @@ export async function querySkuByCustomer(
   // 返回 rows 数组，如果没有 rows 则返回 list，如果都没有则返回空数组
   const rows = response.data.data?.rows || response.data.data?.list
   return Array.isArray(rows) ? rows : []
+}
+
+// 获取产品详情请求参数
+export interface GetProductRequest {
+  productId: string
+}
+
+// 获取产品详情响应
+export interface GetProductResponse {
+  data?: ApiProductItem
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 获取产品详情 API
+export async function getProduct(
+  productId: string
+): Promise<ApiProductItem | null> {
+  const requestData: GetProductRequest = {
+    productId,
+  }
+
+  console.log('获取产品详情请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<GetProductResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getProduct',
+    requestData
+  )
+
+  console.log('获取产品详情响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to get product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data.data || null
+}
+
+// 收藏产品请求参数
+export interface CollectProductRequest {
+  data: Array<{
+    hzkj_collect_entry: Array<{
+      hzkj_collect_goods_id: string
+    }>
+    hzkj_customer_id: string
+  }>
+}
+
+// 收藏产品响应
+export interface CollectProductResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 收藏产品 API
+export async function collectProduct(
+  goodsId: string,
+  customerId: string
+): Promise<CollectProductResponse> {
+  const requestData: CollectProductRequest = {
+    data: [
+      {
+        hzkj_collect_entry: [
+          {
+            hzkj_collect_goods_id: goodsId,
+          },
+        ],
+        hzkj_customer_id: customerId,
+      },
+    ],
+  }
+
+  console.log('收藏产品请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<CollectProductResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/collectProductAPI',
+    requestData
+  )
+
+  console.log('收藏产品响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to collect product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
 }
 

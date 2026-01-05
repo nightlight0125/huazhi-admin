@@ -11,6 +11,7 @@ import {
   queryAdmindivisionLevel,
   updateAddress,
   updateBillAddress,
+  type AdmindivisionLevelItem,
 } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -429,6 +430,21 @@ export function AddressForm() {
     return 'CN'
   }
 
+  // 缓存 levels 数据，避免重复请求
+  const levelsCache = new Map<number, AdmindivisionLevelItem[]>()
+
+  // 获取或缓存 levels
+  const getLevels = async (
+    countryId: number
+  ): Promise<AdmindivisionLevelItem[]> => {
+    if (levelsCache.has(countryId)) {
+      return levelsCache.get(countryId)!
+    }
+    const levels = await queryAdmindivisionLevel(countryId)
+    levelsCache.set(countryId, levels)
+    return levels
+  }
+
   // 加载省份
   const loadProvinces = async (countryCode: string, isInvoice: boolean) => {
     const countryId = getCountryId(countryCode)
@@ -441,14 +457,14 @@ export function AddressForm() {
     }
 
     try {
-      const levels = await queryAdmindivisionLevel(countryId)
+      const levels = await getLevels(countryId)
       // 找到 level 为 1 的（省）
       const provinceLevel = levels.find((level) => level.level === 1)
       if (provinceLevel) {
         const divisions = await queryAdmindivision(
           countryId,
           provinceLevel.id,
-          undefined // parent_id 先写死为 undefined
+          undefined
         )
         const provinceOptions = divisions.map((div) => ({
           label: div.name,
@@ -472,14 +488,14 @@ export function AddressForm() {
     }
   }
 
-  // 加载城市
+  // 加载城市，返回城市列表用于后续匹配
   const loadCities = async (
     countryCode: string,
     provinceId: string,
     isInvoice: boolean
-  ) => {
+  ): Promise<Array<{ label: string; value: string }>> => {
     const countryId = getCountryId(countryCode)
-    if (!countryId || !provinceId) return
+    if (!countryId || !provinceId) return []
 
     if (isInvoice) {
       setIsLoadingInvoiceCities(true)
@@ -488,14 +504,14 @@ export function AddressForm() {
     }
 
     try {
-      const levels = await queryAdmindivisionLevel(countryId)
+      const levels = await getLevels(countryId)
       // 找到 level 为 2 的（市）
       const cityLevel = levels.find((level) => level.level === 2)
       if (cityLevel) {
         const divisions = await queryAdmindivision(
           countryId,
           cityLevel.id,
-          provinceId // parent_id 是省份的 id
+          provinceId
         )
         const cityOptions = divisions.map((div) => ({
           label: div.name,
@@ -506,10 +522,13 @@ export function AddressForm() {
         } else {
           setConsigneeCities(cityOptions)
         }
+        return cityOptions
       }
+      return []
     } catch (error) {
       console.error('Failed to load cities:', error)
       toast.error('Failed to load cities')
+      return []
     } finally {
       if (isInvoice) {
         setIsLoadingInvoiceCities(false)
@@ -559,8 +578,7 @@ export function AddressForm() {
         console.log('账单地址国家 code:', invoiceCountryCode)
         console.log('收货地址国家 code:', consigneeCountryCode)
 
-        // 先加载省份和城市列表，然后再回填
-        // 如果有国家数据，加载对应的省份
+        // 先加载省份列表，然后再加载城市
         if (invoiceCountryCode) {
           await loadProvinces(invoiceCountryCode, true)
         }
@@ -568,50 +586,9 @@ export function AddressForm() {
           await loadProvinces(consigneeCountryCode, false)
         }
 
-        // 存储加载的城市列表和省份列表
+        // 存储加载的城市列表
         let loadedInvoiceCities: Array<{ label: string; value: string }> = []
         let loadedConsigneeCities: Array<{ label: string; value: string }> = []
-        let loadedInvoiceProvinces: Array<{ label: string; value: string }> = []
-        let loadedConsigneeProvinces: Array<{
-          label: string
-          value: string
-        }> = []
-
-        // 获取已加载的省份列表
-        if (invoiceCountryCode) {
-          const countryId = getCountryId(invoiceCountryCode)
-          const levels = await queryAdmindivisionLevel(countryId)
-          const provinceLevel = levels.find((level) => level.level === 1)
-          if (provinceLevel) {
-            const divisions = await queryAdmindivision(
-              countryId,
-              provinceLevel.id,
-              undefined
-            )
-            loadedInvoiceProvinces = divisions.map((div) => ({
-              label: div.name,
-              value: div.id,
-            }))
-            setInvoiceProvinces(loadedInvoiceProvinces)
-          }
-        }
-        if (consigneeCountryCode) {
-          const countryId = getCountryId(consigneeCountryCode)
-          const levels = await queryAdmindivisionLevel(countryId)
-          const provinceLevel = levels.find((level) => level.level === 1)
-          if (provinceLevel) {
-            const divisions = await queryAdmindivision(
-              countryId,
-              provinceLevel.id,
-              undefined
-            )
-            loadedConsigneeProvinces = divisions.map((div) => ({
-              label: div.name,
-              value: div.id,
-            }))
-            setConsigneeProvinces(loadedConsigneeProvinces)
-          }
-        }
 
         // 根据省份 number 或 ID 找到对应的 province ID
         // 优先使用 hzkj_admindivision2_id，如果没有则尝试根据 number 查找
@@ -639,38 +616,18 @@ export function AddressForm() {
 
         // 如果有省份数据，加载对应的城市
         if (invoiceCountryCode && invoiceProvinceId) {
-          const countryId = getCountryId(invoiceCountryCode)
-          const levels = await queryAdmindivisionLevel(countryId)
-          const cityLevel = levels.find((level) => level.level === 2)
-          if (cityLevel) {
-            const divisions = await queryAdmindivision(
-              countryId,
-              cityLevel.id,
-              invoiceProvinceId
-            )
-            loadedInvoiceCities = divisions.map((div) => ({
-              label: div.name,
-              value: div.id,
-            }))
-            setInvoiceCities(loadedInvoiceCities)
-          }
+          loadedInvoiceCities = await loadCities(
+            invoiceCountryCode,
+            invoiceProvinceId,
+            true
+          )
         }
         if (consigneeCountryCode && consigneeProvinceId) {
-          const countryId = getCountryId(consigneeCountryCode)
-          const levels = await queryAdmindivisionLevel(countryId)
-          const cityLevel = levels.find((level) => level.level === 2)
-          if (cityLevel) {
-            const divisions = await queryAdmindivision(
-              countryId,
-              cityLevel.id,
-              consigneeProvinceId
-            )
-            loadedConsigneeCities = divisions.map((div) => ({
-              label: div.name,
-              value: div.id,
-            }))
-            setConsigneeCities(loadedConsigneeCities)
-          }
+          loadedConsigneeCities = await loadCities(
+            consigneeCountryCode,
+            consigneeProvinceId,
+            false
+          )
         }
 
         // 根据城市名称找到对应的 city ID
@@ -754,10 +711,9 @@ export function AddressForm() {
     try {
       const userId = auth.user?.id
       if (!userId) {
-        toast.error('User not authenticated. Please login again.')
+        toast.error('User ID is required')
         return
       }
-
       // 根据 city ID 找到城市名称
       const selectedCity = invoiceCities.find(
         (city) => city.value === data.city
@@ -818,10 +774,9 @@ export function AddressForm() {
     try {
       const userId = auth.user?.id
       if (!userId) {
-        toast.error('User not authenticated. Please login again.')
+        toast.error('User ID is required')
         return
       }
-
       // 根据 city ID 找到城市名称
       const selectedCity = consigneeCities.find(
         (city) => city.value === data.city
