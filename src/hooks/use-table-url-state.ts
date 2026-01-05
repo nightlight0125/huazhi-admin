@@ -155,6 +155,16 @@ export function useTableUrlState(
     return typeof raw === 'string' ? raw : ''
   })
 
+  // 同步 globalFilter 状态与 URL 参数的变化
+  useEffect(() => {
+    if (!globalFilterEnabled) return
+    const raw = (search as SearchRecord)[globalFilterKey]
+    const newValue = typeof raw === 'string' ? raw : ''
+    if (newValue !== globalFilter) {
+      setGlobalFilter(newValue)
+    }
+  }, [search, globalFilterKey, globalFilterEnabled, globalFilter])
+
   const onGlobalFilterChange: OnChangeFn<string> | undefined =
     globalFilterEnabled
       ? (updater) => {

@@ -24,7 +24,7 @@ export type WithdrawRecord = z.infer<typeof withdrawRecordSchema>
 export const recommendedListRecordSchema = z.object({
   id: z.string(),
   referee: z.string(),
-  registrationTime: z.date(),
+  registrationTime: z.string(),
   commissionAmount: z.number(),
 })
 

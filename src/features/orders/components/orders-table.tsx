@@ -13,6 +13,9 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { HelpCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryOrder, deleteOrder } from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,11 +27,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  OrderPayDialog,
+  type OrderPayable,
+} from '@/components/order-pay-dialog'
 import { orderStatuses } from '../data/data'
 import { type Order, type OrderProduct } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { OrdersBatchPaymentDialog } from './orders-batch-payment-dialog'
-import { OrderPayDialog, type OrderPayable } from '@/components/order-pay-dialog'
 import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
 import { OrdersEditCustomerNameDialog } from './orders-edit-customer-name-dialog'
@@ -38,7 +44,6 @@ import { OrdersTableFooter } from './orders-table-footer'
 const route = getRouteApi('/_authenticated/orders/')
 
 type DataTableProps = {
-  data: Order[]
   onTableReady?: (table: ReturnType<typeof useReactTable<Order>>) => void
 }
 
@@ -117,7 +122,13 @@ function ProductDetailRow({
   )
 }
 
-export function OrdersTable({ data, onTableReady }: DataTableProps) {
+export function OrdersTable({ onTableReady }: DataTableProps) {
+  const { auth } = useAuthStore()
+  const [data, setData] = useState<Order[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
+
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -196,6 +207,49 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
       },
     ],
   })
+
+  // 获取订单数据
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        setIsLoading(false)
+        setData([])
+        setTotalCount(0)
+        return
+      }
+
+      // pagination.pageIndex 是从 0 开始的，API 的 pageIndex 也是从 0 开始
+      const pageIndex = pagination.pageIndex
+      const pageSize = pagination.pageSize
+
+      setIsLoading(true)
+      try {
+        const response = await queryOrder({
+          customerId: String(customerId),
+          type: 'hzkj_orders_BT',
+          pageIndex,
+          pageSize,
+        })
+
+        setData(response.orders)
+        setTotalCount(response.total)
+      } catch (error) {
+        console.error('获取订单列表失败:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load orders. Please try again.'
+        )
+        setData([])
+        setTotalCount(0)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void fetchOrders()
+  }, [auth.user?.customerId, pagination.pageIndex, pagination.pageSize, refreshKey])
 
   // Filter data based on active tab
   const filteredData = data.filter((order) => {
@@ -285,6 +339,31 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     }
   }
 
+  const handleDelete = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await deleteOrder({
+        customerId: String(customerId),
+        orderId: String(orderId),
+      })
+      toast.success('Order deleted successfully')
+      // 刷新订单列表
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('删除订单失败:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete order. Please try again.'
+      )
+    }
+  }
+
   const columns = useMemo(
     () =>
       createOrdersColumns({
@@ -309,8 +388,9 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
         onEditAddress: handleEditAddress,
         onEditCustomerName: handleEditCustomerName,
         onPay: handlePay,
+        onDelete: handleDelete,
       }),
-    [expandedRows, data]
+    [expandedRows, data, auth.user?.customerId, handleDelete]
   )
 
   const table = useReactTable({
@@ -328,6 +408,8 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
+    manualPagination: true,
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     globalFilterFn: (row, _columnId, filterValue) => {
       const orderNumber = String(row.getValue('orderNumber')).toLowerCase()
       const customerName = String(row.getValue('customerName')).toLowerCase()
@@ -447,7 +529,16 @@ export function OrdersTable({ data, onTableReady }: DataTableProps) {
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className='h-24 text-center'
+                    >
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => {
                     const order = row.original
                     const isExpanded = expandedRows.has(row.id)

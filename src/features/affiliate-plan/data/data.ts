@@ -45,14 +45,17 @@ export function generateRecommendedListRecords(
 ): RecommendedListRecord[] {
   const referees = ['***us', '***er', '***ue']
   
-  return Array.from({ length: count }, (_, index) => ({
-    id: String(index + 1),
-    referee: faker.helpers.arrayElement(referees),
-    registrationTime: faker.date.recent({ days: 90 }),
-    commissionAmount: parseFloat(
-      faker.finance.amount({ min: 0, max: 50, dec: 2 })
-    ),
-  }))
+  return Array.from({ length: count }, (_, index) => {
+    const date = faker.date.recent({ days: 90 })
+    return {
+      id: String(index + 1),
+      referee: faker.helpers.arrayElement(referees),
+      registrationTime: date.toISOString().replace('T', ' ').substring(0, 19),
+      commissionAmount: parseFloat(
+        faker.finance.amount({ min: 0, max: 50, dec: 2 })
+      ),
+    }
+  })
 }
 
 // Mock data - 50 records
@@ -64,19 +67,19 @@ export const recommendedListRecords: RecommendedListRecord[] = [
   {
     id: '51',
     referee: '***us',
-    registrationTime: new Date('2025-09-01T11:47:16'),
+    registrationTime: '2025-09-01 11:47:16',
     commissionAmount: 21.62,
   },
   {
     id: '52',
     referee: '***er',
-    registrationTime: new Date('2025-10-27T16:52:25'),
+    registrationTime: '2025-10-27 16:52:25',
     commissionAmount: 4.30,
   },
   {
     id: '53',
     referee: '***ue',
-    registrationTime: new Date('2025-08-13T10:58:19'),
+    registrationTime: '2025-08-13 10:58:19',
     commissionAmount: 0.00,
   },
 ]

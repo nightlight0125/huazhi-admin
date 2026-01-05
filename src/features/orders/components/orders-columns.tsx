@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
-import { type ColumnDef } from '@tanstack/react-table'
+import { type ColumnDef, type Row } from '@tanstack/react-table'
 import {
   CreditCard,
   Edit,
+  Loader2,
   Minus,
   Plus,
   ShoppingBag,
@@ -17,39 +19,125 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type Order } from '../data/schema'
+
+// 删除订单单元格组件
+interface OrderDeleteCellProps {
+  row: Row<Order>
+  onDelete?: (orderId: string) => void | Promise<void>
+}
+
+function OrderDeleteCell({ row, onDelete }: OrderDeleteCellProps) {
+  const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const order = row.original
+
+  const handleConfirmDelete = async () => {
+    if (!onDelete) return
+
+    setIsLoading(true)
+    try {
+      await onDelete(order.id)
+      setOpen(false)
+    } catch (error) {
+      // 错误处理已经在 handleDelete 中完成，这里只需要确保加载状态被重置
+      console.error('删除订单失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant='ghost'
+        size='sm'
+        className='h-8 px-1.5 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300'
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        <Trash2 className='h-3.5 w-3.5' />
+      </Button>
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) {
+            setOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmDelete}
+        destructive
+        isLoading={isLoading}
+        title={<span className='text-destructive'>Delete Order</span>}
+        desc={
+          <>
+            <p className='mb-2'>
+              Are you sure you want to delete this order?
+              <br />
+              This action cannot be undone.
+            </p>
+            <p className='text-muted-foreground text-sm'>
+              Order Number: <strong>{order.orderNumber}</strong>
+            </p>
+          </>
+        }
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Deleting...
+            </>
+          ) : (
+            'Delete'
+          )
+        }
+      />
+    </>
+  )
+}
+
+// 平台订单状态标签映射
+function getPlatformOrderStatusLabel(status: string): string {
+  const statusMap: Record<string, string> = {
+    '0': 'Cancelled',
+    no: 'Not Linked to Local SKU',
+    '1': 'Pending Payment',
+    '2': 'Paid',
+    '3': 'Processing',
+    '4': 'Shipped',
+  }
+  return statusMap[status] || status
+}
 
 // 平台订单状态样式映射
 function getPlatformOrderStatusClassName(status: string): string {
-  const lowerStatus = status.toLowerCase()
-
-  // Processing - 紫色背景，白色文字
-  if (lowerStatus === 'processing') {
-    return 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white'
-  }
-  // Cancelled - 红色背景，白色文字
-  if (lowerStatus === 'cancelled') {
+  // 0: 取消 - 红色背景，白色文字
+  if (status === '0') {
     return 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white'
   }
-  // Pending - 橙色背景，白色文字
-  if (lowerStatus === 'pending') {
+  // no: 未关联本地sku - 灰色背景，白色文字
+  if (status === 'no') {
+    return 'border-transparent bg-gray-500 text-white dark:bg-gray-500 dark:text-white'
+  }
+  // 1: 待支付 - 橙色背景，白色文字
+  if (status === '1') {
     return 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white'
   }
-  // Refunded - 橙色背景，白色文字
-  if (lowerStatus === 'refunded') {
-    return 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white'
-  }
-  // Confirmed - 绿色背景，白色文字
-  if (lowerStatus === 'confirmed') {
+  // 2: 已支付 - 绿色背景，白色文字
+  if (status === '2') {
     return 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white'
   }
-  // Shipped - 蓝色背景，白色文字
-  if (lowerStatus === 'shipped') {
+  // 3: 处理中 - 紫色背景，白色文字
+  if (status === '3') {
+    return 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white'
+  }
+  // 4: 已发货 - 蓝色背景，白色文字
+  if (status === '4') {
     return 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white'
-  }
-  // Delivered - 绿色背景，白色文字
-  if (lowerStatus === 'delivered') {
-    return 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white'
   }
 
   // 默认灰色
@@ -63,7 +151,7 @@ export const createOrdersColumns = (options?: {
   onEditAddress?: (orderId: string) => void
   onEditCustomerName?: (orderId: string) => void
   onPay?: (orderId: string) => void
-  onDelete?: (orderId: string) => void
+  onDelete?: (orderId: string) => void | Promise<void>
 }): ColumnDef<Order>[] => {
   const {
     onExpand,
@@ -263,14 +351,15 @@ export const createOrdersColumns = (options?: {
         }
 
         const className = getPlatformOrderStatusClassName(status)
+        const label = getPlatformOrderStatusLabel(status)
 
         return (
           <div className='flex flex-col gap-1.5 text-sm'>
             <Badge variant='outline' className={className}>
-              {status}
+              {label}
             </Badge>
             <Badge variant='outline' className={className}>
-              {status}
+              {label}
             </Badge>
           </div>
         )
@@ -297,21 +386,7 @@ export const createOrdersColumns = (options?: {
               <CreditCard className='h-3.5 w-3.5' />
               Pay
             </Button>
-            {/* <OrdersRowActions
-              row={row}
-              onModifyProduct={onModifyProduct}
-              onEditAddress={onEditAddress}
-            /> */}
-            <Button
-              variant='ghost'
-              size='sm'
-              className='h-8 px-1.5 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300'
-              onClick={() => {
-                onDelete?.(row.original.id)
-              }}
-            >
-              <Trash2 className='h-3.5 w-3.5' />
-            </Button>
+            <OrderDeleteCell row={row} onDelete={onDelete} />
           </div>
         )
       },

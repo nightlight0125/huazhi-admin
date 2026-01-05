@@ -378,13 +378,13 @@ export function AddressForm() {
 
   // 省份和城市状态
   const [invoiceProvinces, setInvoiceProvinces] = useState<
-    Array<{ label: string; value: string }>
+    Array<{ label: string; value: string; number?: string }>
   >([])
   const [invoiceCities, setInvoiceCities] = useState<
     Array<{ label: string; value: string }>
   >([])
   const [consigneeProvinces, setConsigneeProvinces] = useState<
-    Array<{ label: string; value: string }>
+    Array<{ label: string; value: string; number?: string }>
   >([])
   const [consigneeCities, setConsigneeCities] = useState<
     Array<{ label: string; value: string }>
@@ -446,9 +446,12 @@ export function AddressForm() {
   }
 
   // 加载省份
-  const loadProvinces = async (countryCode: string, isInvoice: boolean) => {
+  const loadProvinces = async (
+    countryCode: string,
+    isInvoice: boolean
+  ): Promise<Array<{ label: string; value: string; number?: string }>> => {
     const countryId = getCountryId(countryCode)
-    if (!countryId) return
+    if (!countryId) return []
 
     if (isInvoice) {
       setIsLoadingInvoiceProvinces(true)
@@ -469,16 +472,20 @@ export function AddressForm() {
         const provinceOptions = divisions.map((div) => ({
           label: div.name,
           value: div.id,
+          number: div.number, // 保存 number 字段用于匹配
         }))
         if (isInvoice) {
           setInvoiceProvinces(provinceOptions)
         } else {
           setConsigneeProvinces(provinceOptions)
         }
+        return provinceOptions // 返回省份列表用于后续匹配
       }
+      return []
     } catch (error) {
       console.error('Failed to load provinces:', error)
       toast.error('Failed to load provinces')
+      return []
     } finally {
       if (isInvoice) {
         setIsLoadingInvoiceProvinces(false)
@@ -579,11 +586,24 @@ export function AddressForm() {
         console.log('收货地址国家 code:', consigneeCountryCode)
 
         // 先加载省份列表，然后再加载城市
+        let loadedInvoiceProvinces: Array<{
+          label: string
+          value: string
+          number?: string
+        }> = []
+        let loadedConsigneeProvinces: Array<{
+          label: string
+          value: string
+          number?: string
+        }> = []
+
         if (invoiceCountryCode) {
-          await loadProvinces(invoiceCountryCode, true)
+          loadedInvoiceProvinces =
+            (await loadProvinces(invoiceCountryCode, true)) || []
         }
         if (consigneeCountryCode) {
-          await loadProvinces(consigneeCountryCode, false)
+          loadedConsigneeProvinces =
+            (await loadProvinces(consigneeCountryCode, false)) || []
         }
 
         // 存储加载的城市列表
@@ -591,16 +611,19 @@ export function AddressForm() {
         let loadedConsigneeCities: Array<{ label: string; value: string }> = []
 
         // 根据省份 number 或 ID 找到对应的 province ID
-        // 优先使用 hzkj_admindivision2_id，如果没有则尝试根据 number 查找
+        // 优先使用 hzkj_admindivision2_id，如果没有则根据 hzkj_admindivision2_number 查找
         let invoiceProvinceId = ''
         if (addressData.hzkj_admindivision2_id) {
           invoiceProvinceId = String(addressData.hzkj_admindivision2_id)
         } else if (addressData.hzkj_admindivision2_number) {
-          // 尝试在已加载的省份列表中查找匹配的 ID
-          // 注意：这里可能需要根据实际情况调整匹配逻辑
+          // 根据 number 在已加载的省份列表中查找匹配的省份
           const provinceNumber = String(addressData.hzkj_admindivision2_number)
-          // 如果 number 就是 ID，直接使用
-          invoiceProvinceId = provinceNumber
+          const matchedProvince = loadedInvoiceProvinces.find(
+            (province) => province.number === provinceNumber
+          )
+          if (matchedProvince) {
+            invoiceProvinceId = matchedProvince.value
+          }
         }
 
         let consigneeProvinceId = ''
@@ -608,7 +631,12 @@ export function AddressForm() {
           consigneeProvinceId = String(addressData.hzkj_admindivision_id)
         } else if (addressData.hzkj_admindivision_number) {
           const provinceNumber = String(addressData.hzkj_admindivision_number)
-          consigneeProvinceId = provinceNumber
+          const matchedProvince = loadedConsigneeProvinces.find(
+            (province) => province.number === provinceNumber
+          )
+          if (matchedProvince) {
+            consigneeProvinceId = matchedProvince.value
+          }
         }
 
         console.log('账单地址省份 ID:', invoiceProvinceId)

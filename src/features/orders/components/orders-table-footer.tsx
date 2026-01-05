@@ -10,8 +10,11 @@ type OrdersTableFooterProps = {
 }
 
 export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
-  const currentPage = table.getState().pagination.pageIndex + 1
+  const paginationState = table.getState().pagination
+  const currentPage = paginationState.pageIndex + 1
   const totalPages = table.getPageCount()
+  const pageSize = paginationState.pageSize
+  const totalRows = table.getRowCount()
   const pageNumbers = getPageNumbers(currentPage, totalPages)
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
   const isAllPageSelected = table.getIsAllPageRowsSelected()
@@ -77,44 +80,51 @@ export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
       </div>
 
       {/* Center: Pagination */}
-      <div className='flex items-center gap-2'>
-        <Button
-          variant='outline'
-          size='icon'
-          className='h-8 w-8'
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          <ChevronLeft className='h-4 w-4' />
-        </Button>
+      <div className='flex items-center gap-4'>
+        <div className='text-sm text-muted-foreground'>
+          Showing {totalRows === 0 ? 0 : paginationState.pageIndex * pageSize + 1} to{' '}
+          {Math.min((paginationState.pageIndex + 1) * pageSize, totalRows)} of{' '}
+          {totalRows} orders
+        </div>
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='outline'
+            size='icon'
+            className='h-8 w-8'
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronLeft className='h-4 w-4' />
+          </Button>
 
-        {/* Page number buttons */}
-        {pageNumbers.map((pageNumber, index) => (
-          <div key={`${pageNumber}-${index}`} className='flex items-center'>
-            {pageNumber === '...' ? (
-              <span className='px-2 text-sm text-gray-500'>...</span>
-            ) : (
-              <Button
-                variant={currentPage === pageNumber ? 'default' : 'outline'}
-                size='sm'
-                className='h-8 min-w-8 px-2'
-                onClick={() => table.setPageIndex((pageNumber as number) - 1)}
-              >
-                {pageNumber}
-              </Button>
-            )}
-          </div>
-        ))}
+          {/* Page number buttons */}
+          {pageNumbers.map((pageNumber, index) => (
+            <div key={`${pageNumber}-${index}`} className='flex items-center'>
+              {pageNumber === '...' ? (
+                <span className='px-2 text-sm text-gray-500'>...</span>
+              ) : (
+                <Button
+                  variant={currentPage === pageNumber ? 'default' : 'outline'}
+                  size='sm'
+                  className='h-8 min-w-8 px-2'
+                  onClick={() => table.setPageIndex((pageNumber as number) - 1)}
+                >
+                  {pageNumber}
+                </Button>
+              )}
+            </div>
+          ))}
 
-        <Button
-          variant='outline'
-          size='icon'
-          className='h-8 w-8'
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          <ChevronRight className='h-4 w-4' />
-        </Button>
+          <Button
+            variant='outline'
+            size='icon'
+            className='h-8 w-8'
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronRight className='h-4 w-4' />
+          </Button>
+        </div>
       </div>
     </div>
   )

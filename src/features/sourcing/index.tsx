@@ -110,6 +110,7 @@ export function Sourcing() {
             resultTime: undefined,
             spuName,
             price,
+            entryentity: item.entryentity, // 保存原始 entryentity 数据
           }
         })
 

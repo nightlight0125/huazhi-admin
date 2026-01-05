@@ -125,9 +125,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
   const [selectedLocation, setSelectedLocation] = useState<string | undefined>(
     undefined
   )
-  const [selectedSupplier, setSelectedSupplier] = useState<string | undefined>(
-    undefined
-  )
   const [categoryTree, setCategoryTree] = useState<CategoryItem[]>([])
 
   // Fetch category data from API
@@ -247,13 +244,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
     }
   }
 
-  const suppliers = [
-    { label: 'All suppliers', value: 'all' },
-    { label: 'Supplier A', value: 'supplier-a' },
-    { label: 'Supplier B', value: 'supplier-b' },
-    { label: 'Supplier C', value: 'supplier-c' },
-  ]
-
   const handleCategoryChange = (value: string, checked: boolean) => {
     setSelectedCategories((prev) => {
       const next = new Set(prev)
@@ -332,24 +322,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
               {locationOptions.map((option) => (
                 <SelectItem key={option.id} value={option.id}>
                   {option.hzkj_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={selectedSupplier || 'all'}
-            onValueChange={(value) =>
-              setSelectedSupplier(value === 'all' ? undefined : value)
-            }
-          >
-            <SelectTrigger className='min-w-[140px]'>
-              <SelectValue placeholder='All suppliers' />
-            </SelectTrigger>
-            <SelectContent>
-              {suppliers.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
                 </SelectItem>
               ))}
             </SelectContent>

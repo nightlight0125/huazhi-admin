@@ -9,6 +9,9 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryCustomerRecommendList } from '@/lib/api/users'
 import {
   TableBody,
   TableCell,
@@ -22,56 +25,33 @@ import { type RecommendedListRecord } from '../data/schema'
 import { RecommendedListBulkActions } from './recommended-list-bulk-actions'
 import { recommendedListColumns } from './recommended-list-columns'
 
-interface RecommendedListTableProps {
-  data: RecommendedListRecord[]
-}
-
-export function RecommendedListTable({ data }: RecommendedListTableProps) {
+export function RecommendedListTable() {
+  const { auth } = useAuthStore()
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
-
-  useEffect(() => {
-    console.log('RecommendedListTable data:', data?.length || 0, data)
-  }, [data])
-
-  // Fallback test data if no data is provided
-  const testData: RecommendedListRecord[] = [
-    {
-      id: '1',
-      referee: '***us',
-      registrationTime: new Date('2025-09-01T11:47:16'),
-      commissionAmount: 21.62,
-    },
-    {
-      id: '2',
-      referee: '***er',
-      registrationTime: new Date('2025-10-27T16:52:25'),
-      commissionAmount: 4.3,
-    },
-    {
-      id: '3',
-      referee: '***ue',
-      registrationTime: new Date('2025-08-13T10:58:19'),
-      commissionAmount: 0.0,
-    },
-  ]
-
-  // Use provided data or fallback to test data
-  const tableData = data && data.length > 0 ? data : testData
+  const [data, setData] = useState<RecommendedListRecord[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const table = useReactTable({
-    data: tableData,
+    data,
     columns: recommendedListColumns,
     state: {
       sorting,
       columnVisibility,
       rowSelection,
+      pagination,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
     globalFilterFn: (row, _columnId, filterValue) => {
       const referee = String(row.getValue('referee')).toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
@@ -81,12 +61,75 @@ export function RecommendedListTable({ data }: RecommendedListTableProps) {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    manualPagination: true,
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     initialState: {
       pagination: {
         pageSize: 10,
       },
     },
   })
+
+  // 获取数据
+  useEffect(() => {
+    const fetchData = async () => {
+      const userId = auth.user?.id || auth.user?.customerId
+      if (!userId) {
+        setIsLoading(false)
+        setData([])
+        setTotalCount(0)
+        return
+      }
+
+      const pageNo = pagination.pageIndex + 1
+      const pageSize = pagination.pageSize
+
+      setIsLoading(true)
+      try {
+        const response = await queryCustomerRecommendList(
+          String(userId),
+          pageNo,
+          pageSize
+        )
+
+        const records: RecommendedListRecord[] = response.rows.map((item) => {
+          console.log(item, 'item')
+          return {
+            id: String(item.id || ''),
+            referee: String(item.hzkj_recommended_user_name || '-'),
+            registrationTime: String(
+              item.hzkj_recommended_user_createtime || '-'
+            ),
+            commissionAmount:
+              typeof item.hzkj_contribution_amount === 'number'
+                ? item.hzkj_contribution_amount
+                : 0,
+          }
+        })
+
+        setData(records)
+        setTotalCount(response.totalCount)
+      } catch (error) {
+        console.error('获取推荐列表失败:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load recommended list. Please try again.'
+        )
+        setData([])
+        setTotalCount(0)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void fetchData()
+  }, [
+    auth.user?.id,
+    auth.user?.customerId,
+    pagination.pageIndex,
+    pagination.pageSize,
+  ])
 
   return (
     <div className='space-y-4'>
@@ -120,7 +163,16 @@ export function RecommendedListTable({ data }: RecommendedListTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={recommendedListColumns.length}
+                  className='h-24 text-center'
+                >
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

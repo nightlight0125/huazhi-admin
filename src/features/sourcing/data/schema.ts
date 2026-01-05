@@ -14,6 +14,7 @@ export const sourcingSchema = z.object({
   resultTime: z.date().optional(),
   spuName: z.string().optional(), // SPU 名称 (hzkj_spu_name)
   price: z.number().optional(), // 价格 (hzkj_amount)
+  entryentity: z.array(z.record(z.string(), z.unknown())).optional(), // 原始 entryentity 数据
 })
 
 export type Sourcing = z.infer<typeof sourcingSchema>

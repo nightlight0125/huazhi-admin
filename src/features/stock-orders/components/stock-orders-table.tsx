@@ -8,11 +8,13 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { HelpCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { deleteStockOrder, queryOrder } from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,22 +26,33 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  OrderPayDialog,
+  type OrderPayable,
+} from '@/components/order-pay-dialog'
 import { stockOrderStatuses } from '../data/data'
 import { type StockOrder } from '../data/schema'
 import { StockOrdersActionsMenu } from './stock-orders-actions-menu'
 import { StockOrdersBulkActions } from './stock-orders-bulk-actions'
 import { createStockOrdersColumns } from './stock-orders-columns'
-import { OrderPayDialog, type OrderPayable } from '@/components/order-pay-dialog'
 import { StockOrdersTableFooter } from './stock-orders-table-footer'
 
 const route = getRouteApi('/_authenticated/stock-orders/')
 
 type DataTableProps = {
-  data: StockOrder[]
+  data?: StockOrder[] // 改为可选，因为现在从 API 获取
   onTableReady?: (table: ReturnType<typeof useReactTable<StockOrder>>) => void
 }
 
-export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
+export function StockOrdersTable({
+  data: _data,
+  onTableReady,
+}: DataTableProps) {
+  const { auth } = useAuthStore()
+  const [data, setData] = useState<StockOrder[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -68,6 +81,122 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
+  // 获取订单数据
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        setIsLoading(false)
+        setData([])
+        setTotalCount(0)
+        return
+      }
+
+      // pagination.pageIndex 是从 0 开始的，API 的 pageIndex 也是从 0 开始
+      const pageIndex = pagination.pageIndex ?? 0
+      const pageSize = pagination.pageSize ?? 10
+
+      setIsLoading(true)
+      console.log('Fetching stock orders:', {
+        customerId,
+        pageIndex,
+        pageSize,
+        globalFilter,
+      })
+      try {
+        const response = await queryOrder({
+          customerId: String(customerId),
+          type: 'stock',
+          str: globalFilter || '',
+          pageIndex,
+          pageSize,
+        })
+
+        // 将 Order 转换为 StockOrder
+        const stockOrders: StockOrder[] = response.orders.map((order) => {
+          const firstProduct = order.productList[0]
+          return {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            sku: firstProduct?.id || '',
+            createdAt: order.createdAt,
+            cost: {
+              total:
+                typeof order.totalCost === 'number'
+                  ? order.totalCost
+                  : parseFloat(String(order.totalCost)) || 0,
+              product: order.productList.reduce(
+                (sum, p) =>
+                  sum +
+                  (typeof p.totalPrice === 'number'
+                    ? p.totalPrice
+                    : parseFloat(String(p.totalPrice)) || 0),
+                0
+              ),
+              shipping:
+                typeof order.shippingCost === 'number'
+                  ? order.shippingCost
+                  : parseFloat(String(order.shippingCost)) || 0,
+              other:
+                typeof order.otherCosts === 'number'
+                  ? order.otherCosts
+                  : parseFloat(String(order.otherCosts)) || 0,
+              qty: order.productList.reduce(
+                (sum, p) =>
+                  sum +
+                  (typeof p.quantity === 'number'
+                    ? p.quantity
+                    : parseFloat(String(p.quantity)) || 0),
+                0
+              ),
+            },
+            address: {
+              name: order.customerName,
+              country: order.country,
+              address: order.address,
+            },
+            shippingMethod: order.logistics,
+            trackId: order.trackingNumber,
+            remark: '',
+            status: order.status as StockOrder['status'],
+            productList: order.productList.map((p) => ({
+              id: p.id,
+              productName: p.productName,
+              productVariant: p.productVariant,
+              quantity: p.quantity,
+              productImageUrl: p.productImageUrl,
+              productLink: p.productLink,
+              price: p.price,
+              totalPrice: p.totalPrice,
+            })),
+          }
+        })
+
+        setData(stockOrders)
+        setTotalCount(response.total)
+      } catch (error) {
+        console.error('获取库存订单列表失败:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load stock orders. Please try again.'
+        )
+        setData([])
+        setTotalCount(0)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void fetchOrders()
+  }, [
+    auth.user?.customerId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    globalFilter,
+    refreshKey,
+  ])
+
   // Filter data based on active tab
   const filteredData = data.filter((order) => {
     if (activeTab === 'all') return true
@@ -80,7 +209,13 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
       // Convert StockOrder to OrderPayable
       setSelectedOrderForPayment({
         id: order.id,
-        getTotalAmount: () => order.cost.total,
+        getTotalAmount: () => {
+          const total =
+            typeof order.cost.total === 'number'
+              ? order.cost.total
+              : parseFloat(String(order.cost.total)) || 0
+          return total
+        },
       })
       setPayDialogOpen(true)
     }
@@ -96,9 +231,29 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
     // TODO: Implement add package logic
   }
 
-  const handleDelete = (orderId: string) => {
-    console.log('Delete order:', orderId)
-    // TODO: Implement delete logic
+  const handleDelete = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await deleteStockOrder({
+        customerId: String(customerId),
+        orderId: String(orderId),
+      })
+      toast.success('Order deleted successfully')
+      // 刷新订单列表
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('删除库存订单失败:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete order. Please try again.'
+      )
+    }
   }
 
   const columns = useMemo(
@@ -109,7 +264,7 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    []
+    [auth.user?.customerId, handleDelete]
   )
 
   const table = useReactTable({
@@ -136,7 +291,8 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true, // 启用服务端分页
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -156,6 +312,14 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
       onTableReady(table)
     }
   }, [table, onTableReady])
+
+  if (isLoading) {
+    return (
+      <div className='flex h-96 items-center justify-center'>
+        <p className='text-muted-foreground text-sm'>Loading stock orders...</p>
+      </div>
+    )
+  }
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
@@ -181,7 +345,11 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             const selectedCount = selectedRows.length
             const totalAmount = selectedRows.reduce((sum, row) => {
-              return sum + (row.original.cost.total || 0)
+              const total =
+                typeof row.original.cost.total === 'number'
+                  ? row.original.cost.total
+                  : parseFloat(String(row.original.cost.total)) || 0
+              return sum + total
             }, 0)
 
             return (
@@ -271,7 +439,7 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
             </Table>
           </div>
 
-          <StockOrdersTableFooter table={table} />
+          <StockOrdersTableFooter table={table} totalRows={totalCount} />
         </TabsContent>
       </Tabs>
 

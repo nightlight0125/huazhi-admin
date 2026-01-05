@@ -47,7 +47,7 @@ export function WinningProducts() {
           deliveryId: '',
           categoryIds: [],
           productTypes: [],
-          productTags: [],
+          productTags: ['002'],
         })
 
         // 后端返回的数据在 data.products 中

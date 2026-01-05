@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { cn } from '@/lib/utils'
 
 type CategoryItem = {
   label: string
@@ -88,7 +88,10 @@ export function CategoryTreeFilter({
     const checkedChildren = category.children.filter((child) =>
       selectedValues.has(child.value)
     )
-    return checkedChildren.length > 0 && checkedChildren.length < category.children.length
+    return (
+      checkedChildren.length > 0 &&
+      checkedChildren.length < category.children.length
+    )
   }
 
   return (
@@ -121,11 +124,14 @@ export function CategoryTreeFilter({
                     )
                   }
                   className={cn(
-                    isIndeterminate && 'data-[state=checked]:bg-primary data-[state=checked]:border-primary'
+                    isIndeterminate &&
+                      'data-[state=checked]:bg-primary data-[state=checked]:border-primary'
                   )}
                   ref={(el) => {
                     if (el) {
-                      const input = el.querySelector('input[type="checkbox"]') as HTMLInputElement | null
+                      const input = el.querySelector(
+                        'input[type="checkbox"]'
+                      ) as HTMLInputElement | null
                       if (input) {
                         input.indeterminate = isIndeterminate
                       }
@@ -135,7 +141,7 @@ export function CategoryTreeFilter({
                 <span className='flex-1 text-sm'>{category.label}</span>
                 {hasChildren && (
                   <CollapsibleTrigger asChild>
-                    <button className='flex items-center justify-center p-0.5 hover:bg-accent rounded-sm'>
+                    <button className='hover:bg-accent flex items-center justify-center rounded-sm p-0.5'>
                       {isExpanded ? (
                         <ChevronDown className='h-4 w-4' />
                       ) : (
@@ -147,7 +153,7 @@ export function CategoryTreeFilter({
               </div>
               {hasChildren && (
                 <CollapsibleContent>
-                  <div className='ml-6 space-y-1 mt-1'>
+                  <div className='mt-1 ml-6 space-y-1'>
                     {category.children!.map((child) => (
                       <div
                         key={child.value}
@@ -172,4 +178,3 @@ export function CategoryTreeFilter({
     </div>
   )
 }
-

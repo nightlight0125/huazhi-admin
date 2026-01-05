@@ -280,22 +280,21 @@ export const createSourcingColumns = (
       <DataTableColumnHeader column={column} title='Result Time' />
     ),
     cell: ({ row }) => {
-      const date = row.getValue('resultTime') as Date | undefined
-      if (!date) return <div className='text-xs'>-</div>
-      const month = date.toLocaleDateString('en-US', { month: 'short' })
-      const day = date.getDate()
-      const year = date.getFullYear()
-      const time = date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      })
-      return (
-        <div className='text-xs'>
-          {month}. {day}, {year} {time}
-        </div>
-      )
+      const sourcing = row.original
+      // 从 entryentity 中获取 hzkj_date
+      const entryEntity =
+        Array.isArray(sourcing.entryentity) && sourcing.entryentity.length > 0
+          ? sourcing.entryentity[0]
+          : null
+
+      const hzkjDate = entryEntity?.hzkj_date
+
+      if (!hzkjDate) {
+        return <div className='text-xs'>-</div>
+      }
+
+      // 直接显示字符串，不做转换
+      return <div className='text-xs'>{String(hzkjDate)}</div>
     },
     enableHiding: false,
   },
@@ -322,22 +321,10 @@ export const createSourcingColumns = (
             />
           </div>
         </>
-        // <Button
-        //   variant='outline'
-        //   size='sm'
-        //   className='h-7 px-2 text-xs'
-        //   onClick={(e) => {
-        //     e.stopPropagation()
-        //     handlers?.onEdit?.(sourcing)
-        //   }}
-        // >
-        //   Contact
-        // </Button>
       )
     },
     enableHiding: false,
   },
 ]
 
-// 为了向后兼容，导出一个默认的 columns
 export const sourcingColumns: ColumnDef<Sourcing>[] = createSourcingColumns()

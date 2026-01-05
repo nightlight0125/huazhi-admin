@@ -32,6 +32,7 @@ type ProductsTableWithToolbarProps<TData> = {
   navigate: any
   globalFilterFn?: (row: any, _columnId: string, filterValue: string) => boolean
   totalCount?: number // 服务端分页的总数
+  onSearch?: (searchValue: string) => void // 搜索回调函数
 }
 
 export function ProductsTableWithToolbar<TData>({
@@ -41,6 +42,7 @@ export function ProductsTableWithToolbar<TData>({
   navigate,
   globalFilterFn,
   totalCount,
+  onSearch,
 }: ProductsTableWithToolbarProps<TData>) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -63,6 +65,19 @@ export function ProductsTableWithToolbar<TData>({
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
+
+  // 处理搜索回调
+  const handleSearch = (searchValue: string) => {
+    if (onSearch) {
+      // 如果提供了 onSearch 回调，调用它
+      onSearch(searchValue)
+    } else {
+      // 否则使用默认行为：更新 URL 参数
+      if (onGlobalFilterChange) {
+        onGlobalFilterChange(searchValue)
+      }
+    }
+  }
 
   // 如果是服务端分页，计算总页数
   const pageCount =
@@ -108,7 +123,6 @@ export function ProductsTableWithToolbar<TData>({
   })
 
   const finalPageCount = pageCount ?? table.getPageCount()
-
   useEffect(() => {
     if (finalPageCount !== undefined) {
       ensurePageInRange(finalPageCount)
@@ -120,6 +134,8 @@ export function ProductsTableWithToolbar<TData>({
       <DataTableToolbar
         table={table as Table<TData>}
         searchPlaceholder='Product Name，SPU'
+        showSearchButton={true}
+        onSearch={handleSearch}
       />
       <div className='overflow-hidden rounded-md border'>
         <UITable>

@@ -69,11 +69,6 @@ export const priceRanges = [
 // 供应商配置
 export const suppliers = [
   {
-    value: 'all',
-    label: 'All suppliers',
-    icon: () => <div className='size-2 rounded-full bg-gray-500' />,
-  },
-  {
     value: 'zendrop-fulfillment',
     label: 'Zendrop Fulfillment',
     icon: () => <div className='size-2 rounded-full bg-blue-500' />,

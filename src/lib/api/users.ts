@@ -494,6 +494,83 @@ export async function queryCustomerUser(
   return null
 }
 
+// 查询客户推荐列表请求参数
+export interface QueryCustomerRecommendListRequest {
+  data: {
+    id: string
+  }
+  pageSize: number
+  pageNo: number
+}
+
+// 客户推荐列表项
+export interface CustomerRecommendListItem {
+  id?: string
+  referee?: string
+  registrationTime?: string | Date
+  commissionAmount?: number
+  [key: string]: unknown
+}
+
+// 查询客户推荐列表响应
+export interface QueryCustomerRecommendListResponse {
+  data?: {
+    rows?: CustomerRecommendListItem[]
+    list?: CustomerRecommendListItem[]
+    pageNo?: number
+    pageSize?: number
+    totalCount?: number
+    filter?: string
+    lastPage?: boolean
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询客户推荐列表 API
+export async function queryCustomerRecommendList(
+  id: string,
+  pageNo: number = 1,
+  pageSize: number = 10
+): Promise<{ rows: CustomerRecommendListItem[]; totalCount: number }> {
+  const requestData: QueryCustomerRecommendListRequest = {
+    data: {
+      id,
+    },
+    pageSize,
+    pageNo,
+  }
+
+  console.log('查询客户推荐列表请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<QueryCustomerRecommendListResponse>(
+    '/v2/hzkj/hzkj_member/hzkj_member_customer/queryCustomerRecommendList',
+    requestData
+  )
+
+  console.log('查询客户推荐列表响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query customer recommend list. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回 rows 数组和总数
+  const rows = response.data.data?.rows || response.data.data?.list || []
+  const totalCount = response.data.data?.totalCount || 0
+
+  return {
+    rows: Array.isArray(rows) ? rows : [],
+    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+  }
+}
+
 // 更新账户信息请求参数
 export interface UpdateAccountInfoRequest {
   data: Array<{

@@ -268,19 +268,6 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     })
   }
 
-  // TODO: Location and supplier options will be used when filters are implemented
-  // const locationOptions = [
-  //   { label: ' Ship from anywhere', value: 'all' },
-  //   ...locations.map((loc) => ({ label: loc.label, value: loc.value })),
-  // ]
-
-  // const supplierOptions = [
-  //   { label: 'All suppliers', value: 'all' },
-  //   ...suppliers
-  //     .filter((s) => s.value !== 'all')
-  //     .map((s) => ({ label: s.label, value: s.value })),
-  // ]
-
   return (
     <div className='space-y-4'>
       <FilterToolbar

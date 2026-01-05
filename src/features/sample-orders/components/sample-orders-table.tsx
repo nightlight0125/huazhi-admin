@@ -8,11 +8,13 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { HelpCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryOrder, deleteOrder } from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,11 +38,16 @@ import { EditAddressDialog, type AddressData } from '@/components/edit-address-d
 const route = getRouteApi('/_authenticated/sample-orders/')
 
 type DataTableProps = {
-  data: SampleOrder[]
+  data?: SampleOrder[] // 改为可选，因为现在从 API 获取
   onTableReady?: (table: ReturnType<typeof useReactTable<SampleOrder>>) => void
 }
 
-export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
+export function SampleOrdersTable({ data: _data, onTableReady }: DataTableProps) {
+  const { auth } = useAuthStore()
+  const [data, setData] = useState<SampleOrder[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -76,6 +83,87 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
+
+  // 获取订单数据
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        setIsLoading(false)
+        setData([])
+        setTotalCount(0)
+        return
+      }
+
+      // pagination.pageIndex 是从 0 开始的，API 的 pageIndex 也是从 0 开始
+      const pageIndex = pagination.pageIndex
+      const pageSize = pagination.pageSize
+
+      setIsLoading(true)
+      try {
+        const response = await queryOrder({
+          customerId: String(customerId),
+          type: 'hzkj_orders_BT_Sample',
+          str: globalFilter || '',
+          pageIndex,
+          pageSize,
+        })
+
+        // 将 Order 转换为 SampleOrder
+        const sampleOrders: SampleOrder[] = response.orders.map((order) => {
+          const firstProduct = order.productList[0]
+          return {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            sku: firstProduct?.id || '',
+            createdAt: order.createdAt,
+            cost: {
+              total: order.totalCost,
+              product: order.productList.reduce((sum, p) => sum + p.totalPrice, 0),
+              shipping: order.shippingCost,
+              other: order.otherCosts,
+              qty: order.productList.reduce((sum, p) => sum + p.quantity, 0),
+            },
+            address: {
+              name: order.customerName,
+              country: order.country,
+              address: order.address,
+            },
+            shippingMethod: order.logistics,
+            trackId: order.trackingNumber,
+            remark: '',
+            status: order.status as SampleOrder['status'],
+            productList: order.productList.map((p) => ({
+              id: p.id,
+              productName: p.productName,
+              productVariant: p.productVariant,
+              quantity: p.quantity,
+              productImageUrl: p.productImageUrl,
+              productLink: p.productLink,
+              price: p.price,
+              totalPrice: p.totalPrice,
+            })),
+          }
+        })
+
+        setData(sampleOrders)
+        setTotalCount(response.total)
+      } catch (error) {
+        console.error('获取样品订单列表失败:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load sample orders. Please try again.'
+        )
+        setData([])
+        setTotalCount(0)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void fetchOrders()
+  }, [auth.user?.customerId, pagination.pageIndex, pagination.pageSize, globalFilter, refreshKey])
 
   // Filter data based on active tab
   const filteredData = data.filter((order) => {
@@ -119,9 +207,29 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     // TODO: Implement add package logic
   }
 
-  const handleDelete = (orderId: string) => {
-    console.log('Delete order:', orderId)
-    // TODO: Implement delete logic
+  const handleDelete = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await deleteOrder({
+        customerId: String(customerId),
+        orderId: String(orderId),
+      })
+      toast.success('Order deleted successfully')
+      // 刷新订单列表
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('删除订单失败:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete order. Please try again.'
+      )
+    }
   }
 
   const columns = useMemo(
@@ -132,7 +240,7 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    []
+    [auth.user?.customerId, handleDelete]
   )
 
   const table = useReactTable({
@@ -159,7 +267,8 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true, // 启用服务端分页
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -264,7 +373,13 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className='h-24 text-center'>
+                      Loading sample orders...
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => {
                     return (
                       <TableRow
@@ -296,7 +411,7 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
             </Table>
           </div>
 
-          <SampleOrdersTableFooter table={table} />
+          <SampleOrdersTableFooter table={table} totalRows={totalCount} />
         </TabsContent>
       </Tabs>
 

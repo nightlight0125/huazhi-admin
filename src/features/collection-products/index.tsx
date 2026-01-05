@@ -22,7 +22,7 @@ export function CollectionProducts() {
   const [totalCount, setTotalCount] = useState(0)
 
   // 获取分页状态和搜索状态（从 URL）
-  const { pagination, globalFilter } = useTableUrlState({
+  const { pagination, globalFilter, onGlobalFilterChange } = useTableUrlState({
     search,
     navigate: navigate as any,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
@@ -33,6 +33,23 @@ export function CollectionProducts() {
   // 刷新数据的函数
   const handleRefresh = () => {
     setRefreshKey((prev) => prev + 1)
+  }
+
+  // 处理搜索
+  const handleSearch = (searchValue: string) => {
+    console.log('handleSearch 被调用，搜索值:', searchValue)
+    // 使用 onGlobalFilterChange 更新 URL 参数和状态
+    // 这会触发 useFetchCollectionProducts 重新获取数据
+    if (onGlobalFilterChange) {
+      onGlobalFilterChange(searchValue)
+      // 同时重置到第一页
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          page: 1,
+        }),
+      })
+    }
   }
 
   const columns = useMemo(
@@ -71,6 +88,7 @@ export function CollectionProducts() {
               search={search}
               navigate={navigate}
               totalCount={totalCount}
+              onSearch={handleSearch}
             />
           )}
         </div>
@@ -107,6 +125,14 @@ export function useFetchCollectionProducts(
 
       // 使用搜索参数，如果没有则使用空字符串
       const nameOrCode = globalFilter?.trim() || ''
+
+      console.log('useFetchCollectionProducts: 开始获取数据', {
+        customerId,
+        pageNo,
+        pageSize,
+        nameOrCode,
+        globalFilter,
+      })
 
       setIsLoading(true)
       try {

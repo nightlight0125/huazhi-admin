@@ -171,11 +171,12 @@ export function OrdersFilterPanel() {
             <SelectValue placeholder='Platform Order Status' />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='pending'>Pending</SelectItem>
-            <SelectItem value='processing'>Processing</SelectItem>
-            <SelectItem value='shipped'>Shipped</SelectItem>
-            <SelectItem value='delivered'>Delivered</SelectItem>
-            <SelectItem value='cancelled'>Cancelled</SelectItem>
+            <SelectItem value='0'>Cancelled</SelectItem>
+            <SelectItem value='no'>Not Linked to Local SKU</SelectItem>
+            <SelectItem value='1'>Pending Payment</SelectItem>
+            <SelectItem value='2'>Paid</SelectItem>
+            <SelectItem value='3'>Processing</SelectItem>
+            <SelectItem value='4'>Shipped</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -187,9 +188,13 @@ export function OrdersFilterPanel() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='pending'>Pending</SelectItem>
-            <SelectItem value='confirmed'>Confirmed</SelectItem>
-            <SelectItem value='processing'>Processing</SelectItem>
-            <SelectItem value='completed'>Completed</SelectItem>
+            <SelectItem value='authorized'>Authorized</SelectItem>
+            <SelectItem value='partially_paid'>Partially Paid</SelectItem>
+            <SelectItem value='paid'>Paid</SelectItem>
+            <SelectItem value='refunded'>Refunded</SelectItem>
+            <SelectItem value='partially_refunded'>Partially Refunded</SelectItem>
+            <SelectItem value='voided'>Voided</SelectItem>
+            <SelectItem value='expired'>Expired</SelectItem>
           </SelectContent>
         </Select>
 

@@ -3,25 +3,24 @@ import { z } from 'zod'
 // 订单状态枚举
 export const orderStatusSchema = z.enum([
   'all',           // 全部
-  'pending_quote', // 待报价
-  'pending_payment', // 待付款
+  'pending',       // 待付款
+  'authorized',    // 已授权
+  'partially_paid', // 部分付款
   'paid',          // 已付款
-  'processing',    // 处理中
-  'shipped',       // 已发货
-  'out_of_stock',  // 缺货
-  'cancelled',     // 已取消
-  'on_hold',       // 订单搁置
+  'refunded',      // 已退款
+  'partially_refunded', // 部分退款
+  'voided',        // 已作废
+  'expired',       // 已过期
 ])
 
 // 平台订单状态
 export const platformOrderStatusSchema = z.enum([
-  'pending',
-  'confirmed',
-  'processing',
-  'shipped',
-  'delivered',
-  'cancelled',
-  'refunded',
+  '0',   // 取消
+  'no',  // 未关联本地sku
+  '1',   // 待支付
+  '2',   // 已支付
+  '3',   // 处理中
+  '4',   // 已发货
 ])
 
 // 平台履行状态

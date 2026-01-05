@@ -8,7 +8,6 @@ import { SampleOrdersDialogs } from './components/sample-orders-dialogs'
 import { SampleOrdersProvider } from './components/sample-orders-provider'
 import { SampleOrdersStats } from './components/sample-orders-stats'
 import { SampleOrdersTable } from './components/sample-orders-table'
-import { sampleOrders } from './data/sample-orders'
 import { type SampleOrder } from './data/schema'
 
 export function SampleOrders() {
@@ -22,7 +21,7 @@ export function SampleOrders() {
 
       <Main fluid>
         <div className='mb-6'>
-          <SampleOrdersStats orders={sampleOrders} />
+          <SampleOrdersStats />
         </div>
         {table && (
           <div className='mb-6'>
@@ -39,7 +38,7 @@ export function SampleOrders() {
           </div>
         )}
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-          <SampleOrdersTable data={sampleOrders} onTableReady={setTable} />
+          <SampleOrdersTable onTableReady={setTable} />
         </div>
       </Main>
 

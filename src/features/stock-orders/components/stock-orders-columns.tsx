@@ -1,11 +1,91 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
-import { type ColumnDef } from '@tanstack/react-table'
-import { CreditCard, Image as ImageIcon, Trash2 } from 'lucide-react'
+import { type ColumnDef, type Row } from '@tanstack/react-table'
+import { CreditCard, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type StockOrder } from '../data/schema'
+
+// 删除订单单元格组件
+interface StockOrderDeleteCellProps {
+  row: Row<StockOrder>
+  onDelete?: (orderId: string) => void | Promise<void>
+}
+
+function StockOrderDeleteCell({ row, onDelete }: StockOrderDeleteCellProps) {
+  const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const order = row.original
+
+  const handleConfirmDelete = async () => {
+    if (!onDelete) return
+
+    setIsLoading(true)
+    try {
+      await onDelete(order.id)
+      setOpen(false)
+    } catch (error) {
+      // 错误处理已经在 handleDelete 中完成，这里只需要确保加载状态被重置
+      console.error('删除订单失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant='ghost'
+        size='sm'
+        className='h-8 px-1.5 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300'
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        <Trash2 className='h-4 w-4' />
+      </Button>
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) {
+            setOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmDelete}
+        destructive
+        isLoading={isLoading}
+        title={<span className='text-destructive'>Delete Stock Order</span>}
+        desc={
+          <>
+            <p className='mb-2'>
+              Are you sure you want to delete this stock order?
+              <br />
+              This action cannot be undone.
+            </p>
+            <p className='text-muted-foreground text-sm'>
+              Order Number: <strong>{order.orderNumber}</strong>
+            </p>
+          </>
+        }
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Deleting...
+            </>
+          ) : (
+            'Delete'
+          )
+        }
+      />
+    </>
+  )
+}
 
 export const createStockOrdersColumns = (options?: {
   onPay?: (orderId: string) => void
@@ -127,9 +207,13 @@ export const createStockOrdersColumns = (options?: {
       header: ' Total Amount',
       cell: ({ row }) => {
         const order = row.original
+        const total =
+          typeof order.cost.total === 'number'
+            ? order.cost.total
+            : parseFloat(String(order.cost.total)) || 0
         return (
           <div className='text-sm font-medium text-green-600'>
-            ${order.cost.total.toFixed(2)}
+            ${total.toFixed(2)}
           </div>
         )
       },
@@ -206,16 +290,7 @@ export const createStockOrdersColumns = (options?: {
               <CreditCard className='h-4 w-4' />
               Pay
             </Button>
-            <Button
-              variant='ghost'
-              size='sm'
-              className='h-8 px-1.5 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300'
-              onClick={() => {
-                onDelete?.(order.id)
-              }}
-            >
-              <Trash2 className='h-4 w-4' />
-            </Button>
+            <StockOrderDeleteCell row={row} onDelete={onDelete} />
           </div>
         )
       },

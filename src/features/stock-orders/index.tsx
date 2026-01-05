@@ -9,7 +9,6 @@ import { StockOrdersProvider } from './components/stock-orders-provider'
 import { StockOrdersStats } from './components/stock-orders-stats'
 import { StockOrdersTable } from './components/stock-orders-table'
 import { type StockOrder } from './data/schema'
-import { stockOrders } from './data/stock-orders'
 
 export function StockOrders() {
   const [table, setTable] = useState<Table<StockOrder> | null>(null)
@@ -22,7 +21,7 @@ export function StockOrders() {
 
       <Main fluid>
         <div className='mb-6'>
-          <StockOrdersStats orders={stockOrders} />
+          <StockOrdersStats />
         </div>
         {table && (
           <div className='mb-6'>
@@ -34,7 +33,7 @@ export function StockOrders() {
           </div>
         )}
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-          <StockOrdersTable data={stockOrders} onTableReady={setTable} />
+          <StockOrdersTable onTableReady={setTable} />
         </div>
       </Main>
 

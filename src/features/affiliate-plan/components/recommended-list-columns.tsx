@@ -44,32 +44,30 @@ export const recommendedListColumns: ColumnDef<RecommendedListRecord>[] = [
       <DataTableColumnHeader column={column} title='Registration Time' />
     ),
     cell: ({ row }) => {
-      const date = row.getValue('registrationTime') as Date
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      const hours = String(date.getHours()).padStart(2, '0')
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      const seconds = String(date.getSeconds()).padStart(2, '0')
-      
-      return (
-        <div className='text-sm'>
-          {year}/{month}/{day} {hours}:{minutes}:{seconds}
-        </div>
-      )
+      const dateStr = row.getValue('registrationTime') as string
+      // 如果已经是格式化的字符串，直接显示；否则尝试解析
+      if (dateStr) {
+        return <div className='text-sm'>{dateStr}</div>
+      }
+      return <div className='text-sm'>-</div>
     },
     filterFn: (row, id, value) => {
       if (!value || !value.from) return true
-      const date = row.getValue(id) as Date
+      const dateStr = row.getValue(id) as string
+      if (!dateStr) return false
+
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return false
+
       const from = value.from
       const to = value.to || value.from
-      
+
       // Set time to start of day for from and end of day for to
       const fromDate = new Date(from)
       fromDate.setHours(0, 0, 0, 0)
       const toDate = new Date(to)
       toDate.setHours(23, 59, 59, 999)
-      
+
       return date >= fromDate && date <= toDate
     },
     enableSorting: false,
@@ -86,4 +84,3 @@ export const recommendedListColumns: ColumnDef<RecommendedListRecord>[] = [
     enableSorting: false,
   },
 ]
-

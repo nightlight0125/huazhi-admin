@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { type Table } from '@tanstack/react-table'
 import countries from 'world-countries'
+import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
+import { getUserShopOptions, type ShopOption } from '@/lib/utils/shop-utils'
 import { DataTableToolbar } from '@/components/data-table'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
@@ -11,8 +13,7 @@ import { OrdersPrimaryButtons } from './components/orders-primary-buttons'
 import { OrdersProvider } from './components/orders-provider'
 import { OrdersStats } from './components/orders-stats'
 import { OrdersTable } from './components/orders-table'
-import { orderStatuses, platformOrderStatuses, stores } from './data/data'
-import { orders } from './data/orders'
+import { orderStatuses, platformOrderStatuses } from './data/data'
 import { type Order } from './data/schema'
 
 type Option = {
@@ -23,7 +24,30 @@ type Option = {
 }
 
 export function Orders() {
+  const { auth } = useAuthStore()
   const [table, setTable] = useState<Table<Order> | null>(null)
+  const [storeOptions, setStoreOptions] = useState<ShopOption[]>([])
+
+  // 获取店铺列表
+  useEffect(() => {
+    const fetchStores = async () => {
+      const userId = auth.user?.id
+      if (!userId) {
+        setStoreOptions([])
+        return
+      }
+
+      try {
+        const options = await getUserShopOptions(String(userId))
+        setStoreOptions(options)
+      } catch (error) {
+        console.error('获取店铺列表失败:', error)
+        setStoreOptions([])
+      }
+    }
+
+    void fetchStores()
+  }, [])
 
   const countryOptions: Option[] = countries.map((country) => {
     const code = country.cca2.toLowerCase()
@@ -48,9 +72,6 @@ export function Orders() {
       </Header>
 
       <Main fluid>
-        <div className='mb-6'>
-          <OrdersStats orders={orders} />
-        </div>
         {table && (
           <div className='mb-6'>
             <DataTableToolbar
@@ -65,7 +86,7 @@ export function Orders() {
                 {
                   columnId: 'store',
                   title: 'Store',
-                  options: stores.map((s) => ({
+                  options: storeOptions.map((s) => ({
                     label: s.label,
                     value: s.value,
                   })),
@@ -76,7 +97,6 @@ export function Orders() {
                   options: platformOrderStatuses.map((s) => ({
                     label: s.label,
                     value: s.value,
-                    icon: s.icon,
                   })),
                 },
                 {
@@ -87,7 +107,6 @@ export function Orders() {
                     .map((s) => ({
                       label: s.label,
                       value: s.value,
-                      icon: s.icon,
                     })),
                 },
                 {
@@ -103,11 +122,18 @@ export function Orders() {
             />
           </div>
         )}
+        {table && (
+          <div className='mb-6'>
+            <OrdersStats
+              orders={table.getRowModel().rows.map((r) => r.original)}
+            />
+          </div>
+        )}
         <div className='mb-2 flex flex-wrap items-center justify-end space-y-2 gap-x-4'>
           <OrdersPrimaryButtons />
         </div>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-          <OrdersTable data={orders} onTableReady={setTable} />
+          <OrdersTable onTableReady={setTable} />
         </div>
       </Main>
 

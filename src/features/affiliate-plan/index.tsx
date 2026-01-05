@@ -9,11 +9,7 @@ import { Main } from '@/components/layout/main'
 import { CommissionRecordsTable } from './components/commission-records-table'
 import { RecommendedListTable } from './components/recommended-list-table'
 import { WithdrawRecordsTable } from './components/withdraw-records-table'
-import {
-  commissionRecords,
-  recommendedListRecords,
-  withdrawRecords,
-} from './data/data'
+import { commissionRecords, withdrawRecords } from './data/data'
 
 export function AffiliatePlan() {
   const [referralLink] = useState(
@@ -156,7 +152,7 @@ export function AffiliatePlan() {
           </TabsContent>
 
           <TabsContent value='recommended-list'>
-            <RecommendedListTable data={recommendedListRecords} />
+            <RecommendedListTable />
           </TabsContent>
         </Tabs>
       </Main>
