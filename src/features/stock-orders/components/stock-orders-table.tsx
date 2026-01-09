@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -14,7 +14,7 @@ import {
 import { HelpCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { deleteStockOrder, queryOrder } from '@/lib/api/orders'
+import { deleteStockOrder, queryOrder, requestPayment } from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,6 +26,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTableToolbar } from '@/components/data-table'
 import {
   OrderPayDialog,
   type OrderPayable,
@@ -41,30 +42,25 @@ const route = getRouteApi('/_authenticated/stock-orders/')
 
 type DataTableProps = {
   data?: StockOrder[] // 改为可选，因为现在从 API 获取
-  onTableReady?: (table: ReturnType<typeof useReactTable<StockOrder>>) => void
 }
 
-export function StockOrdersTable({
-  data: _data,
-  onTableReady,
-}: DataTableProps) {
+export function StockOrdersTable({ data: _data }: DataTableProps) {
   const { auth } = useAuthStore()
   const [data, setData] = useState<StockOrder[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
-  // Local UI-only states
+  const lastRequestParamsRef = useRef<string>('')
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     productName: false,
   })
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState('')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [selectedOrderForPayment, setSelectedOrderForPayment] =
     useState<OrderPayable | null>(null)
 
-  // Synced with URL states
   const {
     globalFilter,
     onGlobalFilterChange,
@@ -81,140 +77,102 @@ export function StockOrdersTable({
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
-  // 获取订单数据
-  useEffect(() => {
-    const fetchOrders = async () => {
-      const customerId = auth.user?.customerId
-      if (!customerId) {
-        setIsLoading(false)
-        setData([])
-        setTotalCount(0)
-        return
-      }
-
-      // pagination.pageIndex 是从 0 开始的，API 的 pageIndex 也是从 0 开始
-      const pageIndex = pagination.pageIndex ?? 0
-      const pageSize = pagination.pageSize ?? 10
-
-      setIsLoading(true)
-      console.log('Fetching stock orders:', {
-        customerId,
-        pageIndex,
-        pageSize,
-        globalFilter,
-      })
-      try {
-        const response = await queryOrder({
-          customerId: String(customerId),
-          type: 'stock',
-          str: globalFilter || '',
-          pageIndex,
-          pageSize,
-        })
-
-        // 将 Order 转换为 StockOrder
-        const stockOrders: StockOrder[] = response.orders.map((order) => {
-          const firstProduct = order.productList[0]
-          return {
-            id: order.id,
-            orderNumber: order.orderNumber,
-            sku: firstProduct?.id || '',
-            createdAt: order.createdAt,
-            cost: {
-              total:
-                typeof order.totalCost === 'number'
-                  ? order.totalCost
-                  : parseFloat(String(order.totalCost)) || 0,
-              product: order.productList.reduce(
-                (sum, p) =>
-                  sum +
-                  (typeof p.totalPrice === 'number'
-                    ? p.totalPrice
-                    : parseFloat(String(p.totalPrice)) || 0),
-                0
-              ),
-              shipping:
-                typeof order.shippingCost === 'number'
-                  ? order.shippingCost
-                  : parseFloat(String(order.shippingCost)) || 0,
-              other:
-                typeof order.otherCosts === 'number'
-                  ? order.otherCosts
-                  : parseFloat(String(order.otherCosts)) || 0,
-              qty: order.productList.reduce(
-                (sum, p) =>
-                  sum +
-                  (typeof p.quantity === 'number'
-                    ? p.quantity
-                    : parseFloat(String(p.quantity)) || 0),
-                0
-              ),
-            },
-            address: {
-              name: order.customerName,
-              country: order.country,
-              address: order.address,
-            },
-            shippingMethod: order.logistics,
-            trackId: order.trackingNumber,
-            remark: '',
-            status: order.status as StockOrder['status'],
-            productList: order.productList.map((p) => ({
-              id: p.id,
-              productName: p.productName,
-              productVariant: p.productVariant,
-              quantity: p.quantity,
-              productImageUrl: p.productImageUrl,
-              productLink: p.productLink,
-              price: p.price,
-              totalPrice: p.totalPrice,
-            })),
-          }
-        })
-
-        setData(stockOrders)
-        setTotalCount(response.total)
-      } catch (error) {
-        console.error('获取库存订单列表失败:', error)
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load stock orders. Please try again.'
-        )
-        setData([])
-        setTotalCount(0)
-      } finally {
-        setIsLoading(false)
-      }
+  const fetchOrders = useCallback(async () => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      setIsLoading(false)
+      setData([])
+      setTotalCount(0)
+      return
     }
 
-    void fetchOrders()
+    const pageIndex = pagination.pageIndex ?? 0
+    const pageSize = pagination.pageSize ?? 10
+
+    // 使用 activeTab 的值作为 shopOrderStatus 传给后端
+    // 如果 activeTab 是空字符串（对应 'All' 标签），则不传 shopOrderStatus
+    const shopOrderStatus =
+      activeTab && activeTab !== '' ? String(activeTab) : undefined
+
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopOrderStatus || ''}-${refreshKey}`
+
+    if (lastRequestParamsRef.current === requestKey) {
+      return
+    }
+
+    lastRequestParamsRef.current = requestKey
+
+    setIsLoading(true)
+
+    try {
+      const response = await queryOrder({
+        customerId: String(customerId),
+        type: 'stock',
+        str: globalFilter || '',
+        pageIndex,
+        pageSize,
+        shopOrderStatus,
+      })
+
+      console.log(response.orders, 'response')
+
+      setData(response.orders as any)
+      setTotalCount(response.total)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load stock orders. Please try again.'
+      )
+      setData([])
+      setTotalCount(0)
+    } finally {
+      setIsLoading(false)
+    }
   }, [
     auth.user?.customerId,
     pagination.pageIndex,
     pagination.pageSize,
     globalFilter,
     refreshKey,
+    activeTab,
   ])
 
-  // Filter data based on active tab
-  const filteredData = data.filter((order) => {
-    if (activeTab === 'all') return true
-    return order.status === activeTab
-  })
+  useEffect(() => {
+    // 使用 setTimeout 防抖，延迟执行请求，避免在状态快速变化时触发多次请求
+    const timeoutId = setTimeout(() => {
+      void fetchOrders()
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+    }
+  }, [fetchOrders])
 
   const handlePay = (orderId: string) => {
-    const order = data.find((o) => o.id === orderId)
+    const order = data.find((o) => o.id === orderId) as any
     if (order) {
-      // Convert StockOrder to OrderPayable
       setSelectedOrderForPayment({
         id: order.id,
         getTotalAmount: () => {
-          const total =
-            typeof order.cost.total === 'number'
+          // 优先使用后端返回的 hzkj_order_amount 字段
+          if (order.hzkj_order_amount !== undefined) {
+            const amount = order.hzkj_order_amount
+            return typeof amount === 'string'
+              ? parseFloat(amount) || 0
+              : typeof amount === 'number'
+                ? amount
+                : 0
+          }
+
+          // 如果没有 hzkj_order_amount，使用 cost.total
+          if (order.cost?.total !== undefined) {
+            return typeof order.cost.total === 'number'
               ? order.cost.total
               : parseFloat(String(order.cost.total)) || 0
-          return total
+          }
+
+          return 0
         },
       })
       setPayDialogOpen(true)
@@ -223,12 +181,10 @@ export function StockOrdersTable({
 
   const handleEditAddress = (orderId: string) => {
     console.log('Edit address for order:', orderId)
-    // TODO: Implement edit address logic
   }
 
   const handleAddPackage = (orderId: string) => {
     console.log('Add package for order:', orderId)
-    // TODO: Implement add package logic
   }
 
   const handleDelete = async (orderId: string) => {
@@ -244,7 +200,6 @@ export function StockOrdersTable({
         orderId: String(orderId),
       })
       toast.success('Order deleted successfully')
-      // 刷新订单列表
       setRefreshKey((prev) => prev + 1)
     } catch (error) {
       console.error('删除库存订单失败:', error)
@@ -252,6 +207,42 @@ export function StockOrdersTable({
         error instanceof Error
           ? error.message
           : 'Failed to delete order. Please try again.'
+      )
+    }
+  }
+
+  const handleBatchPayment = async (orderIds: string[]) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    if (orderIds.length === 0) {
+      toast.error('Please select at least one order')
+      return
+    }
+
+    try {
+      await requestPayment({
+        customerId: String(customerId),
+        orderIds,
+        type: 2, // 2 表示库存订单
+      })
+
+      toast.success(
+        `Payment request submitted successfully for ${orderIds.length} order(s)`
+      )
+      // 刷新订单列表
+      setRefreshKey((prev) => prev + 1)
+      // 清空选择
+      setRowSelection({})
+    } catch (error) {
+      console.error('Failed to request batch payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request batch payment. Please try again.'
       )
     }
   }
@@ -268,7 +259,7 @@ export function StockOrdersTable({
   )
 
   const table = useReactTable({
-    data: filteredData,
+    data: data,
     columns,
     state: {
       sorting,
@@ -306,13 +297,6 @@ export function StockOrdersTable({
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  // Notify parent component when table is ready
-  useEffect(() => {
-    if (onTableReady) {
-      onTableReady(table)
-    }
-  }, [table, onTableReady])
-
   if (isLoading) {
     return (
       <div className='flex h-96 items-center justify-center'>
@@ -323,6 +307,10 @@ export function StockOrdersTable({
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='Enter Order Number,SKU,Product Name'
+      />
       <div className='mb-2 flex items-center justify-end'>
         <StockOrdersActionsMenu />
       </div>
@@ -340,16 +328,34 @@ export function StockOrdersTable({
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
-          {/* Total Amount and Batch Payment - positioned at top left */}
           {(() => {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             const selectedCount = selectedRows.length
             const totalAmount = selectedRows.reduce((sum, row) => {
-              const total =
-                typeof row.original.cost.total === 'number'
-                  ? row.original.cost.total
-                  : parseFloat(String(row.original.cost.total)) || 0
-              return sum + total
+              const order = row.original as any
+
+              // 优先使用后端返回的 hzkj_order_amount 字段
+              if (order.hzkj_order_amount !== undefined) {
+                const amount = order.hzkj_order_amount
+                const total =
+                  typeof amount === 'string'
+                    ? parseFloat(amount) || 0
+                    : typeof amount === 'number'
+                      ? amount
+                      : 0
+                return sum + total
+              }
+
+              // 如果没有 hzkj_order_amount，使用 cost.total
+              if (order.cost?.total !== undefined) {
+                const total =
+                  typeof order.cost.total === 'number'
+                    ? order.cost.total
+                    : parseFloat(String(order.cost.total)) || 0
+                return sum + total
+              }
+
+              return sum
             }, 0)
 
             return (
@@ -369,11 +375,10 @@ export function StockOrdersTable({
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      // TODO: Implement batch payment dialog
-                      console.log(
-                        'Batch payment for orders:',
-                        selectedRows.map((row) => row.original.id)
+                      const orderIds = selectedRows.map(
+                        (row) => row.original.id
                       )
+                      void handleBatchPayment(orderIds)
                     }
                   }}
                   disabled={selectedCount === 0}
@@ -449,6 +454,10 @@ export function StockOrdersTable({
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
         order={selectedOrderForPayment}
+        onPaymentSuccess={() => {
+          // 支付成功后刷新订单列表
+          setRefreshKey((prev) => prev + 1)
+        }}
       />
     </div>
   )

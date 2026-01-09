@@ -58,12 +58,34 @@ export function OrdersSyncDialog({
     }
   }, [auth.user?.id, open])
 
+  // 处理全选/取消全选
+  const handleSyncAllToggle = (checked: boolean) => {
+    setSyncAllStores(checked)
+    if (checked) {
+      // 全选时，将所有店铺添加到选中列表
+      setSelectedStores(stores.map((store) => store.value))
+    } else {
+      // 取消全选时，清空选中列表
+      setSelectedStores([])
+    }
+  }
+
   // 处理店铺选择
   const handleStoreToggle = (storeValue: string) => {
     if (selectedStores.includes(storeValue)) {
-      setSelectedStores(selectedStores.filter((store) => store !== storeValue))
+      const newSelected = selectedStores.filter((store) => store !== storeValue)
+      setSelectedStores(newSelected)
+      // 如果取消选择后，选中的店铺数量少于总店铺数，取消全选状态
+      if (syncAllStores && newSelected.length < stores.length) {
+        setSyncAllStores(false)
+      }
     } else {
-      setSelectedStores([...selectedStores, storeValue])
+      const newSelected = [...selectedStores, storeValue]
+      setSelectedStores(newSelected)
+      // 如果所有店铺都被选中，自动勾选全选
+      if (newSelected.length === stores.length) {
+        setSyncAllStores(true)
+      }
     }
   }
 
@@ -75,7 +97,7 @@ export function OrdersSyncDialog({
       return
     }
 
-    if (!syncAllStores && selectedStores.length === 0) {
+    if (selectedStores.length === 0) {
       toast.error('Please select at least one store')
       return
     }
@@ -83,10 +105,8 @@ export function OrdersSyncDialog({
     setIsSyncing(true)
 
     try {
-      // 确定要同步的店铺ID列表
-      const shopIds = syncAllStores
-        ? stores.map((store) => store.value)
-        : selectedStores
+      // 使用选中的店铺ID列表
+      const shopIds = selectedStores
 
       if (shopIds.length === 0) {
         toast.error('No stores selected')
@@ -99,12 +119,10 @@ export function OrdersSyncDialog({
         shopIds: shopIds,
       })
 
-      const storesToSync = syncAllStores
-        ? 'All stores'
-        : stores
-            .filter((store) => selectedStores.includes(store.value))
-            .map((store) => store.label)
-            .join(', ')
+      const storesToSync = stores
+        .filter((store) => selectedStores.includes(store.value))
+        .map((store) => store.label)
+        .join(', ')
 
       toast.success(`Sync completed successfully!\nStores: ${storesToSync}`)
       onOpenChange(false)
@@ -150,41 +168,51 @@ export function OrdersSyncDialog({
         <div className='space-y-6 py-4'>
           {/* 店铺选择 */}
           <div className='space-y-3'>
-            {!syncAllStores && (
-              <div className='space-y-2'>
-                <Label className='text-sm font-medium'>Select stores</Label>
-                <div className='grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded-md border p-2'>
-                  {isLoadingStores ? (
-                    <div className='text-muted-foreground col-span-2 flex items-center justify-center py-4 text-sm'>
-                      Loading stores...
-                    </div>
-                  ) : stores.length === 0 ? (
-                    <div className='text-muted-foreground col-span-2 flex items-center justify-center py-4 text-sm'>
-                      No stores available
-                    </div>
-                  ) : (
-                    stores.map((store) => (
-                      <div
-                        key={store.value}
-                        className='flex items-center space-x-2'
+            {/* 全部店铺开关 */}
+            <div className='flex items-center space-x-2'>
+              <Checkbox
+                id='sync-all-stores'
+                checked={syncAllStores}
+                onCheckedChange={handleSyncAllToggle}
+              />
+              <Label htmlFor='sync-all-stores' className='text-sm font-medium'>
+                Sync all stores
+              </Label>
+            </div>
+
+            <div className='space-y-2'>
+              <Label className='text-sm font-medium'>Select stores</Label>
+              <div className='grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded-md border p-2'>
+                {isLoadingStores ? (
+                  <div className='text-muted-foreground col-span-2 flex items-center justify-center py-4 text-sm'>
+                    Loading stores...
+                  </div>
+                ) : stores.length === 0 ? (
+                  <div className='text-muted-foreground col-span-2 flex items-center justify-center py-4 text-sm'>
+                    No stores available
+                  </div>
+                ) : (
+                  stores.map((store) => (
+                    <div
+                      key={store.value}
+                      className='flex items-center space-x-2'
+                    >
+                      <Checkbox
+                        id={`store-${store.value}`}
+                        checked={selectedStores.includes(store.value)}
+                        onCheckedChange={() => handleStoreToggle(store.value)}
+                      />
+                      <Label
+                        htmlFor={`store-${store.value}`}
+                        className='text-sm'
                       >
-                        <Checkbox
-                          id={`store-${store.value}`}
-                          checked={selectedStores.includes(store.value)}
-                          onCheckedChange={() => handleStoreToggle(store.value)}
-                        />
-                        <Label
-                          htmlFor={`store-${store.value}`}
-                          className='text-sm'
-                        >
-                          {store.label}
-                        </Label>
-                      </div>
-                    ))
-                  )}
-                </div>
+                        {store.label}
+                      </Label>
+                    </div>
+                  ))
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -194,9 +222,7 @@ export function OrdersSyncDialog({
           </Button>
           <Button
             onClick={handleSync}
-            disabled={
-              isSyncing || (!syncAllStores && selectedStores.length === 0)
-            }
+            disabled={isSyncing || selectedStores.length === 0}
             className='min-w-[100px]'
           >
             {isSyncing ? (

@@ -135,7 +135,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
         const tree = convertToCategoryTree(categories)
         setCategoryTree(tree)
       } catch (error) {
-        console.error('Failed to fetch categories:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -235,7 +234,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
         return next
       })
     } catch (error) {
-      console.error('Failed to toggle favorite:', error)
       toast.error(
         error instanceof Error
           ? error.message
@@ -404,7 +402,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
                     title='Add to Cart'
                     onClick={(e) => {
                       e.stopPropagation()
-                      console.log('Add to cart:', product.id)
                     }}
                   >
                     <ShoppingCart className='h-3.5 w-3.5' />
@@ -416,7 +413,6 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
                     title='Add to Store'
                     onClick={(e) => {
                       e.stopPropagation()
-                      console.log('Add to store:', product.id)
                     }}
                   >
                     <Store className='h-3.5 w-3.5' />

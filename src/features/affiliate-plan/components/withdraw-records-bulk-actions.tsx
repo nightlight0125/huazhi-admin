@@ -18,10 +18,9 @@ export function WithdrawRecordsBulkActions({
 }: WithdrawRecordsBulkActionsProps) {
   const selectedRows = table.getFilteredSelectedRowModel().rows
 
-  const handleBulkAction = (action: string) => {
-    const items = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on withdraw records:`, items)
-    // TODO: Implement actual bulk actions
+  const handleBulkAction = (_action: string) => {
+    // TODO: Implement actual bulk actions using selectedRows
+    void selectedRows
   }
 
   return (
@@ -104,4 +103,3 @@ export function WithdrawRecordsBulkActions({
     </BulkActionsToolbar>
   )
 }
-

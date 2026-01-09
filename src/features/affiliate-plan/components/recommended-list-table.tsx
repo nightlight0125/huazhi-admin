@@ -3,12 +3,12 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryCustomerRecommendList } from '@/lib/api/users'
@@ -59,21 +59,15 @@ export function RecommendedListTable() {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     manualPagination: true,
     pageCount: Math.ceil(totalCount / pagination.pageSize),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
   })
 
   // 获取数据
   useEffect(() => {
     const fetchData = async () => {
-      const userId = auth.user?.id || auth.user?.customerId
+      const userId = auth.user?.customerId || auth.user?.id
       if (!userId) {
         setIsLoading(false)
         setData([])
@@ -86,31 +80,41 @@ export function RecommendedListTable() {
 
       setIsLoading(true)
       try {
-        const response = await queryCustomerRecommendList(
+        await queryCustomerRecommendList(
           String(userId),
           pageNo,
           pageSize
         )
 
-        const records: RecommendedListRecord[] = response.rows.map((item) => {
-          console.log(item, 'item')
-          return {
-            id: String(item.id || ''),
-            referee: String(item.hzkj_recommended_user_name || '-'),
-            registrationTime: String(
-              item.hzkj_recommended_user_createtime || '-'
-            ),
-            commissionAmount:
-              typeof item.hzkj_contribution_amount === 'number'
-                ? item.hzkj_contribution_amount
-                : 0,
-          }
-        })
+        // 处理返回的数据：如果 rows 是数组，需要展平 hzkj_recommended_list
+        const records: RecommendedListRecord[] = []
+
+        // if (Array.isArray(response.rows)) {
+        //   response.rows.forEach((row) => {
+        //     if (
+        //       row.hzkj_recommended_list &&
+        //       Array.isArray(row.hzkj_recommended_list)
+        //     ) {
+        //       row.hzkj_recommended_list.forEach((item) => {
+        //         records.push({
+        //           id: String(item.id || ''),
+        //           referee: String(item.hzkj_recommended_user_name || '-'),
+        //           registrationTime: String(
+        //             item.hzkj_recommended_user_createtime || '-'
+        //           ),
+        //           commissionAmount:
+        //             typeof item.hzkj_contribution_amount === 'number'
+        //               ? item.hzkj_contribution_amount
+        //               : 0,
+        //         })
+        //       })
+        //     }
+        //   })
+        // }
 
         setData(records)
-        setTotalCount(response.totalCount)
+        setTotalCount(0)
       } catch (error) {
-        console.error('获取推荐列表失败:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -169,7 +173,10 @@ export function RecommendedListTable() {
                   colSpan={recommendedListColumns.length}
                   className='h-24 text-center'
                 >
-                  Loading...
+                  <div className='flex items-center justify-center gap-2'>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    <span>Loading...</span>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (

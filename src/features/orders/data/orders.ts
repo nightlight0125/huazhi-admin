@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker'
-import { type Order } from './schema'
+import { type Order, type OrderStatus } from './schema'
 import { 
   orderStatuses, 
   platformOrderStatuses, 
@@ -15,7 +15,10 @@ import {
 faker.seed(12345)
 
 export const orders: Order[] = Array.from({ length: 100 }, () => {
-  const orderStatus = faker.helpers.arrayElement(orderStatuses).value
+  // 生成订单状态时跳过表示 “All” 的空值
+  const orderStatus = faker.helpers
+    .arrayElement(orderStatuses.slice(1))
+    .value as OrderStatus
   const platformOrderStatus = faker.helpers.arrayElement(platformOrderStatuses).value
   const platformFulfillmentStatus = faker.helpers.arrayElement(platformFulfillmentStatuses).value
   // const logisticsStatus = faker.helpers.arrayElement(logisticsStatuses).value

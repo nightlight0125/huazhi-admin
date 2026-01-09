@@ -1,7 +1,13 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { CreditCard, Edit, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import {
+  CreditCard,
+  Edit,
+  Image as ImageIcon,
+  Loader2,
+  Trash2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,6 +31,8 @@ function SampleOrderDeleteCell({ row, onDelete }: SampleOrderDeleteCellProps) {
   const [isLoading, setIsLoading] = useState(false)
   const order = row.original
 
+  console.log('order', order)
+
   const handleConfirmDelete = async () => {
     if (!onDelete) return
 
@@ -33,7 +41,6 @@ function SampleOrderDeleteCell({ row, onDelete }: SampleOrderDeleteCellProps) {
       await onDelete(order.id)
       setOpen(false)
     } catch (error) {
-      // 错误处理已经在 handleDelete 中完成，这里只需要确保加载状态被重置
       console.error('删除订单失败:', error)
     } finally {
       setIsLoading(false)
@@ -73,7 +80,7 @@ function SampleOrderDeleteCell({ row, onDelete }: SampleOrderDeleteCellProps) {
               This action cannot be undone.
             </p>
             <p className='text-muted-foreground text-sm'>
-              Order Number: <strong>{order.orderNumber}</strong>
+              Order Number: <strong>{order.billno}</strong>
             </p>
           </>
         }
@@ -134,11 +141,14 @@ export const createSampleOrdersColumns = (options?: {
       header: 'Order No',
       cell: ({ row }) => {
         const order = row.original
+        const billno = order.billno || order.orderNumber
+        const createtime = order.createtime
+        const date = createtime ? new Date(createtime) : order.createdAt
         return (
           <div>
-            <div className='font-medium'>{order.orderNumber}</div>
+            <div className='font-medium'>{billno}</div>
             <div className='text-sm'>
-              {format(new Date(order.createdAt), 'MM-dd-yyyy')}
+              {date ? format(date, 'MM-dd-yyyy') : '---'}
             </div>
           </div>
         )
@@ -187,18 +197,19 @@ export const createSampleOrdersColumns = (options?: {
       header: 'Cost',
       cell: ({ row }) => {
         const order = row.original
+        const total = order.hzkj_order_amount ?? order.cost.total
         return (
           <Tooltip>
             <TooltipTrigger asChild>
               <div className='cursor-default space-y-1 text-sm'>
-                <div>Total: ${order.cost.total.toFixed(2)}</div>
+                <div>Total: ${total.toFixed(2)}</div>
               </div>
             </TooltipTrigger>
             <TooltipContent className='space-y-0.5 text-xs'>
-              <div>Product: ${order.cost.product.toFixed(2)}</div>
-              <div>Shipping: ${order.cost.shipping.toFixed(2)}</div>
-              <div>Other: ${order.cost.other.toFixed(2)}</div>
-              <div>Qty: {order.cost.qty}</div>
+              {/* <div>Product: {order.cost.product.toFixed(2)}</div>
+              <div>Shipping: {order.cost.shipping.toFixed(2)}</div>
+              <div>Other: {order.cost.other.toFixed(2)}</div>
+              <div>Qty: {order.cost.qty}</div> */}
             </TooltipContent>
           </Tooltip>
         )
@@ -210,10 +221,11 @@ export const createSampleOrdersColumns = (options?: {
       header: 'Address',
       cell: ({ row }) => {
         const order = row.original
+        const customerName = order.hzkj_customer_name?.GLang || '---'
         return (
           <div className='space-y-1 text-sm'>
             <div className='flex items-center gap-2'>
-              <span> {order.address.name}</span>
+              <span> {customerName}</span>
               <Button
                 variant='ghost'
                 size='icon'
@@ -226,7 +238,7 @@ export const createSampleOrdersColumns = (options?: {
                 <Edit className='h-3 w-3' />
               </Button>
             </div>
-            <div>二字码</div>
+            <div>{order.hzkj_country_code || order.address.country}</div>
           </div>
         )
       },
@@ -239,7 +251,7 @@ export const createSampleOrdersColumns = (options?: {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.trackId || '---'}</div>
+            <div>{order.trackingNumber || '---'}</div>
           </div>
         )
       },
@@ -249,35 +261,52 @@ export const createSampleOrdersColumns = (options?: {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
-        const status = row.getValue('status') as string
-        const statusColors: Record<string, string> = {
-          paid: 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white',
-          shipped:
-            'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white',
-          pending:
-            'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-          processing:
-            'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white',
-          completed:
-            'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-          canceled:
-            'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
-          quoting:
-            'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-          pay_in_progress:
-            'border-transparent bg-indigo-500 text-white dark:bg-indigo-500 dark:text-white',
+        const order = row.original as any
+        // 使用后端返回的 hzkj_orderstatus 字段
+        // 0=取消，1=待支付，2=已支付，3=处理中，4=已发货
+        const orderStatus = order.hzkj_orderstatus
+        // 状态映射
+        const statusMap: Record<string, { label: string; color: string }> = {
+          '0': {
+            label: '取消',
+            color:
+              'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-red-500',
+          },
+          '1': {
+            label: '待支付',
+            color:
+              'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-orange-500',
+          },
+          '2': {
+            label: '已支付',
+            color:
+              'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-green-500',
+          },
+          '3': {
+            label: '处理中',
+            color:
+              'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-purple-500',
+          },
+          '4': {
+            label: '已发货',
+            color:
+              'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-blue-500',
+          },
         }
+
+        const statusInfo =
+          orderStatus && statusMap[String(orderStatus)]
+            ? statusMap[String(orderStatus)]
+            : {
+                label: '---',
+                color:
+                  'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+              }
+
         return (
           <div className='space-y-1'>
-            <Badge
-              variant='outline'
-              className={
-                statusColors[status] ||
-                'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-              }
-            >
-              {status.charAt(0).toUpperCase() +
-                status.slice(1).replace('_', ' ')}
+            <Badge variant='outline' className={statusInfo.color}>
+              {statusInfo.label}
             </Badge>
           </div>
         )

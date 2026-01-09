@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { format } from 'date-fns'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -8,14 +9,14 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { HelpCircle } from 'lucide-react'
+import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { queryOrder, deleteOrder } from '@/lib/api/orders'
+import { deleteOrder, queryOrder, requestPayment } from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,6 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTableToolbar } from '@/components/data-table'
 import {
   OrderPayDialog,
   type OrderPayable,
@@ -34,7 +36,6 @@ import {
 import { orderStatuses } from '../data/data'
 import { type Order, type OrderProduct } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
-import { OrdersBatchPaymentDialog } from './orders-batch-payment-dialog'
 import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
 import { OrdersEditCustomerNameDialog } from './orders-edit-customer-name-dialog'
@@ -43,8 +44,18 @@ import { OrdersTableFooter } from './orders-table-footer'
 
 const route = getRouteApi('/_authenticated/orders/')
 
+type FilterOption = {
+  label: string
+  value: string
+  icon?: React.ComponentType<{ className?: string }>
+}
+
 type DataTableProps = {
   onTableReady?: (table: ReturnType<typeof useReactTable<Order>>) => void
+  storeOptions?: FilterOption[]
+  platformOrderStatusOptions?: FilterOption[]
+  orderStatusOptions?: FilterOption[]
+  countryOptions?: FilterOption[]
 }
 
 function ProductDetailRow({
@@ -61,6 +72,20 @@ function ProductDetailRow({
     { label: 'Delete', onClick: () => {} },
   ]
 
+  // 格式化数值：如果是数字则保留两位小数，否则显示原值或 ---
+  const formatValue = (value: string | number | null | undefined): string => {
+    if (value === null || value === undefined || value === '') {
+      return '---'
+    }
+    // 尝试转换为数字
+    const numValue = typeof value === 'string' ? parseFloat(value) : value
+    if (!isNaN(numValue) && isFinite(numValue)) {
+      return numValue.toFixed(2)
+    }
+    // 如果不是数字，返回原值
+    return String(value)
+  }
+
   return (
     <TableRow className='bg-muted/30'>
       <TableCell colSpan={100} className='px-3 py-2'>
@@ -68,8 +93,8 @@ function ProductDetailRow({
           <div className='flex items-start gap-2'>
             <div>
               <img
-                src={product.productImageUrl}
-                alt={product.productName}
+                src={product?.hzkj_picture || ''}
+                alt={product?.hzkj_variant_name || ''}
                 className='h-12 w-12 rounded object-cover'
               />
             </div>
@@ -93,9 +118,21 @@ function ProductDetailRow({
                       >
                         {index === 0
                           ? buttonIndex === 0
-                            ? 'Shopify:---'
-                            : 'Variant:---'
-                          : `${label}:---`}
+                            ? `Shopify:${product?.hzkj_variant_name || ''}`
+                            : `Variant: ${(product as any)?.hzkj_sku_values || ''}`
+                          : index === 1
+                            ? buttonIndex === 0
+                              ? `SKU:${product?.hzkj_shop_sku || '---'}`
+                              : `SKU:${product?.hzkj_local_sku || '---'}`
+                            : index === 2
+                              ? buttonIndex === 0
+                                ? `Price:${formatValue(product?.hzkj_shop_price)}`
+                                : `Price:${formatValue(product?.hzkj_amount)}`
+                              : index === 3
+                                ? buttonIndex === 0
+                                  ? `Quantity:${formatValue(product?.hzkj_src_qty)}`
+                                  : `Quantity:${formatValue(product?.hzkj_qty)}`
+                                : `${label}:---`}
                       </div>
                     </React.Fragment>
                   ))}
@@ -122,12 +159,18 @@ function ProductDetailRow({
   )
 }
 
-export function OrdersTable({ onTableReady }: DataTableProps) {
+export function OrdersTable({
+  onTableReady,
+  storeOptions = [],
+  platformOrderStatusOptions = [],
+  countryOptions = [],
+}: DataTableProps) {
   const { auth } = useAuthStore()
   const [data, setData] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
+  const lastRequestParamsRef = useRef<string>('')
 
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -141,7 +184,7 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     status: false,
     shippingOrigin: false,
   })
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState('')
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [modifyProductDialog, setModifyProductDialog] = useState<{
     open: boolean
@@ -166,12 +209,11 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     open: false,
     order: null,
   })
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [selectedOrderForPayment, setSelectedOrderForPayment] =
     useState<OrderPayable | null>(null)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
-  // Synced with URL states
   const {
     globalFilter,
     onGlobalFilterChange,
@@ -208,54 +250,121 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     ],
   })
 
-  // 获取订单数据
-  useEffect(() => {
-    const fetchOrders = async () => {
-      const customerId = auth.user?.customerId
-      if (!customerId) {
-        setIsLoading(false)
-        setData([])
-        setTotalCount(0)
-        return
-      }
-
-      // pagination.pageIndex 是从 0 开始的，API 的 pageIndex 也是从 0 开始
-      const pageIndex = pagination.pageIndex
-      const pageSize = pagination.pageSize
-
-      setIsLoading(true)
-      try {
-        const response = await queryOrder({
-          customerId: String(customerId),
-          type: 'hzkj_orders_BT',
-          pageIndex,
-          pageSize,
-        })
-
-        setData(response.orders)
-        setTotalCount(response.total)
-      } catch (error) {
-        console.error('获取订单列表失败:', error)
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load orders. Please try again.'
-        )
-        setData([])
-        setTotalCount(0)
-      } finally {
-        setIsLoading(false)
+  // 格式化日期范围（只有当开始和结束日期都存在时才格式化）
+  const formattedDateRange = useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      return {
+        startDate: format(dateRange.from, 'yyyy-MM-dd 00:00:00'),
+        endDate: format(dateRange.to, 'yyyy-MM-dd 23:59:59'),
       }
     }
+    return undefined
+  }, [dateRange])
 
-    void fetchOrders()
-  }, [auth.user?.customerId, pagination.pageIndex, pagination.pageSize, refreshKey])
+  const isDateRangeComplete = useMemo(() => {
+    return !!(dateRange?.from && dateRange?.to)
+  }, [dateRange])
 
-  // Filter data based on active tab
-  const filteredData = data.filter((order) => {
-    if (activeTab === 'all') return true
-    return order.status === activeTab
-  })
+  const fetchOrders = useCallback(async () => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      setIsLoading(false)
+      setData([])
+      setTotalCount(0)
+      return
+    }
+
+    // 如果日期范围不完整，不执行请求
+    if (dateRange && !isDateRangeComplete) {
+      return
+    }
+
+    const pageIndex = pagination.pageIndex ?? 0
+    const pageSize = pagination.pageSize ?? 10
+
+    const storeFilter = columnFilters.find((f) => f.id === 'store')
+    const shopId =
+      storeFilter &&
+      Array.isArray(storeFilter.value) &&
+      storeFilter.value.length > 0
+        ? String(storeFilter.value[0])
+        : undefined
+
+    // 使用 activeTab 的值作为 shopOrderStatus 传给后端
+    // 如果 activeTab 是空字符串（对应 'All' 标签），则不传 shopOrderStatus
+    const shopOrderStatus =
+      activeTab && activeTab !== '' ? String(activeTab) : undefined
+
+    const countryFilter = columnFilters.find((f) => f.id === 'country')
+    const countryId =
+      countryFilter &&
+      Array.isArray(countryFilter.value) &&
+      countryFilter.value.length > 0
+        ? String(countryFilter.value[0])
+        : undefined
+
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryId || ''}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${activeTab}`
+
+    if (lastRequestParamsRef.current === requestKey) {
+      return
+    }
+
+    lastRequestParamsRef.current = requestKey
+
+    setIsLoading(true)
+
+    try {
+      const response = await queryOrder({
+        customerId: String(customerId),
+        type: 'hzkj_orders_BT',
+        str: globalFilter || '',
+        pageIndex,
+        pageSize,
+        shopId,
+        shopOrderStatus,
+        countryId,
+        startDate: formattedDateRange?.startDate,
+        endDate: formattedDateRange?.endDate,
+      })
+
+      setData(response.orders as any)
+      setTotalCount(response.total)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load orders. Please try again.'
+      )
+      setData([])
+      setTotalCount(0)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [
+    auth.user?.customerId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    globalFilter,
+    columnFilters,
+    refreshKey,
+    activeTab,
+    formattedDateRange,
+    dateRange,
+    isDateRangeComplete,
+  ])
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      void fetchOrders()
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+    }
+  }, [fetchOrders])
+
+  // 移除客户端过滤，因为现在由后端根据 activeTab 过滤
+  const filteredData = data
 
   const handleExpand = (rowId: string) => {
     setExpandedRows((prev) => {
@@ -269,12 +378,7 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     })
   }
 
-  const handleConfirmModify = (updatedProducts: OrderProduct[]) => {
-    console.log(
-      'Updated products for order:',
-      modifyProductDialog.orderId,
-      updatedProducts
-    )
+  const handleConfirmModify = (_updatedProducts: OrderProduct[]) => {
     setModifyProductDialog({ open: false, products: [], orderId: '' })
   }
 
@@ -288,7 +392,7 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     }
   }
 
-  const handleConfirmEditAddress = (addressData: {
+  const handleConfirmEditAddress = (_addressData: {
     customerName: string
     address: string
     address2?: string
@@ -300,11 +404,6 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     email?: string
     shippingOrigin: string
   }) => {
-    console.log(
-      'Updated address for order:',
-      editAddressDialog.order?.id,
-      addressData
-    )
     setEditAddressDialog({ open: false, order: null })
   }
 
@@ -318,19 +417,13 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     }
   }
 
-  const handleConfirmEditCustomerName = (customerName: string) => {
-    console.log(
-      'Updated customer name for order:',
-      editCustomerNameDialog.order?.id,
-      customerName
-    )
+  const handleConfirmEditCustomerName = (_customerName: string) => {
     setEditCustomerNameDialog({ open: false, order: null })
   }
 
   const handlePay = (orderId: string) => {
     const order = data.find((o) => o.id === orderId)
     if (order) {
-      // Convert Order to OrderPayable
       setSelectedOrderForPayment({
         id: order.id,
         getTotalAmount: () => order.totalCost,
@@ -352,14 +445,48 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
         orderId: String(orderId),
       })
       toast.success('Order deleted successfully')
-      // 刷新订单列表
       setRefreshKey((prev) => prev + 1)
     } catch (error) {
-      console.error('删除订单失败:', error)
       toast.error(
         error instanceof Error
           ? error.message
           : 'Failed to delete order. Please try again.'
+      )
+    }
+  }
+
+  const handleBatchPayment = async (orderIds: string[]) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    if (orderIds.length === 0) {
+      toast.error('Please select at least one order')
+      return
+    }
+
+    try {
+      await requestPayment({
+        customerId: String(customerId),
+        orderIds,
+        type: 0, // 0 表示普通订单
+      })
+
+      toast.success(
+        `Payment request submitted successfully for ${orderIds.length} order(s)`
+      )
+      // 刷新订单列表
+      setRefreshKey((prev) => prev + 1)
+      // 清空选择
+      setRowSelection({})
+    } catch (error) {
+      console.error('Failed to request batch payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request batch payment. Please try again.'
       )
     }
   }
@@ -408,8 +535,6 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
-    manualPagination: true,
-    pageCount: Math.ceil(totalCount / pagination.pageSize),
     globalFilterFn: (row, _columnId, filterValue) => {
       const orderNumber = String(row.getValue('orderNumber')).toLowerCase()
       const customerName = String(row.getValue('customerName')).toLowerCase()
@@ -432,7 +557,8 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true, // 启用服务端分页
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -454,8 +580,44 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='Order No.\SPU\Name'
+        dateRange={{
+          enabled: true,
+          columnId: 'hzkj_bizdate',
+          placeholder: 'Select Date Range',
+          onDateRangeChange: setDateRange,
+        }}
+        filters={[
+          {
+            columnId: 'store',
+            title: 'Store',
+            options: storeOptions,
+            singleSelect: true,
+          },
+          {
+            columnId: 'platformOrderStatus',
+            title: 'Store Order Status',
+            options: platformOrderStatusOptions,
+            singleSelect: true,
+          },
+          // {
+          //   columnId: 'status',
+          //   title: 'Order Status',
+          //   options: orderStatusOptions,
+          //   singleSelect: true,
+          // },
+          {
+            columnId: 'country',
+            title: 'Country',
+            options: countryOptions,
+            singleSelect: true,
+          },
+        ]}
+      />
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-        <TabsList className='grid w-full grid-cols-7'>
+        <TabsList className='grid w-full grid-cols-9'>
           {orderStatuses.map((status) => (
             <TabsTrigger
               key={status.value}
@@ -493,7 +655,10 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      setPaymentDialogOpen(true)
+                      const orderIds = selectedRows.map(
+                        (row) => row.original.id
+                      )
+                      void handleBatchPayment(orderIds)
                     }
                   }}
                   disabled={selectedCount === 0}
@@ -535,12 +700,20 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
                       colSpan={columns.length}
                       className='h-24 text-center'
                     >
-                      Loading...
+                      <div className='flex flex-col items-center justify-center gap-2'>
+                        <p className='text-muted-foreground text-sm'>
+                          在加载中
+                        </p>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => {
+                ) : table.getCoreRowModel().rows?.length ? (
+                  table.getCoreRowModel().rows.map((row) => {
                     const order = row.original
+                    console.log('order', order)
+                    console.log(
+                      'expandedRows=================================='
+                    )
                     const isExpanded = expandedRows.has(row.id)
                     const hasProducts =
                       order.productList && order.productList.length > 0
@@ -561,19 +734,21 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
                         </TableRow>
                         {isExpanded && hasProducts && (
                           <>
-                            {order.productList.map((product) => (
-                              <ProductDetailRow
-                                key={product.id}
-                                product={product}
-                                onModifyProduct={() => {
-                                  setModifyProductDialog({
-                                    open: true,
-                                    products: order.productList || [],
-                                    orderId: order.id,
-                                  })
-                                }}
-                              />
-                            ))}
+                            {(order.lingItems || []).map(
+                              (product, idx): any => (
+                                <ProductDetailRow
+                                  key={idx}
+                                  product={product}
+                                  onModifyProduct={() => {
+                                    setModifyProductDialog({
+                                      open: true,
+                                      products: order.lingItems || [],
+                                      orderId: order.id,
+                                    })
+                                  }}
+                                />
+                              )
+                            )}
                           </>
                         )}
                       </React.Fragment>
@@ -593,7 +768,7 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
             </Table>
           </div>
 
-          <OrdersTableFooter table={table} />
+          <OrdersTableFooter table={table} totalRows={totalCount} />
         </TabsContent>
       </Tabs>
 
@@ -631,18 +806,15 @@ export function OrdersTable({ onTableReady }: DataTableProps) {
         onConfirm={handleConfirmEditCustomerName}
       />
 
-      <OrdersBatchPaymentDialog
-        open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        selectedOrders={table
-          .getFilteredSelectedRowModel()
-          .rows.map((row) => row.original)}
-      />
-
       <OrderPayDialog
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
         order={selectedOrderForPayment}
+        orderType={0} // 普通订单：type = 0
+        onPaymentSuccess={() => {
+          // 支付成功后刷新订单列表
+          setRefreshKey((prev) => prev + 1)
+        }}
       />
     </div>
   )

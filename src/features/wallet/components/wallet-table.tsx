@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   flexRender,
@@ -9,6 +9,9 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getWalletList, type ApiFundRecordItem } from '@/lib/api/wallet'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,11 +35,59 @@ interface DataTableProps {
   data: WalletRecord[]
 }
 
+// 将API返回的数据映射为WalletRecord格式
+function mapApiWalletItemToWalletRecord(
+  item: ApiFundRecordItem,
+  index: number
+): WalletRecord {
+  // 解析日期字符串
+  let date = new Date()
+  if (item.hzkj_datetimefield) {
+    const parsedDate = new Date(item.hzkj_datetimefield)
+    date = isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+  }
+
+  // 映射状态（可能需要根据实际后端状态值调整）
+  let status: 'pending' | 'completed' | 'failed' | 'cancelled' = 'pending'
+  if (item.hzkj_status) {
+    const statusLower = item.hzkj_status.toLowerCase()
+    if (statusLower.includes('completed') || statusLower.includes('success')) {
+      status = 'completed'
+    } else if (statusLower.includes('failed') || statusLower.includes('fail')) {
+      status = 'failed'
+    } else if (statusLower.includes('cancel')) {
+      status = 'cancelled'
+    }
+  }
+
+  return {
+    id: item.id || `wallet-${index}`,
+    type: 'recharge',
+    description: item.hzkj_description || '',
+    paymentMethod: item.hzkj_method || '',
+    date,
+    amount:
+      typeof item.hzkj_amountfield === 'number' ? item.hzkj_amountfield : 0,
+    cashback:
+      typeof item.hzkj_amountfield1 === 'number'
+        ? item.hzkj_amountfield1
+        : undefined,
+    notes: '', // 全部展示空
+    status,
+    createdAt: date,
+    updatedAt: date,
+  }
+}
+
 export function WalletTable({ data }: DataTableProps) {
+  const { auth } = useAuthStore()
   const [activeTab, setActiveTab] = useState<WalletRecordType>('recharge')
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState({})
   const [rowSelection, setRowSelection] = useState({})
+  const [rechargeRecords, setRechargeRecords] = useState<WalletRecord[]>([])
+  const [isLoadingRecharge, setIsLoadingRecharge] = useState(false)
+  const [totalRechargeCount, setTotalRechargeCount] = useState(0)
 
   // 使用URL状态管理
   const {
@@ -74,15 +125,65 @@ export function WalletTable({ data }: DataTableProps) {
     ],
   })
 
-  // 根据当前tab过滤数据
-  const filteredData = data.filter((record) => {
-    if (activeTab === 'recharge') return record.type === 'recharge'
-    if (activeTab === 'invoice') return record.type === 'invoice'
-    return true
-  })
+  // 获取充值记录
+  useEffect(() => {
+    const fetchRechargeRecords = async () => {
+      if (activeTab !== 'recharge') {
+        return
+      }
+
+      const customerId = auth.user?.customerId || auth.user?.id
+      if (!customerId) {
+        console.warn('No customer ID available')
+        return
+      }
+
+      setIsLoadingRecharge(true)
+      try {
+        const pageNo = urlPagination.pageIndex + 1 // react-table使用0-based索引，API使用1-based
+        const pageSize = urlPagination.pageSize
+
+        const result = await getWalletList(String(customerId), pageNo, pageSize)
+        const mappedRecords = result.rows.map((item, index) =>
+          mapApiWalletItemToWalletRecord(item, index)
+        )
+        setRechargeRecords(mappedRecords)
+        setTotalRechargeCount(result.totalCount)
+      } catch (error) {
+        console.error('Failed to fetch recharge records:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load recharge records. Please try again.'
+        )
+        setRechargeRecords([])
+        setTotalRechargeCount(0)
+      } finally {
+        setIsLoadingRecharge(false)
+      }
+    }
+
+    void fetchRechargeRecords()
+  }, [
+    activeTab,
+    urlPagination.pageIndex,
+    urlPagination.pageSize,
+    auth.user?.customerId,
+    auth.user?.id,
+  ])
+
+  // 根据当前tab选择数据源
+  const filteredData =
+    activeTab === 'recharge'
+      ? rechargeRecords
+      : data.filter((record) => {
+          if (activeTab === 'invoice') return record.type === 'invoice'
+          return true
+        })
 
   const columns = createWalletColumns()
 
+  // 对于充值记录，使用服务器端分页，禁用客户端分页
   const table = useReactTable({
     data: filteredData,
     columns,
@@ -112,11 +213,19 @@ export function WalletTable({ data }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    // 对于充值记录，使用服务器端分页，不启用客户端分页
+    getPaginationRowModel:
+      activeTab === 'recharge' ? undefined : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onPaginationChange,
     onGlobalFilterChange,
     onColumnFiltersChange,
+    // 设置服务器端分页的总数
+    pageCount:
+      activeTab === 'recharge'
+        ? Math.ceil(totalRechargeCount / urlPagination.pageSize)
+        : undefined,
+    manualPagination: activeTab === 'recharge',
   })
 
   return (
@@ -194,7 +303,16 @@ export function WalletTable({ data }: DataTableProps) {
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {isLoadingRecharge && activeTab === 'recharge' ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className='h-24 text-center'
+                    >
+                      加载中...
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
                     <TableRow
                       key={row.id}

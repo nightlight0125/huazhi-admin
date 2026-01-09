@@ -48,6 +48,7 @@ type DataTableToolbarProps<TData> = {
     categories?: CategoryItem[]
     useCategoryTree?: boolean
     afterDateRange?: boolean // 如果为 true，则显示在日历后面
+    singleSelect?: boolean // 是否单选模式
   }[]
   dateRange?: {
     enabled?: boolean
@@ -179,6 +180,7 @@ export function DataTableToolbar<TData>({
                 options={filter.options || []}
                 onFilterChange={onFilterChange}
                 columnFilters={table.getState().columnFilters}
+                singleSelect={filter.singleSelect}
               />
             )
           })}

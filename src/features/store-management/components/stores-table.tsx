@@ -24,16 +24,18 @@ import {
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { DataTableBulkActions } from '@/features/tasks/components/data-table-bulk-actions'
 import { type Store } from '../data/schema'
-import { EditStoreNameDialog } from './edit-store-name-dialog'
 import { createStoresColumns } from './stores-columns'
+import { EditStoreNameDialog } from './edit-store-name-dialog'
 
 const route = getRouteApi('/_authenticated/store-management')
 
 type DataTableProps = {
   data: Store[]
+  totalCount?: number
+  onRefresh?: () => void
 }
 
-export function StoresTable({ data }: DataTableProps) {
+export function StoresTable({ data, totalCount, onRefresh }: DataTableProps) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -75,9 +77,16 @@ export function StoresTable({ data }: DataTableProps) {
     () =>
       createStoresColumns({
         onEditStoreName: handleEditStoreName,
+        onUnbindSuccess: onRefresh,
       }),
-    []
+    [onRefresh]
   )
+
+  // 计算总页数（服务端分页）
+  const pageCount =
+    totalCount !== undefined
+      ? Math.ceil(totalCount / pagination.pageSize)
+      : undefined
 
   const table = useReactTable({
     data,
@@ -91,6 +100,8 @@ export function StoresTable({ data }: DataTableProps) {
       pagination,
     },
     enableRowSelection: true,
+    manualPagination: totalCount !== undefined, // 如果提供了 totalCount，启用服务端分页
+    pageCount, // 设置总页数
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -103,7 +114,8 @@ export function StoresTable({ data }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel:
+      totalCount === undefined ? getPaginationRowModel() : undefined, // 服务端分页时不使用客户端分页模型
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -112,10 +124,12 @@ export function StoresTable({ data }: DataTableProps) {
     onColumnFiltersChange,
   })
 
-  const pageCount = table.getPageCount()
+  const finalPageCount = pageCount ?? table.getPageCount()
   useEffect(() => {
-    ensurePageInRange(pageCount)
-  }, [pageCount, ensurePageInRange])
+    if (finalPageCount !== undefined) {
+      ensurePageInRange(finalPageCount)
+    }
+  }, [finalPageCount, ensurePageInRange])
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
@@ -170,8 +184,7 @@ export function StoresTable({ data }: DataTableProps) {
                     <TableCell
                       key={cell.id}
                       className={
-                        cell.column.id === 'select' ||
-                        cell.column.id === 'name'
+                        cell.column.id === 'select' || cell.column.id === 'name'
                           ? 'pr-2 pl-1'
                           : undefined
                       }
@@ -210,7 +223,7 @@ export function StoresTable({ data }: DataTableProps) {
       {editingStore && (
         <EditStoreNameDialog
           open={editDialogOpen}
-          onOpenChange={(open) => {
+          onOpenChange={(open: boolean) => {
             setEditDialogOpen(open)
             if (!open) {
               setEditingStore(null)

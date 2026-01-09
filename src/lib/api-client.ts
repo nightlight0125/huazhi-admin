@@ -76,6 +76,36 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => {
+    // 检查响应数据中是否包含401错误码
+    const responseData = response.data as any
+    if (
+      responseData &&
+      typeof responseData === 'object' &&
+      (responseData.errorCode === '401' ||
+        (responseData.errorCode === 401 && responseData.status === false))
+    ) {
+      // 后端返回了401错误码，需要跳转到登录页
+      const authStore = useAuthStore.getState()
+      authStore.auth.reset()
+
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname
+        if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+          // 只使用路径和查询参数，不包括协议和域名
+          const redirectPath = window.location.pathname + window.location.search
+          window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+        }
+      }
+
+      // 创建一个错误对象以便后续处理
+      const error = new Error(
+        responseData.message || 'AccessToken认证不通过，token已过期'
+      ) as any
+      error.response = response
+      error.isAuthError = true
+      return Promise.reject(error)
+    }
+
     return response
   },
   (error: AxiosError) => {
@@ -88,6 +118,31 @@ apiClient.interceptors.response.use(
         method: error.config?.method,
         requestData: error.config?.data,
       })
+
+      // 检查响应数据中是否包含401错误码
+      const responseData = error.response.data as any
+      if (
+        responseData &&
+        typeof responseData === 'object' &&
+        (responseData.errorCode === '401' ||
+          responseData.errorCode === 401 ||
+          (responseData.status === false && responseData.errorCode === '401'))
+      ) {
+        // 后端返回了401错误码
+        const authStore = useAuthStore.getState()
+        authStore.auth.reset()
+
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+            // 只使用路径和查询参数，不包括协议和域名
+            const redirectPath = window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          }
+        }
+
+        return Promise.reject(error)
+      }
     } else if (error.request) {
       console.error('API 请求错误 (无响应):', {
         request: error.request,
@@ -98,9 +153,9 @@ apiClient.interceptors.response.use(
       console.error('API 错误:', error.message)
     }
 
-    // 处理认证错误（401 或自定义认证错误）
-    const isAuthError = 
-      error.response?.status === 401 || 
+    // 处理认证错误（HTTP 401 或自定义认证错误）
+    const isAuthError =
+      error.response?.status === 401 ||
       (error as any)?.isAuthError ||
       (error as Error)?.message?.includes('not authenticated') ||
       (error as Error)?.message?.includes('Token expired')
@@ -112,8 +167,9 @@ apiClient.interceptors.response.use(
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname
         if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
-          const redirectUrl = window.location.href
-          window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectUrl)}`
+          // 只使用路径和查询参数，不包括协议和域名
+          const redirectPath = window.location.pathname + window.location.search
+          window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
         }
       }
     }

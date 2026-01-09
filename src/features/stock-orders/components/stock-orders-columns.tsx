@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { CreditCard, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react'
+import { CreditCard, ImageIcon, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,7 +28,6 @@ function StockOrderDeleteCell({ row, onDelete }: StockOrderDeleteCellProps) {
       await onDelete(order.id)
       setOpen(false)
     } catch (error) {
-      // 错误处理已经在 handleDelete 中完成，这里只需要确保加载状态被重置
       console.error('删除订单失败:', error)
     } finally {
       setIsLoading(false)
@@ -68,7 +67,8 @@ function StockOrderDeleteCell({ row, onDelete }: StockOrderDeleteCellProps) {
               This action cannot be undone.
             </p>
             <p className='text-muted-foreground text-sm'>
-              Order Number: <strong>{order.orderNumber}</strong>
+              Order Number:{' '}
+              <strong>{order.billno || order.orderNumber || '---'}</strong>
             </p>
           </>
         }
@@ -128,8 +128,10 @@ export const createStockOrdersColumns = (options?: {
       accessorKey: 'orderNumber',
       header: 'Order No',
       cell: ({ row }) => {
-        const order = row.original
-        return <div className='font-medium'>{order.orderNumber}</div>
+        const order = row.original as any
+        return (
+          <div className='font-medium'>{order.billno || order.orderNumber}</div>
+        )
       },
       size: 120,
     },
@@ -137,31 +139,24 @@ export const createStockOrdersColumns = (options?: {
       id: 'sku',
       header: 'SKU',
       cell: ({ row }) => {
-        const order = row.original
-        const firstProduct = order.productList?.[0]
+        const order = row.original as any
+        const hzkjPicture = order.hzkj_picture
+
         return (
           <div className='flex items-center gap-2 pr-8'>
-            {firstProduct && (
-              <>
-                {firstProduct.productImageUrl ? (
-                  <img
-                    src={firstProduct.productImageUrl}
-                    alt={firstProduct.productName}
-                    className='h-10 w-10 rounded object-cover'
-                  />
-                ) : (
-                  <div className='bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded'>
-                    <ImageIcon className='text-muted-foreground h-5 w-5' />
-                  </div>
-                )}
-                <div className='text-sm'>
-                  <div className='font-medium'>{order.sku}</div>
-                </div>
-              </>
+            {hzkjPicture ? (
+              <img
+                src={hzkjPicture}
+                className='h-10 w-10 rounded object-cover'
+              />
+            ) : (
+              <div className='bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded'>
+                <ImageIcon className='text-muted-foreground h-5 w-5' />
+              </div>
             )}
-            {!firstProduct && (
-              <div className='text-sm font-medium'>{order.sku}</div>
-            )}
+            <div className='text-sm'>
+              <div className='font-medium'>{order.hzkj_product_name_en}</div>
+            </div>
           </div>
         )
       },
@@ -171,10 +166,12 @@ export const createStockOrdersColumns = (options?: {
       accessorKey: 'createdAt',
       header: 'Creat Time',
       cell: ({ row }) => {
-        const order = row.original
+        const order = row.original as any
         return (
           <div className='text-sm'>
-            {format(new Date(order.createdAt), 'MM-dd-yyyy')}
+            {order.createtime
+              ? format(new Date(order.createtime), 'MM-dd-yyyy')
+              : '---'}
           </div>
         )
       },
@@ -184,8 +181,8 @@ export const createStockOrdersColumns = (options?: {
       id: 'qty',
       header: 'QTY',
       cell: ({ row }) => {
-        const order = row.original
-        return <div className='text-sm'>{order.cost.qty}</div>
+        const order = row.original as any
+        return <div className='text-sm'>{order.hzkj_qty || 0}</div>
       },
       size: 80,
     },
@@ -193,10 +190,18 @@ export const createStockOrdersColumns = (options?: {
       id: 'price',
       header: 'Price',
       cell: ({ row }) => {
-        const order = row.original
+        const order = row.original as any
+        const price = order.hzkj_shop_price
+          ? typeof order.hzkj_shop_price === 'string'
+            ? parseFloat(order.hzkj_shop_price) || 0
+            : typeof order.hzkj_shop_price === 'number'
+              ? order.hzkj_shop_price
+              : 0
+          : 0
+
         return (
           <div className='text-sm font-medium text-green-600'>
-            ${order.cost.product.toFixed(2)}
+            ${price.toFixed(2)}
           </div>
         )
       },
@@ -206,14 +211,18 @@ export const createStockOrdersColumns = (options?: {
       id: 'amount',
       header: ' Total Amount',
       cell: ({ row }) => {
-        const order = row.original
-        const total =
-          typeof order.cost.total === 'number'
-            ? order.cost.total
-            : parseFloat(String(order.cost.total)) || 0
+        const order = row.original as any
+        const amount = order.hzkj_order_amount
+          ? typeof order.hzkj_order_amount === 'string'
+            ? parseFloat(order.hzkj_order_amount) || 0
+            : typeof order.hzkj_order_amount === 'number'
+              ? order.hzkj_order_amount
+              : 0
+          : 0
+
         return (
           <div className='text-sm font-medium text-green-600'>
-            ${total.toFixed(2)}
+            ${amount.toFixed(2)}
           </div>
         )
       },
@@ -223,10 +232,12 @@ export const createStockOrdersColumns = (options?: {
       id: 'warehouse',
       header: 'Warehouse',
       cell: ({ row }) => {
-        const { address, shippingMethod } = row.original
-        // 使用地址国家 + 物流方式 拼出一个“仓库”展示文案，作为假数据
-        const warehouseLabel = `${address.country} · ${shippingMethod}`
-        return <div className='text-sm'>{warehouseLabel}</div>
+        const order = row.original as any
+        return (
+          <div className='text-sm'>
+            {order.hzkj_warehouse_name?.GLang || '---'}
+          </div>
+        )
       },
       size: 120,
     },
@@ -234,35 +245,39 @@ export const createStockOrdersColumns = (options?: {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
-        const status = row.getValue('status') as string
-        const statusColors: Record<string, string> = {
-          paid: 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white',
-          shipped:
-            'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white',
-          pending:
-            'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-          processing:
-            'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white',
-          completed:
-            'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-          canceled:
-            'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
-          quoting:
-            'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-          pay_in_progress:
-            'border-transparent bg-indigo-500 text-white dark:bg-indigo-500 dark:text-white',
+        const order = row.original as any
+        const orderStatus = order.hzkj_orderstatus
+        // 状态映射
+        const statusMap: Record<string, { label: string; color: string }> = {
+          '0': {
+            label: '取消',
+            color:
+              'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-red-500',
+          },
+          '1': {
+            label: '待支付',
+            color:
+              'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-orange-500',
+          },
+          '2': {
+            label: '已支付',
+            color:
+              'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-green-500',
+          },
         }
+        const statusInfo =
+          orderStatus && statusMap[String(orderStatus)]
+            ? statusMap[String(orderStatus)]
+            : {
+                label: '---',
+                color:
+                  'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+              }
+
         return (
           <div className='space-y-1'>
-            <Badge
-              variant='outline'
-              className={
-                statusColors[status] ||
-                'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-              }
-            >
-              {status.charAt(0).toUpperCase() +
-                status.slice(1).replace('_', ' ')}
+            <Badge variant='outline' className={statusInfo.color}>
+              {statusInfo.label}
             </Badge>
           </div>
         )

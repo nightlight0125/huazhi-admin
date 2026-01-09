@@ -57,6 +57,16 @@ export const orderProductSchema = z.object({
   productLink: z.string(),         // 产品链接
   price: z.number(),               // 单价
   totalPrice: z.number(),          // 总价
+  // 后端原始字段
+  hzkj_picture: z.string().optional(), // 产品图片
+  hzkj_variant_name: z.string().optional(), // 变体名称
+  hzkj_sku_values: z.string().optional(), // SKU值
+  hzkj_shop_sku: z.string().optional(), // 店铺SKU
+  hzkj_shop_price: z.string().optional().nullable(), // 店铺价格
+  hzkj_src_qty: z.string().optional().nullable(), // 源数量
+  hzkj_local_sku: z.string().optional(), // 本地SKU
+  hzkj_amount: z.string().optional().nullable(), // 金额
+  hzkj_qty: z.string().optional().nullable(), // 数量
 })
 
 // 订单数据结构
@@ -93,6 +103,21 @@ export const orderSchema = z.object({
   status: orderStatusSchema,       // 订单状态
   createdAt: z.date(),
   updatedAt: z.date(),
+  // 后端原始字段
+  hzkj_country_code: z.string().optional().nullable(), // 国家二字码
+  hzkj_orderstatus: z.string().optional(), // 订单状态（原始字段）
+  hzkj_fulfillment_status: z.string().optional().nullable(), // 履行状态（原始字段）
+  hzkj_order_amount: z.number().optional(), // 订单金额
+  hzkj_pack_weight_total: z.number().optional(), // 包装重量总计
+  // API 原始字段（用于兼容）
+  lingItems: z.array(z.any()).optional(), // 产品列表（原始字段）
+  // 店铺名称（原始字段），后端结构较为灵活，这里使用 any 以保持兼容
+  hzkj_shop_name: z.any().optional(),
+  billno: z.string().optional(), // 订单号（原始字段）
+  createtime: z.string().optional(), // 创建时间（原始字段）
+  // 客户名称（原始字段），结构同样较为动态，使用 any
+  hzkj_customer_name: z.any().optional(),
+  providers: z.string().optional(), // 物流提供商（原始字段）
 })
 
 export type Order = z.infer<typeof orderSchema>

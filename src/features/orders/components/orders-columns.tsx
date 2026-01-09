@@ -11,7 +11,6 @@ import {
   Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -22,7 +21,6 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type Order } from '../data/schema'
 
-// 删除订单单元格组件
 interface OrderDeleteCellProps {
   row: Row<Order>
   onDelete?: (orderId: string) => void | Promise<void>
@@ -41,7 +39,6 @@ function OrderDeleteCell({ row, onDelete }: OrderDeleteCellProps) {
       await onDelete(order.id)
       setOpen(false)
     } catch (error) {
-      // 错误处理已经在 handleDelete 中完成，这里只需要确保加载状态被重置
       console.error('删除订单失败:', error)
     } finally {
       setIsLoading(false)
@@ -100,50 +97,6 @@ function OrderDeleteCell({ row, onDelete }: OrderDeleteCellProps) {
   )
 }
 
-// 平台订单状态标签映射
-function getPlatformOrderStatusLabel(status: string): string {
-  const statusMap: Record<string, string> = {
-    '0': 'Cancelled',
-    no: 'Not Linked to Local SKU',
-    '1': 'Pending Payment',
-    '2': 'Paid',
-    '3': 'Processing',
-    '4': 'Shipped',
-  }
-  return statusMap[status] || status
-}
-
-// 平台订单状态样式映射
-function getPlatformOrderStatusClassName(status: string): string {
-  // 0: 取消 - 红色背景，白色文字
-  if (status === '0') {
-    return 'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white'
-  }
-  // no: 未关联本地sku - 灰色背景，白色文字
-  if (status === 'no') {
-    return 'border-transparent bg-gray-500 text-white dark:bg-gray-500 dark:text-white'
-  }
-  // 1: 待支付 - 橙色背景，白色文字
-  if (status === '1') {
-    return 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white'
-  }
-  // 2: 已支付 - 绿色背景，白色文字
-  if (status === '2') {
-    return 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white'
-  }
-  // 3: 处理中 - 紫色背景，白色文字
-  if (status === '3') {
-    return 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white'
-  }
-  // 4: 已发货 - 蓝色背景，白色文字
-  if (status === '4') {
-    return 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white'
-  }
-
-  // 默认灰色
-  return 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-}
-
 export const createOrdersColumns = (options?: {
   onExpand?: (rowId: string) => void
   expandedRows?: Set<string>
@@ -173,7 +126,7 @@ export const createOrdersColumns = (options?: {
             (table.getIsSomePageRowsSelected() && 'indeterminate')
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label='选择全部'
+          aria-label='Select all'
           className='translate-y-[2px]'
         />
       ),
@@ -183,14 +136,16 @@ export const createOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original
         const isExpanded = expandedRows.has(row.id)
-        const hasProducts = order.productList && order.productList.length > 0
+        const hasProducts =
+          (order as any).lingItems?.length > 0 ||
+          (order.productList && order.productList.length > 0)
 
         return (
           <div className='flex items-center gap-2'>
             <Checkbox
               checked={row.getIsSelected()}
               onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label='选择行'
+              aria-label='Select row'
               className='translate-y-[2px]'
             />
             {hasProducts && (
@@ -222,10 +177,12 @@ export const createOrdersColumns = (options?: {
       header: 'Store Name',
       cell: ({ row }) => {
         const order = row.original
+        const shopName =
+          (order as any).hzkj_shop_name?.GLang || order.storeName || order.store
         return (
           <div className='flex items-center gap-2'>
             <ShoppingBag className='h-4 w-4 text-green-600' />
-            <span className='font-medium'>{order.storeName}</span>
+            <span className='font-medium'>{shopName}</span>
           </div>
         )
       },
@@ -236,10 +193,13 @@ export const createOrdersColumns = (options?: {
       header: 'Store/No.',
       cell: ({ row }) => {
         const order = row.original
+        const billno =
+          (order as any).billno ||
+          order.platformOrderNumber ||
+          order.orderNumber
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.platformOrderNumber || '---'}</div>
-            <div>{order.orderNumber || '---'}</div>
+            <div>{billno || '---'}</div>
           </div>
         )
       },
@@ -250,18 +210,11 @@ export const createOrdersColumns = (options?: {
       header: 'Store/Time',
       cell: ({ row }) => {
         const order = row.original
+        const createtime = (order as any).createtime
+        const date = createtime ? new Date(createtime) : order.createdAt
         return (
           <div className='space-y-1 text-sm'>
-            <div>
-              {order.createdAt
-                ? format(new Date(order.createdAt), 'MM-dd-yyyy')
-                : '---'}
-            </div>
-            <div>
-              {order.updatedAt
-                ? format(new Date(order.updatedAt), 'MM-dd-yyyy')
-                : '---'}
-            </div>
+            <div>{date ? format(date, 'MM-dd-yyyy') : '---'}</div>
           </div>
         )
       },
@@ -272,22 +225,18 @@ export const createOrdersColumns = (options?: {
       header: 'Cost',
       cell: ({ row }) => {
         const order = row.original
-        const totalQty =
-          order.productList?.reduce((sum, p) => sum + p.quantity, 0) || 0
-        const productTotal =
-          order.productList?.reduce((sum, p) => sum + p.totalPrice, 0) || 0
 
         return (
           <Tooltip>
             <TooltipTrigger asChild>
               <div className='cursor-default space-y-1 text-sm'>
-                <div>Total: ${order.totalCost.toFixed(2)}</div>
+                <div>Total: ${(order.hzkj_order_amount || 0).toFixed(2)}</div>
               </div>
             </TooltipTrigger>
             <TooltipContent className='space-y-0.5 text-xs'>
-              <div>Product: ${productTotal.toFixed(2)}</div>
-              <div>Shipping: ${order.shippingCost.toFixed(2)}</div>
-              <div>Qty: {totalQty}</div>
+              {/* <div>Product: ${productTotal.toFixed(2)}</div> */}
+              {/* <div>Shipping: ${order.shippingCost.toFixed(2)}</div> */}
+              {/* <div>Qty: {order.hzkj_netweight_total || 0}</div> */}
             </TooltipContent>
           </Tooltip>
         )
@@ -299,10 +248,14 @@ export const createOrdersColumns = (options?: {
       header: 'Customer',
       cell: ({ row }) => {
         const order = row.original
+        const customerName =
+          (order as any).hzkj_customer_name?.GLang ||
+          order.customerName ||
+          '---'
         return (
           <div className='space-y-1 text-sm'>
             <div className='flex items-center gap-2'>
-              <span>{order.customerName}</span>
+              <span>{customerName}</span>
               <Button
                 variant='ghost'
                 size='icon'
@@ -315,7 +268,7 @@ export const createOrdersColumns = (options?: {
                 <Edit className='h-3 w-3' />
               </Button>
             </div>
-            <div>二字码</div>
+            <div>{order.hzkj_country_code || '---'}</div>
           </div>
         )
       },
@@ -326,9 +279,10 @@ export const createOrdersColumns = (options?: {
       header: 'Shipping/No.',
       cell: ({ row }) => {
         const order = row.original
+        const providers = (order as any).providers || order.logistics || '---'
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.logistics || '---'}</div>
+            <div>{providers}</div>
             <div>{order.trackingNumber || '---'}</div>
           </div>
         )
@@ -340,27 +294,9 @@ export const createOrdersColumns = (options?: {
       header: 'Platform/Status',
       cell: ({ row }) => {
         const order = row.original
-        const status = order.platformOrderStatus
-
-        if (!status) {
-          return (
-            <div className='space-y-1 text-sm'>
-              <div>---</div>
-            </div>
-          )
-        }
-
-        const className = getPlatformOrderStatusClassName(status)
-        const label = getPlatformOrderStatusLabel(status)
-
         return (
-          <div className='flex flex-col gap-1.5 text-sm'>
-            <Badge variant='outline' className={className}>
-              {label}
-            </Badge>
-            <Badge variant='outline' className={className}>
-              {label}
-            </Badge>
+          <div className='space-y-1 text-sm'>
+            <div>{order.hzkj_fulfillment_status || '---'}</div>
           </div>
         )
       },
@@ -393,7 +329,6 @@ export const createOrdersColumns = (options?: {
       enableSorting: false,
       size: 140,
     },
-    // Hidden columns for filtering only
     {
       id: 'platformOrderStatus',
       accessorFn: (row) => row.platformOrderStatus || '',
@@ -442,6 +377,15 @@ export const createOrdersColumns = (options?: {
     {
       id: 'shippingOrigin',
       accessorFn: (row) => row.shippingOrigin || '',
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      enableSorting: false,
+      size: 0,
+    },
+    {
+      id: 'hzkj_bizdate',
+      accessorFn: (row) => (row as any).hzkj_bizdate || '',
       header: () => null,
       cell: () => null,
       enableHiding: false,

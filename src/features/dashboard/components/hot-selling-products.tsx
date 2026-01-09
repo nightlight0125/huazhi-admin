@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { format } from 'date-fns'
 import {
   type ColumnFiltersState,
   flexRender,
@@ -6,14 +7,17 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   type SortingState,
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { Sparkles } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { hotProductStatistics } from '@/lib/api/orders'
+import { getUserShopOptions, type ShopOption } from '@/lib/utils/shop-utils'
 import { CardContent } from '@/components/ui/card'
 import {
   Table,
@@ -28,120 +32,13 @@ import { type HotSellingProduct } from '../data/schema'
 import { HotSellingProductsBulkActions } from './hot-selling-products-bulk-actions'
 import { createHotSellingProductsColumns } from './hot-selling-products-columns'
 
-// Mock data - replace with actual data fetching
-const mockData: HotSellingProduct[] = [
-  {
-    id: '1',
-    ranking: 1,
-    productName: 'Wireless Bluetooth Headphones Pro',
-    quantity: 1250,
-    sellingAmount: 18750.0,
-  },
-  {
-    id: '2',
-    ranking: 2,
-    productName: 'Smart Watch Series 9',
-    quantity: 980,
-    sellingAmount: 14700.0,
-  },
-  {
-    id: '3',
-    ranking: 3,
-    productName: 'Portable Power Bank 20000mAh',
-    quantity: 1560,
-    sellingAmount: 12480.0,
-  },
-  {
-    id: '4',
-    ranking: 4,
-    productName: 'USB-C Fast Charging Cable Set',
-    quantity: 2100,
-    sellingAmount: 10500.0,
-  },
-  {
-    id: '5',
-    ranking: 5,
-    productName: 'LED Desk Lamp with Wireless Charger',
-    quantity: 750,
-    sellingAmount: 11250.0,
-  },
-  {
-    id: '6',
-    ranking: 6,
-    productName: 'Mechanical Keyboard RGB',
-    quantity: 680,
-    sellingAmount: 10200.0,
-  },
-  {
-    id: '7',
-    ranking: 7,
-    productName: 'Wireless Mouse Ergonomic',
-    quantity: 920,
-    sellingAmount: 9200.0,
-  },
-  {
-    id: '8',
-    ranking: 8,
-    productName: 'Laptop Stand Aluminum',
-    quantity: 540,
-    sellingAmount: 8100.0,
-  },
-  {
-    id: '9',
-    ranking: 9,
-    productName: 'Phone Case with Stand',
-    quantity: 1100,
-    sellingAmount: 7700.0,
-  },
-  {
-    id: '10',
-    ranking: 10,
-    productName: 'Screen Protector Tempered Glass',
-    quantity: 1850,
-    sellingAmount: 7400.0,
-  },
-  {
-    id: '11',
-    ranking: 11,
-    productName: 'Webcam HD 1080p',
-    quantity: 420,
-    sellingAmount: 6300.0,
-  },
-  {
-    id: '12',
-    ranking: 12,
-    productName: 'USB Hub 4-Port',
-    quantity: 890,
-    sellingAmount: 5340.0,
-  },
-  {
-    id: '13',
-    ranking: 13,
-    productName: 'Laptop Cooling Pad',
-    quantity: 650,
-    sellingAmount: 5200.0,
-  },
-  {
-    id: '14',
-    ranking: 14,
-    productName: 'Wireless Earbuds Sport',
-    quantity: 720,
-    sellingAmount: 5040.0,
-  },
-  {
-    id: '15',
-    ranking: 15,
-    productName: 'Tablet Stand Adjustable',
-    quantity: 380,
-    sellingAmount: 4560.0,
-  },
-]
-
 export function HotSellingProducts() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date('2025-10-19'),
-    to: new Date('2025-10-26'),
-  })
+  const { auth } = useAuthStore()
+  const [data, setData] = useState<HotSellingProduct[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [shopOptions, setShopOptions] = useState<ShopOption[]>([])
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -154,22 +51,124 @@ export function HotSellingProducts() {
     pageSize: 10,
   })
 
-  // Filter data based on date range
-  const filteredData = useMemo(() => {
-    let data = [...mockData]
+  // 获取选中的店铺ID
+  const selectedShopId = useMemo(() => {
+    const storeFilter = columnFilters.find(
+      (filter) => filter.id === 'selectedStore'
+    )
+    if (
+      storeFilter &&
+      Array.isArray(storeFilter.value) &&
+      storeFilter.value.length > 0
+    ) {
+      return storeFilter.value[0] as string
+    }
+    return undefined
+  }, [columnFilters])
 
-    // Apply date range filter
+  const formattedDateRange = useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
-      // TODO: Filter by date range when date field is added to schema
+      return {
+        startDate: format(dateRange.from, 'yyyy-MM-dd 00:00:00'),
+        endDate: format(dateRange.to, 'yyyy-MM-dd 23:59:59'),
+      }
+    }
+    return undefined
+  }, [dateRange])
+
+  const isDateRangeComplete = useMemo(() => {
+    return !!(dateRange?.from && dateRange?.to)
+  }, [dateRange])
+
+  // 获取数据
+  useEffect(() => {
+    const fetchData = async () => {
+      const customerId = auth.user?.customerId || auth.user?.id
+      if (!customerId) {
+        return
+      }
+
+      if (dateRange && !isDateRangeComplete) {
+        return
+      }
+
+      setIsLoading(true)
+      try {
+        const result = await hotProductStatistics(
+          String(customerId),
+          pagination.pageIndex,
+          pagination.pageSize,
+          selectedShopId,
+          formattedDateRange?.startDate,
+          formattedDateRange?.endDate
+        )
+
+        const mappedData: HotSellingProduct[] = result.rows.map(
+          (item, index) => ({
+            id: item.skuNumber || String(index + 1),
+            ranking: pagination.pageIndex * pagination.pageSize + index + 1,
+            productName: item.productName || '-',
+            quantity: item.totalQty || 0,
+            sellingAmount: item.totalAmount || 0,
+          })
+        )
+
+        setData(mappedData)
+        setTotalCount(result.total)
+      } catch (error) {
+        console.error('Failed to fetch hot product statistics:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load hot product statistics. Please try again.'
+        )
+        setData([])
+        setTotalCount(0)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    return data
-  }, [dateRange])
+    void fetchData()
+  }, [
+    auth.user?.customerId,
+    auth.user?.id,
+    pagination.pageIndex,
+    pagination.pageSize,
+    selectedShopId,
+    formattedDateRange,
+  ])
+
+  useEffect(() => {
+    if (selectedShopId !== undefined || formattedDateRange) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    }
+  }, [selectedShopId, formattedDateRange])
+
+  // 获取店铺列表
+  useEffect(() => {
+    const fetchShopOptions = async () => {
+      const userId = auth.user?.id
+      if (!userId) {
+        return
+      }
+
+      try {
+        const options = await getUserShopOptions(userId, 0, 100)
+        setShopOptions(options)
+      } catch (error) {
+        console.error('Failed to fetch shop options:', error)
+        setShopOptions([])
+      }
+    }
+
+    void fetchShopOptions()
+  }, [auth.user?.id])
 
   const columns = createHotSellingProductsColumns()
 
   const table = useReactTable({
-    data: filteredData,
+    data,
     columns,
     state: {
       sorting,
@@ -184,6 +183,8 @@ export function HotSellingProducts() {
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     onColumnFiltersChange: setColumnFilters,
+    manualPagination: true,
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     globalFilterFn: (row, _columnId, filterValue) => {
       const searchValue = String(filterValue).toLowerCase()
       const productName = String(row.getValue('productName')).toLowerCase()
@@ -191,23 +192,12 @@ export function HotSellingProducts() {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
   })
-
-  const pageCount = table.getPageCount()
-  useEffect(() => {
-    if (pagination.pageIndex >= pageCount && pageCount > 0) {
-      setPagination((prev) => ({
-        ...prev,
-        pageIndex: pageCount - 1,
-      }))
-    }
-  }, [pageCount, pagination.pageIndex])
 
   return (
     <div className='mt-8'>
@@ -223,18 +213,15 @@ export function HotSellingProducts() {
               {
                 columnId: 'selectedStore',
                 title: 'Select Store Name',
-                options: [
-                  { value: 'store1', label: 'Store 1' },
-                  { value: 'store2', label: 'Store 2' },
-                  { value: 'store3', label: 'Store 3' },
-                ],
+                options: shopOptions,
+                singleSelect: true,
               },
             ]}
             dateRange={{
               enabled: true,
               columnId: 'createdAt',
-              onDateRangeChange: setDateRange,
               placeholder: 'Select Date Range',
+              onDateRangeChange: setDateRange,
             }}
           />
 
@@ -259,7 +246,18 @@ export function HotSellingProducts() {
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className='h-[400px]'>
+                      <div className='flex h-full flex-col items-center justify-center'>
+                        <Loader2 className='text-muted-foreground mb-4 h-12 w-12 animate-spin' />
+                        <p className='text-muted-foreground text-sm'>
+                          Loading...
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
                     <TableRow
                       key={row.id}

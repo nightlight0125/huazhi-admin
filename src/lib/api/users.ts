@@ -196,14 +196,11 @@ export async function queryMenu(
     pageNo,
   }
 
-  console.log('查询菜单权限请求数据:', JSON.stringify(requestData, null, 2))
 
   const response = await apiClient.post<QueryMenuResponse>(
     '/v2/hzkj/hzkj_member/hzkj_role/queryMenu',
     requestData
   )
-
-  console.log('查询菜单权限响应:', response.data)
 
   // 检查响应状态
   if (!response.data.status) {
@@ -563,6 +560,104 @@ export async function queryCustomerRecommendList(
 
   // 返回 rows 数组和总数
   const rows = response.data.data?.rows || response.data.data?.list || []
+  const totalCount = response.data.data?.totalCount || 0
+
+  return {
+    rows: Array.isArray(rows) ? rows : [],
+    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+  }
+}
+
+// 客户追踪记录项
+export interface CustomerTraceItem {
+  id: string
+  number?: string
+  name?: string
+  status?: string
+  status_title?: string
+  enable?: string
+  enable_title?: string
+  hzkj_email?: string
+  hzkj_type?: string
+  hzkj_type_title?: string
+  hzkj_src_type?: string
+  hzkj_src_type_title?: string
+  hzkj_registration_link?: string
+  hzkj_official_website?: string
+  hzkj_src_channel_name?: string
+  hzkj_src_channel_number?: string
+  hzkj_src_channel_id?: string
+  hzkj_customer_name?: string
+  hzkj_customer_number?: string
+  hzkj_customer_id?: string
+  [key: string]: unknown
+}
+
+// 查询客户追踪请求参数
+export interface QueryCustomerTraceRequest {
+  data: {
+    hzkj_customer_id: string
+  }
+  pageSize: number
+  pageNo: number
+  startDate?: string
+  endDate?: string
+}
+
+// 查询客户追踪响应
+export interface QueryCustomerTraceResponse {
+  data?: {
+    filter?: string
+    lastPage?: boolean
+    pageNo?: number
+    pageSize?: number
+    rows?: CustomerTraceItem[]
+    totalCount?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询客户追踪 API
+export async function queryCustomerTrace(
+  customerId: string,
+  pageNo: number = 1,
+  pageSize: number = 10,
+  startDate?: string,
+  endDate?: string
+): Promise<{ rows: CustomerTraceItem[]; totalCount: number }> {
+  const requestData: QueryCustomerTraceRequest = {
+    data: {
+      hzkj_customer_id: customerId,
+    },
+    pageSize,
+    pageNo,
+    ...(startDate && { startDate }),
+    ...(endDate && { endDate }),
+  }
+
+  console.log('查询客户追踪请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<QueryCustomerTraceResponse>(
+    '/v2/hzkj/hzkj_customer/hzkj_trace/queryCustomerTrace',
+    requestData
+  )
+
+  console.log('查询客户追踪响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query customer trace. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回 rows 数组和总数
+  const rows = response.data.data?.rows || []
   const totalCount = response.data.data?.totalCount || 0
 
   return {

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { getUserShop } from '@/lib/api/shop'
+import { getUserShopList } from '@/lib/api/shop'
 import { Card, CardContent } from '@/components/ui/card'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
@@ -10,6 +11,8 @@ import { TasksProvider } from '../tasks/components/tasks-provider'
 import { ConnectStoreDialog } from './components/connect-store-dialog'
 import { StoresTable } from './components/stores-table'
 import { type Store } from './data/schema'
+
+const route = getRouteApi('/_authenticated/store-management')
 
 const platformButtons = [
   {
@@ -49,57 +52,59 @@ export function StoreManagement() {
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
   const [stores, setStores] = useState<Store[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
 
   // 从 auth store 获取用户信息
   const user = useAuthStore((state) => state.auth.user)
   console.log('======user', user)
 
+  // 从 URL 获取分页参数
+  const search = route.useSearch()
+  const pageNo = search.page ? Number(search.page) - 1 : 0
+  const pageSize = search.pageSize ? Number(search.pageSize) : 10
+  const queryParam = search.filter || 'w'
+
   // 获取用户店铺列表
-  useEffect(() => {
-    async function fetchUserShops() {
-      if (!user?.id) {
-        console.warn('No user ID available')
-        setIsLoading(false)
-        return
-      }
+  const fetchUserShops = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const response = await getUserShopList({
+        hzkjAccountId: user?.id || '',
+        queryParam,
+        pageNo,
+        pageSize,
+      })
 
-      setIsLoading(true)
-      try {
-        const response = await getUserShop(user.id)
+      const mappedStores: Store[] = (
+        Array.isArray(response.list) ? response.list : []
+      ).map((item: any) => ({
+        name: item.name || '',
+        id: item.id || String(item.id || ''),
+        bindtime: item.bindtime || undefined,
+        createtime: item.createtime || undefined,
+        enable: item.enable !== undefined ? item.enable : undefined,
+        platform: item.platform || undefined,
+      }))
 
-        // 根据实际 API 响应结构处理数据
-        const responseData = response.data as any
-        const shopsData = responseData?.data || []
-        console.log('shopsData=====121212', shopsData)
-
-        // 映射数据到 Store schema
-        const mappedStores: Store[] = (
-          Array.isArray(shopsData) ? shopsData : []
-        ).map((item: any) => ({
-          name: item.name || '',
-          id: item.id || String(item.id || ''),
-          bindtime: item.bindtime || undefined,
-          createtime: item.createtime || undefined,
-          enable: item.enable !== undefined ? item.enable : undefined,
-          platform: item.platform || undefined,
-        }))
-
-        setStores(mappedStores)
-      } catch (error) {
-        console.error('Failed to fetch user shops:', error)
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load shops. Please try again.'
-        )
-        setStores([])
-      } finally {
-        setIsLoading(false)
-      }
+      setStores(mappedStores)
+      setTotalCount(response.total || 0)
+    } catch (error) {
+      console.error('Failed to fetch user shops:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load shops. Please try again.'
+      )
+      setStores([])
+      setTotalCount(0)
+    } finally {
+      setIsLoading(false)
     }
+  }, [user?.id, pageNo, pageSize, queryParam])
 
+  useEffect(() => {
     fetchUserShops()
-  }, [user?.accountNo])
+  }, [fetchUserShops])
 
   const handlePlatformClick = (platformName: string) => {
     setSelectedPlatform(platformName)
@@ -151,7 +156,11 @@ export function StoreManagement() {
               <p className='text-muted-foreground'>Loading shops...</p>
             </div>
           ) : (
-            <StoresTable data={stores} />
+            <StoresTable
+              data={stores}
+              totalCount={totalCount}
+              onRefresh={fetchUserShops}
+            />
           )}
         </div>
 

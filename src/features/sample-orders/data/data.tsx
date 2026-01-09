@@ -11,12 +11,12 @@ import {
 export const sampleOrderStatuses = [
   {
     label: 'AlI',
-    value: 'all' as const,
+    value: '' as const,
     icon: Package,
   },
   {
     label: 'Awaiting Payment',
-    value: 'pending_payment' as const,
+    value: 'awaiting_payment' as const,
     icon: DollarSign,
   },
   {

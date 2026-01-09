@@ -229,38 +229,8 @@ export function ApplyPackagingDialog({
                   }
                 }}
               />
-              {/* <Button
-                type='button'
-                variant='outline'
-                size='icon'
-                onClick={handleSearch}
-              >
-                <Search className='h-4 w-4' />
-              </Button> */}
             </div>
           </div>
-
-          {/* 包装产品类型选择 */}
-          {/* <div className='space-y-3'>
-            <h3 className='text-sm font-medium'>Packaging Products Type</h3>
-            <div className='grid grid-cols-4 gap-3'>
-              {packagingTypes.map((type) => (
-                <div key={type} className='flex items-center gap-2'>
-                  <Checkbox
-                    id={`type-${type}`}
-                    checked={selectedTypes.has(type)}
-                    onCheckedChange={() => handleTypeToggle(type)}
-                  />
-                  <Label
-                    htmlFor={`type-${type}`}
-                    className='flex-1 cursor-pointer text-sm'
-                  >
-                    {type}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div> */}
 
           {/* 包装产品列表 */}
           <div className='space-y-3'>
@@ -283,9 +253,6 @@ export function ApplyPackagingDialog({
                     />
                   </div>
                   <div className='space-y-1'>
-                    {/* <div className='text-muted-foreground line-clamp-2 text-xs'>
-                      {product.variant}
-                    </div> */}
                     <div className='text-sm font-medium'>
                       ${product.price.toFixed(2)}
                     </div>
@@ -296,19 +263,6 @@ export function ApplyPackagingDialog({
                       {product.name}
                     </div>
                   </div>
-                  {/* <div className='flex items-center gap-2 pt-2'>
-                    <Checkbox
-                      id={`product-${product.id}`}
-                      checked={selectedProducts.has(product.id)}
-                      onCheckedChange={() => handleProductToggle(product.id)}
-                    />
-                    <Label
-                      htmlFor={`product-${product.id}`}
-                      className='cursor-pointer text-xs'
-                    >
-                      Select
-                    </Label>
-                  </div> */}
                 </div>
               ))}
             </div>

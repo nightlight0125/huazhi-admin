@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Copy,
   Heart,
+  Loader2,
   Palette,
   ShoppingCart,
   Store,
@@ -25,6 +26,13 @@ import countries from 'world-countries'
 import { useAuthStore } from '@/stores/auth-store'
 import type { ShopInfo } from '@/stores/shop-store'
 import {
+  calcuFreight,
+  getStatesList,
+  type FreightOption,
+  type StateItem,
+} from '@/lib/api/logistics'
+import {
+  collectProduct,
   getProduct,
   querySkuByCustomer,
   type ApiProductItem,
@@ -70,6 +78,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { type BrandItem } from '@/features/brands/data/schema'
 import { likedProductsData } from '@/features/liked-products/data/data'
@@ -86,6 +95,101 @@ import {
   type ConfirmOrderPayload,
 } from './confirm-order-view'
 import { ProductPurchaseDialog } from './product-purchase-dialog'
+
+type CountryOption = {
+  value: string
+  label: string
+  flagClass: string
+  id?: string // 国家ID
+}
+
+// 将API返回的国家数据转换为CountryOption格式
+// 以states数据为主，countries仅用于获取flagClass
+function mapStatesToCountryOptions(states: StateItem[]): CountryOption[] {
+  return states.map((state) => {
+    // 从countries中查找对应的国家来获取flagClass
+    const country = countries.find(
+      (c) => c.cca2.toUpperCase() === state.hzkj_code?.toUpperCase()
+    )
+
+    const code =
+      country?.cca2.toLowerCase() || state.hzkj_code?.toLowerCase() || ''
+    const flagClass = country ? `fi fi-${code}` : ''
+
+    return {
+      value: state.hzkj_code || state.id || '',
+      label: state.hzkj_name || state.name || '',
+      flagClass,
+      id: state.id,
+    }
+  })
+}
+
+// 处理选择国家并计算运费
+async function handleCountrySelectAndCalculateFreight(
+  productId: string,
+  country: { value: string; id?: string },
+  statesData: StateItem[],
+  setShippingMethodOptions: (
+    options: Array<{
+      id: string
+      title: string
+      cost: string
+      deliveryTime: string
+    }>
+  ) => void,
+  setSelectedDestinationId: (id: string) => void,
+  setIsLoadingFreight: (loading: boolean) => void
+) {
+  if (!productId || !country.value) {
+    return
+  }
+
+  setIsLoadingFreight(true)
+  try {
+    // 获取国家ID
+    const countryId =
+      country.id ||
+      statesData.find(
+        (s) => s.hzkj_code?.toUpperCase() === country.value.toUpperCase()
+      )?.id
+
+    if (!countryId) {
+      toast.error('Failed to get country ID. Please try again.')
+      return
+    }
+
+    const freightOptions = await calcuFreight({
+      // spuId: productId,
+      // destinationId: countryId,
+      spuId: '2380590801727046656',
+      destinationId: '2373209616709380096',
+    })
+
+    // 转换API返回的数据格式：logsNumber -> title, freight -> cost, time -> deliveryTime
+    const formattedOptions = freightOptions.map((option: FreightOption) => ({
+      id: option.logsId || String(Math.random()),
+      title: option.logsNumber || '',
+      cost: `$${option.freight?.toFixed(2) || '0.00'}`,
+      deliveryTime: option.time || '',
+    }))
+
+    // 如果后端返回空数组，就设置为空数组
+    setShippingMethodOptions(formattedOptions)
+    setSelectedDestinationId(countryId)
+  } catch (error) {
+    console.error('Failed to calculate freight:', error)
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : 'Failed to calculate freight. Please try again.'
+    )
+    // 发生错误时设置为空数组
+    setShippingMethodOptions([])
+  } finally {
+    setIsLoadingFreight(false)
+  }
+}
 
 export function ProductDetails() {
   const { productId } = useParams({
@@ -245,25 +349,33 @@ export function ProductDetails() {
       }
     : null
 
-  type CountryOption = {
-    value: string
-    label: string
-    flagClass: string
-  }
+  const [countryOptions, setCountryOptions] = useState<CountryOption[]>([])
+  const [statesData, setStatesData] = useState<StateItem[]>([])
 
-  const countryOptions: CountryOption[] = countries.map((country) => {
-    const code = country.cca2.toLowerCase()
-    const flagClass = `fi fi-${code}`
+  // 加载国家列表（从API获取，包含ID）
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        const states = await getStatesList(1, 1000)
+        console.log('states:', states)
+        setStatesData(states)
 
-    return {
-      value: country.cca2,
-      label: country.name.common,
-      flagClass,
+        // 使用工具函数将states转换为CountryOption格式
+        // 以states数据为主，有多少个states就显示多少个
+        const mergedOptions = mapStatesToCountryOptions(states)
+        setCountryOptions(mergedOptions)
+      } catch (error) {
+        console.error('Failed to load countries:', error)
+        // 如果API失败，使用空数组
+        setCountryOptions([])
+      }
     }
-  })
+
+    void loadCountries()
+  }, [])
 
   const [selectedQuantity, setSelectedQuantity] = useState(1)
-  const [selectedTo, setSelectedTo] = useState('US')
+  const [selectedTo, setSelectedTo] = useState<string>('')
   const [selectedColor, setSelectedColor] = useState('')
   const [selectedSize, setSelectedSize] = useState('')
   const [selectedThumbnail, setSelectedThumbnail] = useState(0)
@@ -274,6 +386,8 @@ export function ProductDetails() {
   >([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const { auth } = useAuthStore()
+  const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false)
+  const [isCollecting, setIsCollecting] = useState(false)
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
     useState(false)
   const [selectedSellingPlatform, setSelectedSellingPlatform] =
@@ -288,44 +402,24 @@ export function ProductDetails() {
   ]
   const [isShipToSelectOpen, setIsShipToSelectOpen] = useState(false)
   const [selectedShippingMethod, setSelectedShippingMethod] =
-    useState('tdpacket-sensitive')
+    useState<string>('')
   const [isShippingMethodOpen, setIsShippingMethodOpen] = useState(false)
   const [isShippingOptionsDialogOpen, setIsShippingOptionsDialogOpen] =
     useState(false)
+  const [selectedDestinationId, setSelectedDestinationId] = useState<
+    string | null
+  >(null)
+  const [isLoadingFreight, setIsLoadingFreight] = useState(false)
 
-  // 物流方式选项数据
-  const shippingMethodOptions = [
-    {
-      id: 'tdpacket-sensitive',
-      title: 'TDPacket Sensitive',
-      cost: '$30.12',
-      deliveryTime: '12-18 Day(s)',
-    },
-    {
-      id: 'tdpacket-electro',
-      title: 'TDPacket Electro',
-      cost: '$31.12',
-      deliveryTime: '8-15 Day(s)',
-    },
-    {
-      id: 'yun-electro-econo',
-      title: 'YUN-Electro-Econo',
-      cost: '$38.27',
-      deliveryTime: '8-15 Day(s)',
-    },
-    {
-      id: 'tdpacket-pure-battery',
-      title: 'TDPacket Pure battery',
-      cost: '$40.05',
-      deliveryTime: '15-20 Day(s)',
-    },
-    {
-      id: 'yun-fast-electro',
-      title: 'YUN-Fast-Electro',
-      cost: '$46.01',
-      deliveryTime: '5-8 Day(s)',
-    },
-  ]
+  // 物流方式选项数据（从API获取，初始为空数组）
+  const [shippingMethodOptions, setShippingMethodOptions] = useState<
+    Array<{
+      id: string
+      title: string
+      cost: string
+      deliveryTime: string
+    }>
+  >([])
 
   const selectedShippingMethodData = shippingMethodOptions.find(
     (method) => method.id === selectedShippingMethod
@@ -341,6 +435,8 @@ export function ProductDetails() {
     useState<ConfirmOrderPayload | null>(null)
 
   const selectedCountry = countryOptions.find((c) => c.value === selectedTo)
+
+  console.log('countryOptions:', countryOptions)
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
   const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false)
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
@@ -369,23 +465,20 @@ export function ProductDetails() {
     const fetchSkuRecords = async () => {
       if (!productId) return
 
-      const userId = auth.user?.id
-      const customerId = userId ? Number(userId) : 0
-      if (isNaN(customerId)) {
-        console.warn('Invalid user ID, using 0 as customer ID')
-      }
+      const customerId = auth.user?.customerId
 
       setIsLoadingSku(true)
       try {
+        const numericCustomerId =
+          typeof customerId === 'string'
+            ? Number(customerId) || 0
+            : (customerId ?? 0)
         const records = await querySkuByCustomer(
-          // productId,
-          // customerId,
-
-          '2366744063564104704',
-          0,
+          productId,
+          numericCustomerId,
           '0',
           1,
-          10
+          100
         )
         setSkuRecords(records)
         console.log('SKU 记录:', records)
@@ -427,6 +520,36 @@ export function ProductDetails() {
     setPurchaseMode('stock')
     setIsPurchaseDialogOpen(true)
     console.log('isPurchaseDialogOpen set to true')
+  }
+
+  // 处理收藏产品
+  const handleCollect = async () => {
+    if (!productId) {
+      toast.error('Product ID is missing')
+      return
+    }
+
+    const customerId = auth.user?.customerId || auth.user?.id
+    if (!customerId) {
+      toast.error('Customer ID is missing')
+      return
+    }
+
+    setIsCollecting(true)
+    try {
+      await collectProduct(String(productId), String(customerId))
+      toast.success('Product collected successfully')
+      setIsCollectDialogOpen(false)
+    } catch (error) {
+      console.error('Failed to collect product:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to collect product. Please try again.'
+      )
+    } finally {
+      setIsCollecting(false)
+    }
   }
 
   // 处理确认订单回调
@@ -958,7 +1081,14 @@ export function ProductDetails() {
                                     </span>
                                     <ChevronDown className='h-2.5 w-2.5 shrink-0' />
                                   </div>
-                                  {selectedCountry ? (
+                                  {isLoadingFreight ? (
+                                    <div className='flex items-center gap-1.5'>
+                                      <Loader2 className='h-3 w-3 animate-spin text-gray-500' />
+                                      <span className='text-xs font-bold text-gray-500'>
+                                        Loading...
+                                      </span>
+                                    </div>
+                                  ) : selectedCountry ? (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <div className='flex max-w-[100px] min-w-0 items-center gap-1.5'>
@@ -999,9 +1129,21 @@ export function ProductDetails() {
                                       <CommandItem
                                         key={country.value}
                                         value={country.label}
-                                        onSelect={() => {
+                                        onSelect={async () => {
                                           setSelectedTo(country.value)
                                           setIsShipToSelectOpen(false)
+
+                                          // 调用运费计算API
+                                          if (productId) {
+                                            await handleCountrySelectAndCalculateFreight(
+                                              productId,
+                                              country,
+                                              statesData,
+                                              setShippingMethodOptions,
+                                              setSelectedDestinationId,
+                                              setIsLoadingFreight
+                                            )
+                                          }
                                         }}
                                       >
                                         <div className='flex items-center gap-2'>
@@ -1025,14 +1167,32 @@ export function ProductDetails() {
                           <div className='h-8 w-px shrink-0 bg-gray-200' />
 
                           <Popover
-                            open={isShippingMethodOpen}
-                            onOpenChange={setIsShippingMethodOpen}
+                            open={
+                              isShippingMethodOpen &&
+                              !!(selectedDestinationId && selectedTo)
+                            }
+                            onOpenChange={(open) => {
+                              // 只有在选择了国家的情况下才允许打开
+                              if (
+                                open &&
+                                (!selectedDestinationId || !selectedTo)
+                              ) {
+                                toast.error('Please select a country first')
+                                return
+                              }
+                              setIsShippingMethodOpen(open)
+                            }}
                           >
                             <PopoverTrigger asChild>
                               <div
                                 className='flex flex-1 cursor-pointer items-center gap-1.5'
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  // 检查是否选择了国家
+                                  if (!selectedDestinationId || !selectedTo) {
+                                    toast.error('Please select a country first')
+                                    return
+                                  }
                                   setIsShippingMethodOpen(true)
                                 }}
                               >
@@ -1074,7 +1234,8 @@ export function ProductDetails() {
                                   }}
                                 >
                                   {/* 表头 */}
-                                  <div className='mb-2 grid grid-cols-[1fr_auto_auto] gap-4 border-b pb-2 text-sm font-medium text-gray-700'>
+                                  <div className='mb-2 grid grid-cols-[24px_1fr_120px_100px] gap-4 border-b pb-2 text-sm font-medium text-gray-700'>
+                                    <div />
                                     <div>Shipping Method</div>
                                     <div className='text-center'>
                                       Total Shipping Cost
@@ -1083,18 +1244,24 @@ export function ProductDetails() {
                                       Delivery Time
                                     </div>
                                   </div>
-                                  {/* 选项列表 */}
-                                  <div className='space-y-0'>
-                                    {shippingMethodOptions.map((method) => (
-                                      <label
-                                        key={method.id}
-                                        className='flex cursor-pointer items-center gap-4 border-b py-3 last:border-b-0 hover:bg-gray-50'
-                                      >
-                                        <RadioGroupItem
-                                          value={method.id}
-                                          className='ml-1'
-                                        />
-                                        <div className='grid flex-1 grid-cols-[1fr_auto_auto] gap-4 text-sm'>
+                                  {isLoadingFreight ? (
+                                    <div className='flex items-center justify-center py-8'>
+                                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                      <span className='text-sm text-gray-500'>
+                                        Loading shipping methods...
+                                      </span>
+                                    </div>
+                                  ) : shippingMethodOptions.length > 0 ? (
+                                    <div className='space-y-0'>
+                                      {shippingMethodOptions.map((method) => (
+                                        <label
+                                          key={method.id}
+                                          className='grid cursor-pointer grid-cols-[24px_1fr_120px_100px] items-center gap-4 border-b py-3 text-sm last:border-b-0 hover:bg-gray-50'
+                                        >
+                                          <RadioGroupItem
+                                            value={method.id}
+                                            className='ml-1'
+                                          />
                                           <div className='font-medium'>
                                             {method.title}
                                           </div>
@@ -1104,10 +1271,14 @@ export function ProductDetails() {
                                           <div className='text-right'>
                                             {method.deliveryTime}
                                           </div>
-                                        </div>
-                                      </label>
-                                    ))}
-                                  </div>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className='py-8 text-center'>
+                                      No shipping methods available
+                                    </div>
+                                  )}
                                 </RadioGroup>
                               </div>
                             </PopoverContent>
@@ -1125,13 +1296,18 @@ export function ProductDetails() {
                             <span className='text-muted-foreground'>
                               Estimated Shipping Time:{' '}
                             </span>
-                            <span>8-15 days</span>
+                            <span>
+                              {selectedShippingMethodData?.deliveryTime ||
+                                '---'}
+                            </span>
                           </div>
                           <div className='text-sm'>
                             <span className='text-muted-foreground'>
                               Shipping Fee:{' '}
                             </span>
-                            <span className='font-semibold'>$6.99</span>
+                            <span className='font-semibold'>
+                              {selectedShippingMethodData?.cost || '---'}
+                            </span>
                           </div>
                         </div>
                       </>
@@ -1315,16 +1491,50 @@ export function ProductDetails() {
                   ) : null}
 
                   {shouldShowMyPackagingButton && (
-                    <Button variant='outline' className='w-full' size='lg'>
-                      <div className='flex w-full items-center justify-start'>
-                        <Heart className='mr-2 h-4 w-4' />
-                        <span>
-                          {shouldShowCollectionButton
-                            ? 'Collection'
-                            : 'My Packaging'}
-                        </span>
-                      </div>
-                    </Button>
+                    <>
+                      <Button
+                        variant='outline'
+                        className='w-full'
+                        size='lg'
+                        onClick={() => setIsCollectDialogOpen(true)}
+                        disabled={isCollecting}
+                      >
+                        <div className='flex w-full items-center justify-start'>
+                          {isCollecting ? (
+                            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          ) : (
+                            <Heart className='mr-2 h-4 w-4' />
+                          )}
+                          <span>
+                            {shouldShowCollectionButton
+                              ? 'Collection'
+                              : 'My Packaging'}
+                          </span>
+                        </div>
+                      </Button>
+                      <ConfirmDialog
+                        open={isCollectDialogOpen}
+                        onOpenChange={(open) => {
+                          if (!isCollecting) {
+                            setIsCollectDialogOpen(open)
+                          }
+                        }}
+                        title='sure to collect this product?'
+                        desc='Are you sure you want to collect this product?'
+                        handleConfirm={handleCollect}
+                        isLoading={isCollecting}
+                        confirmText={
+                          isCollecting ? (
+                            <>
+                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                              handling...
+                            </>
+                          ) : (
+                            'confirm'
+                          )
+                        }
+                      />
+                    </>
                   )}
 
                   {isFromPackagingProducts && (

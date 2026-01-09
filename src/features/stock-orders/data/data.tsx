@@ -1,21 +1,16 @@
-import { CheckCircle, Clock, Package } from 'lucide-react'
-
 // 订单状态选项
 export const stockOrderStatuses = [
   {
     label: 'All',
-    value: 'all' as const,
-    icon: Package,
+    value: '' as const,
   },
   {
     label: 'Awaiting Payment',
-    value: 'Awaiting Payment' as const,
-    icon: Clock,
+    value: 'awaiting_payment' as const,
   },
   {
     label: 'Paid',
-    value: 'Paid' as const,
-    icon: CheckCircle,
+    value: 'paid' as const,
   },
   {
     label: 'Cancelled',

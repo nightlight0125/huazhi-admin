@@ -22,7 +22,7 @@ export async function getUserShop(
     '/v2/hzkj/base/shop/getUserShop',
     {
       params: {
-        id: userId,
+        hzkjAccountId: userId,
       },
     }
   )
@@ -209,6 +209,47 @@ export async function shopifyCallback(
   if (!response.data.status) {
     const errorMessage =
       response.data.message || 'Failed to complete OAuth. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 解绑店铺请求参数
+export interface UnbindShopRequest {
+  accountId: string
+  shopId: string
+  flag: number // 1 表示解绑
+}
+
+// 解绑店铺响应
+export interface UnbindShopResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status: boolean
+  [key: string]: unknown
+}
+
+// 解绑店铺 API
+export async function unbindShop(
+  params: UnbindShopRequest
+): Promise<UnbindShopResponse> {
+  const response = await apiClient.post<UnbindShopResponse>(
+    '/v2/hzkj/hzkj_member_sky/member/updateAccountBindShop',
+    {
+      accountId: params.accountId,
+      shopId: params.shopId,
+      flag: params.flag,
+    }
+  )
+
+  console.log('解绑店铺响应:', response.data)
+
+  // 检查响应状态
+  if (!response.data.status) {
+    const errorMessage =
+      response.data.message || 'Failed to unbind shop. Please try again.'
     throw new Error(errorMessage)
   }
 

@@ -7,14 +7,17 @@ import { type Order } from '../data/schema'
 
 type OrdersTableFooterProps = {
   table: Table<Order>
+  totalRows?: number // 服务端分页的总数
 }
 
-export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
+export function OrdersTableFooter({
+  table,
+  totalRows = 0,
+}: OrdersTableFooterProps) {
   const paginationState = table.getState().pagination
   const currentPage = paginationState.pageIndex + 1
   const totalPages = table.getPageCount()
   const pageSize = paginationState.pageSize
-  const totalRows = table.getRowCount()
   const pageNumbers = getPageNumbers(currentPage, totalPages)
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
   const isAllPageSelected = table.getIsAllPageRowsSelected()

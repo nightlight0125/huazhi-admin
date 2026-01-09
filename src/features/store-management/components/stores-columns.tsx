@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { Edit, Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { unbindShop } from '@/lib/api/shop'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -10,6 +13,7 @@ import { type Store } from '../data/schema'
 
 type StoresColumnsOptions = {
   onEditStoreName?: (store: Store) => void
+  onUnbindSuccess?: () => void
 }
 
 export const createStoresColumns = (
@@ -48,23 +52,11 @@ export const createStoresColumns = (
       <DataTableColumnHeader column={column} title='Store Name' />
     ),
     cell: ({ row }) => {
-      const store = row.original
       return (
         <div className='flex max-w-[260px] flex-col text-left break-words whitespace-normal'>
           <span className='leading-snug font-medium'>
             {row.getValue('name') || '-'}
           </span>
-          <button
-            type='button'
-            onClick={(e) => {
-              e.stopPropagation()
-              options?.onEditStoreName?.(store)
-            }}
-            className='text-muted-foreground hover:text-foreground mt-1 flex h-3 w-3 cursor-pointer items-center transition-colors'
-            aria-label='Edit store name'
-          >
-            <Edit className='h-3 w-3' />
-          </button>
         </div>
       )
     },
@@ -170,7 +162,9 @@ export const createStoresColumns = (
     id: 'actions',
     size: 60,
     header: () => <span className='sr-only'>Actions</span>,
-    cell: ({ row }) => <StoreDeleteCell row={row} />,
+    cell: ({ row }) => (
+      <StoreDeleteCell row={row} onUnbindSuccess={options?.onUnbindSuccess} />
+    ),
     enableSorting: false,
     enableHiding: false,
   },
@@ -179,16 +173,43 @@ export const createStoresColumns = (
 // 单行删除弹框
 interface StoreDeleteCellProps {
   row: Row<Store>
+  onUnbindSuccess?: () => void
 }
 
-function StoreDeleteCell({ row }: StoreDeleteCellProps) {
+function StoreDeleteCell({ row, onUnbindSuccess }: StoreDeleteCellProps) {
   const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const store = row.original
+  const user = useAuthStore((state) => state.auth.user)
 
-  const handleConfirmDelete = () => {
-    // TODO: integrate real delete API for store management
-    console.log('Delete store:', store.id || store.name)
-    setOpen(false)
+  const handleConfirmUnbind = async () => {
+    if (!user?.id || !store.id) {
+      toast.error('Missing user ID or store ID')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      await unbindShop({
+        accountId: user.id,
+        shopId: store.id,
+        flag: 1, // 1 表示解绑
+      })
+
+      toast.success('Store unbound successfully')
+      setOpen(false)
+      // 触发刷新列表
+      onUnbindSuccess?.()
+    } catch (error) {
+      console.error('Failed to unbind store:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to unbind store. Please try again.'
+      )
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -201,20 +222,26 @@ function StoreDeleteCell({ row }: StoreDeleteCellProps) {
           e.stopPropagation()
           setOpen(true)
         }}
+        disabled={isLoading}
       >
         <Trash2 className='mr-1 h-3.5 w-3.5' />
       </Button>
 
       <ConfirmDialog
         open={open}
-        onOpenChange={setOpen}
-        handleConfirm={handleConfirmDelete}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) {
+            setOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmUnbind}
         destructive
-        title={<span className='text-destructive'>Delete Store</span>}
+        isLoading={isLoading}
+        title={<span className='text-destructive'>Unbind Store</span>}
         desc={
           <>
             <p className='mb-2'>
-              Are you sure you want to delete this store?
+              Are you sure you want to unbind this store?
               <br />
               This action cannot be undone.
             </p>
@@ -223,7 +250,16 @@ function StoreDeleteCell({ row }: StoreDeleteCellProps) {
             </p>
           </>
         }
-        confirmText='Delete'
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Unbinding...
+            </>
+          ) : (
+            'Unbind'
+          )
+        }
       />
     </>
   )

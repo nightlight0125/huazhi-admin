@@ -5,7 +5,7 @@ import { allCountries } from '@/lib/countries'
 export const orderStatuses = [
   {
     label: 'AlI',
-    value: 'all' as const,
+    value: '' as const,
   },
   {
     label: 'Pending',

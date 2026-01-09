@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import {
+  orderCountStatistics,
+  type OrderCountStatisticsData,
+} from '@/lib/api/orders'
 import { queryCustomerUser, type CustomerUserItem } from '@/lib/api/users'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
@@ -42,22 +46,25 @@ export function Dashboard() {
   const [customerUser, setCustomerUser] = useState<CustomerUserItem | null>(
     null
   )
+  const [orderStats, setOrderStats] = useState<OrderCountStatisticsData>({
+    newCount: 0,
+    paidCount: 0,
+    paymentCount: 0,
+    rmaCount: 0,
+  })
 
   // 获取客户用户信息
   useEffect(() => {
     const fetchCustomerUser = async () => {
       const userId = authUser?.id
       if (!userId) {
-        console.warn('No user ID available')
         return
       }
 
       try {
         const userData = await queryCustomerUser(userId, 1, 10)
         setCustomerUser(userData)
-        console.log('客户用户数据:', userData)
       } catch (error) {
-        console.error('Failed to fetch customer user:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -70,23 +77,44 @@ export function Dashboard() {
     void fetchCustomerUser()
   }, [authUser?.id])
 
-  // 使用 API 返回的数据，如果没有则使用 auth store 的数据作为后备
-  const user = customerUser
-    ? {
-        username:
-          customerUser.hzkj_biz_user_username ||
-          customerUser.hzkj_biz_user_name ||
-          '',
-        phone: customerUser.hzkj_biz_user_phone || '',
-        email: customerUser.hzkj_biz_user_email || '',
-        picture: customerUser.hzkj_biz_user_picturefield || '',
+  // 获取订单数量统计
+  useEffect(() => {
+    const fetchOrderStats = async () => {
+      const customerId = authUser?.customerId || authUser?.id
+      if (!customerId) {
+        return
       }
-    : {
-        username: authUser?.username || '',
-        phone: authUser?.phone || '',
-        email: authUser?.email || '',
-        picture: '',
+
+      try {
+        const stats = await orderCountStatistics(String(customerId))
+        setOrderStats(stats)
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load order count statistics. Please try again.'
+        )
+        setOrderStats({
+          newCount: 0,
+          paidCount: 0,
+          paymentCount: 0,
+          rmaCount: 0,
+        })
       }
+    }
+
+    void fetchOrderStats()
+  }, [authUser?.customerId, authUser?.id])
+
+  const user = {
+    username:
+      customerUser?.hzkj_biz_user_username ||
+      customerUser?.hzkj_biz_user_name ||
+      '-',
+    phone: customerUser?.hzkj_biz_user_phone || '-',
+    email: customerUser?.hzkj_biz_user_email || '-',
+    picture: customerUser?.hzkj_biz_user_picturefield || '',
+  }
 
   return (
     <>
@@ -125,10 +153,9 @@ export function Dashboard() {
                       </svg>
                     </CardHeader>
                     <CardContent>
-                      <div className='text-2xl font-bold'>$45,231.89</div>
-                      <p className='text-muted-foreground text-xs'>
-                        +20.1% from last month
-                      </p>
+                      <div className='text-2xl font-bold'>
+                        {orderStats.newCount}
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
@@ -144,7 +171,7 @@ export function Dashboard() {
                         strokeLinecap='round'
                         strokeLinejoin='round'
                         strokeWidth='2'
-                        className='text-muted-foreground h-4 w-4'
+                        className='text-muted-foreground h-3 w-3'
                       >
                         <path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' />
                         <circle cx='9' cy='7' r='4' />
@@ -152,10 +179,9 @@ export function Dashboard() {
                       </svg>
                     </CardHeader>
                     <CardContent>
-                      <div className='text-2xl font-bold'>+2350</div>
-                      <p className='text-muted-foreground text-xs'>
-                        +180.1% from last month
-                      </p>
+                      <div className='text-2xl font-bold'>
+                        {orderStats.paymentCount}
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
@@ -178,10 +204,9 @@ export function Dashboard() {
                       </svg>
                     </CardHeader>
                     <CardContent>
-                      <div className='text-2xl font-bold'>+12,234</div>
-                      <p className='text-muted-foreground text-xs'>
-                        +19% from last month
-                      </p>
+                      <div className='text-2xl font-bold'>
+                        {orderStats.paidCount}
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
@@ -203,10 +228,9 @@ export function Dashboard() {
                       </svg>
                     </CardHeader>
                     <CardContent>
-                      <div className='text-2xl font-bold'>+573</div>
-                      <p className='text-muted-foreground text-xs'>
-                        +201 since last hour
-                      </p>
+                      <div className='text-2xl font-bold'>
+                        {orderStats.rmaCount}
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -216,7 +240,6 @@ export function Dashboard() {
                 <HotSellingProducts />
               </div>
               <div className='w-full space-y-3 lg:w-[320px] lg:flex-shrink-0 xl:w-[340px] 2xl:w-[360px]'>
-                {/* Account Balance */}
                 <div>
                   <h2 className='mb-2 text-base font-bold'>Account Balance</h2>
                   <Card>

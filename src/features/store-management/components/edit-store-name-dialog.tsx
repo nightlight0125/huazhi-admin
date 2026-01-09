@@ -14,7 +14,7 @@ interface EditStoreNameDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   storeName: string
-  onConfirm: (newStoreName: string) => void
+  onConfirm: (storeName: string) => void
 }
 
 export function EditStoreNameDialog({
@@ -28,7 +28,7 @@ export function EditStoreNameDialog({
   // Initialize form with store name
   useEffect(() => {
     if (open) {
-      setName(storeName)
+      setName(storeName || '')
     }
   }, [storeName, open])
 
@@ -36,12 +36,13 @@ export function EditStoreNameDialog({
     if (!name.trim()) {
       return
     }
+
     onConfirm(name.trim())
     onOpenChange(false)
   }
 
   const handleCancel = () => {
-    setName(storeName)
+    setName(storeName || '')
     onOpenChange(false)
   }
 
@@ -52,7 +53,7 @@ export function EditStoreNameDialog({
           <DialogTitle>Edit Store Name</DialogTitle>
         </DialogHeader>
 
-        <div className='space-y-4 py-4'>
+        <div className='py-4'>
           <div className='space-y-2'>
             <Label htmlFor='store-name'>
               Store Name <span className='text-red-500'>*</span>
@@ -62,20 +63,20 @@ export function EditStoreNameDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder='Enter store name'
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleConfirm()
-                }
-              }}
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant='outline' onClick={handleCancel}>
+          <Button type='button' variant='outline' onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={!name.trim()}>
+          <Button
+            type='button'
+            onClick={handleConfirm}
+            disabled={!name.trim()}
+            className='bg-orange-500 text-white hover:bg-orange-600'
+          >
             Confirm
           </Button>
         </DialogFooter>

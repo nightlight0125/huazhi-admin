@@ -1,7 +1,11 @@
+import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { type Table } from '@tanstack/react-table'
 import {
   ChevronDown,
   Download,
   FileDown,
+  Loader2,
   Merge,
   Package,
   Plus,
@@ -11,7 +15,9 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { addRMAOrder } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -19,11 +25,67 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { type Order } from '../data/schema'
 import { useOrders } from './orders-provider'
 
-export function OrdersPrimaryButtons() {
+interface OrdersPrimaryButtonsProps {
+  table?: Table<Order> | null
+}
+
+export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
   const { setOpen } = useOrders()
   const navigate = useNavigate()
+  const { auth } = useAuthStore()
+  const [rmaDialogOpen, setRmaDialogOpen] = useState(false)
+  const [isCreatingRMA, setIsCreatingRMA] = useState(false)
+
+  const handleCreateRMA = async () => {
+    if (!table) {
+      toast.error('Table not available')
+      return
+    }
+
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    if (selectedRows.length === 0) {
+      toast.error('Please select at least one order')
+      return
+    }
+
+    if (selectedRows.length > 1) {
+      toast.error('Please select only one order')
+      return
+    }
+
+    const customerId = auth.user?.customerId || auth.user?.id
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    const order = selectedRows[0].original
+    setIsCreatingRMA(true)
+
+    try {
+      await addRMAOrder({
+        customerId: String(customerId),
+        orderId: order.id,
+      })
+      toast.success('RMA order created successfully')
+      setRmaDialogOpen(false)
+      // 刷新订单列表
+      table.resetRowSelection()
+    } catch (error) {
+      console.error('创建售后订单失败:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to create RMA order. Please try again.'
+      )
+    } finally {
+      setIsCreatingRMA(false)
+    }
+  }
 
   const handleAction = (action: string) => {
     switch (action) {
@@ -54,8 +116,20 @@ export function OrdersPrimaryButtons() {
         setOpen('import')
         break
       case 'after_sales':
-        // TODO: Implement after-sales action
-        console.log('After-Sales')
+        if (!table) {
+          toast.error('Table not available')
+          return
+        }
+        const selectedRows = table.getFilteredSelectedRowModel().rows
+        if (selectedRows.length === 0) {
+          toast.error('Please select at least one order')
+          return
+        }
+        if (selectedRows.length > 1) {
+          toast.error('Please select only one order')
+          return
+        }
+        setRmaDialogOpen(true)
         break
       case 'use_stock':
         // TODO: Implement use stock action
@@ -121,6 +195,29 @@ export function OrdersPrimaryButtons() {
       >
         <span>Sync Orders</span> <RefreshCw size={18} />
       </Button>
+
+      <ConfirmDialog
+        open={rmaDialogOpen}
+        onOpenChange={(newOpen) => {
+          if (!isCreatingRMA) {
+            setRmaDialogOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleCreateRMA}
+        isLoading={isCreatingRMA}
+        title='Create RMA Order'
+        desc='Creating RMA order...'
+        confirmText={
+          isCreatingRMA ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Creating...
+            </>
+          ) : (
+            'Confirm'
+          )
+        }
+      />
     </div>
   )
 }

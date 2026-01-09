@@ -98,7 +98,6 @@ export function UserAuthForm({
       if (!finalToken || finalToken.trim() === '') {
         throw new Error('Failed to get valid token. Please try again.')
       }
-      console.log('======finalToken', finalToken)
 
       auth.setAccessToken(finalToken)
 
@@ -119,7 +118,6 @@ export function UserAuthForm({
         }
         [key: string]: unknown
       }
-      console.log('======userData', userData)
 
       const user = {
         accountNo: userData.accountId || userData.id || data.email,
@@ -133,7 +131,6 @@ export function UserAuthForm({
           userData.user?.hzkj_whatsapp1 || userData.hzkj_whatsapp1 || '',
         customerId: userData.user?.customerId || userData.customerId || '',
       }
-      console.log('======user12345678', user)
       auth.setUser(user)
 
       // 登录成功后立即请求角色列表并存储

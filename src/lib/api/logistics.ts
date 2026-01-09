@@ -240,3 +240,51 @@ export async function getCusList(
   }
 }
 
+// 计算运费请求参数
+export interface CalcuFreightRequest {
+  spuId: string
+  destinationId: string
+}
+
+// 运费选项接口（后端返回的原始格式）
+export interface FreightOption {
+  logsId: string
+  logsNumber: string
+  freight: number
+  time: string
+  [key: string]: unknown
+}
+
+// 计算运费响应
+export interface CalcuFreightResponse {
+  data?: FreightOption[]
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 计算运费 API
+export async function calcuFreight(
+  params: CalcuFreightRequest
+): Promise<FreightOption[]> {
+  const response = await apiClient.post<CalcuFreightResponse>(
+    '/v2/hzkj/hzkj_logistics/hzkj_cus_freight/calcuFreight',
+    params
+  )
+
+  console.log('计算运费响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to calculate freight. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 提取运费选项数据
+  const data = response.data.data
+  return Array.isArray(data) ? data : []
+}
+

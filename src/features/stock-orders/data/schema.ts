@@ -55,6 +55,11 @@ export const stockOrderSchema = z.object({
   remark: z.string(),              // 备注
   status: stockOrderStatusSchema, // 订单状态
   productList: z.array(stockOrderProductSchema), // 产品列表
+  // API 原始字段（用于兼容）
+  billno: z.string().optional(), // 订单号（原始字段）
+  createtime: z.string().optional(), // 创建时间（原始字段）
+  // 仓库名称（原始字段），结构动态，使用 any
+  hzkj_warehouse_name: z.any().optional(),
 })
 
 export type StockOrder = z.infer<typeof stockOrderSchema>

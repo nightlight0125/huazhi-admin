@@ -1,5 +1,5 @@
-import { apiClient } from '../api-client'
 import type { Order } from '@/features/orders/data/schema'
+import { apiClient } from '../api-client'
 
 // 查询订单请求参数
 export interface QueryOrderRequest {
@@ -8,6 +8,11 @@ export interface QueryOrderRequest {
   str?: string // 搜索字符串，可选
   pageIndex: number
   pageSize: number
+  shopId?: string // 商店ID，可选
+  shopOrderStatus?: string // 商店订单状态，可选
+  countryId?: string // 国家ID，可选
+  startDate?: string // 开始日期，可选
+  endDate?: string // 结束日期，可选
 }
 
 // API 返回的订单项
@@ -82,6 +87,12 @@ export interface ApiOrderItem {
   hzkj_reccustomer?: string
   billno?: string
   [key: string]: unknown
+  hzkj_product_name_en?: {
+    GLang?: string
+    zh_CN?: string
+    zh_TW?: string
+    [key: string]: unknown
+  }
 }
 
 // 查询订单响应
@@ -97,6 +108,82 @@ export interface QueryOrderResponse {
   [key: string]: unknown
 }
 
+// 将 API 订单项转换为 Order 类型
+function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
+  // 转换产品列表
+  console.log(apiOrder, 'apiOrder')
+  const productList = (apiOrder.lingItems || []).map((item, index) => ({
+    id: item.entryId || `product-${index}`,
+    productName: item.hzkj_product_name_en?.GLang || item.hzkj_local_sku_name_cn?.GLang || '',
+    productVariant: item.hzkj_variant_name ? [
+      {
+        id: `variant-${index}`,
+        name: 'Variant',
+        value: item.hzkj_variant_name,
+      },
+    ] : [],
+    quantity: Number(item.hzkj_qty) || 0,
+    productImageUrl: item.hzkj_picture || '',
+    productLink: '',
+    price: Number(item.hzkj_shop_price) || 0,
+    totalPrice: Number(item.hzkj_amount) || 0,
+  }))
+
+  // 提取地址信息
+  const address = apiOrder.hzkj_bill_address || apiOrder.hzkj_sam_address || ''
+  const country = apiOrder.hzkj_country_address || ''
+  const customerName = apiOrder.hzkj_customer_name?.GLang || apiOrder.hzkj_buyer || ''
+  
+  // 创建日期
+  const createdAt = apiOrder.createtime ? new Date(apiOrder.createtime) : new Date()
+  
+  return {
+    id: apiOrder.id,
+    store: apiOrder.hzkj_shop_name?.GLang || '',
+    orderNumber: apiOrder.billno || apiOrder.hzkj_source_number || '',
+    customerName,
+    country,
+    province: '',
+    city: '',
+    address,
+    phoneNumber: apiOrder.hzkj_telephone || '',
+    email: apiOrder.hzkj_email || '',
+    postalCode: apiOrder.hzkj_post_code || '',
+    taxNumber: '',
+    productList,
+    storeName: apiOrder.hzkj_shop_name?.GLang || '',
+    platformOrderNumber: apiOrder.billno || '',
+    customerOrderNumber: apiOrder.hzkj_source_number || '',
+    customer: customerName,
+    trackingNumber: '',
+    shippingCost: 0,
+    otherCosts: 0,
+    totalCost: apiOrder.hzkj_order_amount || 0,
+    shippingStock: '',
+    productName: productList[0]?.productName || '',
+    logistics: apiOrder.hzkj_deliveryway || '',
+    platformOrderStatus: (apiOrder.hzkj_orderstatus || '0') as any,
+    platformFulfillmentStatus: (apiOrder.hzkj_fulfillment_status || 'unfulfilled') as any,
+    shippingOrigin: '',
+    status: 'pending' as any,
+    createdAt,
+    updatedAt: createdAt,
+    hzkj_country_code: apiOrder.hzkj_country_code || null,
+    hzkj_orderstatus: apiOrder.hzkj_orderstatus,
+    hzkj_fulfillment_status: apiOrder.hzkj_fulfillment_status || null,
+    hzkj_order_amount: apiOrder.hzkj_order_amount,
+    hzkj_pack_weight_total: apiOrder.hzkj_pack_weight_total,
+    hzkj_product_name_en: apiOrder.hzkj_product_name_en?.GLang || apiOrder.hzkj_product_name_en?.zh_CN || '',
+    // 添加额外的字段以支持 orders-columns.tsx
+    lingItems: apiOrder.lingItems,
+    hzkj_shop_name: apiOrder.hzkj_shop_name,
+    billno: apiOrder.billno,
+    createtime: apiOrder.createtime,
+    hzkj_customer_name: apiOrder.hzkj_customer_name,
+    providers: apiOrder.hzkj_deliveryway,
+  } as Order
+}
+
 // 查询订单 API
 export async function queryOrder(
   params: QueryOrderRequest
@@ -106,8 +193,6 @@ export async function queryOrder(
     params
   )
 
-  console.log('查询订单响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -115,144 +200,12 @@ export async function queryOrder(
     throw new Error(errorMessage)
   }
 
-  const array = response.data.data?.array || []
-  const total = response.data.data?.total || 0
-
-  // 转换 API 数据为 Order 类型
-  const orders: Order[] = array.map((item) => {
-    // 提取店铺名称
-    const shopName =
-      typeof item.hzkj_shop_name === 'object' && item.hzkj_shop_name !== null
-        ? (item.hzkj_shop_name.zh_CN ||
-            item.hzkj_shop_name.GLang ||
-            String(item.hzkj_shop_name))
-        : String(item.hzkj_shop_name || '')
-
-    // 提取客户名称
-    const customerName =
-      typeof item.hzkj_customer_name === 'object' &&
-      item.hzkj_customer_name !== null
-        ? (item.hzkj_customer_name.zh_CN ||
-            item.hzkj_customer_name.GLang ||
-            item.hzkj_customer_name.zh_TW ||
-            String(item.hzkj_customer_name))
-        : String(item.hzkj_customer_name || '')
-
-    // 转换产品列表
-    const productList =
-      item.lingItems?.map((lineItem, index) => {
-        const productName =
-          typeof lineItem.hzkj_product_name_en === 'object' &&
-          lineItem.hzkj_product_name_en !== null
-            ? (lineItem.hzkj_product_name_en.zh_CN ||
-                lineItem.hzkj_product_name_en.GLang ||
-                lineItem.hzkj_product_name_en.zh_TW ||
-                String(lineItem.hzkj_product_name_en))
-            : String(lineItem.hzkj_product_name_en || '')
-
-        const localSkuName =
-          typeof lineItem.hzkj_local_sku_name_cn === 'object' &&
-          lineItem.hzkj_local_sku_name_cn !== null
-            ? (lineItem.hzkj_local_sku_name_cn.zh_CN ||
-                lineItem.hzkj_local_sku_name_cn.GLang ||
-                lineItem.hzkj_local_sku_name_cn.zh_TW ||
-                String(lineItem.hzkj_local_sku_name_cn))
-            : String(lineItem.hzkj_local_sku_name_cn || '')
-
-        const quantity = parseFloat(lineItem.hzkj_qty || '0')
-        const price = lineItem.hzkj_shop_price || 0
-        const amount = parseFloat(lineItem.hzkj_amount || '0')
-
-        // 解析变体名称
-        const variantParts = lineItem.hzkj_variant_name
-          ? lineItem.hzkj_variant_name.split(' / ')
-          : []
-        const productVariant =
-          variantParts.length > 0
-            ? [
-                {
-                  id: `${lineItem.entryId || index}-color`,
-                  name: 'Color',
-                  value: variantParts[0] || '',
-                },
-                ...(variantParts.length > 1
-                  ? [
-                      {
-                        id: `${lineItem.entryId || index}-size`,
-                        name: 'Size',
-                        value: variantParts[1] || '',
-                      },
-                    ]
-                  : []),
-              ]
-            : []
-
-        return {
-          id: lineItem.entryId || `${item.id}-${index}`,
-          productName: productName || localSkuName,
-          productVariant,
-          quantity,
-          productImageUrl: lineItem.hzkj_picture || '',
-          productLink: '',
-          price,
-          totalPrice: amount || price * quantity,
-        }
-      }) || []
-
-    // 解析日期
-    const createdAt = item.createtime
-      ? new Date(item.createtime)
-      : new Date()
-    const updatedAt = item.hzkj_bizdate
-      ? new Date(item.hzkj_bizdate)
-      : createdAt
-
-    // 解析地址信息
-    const countryAddress = item.hzkj_country_address || ''
-    const addressParts = countryAddress.split('/')
-    const country = addressParts[0] || item.hzkj_country_code || ''
-    const province = addressParts[1] || ''
-    const city = ''
-
-    return {
-      id: item.id,
-      store: item.hzkj_shop_number || '',
-      orderNumber: item.billno || item.hzkj_source_number || item.id,
-      customerName,
-      country,
-      province,
-      city,
-      address: item.hzkj_address || '',
-      phoneNumber: item.hzkj_telephone || '',
-      email: item.hzkj_email || '',
-      postalCode: item.hzkj_post_code || '',
-      taxNumber: '',
-      productList,
-
-      // 保留原有字段以兼容现有代码
-      storeName: shopName,
-      platformOrderNumber: item.hzkj_source_number || '',
-      customerOrderNumber: item.billno || '',
-      customer: customerName,
-      trackingNumber: '',
-      shippingCost: 0,
-      otherCosts: 0,
-      totalCost: item.hzkj_order_amount || 0,
-      shippingStock: '',
-      productName: productList[0]?.productName || '',
-      logistics: item.hzkj_deliveryway || '',
-      platformOrderStatus: (item.hzkj_orderstatus as '0' | 'no' | '1' | '2' | '3' | '4') || '1',
-      platformFulfillmentStatus: (item.hzkj_fulfillment_status as 'unfulfilled' | 'partial' | 'fulfilled' | 'restocked') || 'unfulfilled',
-      shippingOrigin: '',
-      status: 'pending' as const,
-      createdAt,
-      updatedAt,
-    }
-  })
+  const apiOrders = Array.isArray(response.data.data?.array) ? response.data.data?.array : []
+  const orders = apiOrders.map(transformApiOrderToOrder)
 
   return {
-    orders: Array.isArray(orders) ? orders : [],
-    total: typeof total === 'number' ? total : 0,
+    orders,
+    total: typeof response.data.data?.total === 'number' ? response.data.data?.total : 0,
   }
 }
 
@@ -334,6 +287,51 @@ export async function deleteOrder(
   return response.data
 }
 
+// 创建售后订单请求参数
+export interface AddRMAOrderRequest {
+  customerId: string
+  orderId: string
+  cusNote?: string
+}
+
+// 创建售后订单响应
+export interface AddRMAOrderResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 创建售后订单 API
+export async function addRMAOrder(
+  params: AddRMAOrderRequest
+): Promise<AddRMAOrderResponse> {
+  const requestData = {
+    customerId: params.customerId,
+    orderId: params.orderId,
+    cusNote: params.cusNote || '',
+  }
+
+  console.log('创建售后订单请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<AddRMAOrderResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/addRMAOrder',
+    requestData
+  )
+
+  console.log('创建售后订单响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to create RMA order. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 删除库存订单请求参数
 export interface DeleteStockOrderRequest {
   customerId: string | number
@@ -397,6 +395,220 @@ export async function syncShopOrders(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to sync shop orders. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 订单图形统计项
+export interface GraphicStatisticsItem {
+  orderAmount: number
+  orderCount: number
+  paidAmount: number
+}
+
+// 订单图形统计请求参数
+export interface GraphicStatisticsRequest {
+  customerId: string
+}
+
+// 订单图形统计响应
+export interface GraphicStatisticsResponse {
+  data?: Record<string, GraphicStatisticsItem>
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 订单图形统计 API
+export async function graphicStatistics(
+  customerId: string
+): Promise<Record<string, GraphicStatisticsItem>> {
+  const requestData: GraphicStatisticsRequest = {
+    customerId,
+  }
+
+  console.log('订单图形统计请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<GraphicStatisticsResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/graphicStatistics',
+    requestData
+  )
+
+  console.log('订单图形统计响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to get graphic statistics. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回统计数据对象
+  return response.data.data || {}
+}
+
+// 热销产品统计项
+export interface HotProductStatisticsItem {
+  productName: string
+  skuNumber: string
+  totalAmount: number
+  totalQty: number
+}
+
+// 热销产品统计请求参数
+export interface HotProductStatisticsRequest {
+  customerId: string
+  pageIndex: number
+  pageSize: number
+  shopId?: string
+  startDate?: string
+  endDate?: string
+}
+
+// 热销产品统计响应
+export interface HotProductStatisticsResponse {
+  data?: {
+    total?: number
+    rows?: HotProductStatisticsItem[]
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 热销产品统计 API
+export async function hotProductStatistics(
+  customerId: string,
+  pageIndex: number = 0,
+  pageSize: number = 10,
+  shopId?: string,
+  startDate?: string,
+  endDate?: string
+): Promise<{ rows: HotProductStatisticsItem[]; total: number }> {
+  const requestData: HotProductStatisticsRequest = {
+    customerId,
+    pageIndex,
+    pageSize,
+    ...(shopId && { shopId }),
+    ...(startDate && { startDate }),
+    ...(endDate && { endDate }),
+  }
+
+  console.log('热销产品统计请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<HotProductStatisticsResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/hotProductStatistics',
+    requestData
+  )
+
+  console.log('热销产品统计响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to get hot product statistics. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回数据
+  const rows = response.data.data?.rows || []
+  const total = response.data.data?.total || 0
+
+  return {
+    rows: Array.isArray(rows) ? rows : [],
+    total: typeof total === 'number' ? total : 0,
+  }
+}
+
+// 订单数量统计请求参数
+export interface OrderCountStatisticsRequest {
+  customerId: string
+}
+
+// 订单数量统计响应数据
+export interface OrderCountStatisticsData {
+  newCount: number
+  paidCount: number
+  paymentCount: number
+  rmaCount: number
+}
+
+// 订单数量统计响应
+export interface OrderCountStatisticsResponse {
+  data?: OrderCountStatisticsData
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 订单数量统计 API
+export async function orderCountStatistics(
+  customerId: string
+): Promise<OrderCountStatisticsData> {
+  const requestData: OrderCountStatisticsRequest = {
+    customerId,
+  }
+
+  console.log('订单数量统计请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<OrderCountStatisticsResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/orderCountStatistics',
+    requestData
+  )
+
+  console.log('订单数量统计响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to get order count statistics. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回统计数据
+  return response.data.data || {
+    newCount: 0,
+    paidCount: 0,
+    paymentCount: 0,
+    rmaCount: 0,
+  }
+}
+
+// 请求支付接口
+export interface RequestPaymentRequest {
+  customerId: string
+  orderIds: string[]
+  type: number // 2 表示库存订单
+}
+
+export interface RequestPaymentResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status: boolean
+  [key: string]: unknown
+}
+
+export async function requestPayment(
+  request: RequestPaymentRequest
+): Promise<RequestPaymentResponse> {
+  const response = await apiClient.post<RequestPaymentResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/requestPayment',
+    request
+  )
+
+  if (!response.data.status) {
+    const errorMessage =
+      response.data.message || 'Failed to request payment. Please try again.'
     throw new Error(errorMessage)
   }
 

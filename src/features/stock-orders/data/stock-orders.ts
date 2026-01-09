@@ -48,8 +48,8 @@ export const stockOrders: StockOrder[] = Array.from({ length: 50 }, () => {
     }
   })
 
-  // Filter out 'all' status as it's not a valid order status
-  const validStatus = orderStatus === 'all' ? 'pending' : orderStatus
+  // "" 表示 All，不是有效后端状态，这里映射为 pending
+  const validStatus = orderStatus === '' ? 'pending' : orderStatus
 
   return {
     id: faker.string.uuid(),

@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
 import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { requestPayment } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,7 +20,6 @@ import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-ta
 import { useOrders } from './orders-provider'
 import { OrdersBulkActionsDialog } from './orders-bulk-actions-dialog'
 import { OrdersMergeDialog } from './orders-merge-dialog'
-import { OrdersBatchPaymentDialog } from './orders-batch-payment-dialog'
 import { OrdersConfirmDialog } from './orders-confirm-dialog'
 
 interface DataTableBulkActionsProps {
@@ -25,6 +27,7 @@ interface DataTableBulkActionsProps {
 }
 
 export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
+  const { auth } = useAuthStore()
   const { setOpen } = useOrders()
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const [bulkActionDialog, setBulkActionDialog] = useState<{
@@ -32,7 +35,6 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
     action: string
   }>({ open: false, action: '' })
   const [mergeDialog, setMergeDialog] = useState(false)
-  const [paymentDialog, setPaymentDialog] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean
     title: string
@@ -65,7 +67,7 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
     }
 
     if (action === 'batch_payment') {
-      setPaymentDialog(true)
+      void handleBatchPayment(selectedOrderIds)
       return
     }
 
@@ -95,6 +97,40 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
 
     // 对于其他需要确认的操作，打开通用对话框
     setBulkActionDialog({ open: true, action })
+  }
+
+  const handleBatchPayment = async (orderIds: string[]) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    if (orderIds.length === 0) {
+      toast.error('Please select at least one order')
+      return
+    }
+
+    try {
+      await requestPayment({
+        customerId: String(customerId),
+        orderIds,
+        type: 0, // 0 表示普通订单
+      })
+
+      toast.success(
+        `Payment request submitted successfully for ${orderIds.length} order(s)`
+      )
+      // 清空选择
+      table.resetRowSelection()
+    } catch (error) {
+      console.error('Failed to request batch payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request batch payment. Please try again.'
+      )
+    }
   }
 
   return (
@@ -204,11 +240,6 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
         selectedOrders={selectedRows.map((row) => row.original)}
       />
 
-      <OrdersBatchPaymentDialog
-        open={paymentDialog}
-        onOpenChange={setPaymentDialog}
-        selectedOrders={selectedRows.map((row) => row.original)}
-      />
 
       <OrdersConfirmDialog
         open={confirmDialog.open}

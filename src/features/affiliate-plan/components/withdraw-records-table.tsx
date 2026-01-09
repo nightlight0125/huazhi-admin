@@ -1,14 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { format } from 'date-fns'
 import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
+import { Loader2 } from 'lucide-react'
+import { type DateRange } from 'react-day-picker'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryCustomerTrace, type CustomerTraceItem } from '@/lib/api/users'
 import {
   TableBody,
   TableCell,
@@ -23,74 +28,101 @@ import { WithdrawRecordsBulkActions } from './withdraw-records-bulk-actions'
 import { withdrawRecordsColumns } from './withdraw-records-columns'
 
 interface WithdrawRecordsTableProps {
-  data: WithdrawRecord[]
+  data?: WithdrawRecord[]
 }
 
-export function WithdrawRecordsTable({ data }: WithdrawRecordsTableProps) {
+export function WithdrawRecordsTable({
+  data: _data,
+}: WithdrawRecordsTableProps) {
+  const { auth } = useAuthStore()
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
+  const [tableData, setTableData] = useState<WithdrawRecord[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
-  // Fallback test data if no data is provided
-  const testData: WithdrawRecord[] = [
-    {
-      id: '1',
-      account: '1234567890',
-      accountType: 'Bank Account',
-      amount: 100.5,
-      dateTime: new Date('2025-01-15T10:30:00'),
-      status: 'Pending',
-      remarks: 'Test withdrawal 1',
-    },
-    {
-      id: '2',
-      account: '0987654321',
-      accountType: 'PayPal',
-      amount: 250.75,
-      dateTime: new Date('2025-01-16T14:20:00'),
-      status: 'Completed',
-      remarks: 'Successfully processed',
-    },
-    {
-      id: '3',
-      account: '1122334455',
-      accountType: 'Alipay',
-      amount: 500.0,
-      dateTime: new Date('2025-01-17T09:15:00'),
-      status: 'Processing',
-      remarks: 'In progress',
-    },
-    {
-      id: '4',
-      account: '5566778899',
-      accountType: 'WeChat Pay',
-      amount: 75.25,
-      dateTime: new Date('2025-01-18T16:45:00'),
-      status: 'Failed',
-      remarks: 'Transaction failed',
-    },
-    {
-      id: '5',
-      account: '9988776655',
-      accountType: 'Bank Account',
-      amount: 300.0,
-      dateTime: new Date('2025-01-19T11:20:00'),
-      status: 'Completed',
-      remarks: undefined,
-    },
-  ]
+  // 格式化日期范围
+  const formattedDateRange = useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      // 开始日期使用当天的 00:00:00
+      const startDate = new Date(dateRange.from)
+      startDate.setHours(0, 0, 0, 0)
 
-  // Use provided data or fallback to test data
-  const tableData = data && data.length > 0 ? data : testData
+      // 结束日期使用当天的 23:59:59
+      const endDate = new Date(dateRange.to)
+      endDate.setHours(23, 59, 59, 999)
 
+      return {
+        startDate: format(startDate, 'yyyy-MM-dd HH:mm:ss'),
+        endDate: format(endDate, 'yyyy-MM-dd HH:mm:ss'),
+      }
+    }
+    return undefined
+  }, [dateRange])
+
+  // 将后端数据映射为 WithdrawRecord 格式
+  const mapTraceToWithdrawRecord = (
+    item: CustomerTraceItem
+  ): WithdrawRecord => {
+    return {
+      id: item.id || '',
+      account: item.hzkj_email || item.number || '',
+      accountType: item.hzkj_src_type_title || item.hzkj_type_title || '',
+      amount: 0, // 后端数据中没有金额字段，设为0
+      dateTime: new Date(), // 后端数据中没有日期字段，使用当前日期
+      status: item.status_title || item.status || '',
+      remarks: item.hzkj_src_channel_name || undefined,
+    }
+  }
+
+  // 获取数据
   useEffect(() => {
-    console.log(
-      'WithdrawRecordsTable data:',
-      data?.length || 0,
-      'Using:',
-      tableData.length
-    )
-  }, [data, tableData])
+    const fetchData = async () => {
+      if (!auth.user?.customerId) {
+        return
+      }
+
+      setIsLoading(true)
+      try {
+        const result = await queryCustomerTrace(
+          String(auth.user.customerId),
+          pagination.pageIndex + 1,
+          pagination.pageSize,
+          formattedDateRange?.startDate,
+          formattedDateRange?.endDate
+        )
+
+        const mappedData = result.rows.map(mapTraceToWithdrawRecord)
+        setTableData(mappedData)
+        setTotalCount(result.totalCount)
+      } catch (error) {
+        console.error('Failed to fetch withdraw records:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch withdraw records. Please try again.'
+        )
+        setTableData([])
+        setTotalCount(0)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void fetchData()
+  }, [
+    auth.user?.id,
+    pagination.pageIndex,
+    pagination.pageSize,
+    formattedDateRange?.startDate,
+    formattedDateRange?.endDate,
+  ])
 
   const table = useReactTable({
     data: tableData,
@@ -99,11 +131,15 @@ export function WithdrawRecordsTable({ data }: WithdrawRecordsTableProps) {
       sorting,
       columnVisibility,
       rowSelection,
+      pagination,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    manualPagination: true,
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     globalFilterFn: (row, _columnId, filterValue) => {
       const account = String(row.getValue('account')).toLowerCase()
       const accountType = String(row.getValue('accountType')).toLowerCase()
@@ -112,13 +148,7 @@ export function WithdrawRecordsTable({ data }: WithdrawRecordsTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
   })
 
   return (
@@ -131,6 +161,11 @@ export function WithdrawRecordsTable({ data }: WithdrawRecordsTableProps) {
           enabled: true,
           columnId: 'dateTime',
           placeholder: 'Pick a date range',
+          onDateRangeChange: (range) => {
+            setDateRange(range)
+            // 重置到第一页
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+          },
         }}
       />
 
@@ -154,7 +189,19 @@ export function WithdrawRecordsTable({ data }: WithdrawRecordsTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={withdrawRecordsColumns.length}
+                  className='h-24 text-center'
+                >
+                  <div className='flex items-center justify-center gap-2'>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

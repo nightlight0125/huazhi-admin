@@ -31,6 +31,7 @@ type DataTableFacetedFilterProps<TData, TValue> = {
   }[]
   onFilterChange?: () => void
   columnFilters?: Array<{ id: string; value: unknown }>
+  singleSelect?: boolean // 是否单选模式
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
@@ -39,6 +40,7 @@ export function DataTableFacetedFilter<TData, TValue>({
   options,
   onFilterChange,
   columnFilters,
+  singleSelect = false,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   let facets: Map<string | number, number> = new Map()
   try {
@@ -129,16 +131,26 @@ export function DataTableFacetedFilter<TData, TValue>({
                   <CommandItem
                     key={option.value}
                     onSelect={() => {
-                      const nextSelected = new Set(selectedValues)
-                      if (isSelected) {
-                        nextSelected.delete(option.value)
+                      if (singleSelect) {
+                        // 单选模式：如果点击的是已选中的项，清除选择；否则只选择当前项
+                        if (isSelected) {
+                          column?.setFilterValue(undefined)
+                        } else {
+                          column?.setFilterValue([option.value])
+                        }
                       } else {
-                        nextSelected.add(option.value)
+                        // 多选模式：原有的逻辑
+                        const nextSelected = new Set(selectedValues)
+                        if (isSelected) {
+                          nextSelected.delete(option.value)
+                        } else {
+                          nextSelected.add(option.value)
+                        }
+                        const filterValues = Array.from(nextSelected)
+                        column?.setFilterValue(
+                          filterValues.length > 0 ? filterValues : undefined
+                        )
                       }
-                      const filterValues = Array.from(nextSelected)
-                      column?.setFilterValue(
-                        filterValues.length > 0 ? filterValues : undefined
-                      )
                       onFilterChange?.()
                     }}
                   >
