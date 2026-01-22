@@ -25,6 +25,16 @@ export const storeSkuSchema = z.object({
   hzProductImage: z.string().optional(),
   hzProductSku: z.string().optional(),
   packagingProducts: z.array(packagingProductSchema).optional(),
+  // API原始字段（可选）
+  hzkj_variant_picture: z.string().optional(),
+  hzkj_local_sku_hzkj_name: z.string().optional(),
+  hzkj_shop_sku: z.string().optional(),
+  hzkj_variantid: z.string().optional(),
+  hzkj_shop_pd_package_hzkj_picturefield: z.string().optional(),
+  hzkj_local_sku_hzkj_sku_value: z.string().optional(),
+  hzkj_local_sku_number: z.string().optional(),
+  hzkj_od_pd_shop_name: z.string().optional(),
+  hzkj_variant_price: z.number().optional(),
 })
 
 export type PackagingProduct = z.infer<typeof packagingProductSchema>

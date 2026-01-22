@@ -1,6 +1,3 @@
-import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,6 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { getAddress, type AddressItem } from '@/lib/api/users'
+import { useAuthStore } from '@/stores/auth-store'
+import { useNavigate } from '@tanstack/react-router'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export interface ConfirmOrderItem {
   id: string
@@ -54,11 +56,13 @@ interface ConfirmOrderViewProps {
 
 export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const navigate = useNavigate()
+  const { auth } = useAuthStore()
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<
     string | undefined
   >()
   const [selectedCoupon, setSelectedCoupon] = useState<string | undefined>()
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [shippingAddress, setShippingAddress] = useState<AddressItem | null>(null)
 
   const shippingMethodOptions = [
     { value: 'tdpacket-sensitive', label: 'TDPacket Sensitive' },
@@ -83,6 +87,21 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     console.log('Pay clicked', orderData)
     // 支付成功后可以关闭确认订单视图或跳转到订单列表
   }
+
+  // 获取地址信息 - 组件加载时调用
+  useEffect(() => {
+    const fetchAddress = async () => {
+      const userId = auth.user?.id 
+      try {
+        const address = await getAddress(String(userId))
+        setShippingAddress(address)
+      } catch (error) {
+        console.error('Failed to load address:', error)
+      }
+    }
+
+    void fetchAddress()
+  }, [])
 
   const totalAmount = orderData.discountedTotalPrice || orderData.totalPrice
   // 计算产品总价（所有商品费用之和）
@@ -113,10 +132,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
 
       <div className='text-muted-foreground mb-4 text-sm'></div>
       <div className='space-y-6'>
-        {/* Delivery information 区域 */}
         <div className='rounded-lg border p-6'>
           <h3 className='mb-4 text-lg font-semibold'>Delivery information</h3>
-          {!orderData.hasShippingAddress ? (
+          {!shippingAddress?.hzkj_textfield ? (
             <div className='flex flex-col items-center justify-center py-8'>
               <p className='text-muted-foreground mb-4 text-sm'>No address</p>
               <Button
@@ -131,7 +149,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
               <div className='text-sm'>
                 <span className='font-medium'>Shipping Address:</span>{' '}
                 <span className='text-muted-foreground'>
-                  广东省广州市天河区
+                  {shippingAddress?.hzkj_textfield || 'No address available'}
                 </span>
               </div>
             </div>

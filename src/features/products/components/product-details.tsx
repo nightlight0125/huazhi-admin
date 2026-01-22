@@ -1,45 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnFiltersState,
-  type RowSelectionState,
-  type SortingState,
-} from '@tanstack/react-table'
-import {
-  ArrowLeft,
-  ChevronDown,
-  Copy,
-  Heart,
-  Loader2,
-  Palette,
-  ShoppingCart,
-  Store,
-  Tag,
-  Truck,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import countries from 'world-countries'
-import { useAuthStore } from '@/stores/auth-store'
-import type { ShopInfo } from '@/stores/shop-store'
-import {
-  calcuFreight,
-  getStatesList,
-  type FreightOption,
-  type StateItem,
-} from '@/lib/api/logistics'
-import {
-  collectProduct,
-  getProduct,
-  querySkuByCustomer,
-  type ApiProductItem,
-  type SkuRecordItem,
-} from '@/lib/api/products'
-import { getUserShop } from '@/lib/api/shop'
-import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -78,8 +38,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { type BrandItem } from '@/features/brands/data/schema'
 import { likedProductsData } from '@/features/liked-products/data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
@@ -88,6 +46,50 @@ import { StoreListingTabs } from '@/features/store-management/components/store-l
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
 import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
 import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
+import {
+  calcuFreight,
+  getStatesList,
+  queryCountry,
+  type CountryItem,
+  type FreightOption,
+  type StateItem,
+} from '@/lib/api/logistics'
+import {
+  collectProduct,
+  getProduct,
+  querySkuByCustomer,
+  type ApiProductItem,
+  type SkuRecordItem,
+} from '@/lib/api/products'
+import { getUserShop } from '@/lib/api/shop'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
+import type { ShopInfo } from '@/stores/shop-store'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import {
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnFiltersState,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/react-table'
+import {
+  ArrowLeft,
+  ChevronDown,
+  Copy,
+  Heart,
+  Loader2,
+  Palette,
+  ShoppingCart,
+  Store,
+  Tag,
+  Truck,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import countries from 'world-countries'
 import { products } from '../data/data'
 import { type Product } from '../data/schema'
 import {
@@ -103,24 +105,29 @@ type CountryOption = {
   id?: string // 国家ID
 }
 
-// 将API返回的国家数据转换为CountryOption格式
-// 以states数据为主，countries仅用于获取flagClass
-function mapStatesToCountryOptions(states: StateItem[]): CountryOption[] {
-  return states.map((state) => {
-    // 从countries中查找对应的国家来获取flagClass
-    const country = countries.find(
-      (c) => c.cca2.toUpperCase() === state.hzkj_code?.toUpperCase()
-    )
 
-    const code =
-      country?.cca2.toLowerCase() || state.hzkj_code?.toLowerCase() || ''
-    const flagClass = country ? `fi fi-${code}` : ''
+// 将国家/地区数据转换为 CountryOption 格式
+function mapCountriesToCountryOptions(countriesData: CountryItem[]): CountryOption[] {
+  return countriesData.map((country) => {
+    // 优先使用 twocountrycode，如果没有则使用 hzkj_code
+    const countryCode = country.twocountrycode || country.hzkj_code
+    
+    // 在 world-countries 库中查找对应的国家信息
+    const countryInfo = countryCode
+      ? countries.find(
+          (c) => c.cca2.toUpperCase() === countryCode.toUpperCase()
+        )
+      : null
+
+    // 生成国旗图标类名
+    const code = countryInfo?.cca2.toLowerCase() || countryCode?.toLowerCase() || ''
+    const flagClass = code ? `fi fi-${code}` : ''
 
     return {
-      value: state.hzkj_code || state.id || '',
-      label: state.hzkj_name || state.name || '',
+      value: countryCode || country.hzkj_code || country.id || '',
+      label: country.hzkj_name || country.name || '',
       flagClass,
-      id: state.id,
+      id: country.id,
     }
   })
 }
@@ -153,6 +160,7 @@ async function handleCountrySelectAndCalculateFreight(
       statesData.find(
         (s) => s.hzkj_code?.toUpperCase() === country.value.toUpperCase()
       )?.id
+    console.log('countryId------------111:', countryId)
 
     if (!countryId) {
       toast.error('Failed to get country ID. Please try again.')
@@ -160,10 +168,8 @@ async function handleCountrySelectAndCalculateFreight(
     }
 
     const freightOptions = await calcuFreight({
-      // spuId: productId,
-      // destinationId: countryId,
-      spuId: '2380590801727046656',
-      destinationId: '2373209616709380096',
+      spuId: productId,
+      destinationId: countryId,
     })
 
     // 转换API返回的数据格式：logsNumber -> title, freight -> cost, time -> deliveryTime
@@ -315,7 +321,10 @@ export function ProductDetails() {
       isMyStore: false,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }
+      ...(apiProduct.hzkj_sku_spec_e && {
+        hzkj_sku_spec_e: apiProduct.hzkj_sku_spec_e,
+      }),
+    } as Product & { hzkj_sku_spec_e?: unknown }
   }
 
   // 优先使用 API 数据，如果没有则使用本地数据
@@ -352,18 +361,21 @@ export function ProductDetails() {
   const [countryOptions, setCountryOptions] = useState<CountryOption[]>([])
   const [statesData, setStatesData] = useState<StateItem[]>([])
 
-  // 加载国家列表（从API获取，包含ID）
   useEffect(() => {
     const loadCountries = async () => {
       try {
+        // 使用 queryCountry API 获取国家/地区列表
+        const countriesData = await queryCountry(1, 1000)
+        console.log('countries data:', countriesData)
+
+        // 使用工具函数将国家数据转换为CountryOption格式
+        const countryOptionsData = mapCountriesToCountryOptions(countriesData)
+        setCountryOptions(countryOptionsData)
+
+        // 同时获取州/省数据（用于运费计算）
         const states = await getStatesList(1, 1000)
         console.log('states:', states)
         setStatesData(states)
-
-        // 使用工具函数将states转换为CountryOption格式
-        // 以states数据为主，有多少个states就显示多少个
-        const mergedOptions = mapStatesToCountryOptions(states)
-        setCountryOptions(mergedOptions)
       } catch (error) {
         console.error('Failed to load countries:', error)
         // 如果API失败，使用空数组
@@ -376,8 +388,10 @@ export function ProductDetails() {
 
   const [selectedQuantity, setSelectedQuantity] = useState(1)
   const [selectedTo, setSelectedTo] = useState<string>('')
-  const [selectedColor, setSelectedColor] = useState('')
-  const [selectedSize, setSelectedSize] = useState('')
+  // 规格选择状态：key 是规格ID，value 是选中的规格值ID
+  const [selectedSpecs, setSelectedSpecs] = useState<
+    Record<string, string>
+  >({})
   const [selectedThumbnail, setSelectedThumbnail] = useState(0)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const [selectedStore, setSelectedStore] = useState('')
@@ -455,11 +469,7 @@ export function ProductDetails() {
   const [, setSkuRecords] = useState<SkuRecordItem[]>([])
   const [, setIsLoadingSku] = useState(false)
 
-  // 颜色选项
-  const colorOptions = ['White', 'Pink', 'Purple', 'Dark Green', 'Black']
-  // 尺寸选项
-  const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL']
-
+ 
   // 获取 SKU 记录
   useEffect(() => {
     const fetchSkuRecords = async () => {
@@ -469,19 +479,17 @@ export function ProductDetails() {
 
       setIsLoadingSku(true)
       try {
-        const numericCustomerId =
-          typeof customerId === 'string'
-            ? Number(customerId) || 0
-            : (customerId ?? 0)
         const records = await querySkuByCustomer(
           productId,
-          numericCustomerId,
+          customerId ? Number(customerId) : 0,
           '0',
           1,
           100
         )
-        setSkuRecords(records)
-        console.log('SKU 记录:', records)
+        // 处理返回类型：可能是数组或对象
+        const skuRecords = Array.isArray(records) ? records : records.rows
+        setSkuRecords(skuRecords)
+        console.log('SKU 记录:', skuRecords)
       } catch (error) {
         console.error('Failed to fetch SKU records:', error)
         toast.error(
@@ -496,18 +504,50 @@ export function ProductDetails() {
     }
 
     void fetchSkuRecords()
-  }, [productId, auth.user?.id])
+  }, [productId])
 
   // 复制SPU功能
   const handleCopySPU = () => {
     if (productData) {
       navigator.clipboard.writeText(productData.sku)
-      // 可以添加toast提示
     }
+  }
+
+  // 检查是否所有规格都已选择
+  const areAllSpecsSelected = () => {
+    if (!apiProduct) return true // 如果没有产品数据，认为已选择（向后兼容）
+
+    const skuSpecs = Array.isArray(
+      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
+    )
+      ? ((apiProduct as Record<string, unknown>)
+          .hzkj_sku_spec_e as Array<{
+          hzkj_sku_spec_id?: string
+          [key: string]: unknown
+        }>)
+      : []
+
+    // 如果没有规格，认为已选择
+    if (skuSpecs.length === 0) return true
+
+    // 检查是否所有规格都已选择
+    return skuSpecs.every(
+      (spec) =>
+        spec.hzkj_sku_spec_id &&
+        selectedSpecs[spec.hzkj_sku_spec_id] !== undefined &&
+        selectedSpecs[spec.hzkj_sku_spec_id] !== ''
+    )
   }
 
   const handleBuySampleButtonClick = () => {
     console.log('handleBuySampleButtonClick called')
+
+    // 检查是否所有规格都已选择
+    if (!areAllSpecsSelected()) {
+      toast.error('Please select attribute values')
+      return
+    }
+
     setSelectedBuyType('sample')
     setPurchaseMode('sample')
     setIsPurchaseDialogOpen(true)
@@ -516,6 +556,13 @@ export function ProductDetails() {
 
   const handleBuyStockButtonClick = () => {
     console.log('handleBuyStockButtonClick called')
+
+    // 检查是否所有规格都已选择
+    if (!areAllSpecsSelected()) {
+      toast.error('Please select attribute values')
+      return
+    }
+
     setSelectedBuyType('stock')
     setPurchaseMode('stock')
     setIsPurchaseDialogOpen(true)
@@ -738,7 +785,7 @@ export function ProductDetails() {
           <p className='text-muted-foreground mb-4'>
             Please check the product ID is correct
           </p>
-          <Button onClick={() => navigate({ to: '/products' })}>
+          <Button onClick={() => navigate({ to: '/all-products' })}>
             Back to product list
           </Button>
         </div>
@@ -755,7 +802,7 @@ export function ProductDetails() {
             product data not available
           </h2>
           <p className='text-muted-foreground mb-4'>Please try again later</p>
-          <Button onClick={() => navigate({ to: '/products' })}>
+          <Button onClick={() => navigate({ to: '/all-products' })}>
             Back to product list
           </Button>
         </div>
@@ -765,13 +812,16 @@ export function ProductDetails() {
 
   const totalPrice = (productData.price ?? 0) * selectedQuantity
 
+
+  console.log('apiProduct:', apiProduct)
+
   return (
     <div className='container mx-auto px-4 py-6'>
       {/* 返回按钮 */}
       <div className='mb-6'>
         <Button
           variant='ghost'
-          onClick={() => navigate({ to: '/products' })}
+          onClick={() => navigate({ to: '/all-products' })}
           className='flex items-center gap-2'
         >
           <ArrowLeft className='h-4 w-4' />
@@ -848,6 +898,8 @@ export function ProductDetails() {
                         <span className='text-muted-foreground'>
                           SPU: {productData.sku}
                         </span>
+                        
+
                         <button
                           onClick={handleCopySPU}
                           className='text-muted-foreground hover:text-foreground transition-colors'
@@ -855,6 +907,18 @@ export function ProductDetails() {
                         >
                           <Copy className='h-4 w-4' />
                         </button>
+                      </div>
+                      <div>
+                        {apiProduct &&
+                          Array.isArray(
+                            (apiProduct as Record<string, unknown>)
+                              ?.hzkj_sku_spec_e
+                          ) &&
+                          Object.values(selectedSpecs).length > 0 && (
+                            <div className='text-sm text-muted-foreground'>
+                              select SKU: {Object.values(selectedSpecs).join(', ')}
+                            </div>
+                          )}
                       </div>
                     </div>
 
@@ -868,47 +932,55 @@ export function ProductDetails() {
                       </div>
                     </div>
 
-                    {/* 颜色选项 */}
-                    <div>
-                      <Label className='mb-2 block text-sm font-medium'>
-                        Color
-                      </Label>
-                      <div className='flex flex-wrap gap-2'>
-                        {colorOptions.map((color) => (
-                          <Button
-                            key={color}
-                            variant={
-                              selectedColor === color ? 'default' : 'outline'
-                            }
-                            size='sm'
-                            onClick={() => setSelectedColor(color)}
-                          >
-                            {color}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 尺寸选项 */}
-                    <div>
-                      <Label className='mb-2 block text-sm font-medium'>
-                        Size
-                      </Label>
-                      <div className='flex flex-wrap gap-2'>
-                        {sizeOptions.map((size) => (
-                          <Button
-                            key={size}
-                            variant={
-                              selectedSize === size ? 'default' : 'outline'
-                            }
-                            size='sm'
-                            onClick={() => setSelectedSize(size)}
-                          >
-                            {size}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
+                    {apiProduct &&
+                      Array.isArray(
+                        (apiProduct as Record<string, unknown>)
+                          ?.hzkj_sku_spec_e
+                      ) &&
+                      (
+                        (apiProduct as Record<string, unknown>)
+                          .hzkj_sku_spec_e as Array<{
+                          hzkj_sku_spec_id?: string
+                          hzkj_sku_spec_name?: string
+                          hzkj_sku_specvalue_e?: Array<{
+                            hzkj_sku_specvalue_id?: string
+                            hzkj_sku_specvalue_name?: string
+                            [key: string]: unknown
+                          }>
+                          [key: string]: unknown
+                        }>
+                      ).map((spec) => (
+                        <div key={spec.hzkj_sku_spec_id || ''}>
+                          <Label className='mb-2 block text-sm font-medium'>
+                            {spec.hzkj_sku_spec_name || ''}
+                          </Label>
+                          <div className='flex flex-wrap gap-2'>
+                            {Array.isArray(spec.hzkj_sku_specvalue_e) &&
+                              spec.hzkj_sku_specvalue_e.map((value) => (
+                                <Button
+                                  key={value.hzkj_sku_specvalue_id || ''}
+                                  variant={
+                                    selectedSpecs[
+                                      spec.hzkj_sku_spec_id || ''
+                                    ] === value.hzkj_sku_specvalue_id
+                                      ? 'default'
+                                      : 'outline'
+                                  }
+                                  size='sm'
+                                  onClick={() =>
+                                    setSelectedSpecs((prev) => ({
+                                      ...prev,
+                                      [spec.hzkj_sku_spec_id || '']:
+                                        value.hzkj_sku_specvalue_id || '',
+                                    }))
+                                  }
+                                >
+                                  {value.hzkj_sku_specvalue_name || ''}
+                                </Button>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
 
                     {/* 数量选择器 */}
                     <div>
@@ -965,7 +1037,6 @@ export function ProductDetails() {
                             )
                           }
 
-                          // 解析单个产品重量（克）
                           const singleWeight =
                             typeof weight === 'number'
                               ? weight
@@ -981,7 +1052,6 @@ export function ProductDetails() {
                             )
                           }
 
-                          // 计算总重量 = 单个重量 × 数量
                           const totalWeight = singleWeight * selectedQuantity
 
                           return (
@@ -993,7 +1063,6 @@ export function ProductDetails() {
                       </div>
                     </div>
 
-                    {/* 销售平台、发货地和物流方式 - 仅在非 Packaging Products 场景下展示 */}
                     {!isFromPackagingProducts && (
                       <>
                         <div className='flex items-start gap-1.5 border-y py-3'>
@@ -1331,7 +1400,43 @@ export function ProductDetails() {
                 {/* 变体信息 */}
                 <div className='flex items-center justify-between text-sm'>
                   <span className='text-muted-foreground'>Variation Name</span>
-                  <span>{selectedColor || 'Black30*40cm'}</span>
+                  <span>
+                    {(() => {
+                      if (Object.keys(selectedSpecs).length === 0) {
+                        return '--'
+                      }
+
+                      if (!apiProduct || !Array.isArray((apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e)) {
+                        return '--'
+                      }
+
+                      const specs = (apiProduct as Record<string, unknown>).hzkj_sku_spec_e as Array<{
+                        hzkj_sku_spec_id?: string
+                        hzkj_sku_specvalue_e?: Array<{
+                          hzkj_sku_specvalue_id?: string
+                          hzkj_sku_specvalue_name?: string
+                          [key: string]: unknown
+                        }>
+                        [key: string]: unknown
+                      }>
+
+                      const selectedNames: string[] = []
+                      
+                      Object.entries(selectedSpecs).forEach(([specId, specValueId]) => {
+                        const spec = specs.find((s) => s.hzkj_sku_spec_id === specId)
+                        if (spec && Array.isArray(spec.hzkj_sku_specvalue_e)) {
+                          const specValue = spec.hzkj_sku_specvalue_e.find(
+                            (v) => v.hzkj_sku_specvalue_id === specValueId
+                          )
+                          if (specValue?.hzkj_sku_specvalue_name) {
+                            selectedNames.push(specValue.hzkj_sku_specvalue_name)
+                          }
+                        }
+                      })
+
+                      return selectedNames.length > 0 ? selectedNames.join(', ') : '--'
+                    })()}
+                  </span>
                 </div>
 
                 {/* 价格信息 */}
@@ -1779,6 +1884,8 @@ export function ProductDetails() {
         productId={productId}
         mode={purchaseMode}
         onConfirmOrder={handleConfirmOrder}
+        apiProduct={apiProduct}
+        initialSelectedSpecs={selectedSpecs}
       />
     </div>
   )

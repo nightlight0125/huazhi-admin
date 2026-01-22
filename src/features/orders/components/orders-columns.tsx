@@ -275,6 +275,20 @@ export const createOrdersColumns = (options?: {
       size: 200,
     },
     {
+      id: 'shippingCost',
+      header: 'Shipping Cost',
+      cell: ({ row }) => {
+        const order = row.original
+        return (
+          <div className='space-y-1 text-sm'>
+            <div>{order.hzkj_actual_cost || '---'}</div>
+            <div>{order.trackingNumber || '---'}</div>
+          </div>
+        )
+      },
+      size: 150,
+    },
+    {
       id: 'shipping',
       header: 'Shipping/No.',
       cell: ({ row }) => {

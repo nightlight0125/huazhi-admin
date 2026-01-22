@@ -14,7 +14,7 @@ type SelectDropdownProps = {
   defaultValue: string | undefined
   placeholder?: string
   isPending?: boolean
-  items: { label: string; value: string }[] | undefined
+  items: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }[] | undefined
   disabled?: boolean
   className?: string
   isControlled?: boolean
@@ -50,9 +50,12 @@ export function SelectDropdown({
             </div>
           </SelectItem>
         ) : (
-          items?.map(({ label, value }) => (
+          items?.map(({ label, value, icon: Icon }) => (
             <SelectItem key={value} value={value}>
-              {label}
+              <div className='flex items-center gap-2'>
+                {Icon && <Icon className='h-4 w-4' />}
+                <span>{label}</span>
+              </div>
             </SelectItem>
           ))
         )}

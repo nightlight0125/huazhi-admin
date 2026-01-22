@@ -203,13 +203,6 @@ export const createSourcingColumns = (
                 : priceRange}
             </div>
           </div>
-
-          {/* 眼睛图标 */}
-          {/* {productId && (
-            <div className='flex-shrink-0'>
-              <Eye className='h-3 w-3 text-gray-400' />
-            </div>
-          )} */}
         </div>
       )
     },
@@ -281,7 +274,6 @@ export const createSourcingColumns = (
     ),
     cell: ({ row }) => {
       const sourcing = row.original
-      // 从 entryentity 中获取 hzkj_date
       const entryEntity =
         Array.isArray(sourcing.entryentity) && sourcing.entryentity.length > 0
           ? sourcing.entryentity[0]
@@ -293,7 +285,6 @@ export const createSourcingColumns = (
         return <div className='text-xs'>-</div>
       }
 
-      // 直接显示字符串，不做转换
       return <div className='text-xs'>{String(hzkjDate)}</div>
     },
     enableHiding: false,

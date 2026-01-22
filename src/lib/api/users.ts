@@ -75,7 +75,7 @@ export async function queryAccount(
   // 返回 rows 数组和 totalCount
   const rows = response.data.data?.rows || response.data.data?.list
   const totalCount = response.data.data?.totalCount || response.data.data?.total || 0
-  
+
   return {
     rows: Array.isArray(rows) ? rows : [],
     totalCount: typeof totalCount === 'number' ? totalCount : 0,
@@ -493,11 +493,11 @@ export async function queryCustomerUser(
 
 // 查询客户推荐列表请求参数
 export interface QueryCustomerRecommendListRequest {
-  data: {
-    id: string
-  }
+  customerId: string
+  startDate?: string
+  endDate?: string
+  pageIndex: number
   pageSize: number
-  pageNo: number
 }
 
 // 客户推荐列表项
@@ -529,22 +529,26 @@ export interface QueryCustomerRecommendListResponse {
 
 // 查询客户推荐列表 API
 export async function queryCustomerRecommendList(
-  id: string,
-  pageNo: number = 1,
-  pageSize: number = 10
+  customerId: string,
+  pageIndex: number = 1,
+  pageSize: number = 10,
+  options?: {
+    startDate?: string
+    endDate?: string
+  }
 ): Promise<{ rows: CustomerRecommendListItem[]; totalCount: number }> {
   const requestData: QueryCustomerRecommendListRequest = {
-    data: {
-      id,
-    },
+    customerId,
+    pageIndex,
     pageSize,
-    pageNo,
+    ...(options?.startDate && { startDate: options.startDate }),
+    ...(options?.endDate && { endDate: options.endDate }),
   }
 
   console.log('查询客户推荐列表请求数据:', JSON.stringify(requestData, null, 2))
 
   const response = await apiClient.post<QueryCustomerRecommendListResponse>(
-    '/v2/hzkj/hzkj_member/hzkj_member_customer/queryCustomerRecommendList',
+    '/v2/hzkj/hzkj_customer/member/queryRecommendList',
     requestData
   )
 
@@ -558,13 +562,10 @@ export async function queryCustomerRecommendList(
     throw new Error(errorMessage)
   }
 
-  // 返回 rows 数组和总数
-  const rows = response.data.data?.rows || response.data.data?.list || []
-  const totalCount = response.data.data?.totalCount || 0
 
   return {
-    rows: Array.isArray(rows) ? rows : [],
-    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+    rows: Array.isArray(response.data.data?.items) ? response.data.data?.items : [],
+    totalCount: typeof response.data.data?.total === 'number' ? response.data.data?.total : 0,
   }
 }
 
@@ -867,7 +868,7 @@ export interface GetAddressResponse {
   [key: string]: unknown
 }
 
-// 获取地址 API
+// 获取地址 API（返回完整响应数据）
 export async function getAddress(
   id: string | number,
   pageNo: number = 1,
@@ -892,7 +893,7 @@ export async function getAddress(
 
   const innerData = response.data.data
   const rows = innerData?.rows
-  
+
   if (Array.isArray(rows) && rows.length > 0) {
     const firstRow = rows[0] as AddressItem
     return firstRow

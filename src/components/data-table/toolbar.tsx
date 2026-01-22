@@ -93,7 +93,12 @@ export function DataTableToolbar<TData>({
   const searchColumn = searchKey ? table.getColumn(searchKey) : undefined
 
   // 同步搜索输入值（从表格状态读取）
+  // 如果提供了 onSearch 回调，则不从表格状态同步，保持用户输入的值
   useEffect(() => {
+    // 如果提供了 onSearch，说明搜索是手动触发的，不应该从表格状态同步
+    if (onSearch) {
+      return
+    }
     if (searchKey && searchColumn) {
       const value = (searchColumn.getFilterValue() as string) ?? ''
       setSearchInputValue(value)
@@ -101,7 +106,7 @@ export function DataTableToolbar<TData>({
       const value = table.getState().globalFilter ?? ''
       setSearchInputValue(value)
     }
-  }, [table.getState().globalFilter, searchKey, searchColumn])
+  }, [table.getState().globalFilter, searchKey, searchColumn, onSearch])
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRangeValue(range)
@@ -143,6 +148,7 @@ export function DataTableToolbar<TData>({
   return (
     <div className='flex flex-wrap items-start gap-2'>
       <div className='flex flex-wrap items-center gap-2'>
+        {customFilterSlot}
         {filters
           .filter((filter) => !filter.afterDateRange)
           .map((filter) => {
@@ -293,7 +299,6 @@ export function DataTableToolbar<TData>({
             )}
           </>
         )}
-        {customFilterSlot}
         {bulkRevise?.enabled && (
           <div className='flex items-center'>
             <Select value={bulkReviseType} onValueChange={setBulkReviseType}>

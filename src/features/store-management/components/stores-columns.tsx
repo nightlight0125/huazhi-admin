@@ -1,14 +1,14 @@
-import { useState } from 'react'
-import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { Loader2, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { unbindShop } from '@/lib/api/shop'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTableColumnHeader } from '@/components/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTableColumnHeader } from '@/components/data-table'
+import { unbindShop } from '@/lib/api/shop'
+import { useAuthStore } from '@/stores/auth-store'
+import { type ColumnDef, type Row } from '@tanstack/react-table'
+import { Loader2, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { type Store } from '../data/schema'
 
 type StoresColumnsOptions = {
@@ -193,7 +193,7 @@ function StoreDeleteCell({ row, onUnbindSuccess }: StoreDeleteCellProps) {
       await unbindShop({
         accountId: user.id,
         shopId: store.id,
-        flag: 1, // 1 表示解绑
+        flag: 0, // 0 表示解绑 1 表示绑定
       })
 
       toast.success('Store unbound successfully')

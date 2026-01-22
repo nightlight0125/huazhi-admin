@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getRouteApi } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { getRecommendProductsList } from '@/lib/api/products'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { createLikedProductsColumns } from '@/features/liked-products/components/liked-products-columns'
 import { ProductsTableWithToolbar } from '@/features/liked-products/components/products-table-with-toolbar'
 import type { LikedProduct } from '@/features/liked-products/data/schema'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { getRecommendProductsList } from '@/lib/api/products'
+import { useAuthStore } from '@/stores/auth-store'
+import { getRouteApi } from '@tanstack/react-router'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 const route = getRouteApi('/_authenticated/collection-products/')
 
@@ -17,7 +17,7 @@ export function CollectionProducts() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
   const [data, setData] = useState<LikedProduct[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
 
@@ -38,17 +38,9 @@ export function CollectionProducts() {
   // 处理搜索
   const handleSearch = (searchValue: string) => {
     console.log('handleSearch 被调用，搜索值:', searchValue)
-    // 使用 onGlobalFilterChange 更新 URL 参数和状态
-    // 这会触发 useFetchCollectionProducts 重新获取数据
+    // onGlobalFilterChange 已经会重置 page 到第一页，不需要再次调用 navigate
     if (onGlobalFilterChange) {
       onGlobalFilterChange(searchValue)
-      // 同时重置到第一页
-      navigate({
-        search: (prev) => ({
-          ...prev,
-          page: 1,
-        }),
-      })
     }
   }
 
@@ -57,12 +49,21 @@ export function CollectionProducts() {
     [handleRefresh]
   )
 
+  // 使用 useMemo 稳定 pagination 对象，避免不必要的重新渲染
+  const stablePagination = useMemo(
+    () => ({
+      pageIndex: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+    }),
+    [pagination.pageIndex, pagination.pageSize]
+  )
+
   // 加载推荐产品数据（收藏产品）
   useFetchCollectionProducts(
     setData,
     setIsLoading,
     refreshKey,
-    pagination,
+    stablePagination,
     setTotalCount,
     globalFilter
   )
@@ -75,22 +76,15 @@ export function CollectionProducts() {
 
       <Main fluid>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
-          {isLoading ? (
-            <div className='flex h-96 items-center justify-center'>
-              <p className='text-muted-foreground text-sm'>
-                Loading collection products...
-              </p>
-            </div>
-          ) : (
-            <ProductsTableWithToolbar
-              data={data}
-              columns={columns}
-              search={search}
-              navigate={navigate}
-              totalCount={totalCount}
-              onSearch={handleSearch}
-            />
-          )}
+          <ProductsTableWithToolbar
+            data={data}
+            columns={columns}
+            search={search}
+            navigate={navigate}
+            totalCount={totalCount}
+            onSearch={handleSearch}
+            isLoading={isLoading}
+          />
         </div>
       </Main>
     </>
@@ -107,90 +101,122 @@ export function useFetchCollectionProducts(
   globalFilter?: string
 ) {
   const { auth } = useAuthStore()
+  // 使用 useRef 跟踪上一次的请求参数，避免重复请求
+  const lastRequestParamsRef = useRef<string>('')
+  // 使用 useRef 跟踪是否正在请求，防止并发请求
+  const isRequestingRef = useRef<boolean>(false)
+  // 防抖定时器
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // 使用 useMemo 稳定依赖项的值，避免不必要的重复请求
+  const pageIndex = pagination?.pageIndex ?? 0
+  const pageSize = pagination?.pageSize ?? 10
+  const nameOrCode = globalFilter?.trim() || ''
+  const customerId = auth.user?.customerId
 
   useEffect(() => {
-    const fetchData = async () => {
-      const customerId = auth.user?.customerId
+    if (!customerId) {
+      return
+    }
 
-      if (!customerId) {
-        setIsLoading(false)
-        setData([])
-        setTotalCount?.(0)
+    // 清除之前的防抖定时器
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
+
+    // 构建请求的唯一标识符
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${nameOrCode}-${refreshKey}`
+
+    // 如果请求参数没有变化，跳过请求
+    if (lastRequestParamsRef.current === requestKey) {
+      return
+    }
+
+    // 使用防抖，延迟执行请求，避免在状态快速变化时触发多次请求
+    debounceTimerRef.current = setTimeout(() => {
+      // 再次检查请求参数（可能在防抖期间发生了变化）
+      const currentRequestKey = `${customerId}-${pageIndex}-${pageSize}-${nameOrCode}-${refreshKey}`
+      
+      // 如果请求参数没有变化，跳过请求
+      if (lastRequestParamsRef.current === currentRequestKey) {
         return
       }
 
-      // 使用分页参数，如果没有则使用默认值
-      const pageNo = pagination ? pagination.pageIndex + 1 : 1
-      const pageSize = pagination?.pageSize || 10
+      // 如果正在请求中，跳过
+      if (isRequestingRef.current) {
+        return
+      }
 
-      // 使用搜索参数，如果没有则使用空字符串
-      const nameOrCode = globalFilter?.trim() || ''
+      // 更新请求参数标识符
+      lastRequestParamsRef.current = currentRequestKey
+      isRequestingRef.current = true
 
-      console.log('useFetchCollectionProducts: 开始获取数据', {
-        customerId,
-        pageNo,
-        pageSize,
-        nameOrCode,
-        globalFilter,
-      })
+      const fetchData = async () => {
+        const pageNo = pageIndex + 1
 
-      setIsLoading(true)
-      try {
-        const response = await getRecommendProductsList({
-          customerId: String(customerId),
-          pageSize,
-          pageNo,
-          nameOrCode,
-        })
+        setIsLoading(true)
+        try {
+          const response = await getRecommendProductsList({
+            customerId: String(customerId),
+            pageSize,
+            pageNo,
+            nameOrCode,
+          })
+          const apiProducts =
+            (response.data as any)?.data || response.data?.products || []
+          console.log('apiProducts:', apiProducts)
 
-        console.log('API Response:', response)
+          // 获取总数
+          const total = response.data?.totalCount || 0
+          setTotalCount?.(total)
 
-        // API 返回的数据在 response.data.data 中
-        const apiProducts =
-          (response.data as any)?.data || response.data?.products || []
-        console.log('apiProducts:', apiProducts)
+          const likedProducts: LikedProduct[] = apiProducts.map((item: any) => ({
+            id: item.id || String(item.id) || '',
+            name: item.name || '',
+            image: item.picture || '',
+            description: item.enname || '',
+            spu: item.number || '',
+            priceMin: item.price || 0,
+            priceMax: item.price || 0,
+            addDate: item.date ? new Date(item.date) : new Date(),
+          }))
 
-        // 获取总数
-        const total = response.data?.totalCount || 0
-        setTotalCount?.(total)
+          console.log('Mapped likedProducts:', likedProducts)
+          setData(likedProducts)
+        } catch (error) {
+          console.error('获取推荐产品列表失败:', error)
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Failed to load collection products. Please try again.'
+          )
+          setData([])
+          setTotalCount?.(0)
+        } finally {
+          setIsLoading(false)
+          isRequestingRef.current = false
+        }
+      }
 
-        const likedProducts: LikedProduct[] = apiProducts.map((item: any) => ({
-          id: item.id || String(item.id) || '',
-          name: item.name || '',
-          image: item.picture || '',
-          description: item.enname || '',
-          spu: item.number || '',
-          priceMin: item.price || 0,
-          priceMax: item.price || 0,
-          addDate: item.date ? new Date(item.date) : new Date(),
-        }))
+      void fetchData()
+    }, 100) // 100ms 防抖延迟
 
-        console.log('Mapped likedProducts:', likedProducts)
-        setData(likedProducts)
-      } catch (error) {
-        console.error('获取推荐产品列表失败:', error)
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load collection products. Please try again.'
-        )
-        setData([])
-        setTotalCount?.(0)
-      } finally {
-        setIsLoading(false)
+    // 清理函数
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
       }
     }
-
-    void fetchData()
   }, [
-    auth.user?.id,
-    auth.user?.customerId,
+    customerId,
+    refreshKey,
+    pageIndex,
+    pageSize,
+    nameOrCode,
     setData,
     setIsLoading,
-    refreshKey,
-    pagination?.pageIndex,
-    pagination?.pageSize,
-    globalFilter,
     setTotalCount,
   ])
 }

@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
-import { Heart, ShoppingCart, Store } from 'lucide-react'
+import {
+  type ColumnDef,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
+} from '@tanstack/react-table'
+import { Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   collectProduct,
-  queryGoodClassList,
   type GoodClassItem,
+  queryGoodClassList,
 } from '@/lib/api/products'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
+import { DataTablePagination } from '@/components/data-table'
 import { FilterToolbar } from '@/components/filter-toolbar'
 import { ImageSearchInput } from '@/components/image-search-input'
 import { PriceRangePopover } from '@/components/price-range-popover'
@@ -103,9 +115,39 @@ type ProductsGridProps = {
   data: Product[]
   search: any
   navigate: any
+  totalCount?: number
+  isLoading?: boolean
+  onCategoryChange?: (categoryIds: string[]) => void
+  onPriceRangeChange?: (
+    priceRange: { min: number; max: number } | undefined
+  ) => void
 }
 
-export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
+// Create a minimal column definition for the table
+const columns: ColumnDef<Product>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Name',
+  },
+  {
+    accessorKey: 'sku',
+    header: 'SKU',
+  },
+  {
+    accessorKey: 'category',
+    header: 'Category',
+  },
+]
+
+export function ProductsGrid({
+  data,
+  search,
+  navigate,
+  totalCount = 0,
+  isLoading = false,
+  onCategoryChange,
+  onPriceRangeChange,
+}: ProductsGridProps) {
   const nav = useNavigate()
   const location = useLocation()
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
@@ -116,6 +158,11 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     { min: number; max: number } | undefined
   >(undefined)
   const [categoryTree, setCategoryTree] = useState<CategoryItem[]>([])
+  const [rowSelection, setRowSelection] = useState({})
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  // 本地搜索输入值
+  const [searchInputValue, setSearchInputValue] = useState<string>('')
 
   // Fetch category data from API
   useEffect(() => {
@@ -139,7 +186,14 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
   }, [])
 
   // Synced with URL states
-  const { globalFilter, onGlobalFilterChange, pagination } = useTableUrlState({
+  const {
+    globalFilter,
+    onGlobalFilterChange,
+    pagination,
+    onPaginationChange,
+    columnFilters,
+    onColumnFiltersChange,
+  } = useTableUrlState({
     search,
     navigate: navigate as any,
     pagination: { defaultPage: 1, defaultPageSize: 8 },
@@ -147,29 +201,82 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
     columnFilters: [],
   })
 
-  // Filter and paginate data
+  // 同步 globalFilter 到本地搜索输入值（当 URL 变化时）
+  useEffect(() => {
+    setSearchInputValue(globalFilter || '')
+  }, [globalFilter])
+
+  // 处理搜索输入变化（只更新本地状态，不调用接口）
+  const handleSearchInputChange = (value: string) => {
+    setSearchInputValue(value)
+  }
+
+  // 处理搜索按钮点击（调用接口）
+  const handleSearchClick = () => {
+    onGlobalFilterChange?.(searchInputValue)
+    // 搜索时重置到第一页
+    onPaginationChange({
+      pageIndex: 0,
+      pageSize: pagination.pageSize,
+    })
+  }
+
+  // Create table instance for pagination (when totalCount is provided, use server-side pagination)
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+      globalFilter,
+      pagination,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    globalFilterFn: (row, _columnId, filterValue) => {
+      const name = String(row.original.name || '').toLowerCase()
+      const sku = String(row.original.sku || '').toLowerCase()
+      const searchValue = String(filterValue).toLowerCase()
+      return name.includes(searchValue) || sku.includes(searchValue)
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    manualPagination: totalCount > 0, // 如果提供了 totalCount，启用服务端分页
+    pageCount: totalCount > 0 ? Math.ceil(totalCount / pagination.pageSize) : 0,
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    onPaginationChange,
+    onGlobalFilterChange,
+    onColumnFiltersChange,
+  })
+
+  // Ensure page is in range
+  const pageCount =
+    totalCount > 0 ? Math.ceil(totalCount / pagination.pageSize) : 0
+  useEffect(() => {
+    if (pageCount > 0 && pagination.pageIndex >= pageCount) {
+      onPaginationChange({
+        pageIndex: Math.max(0, pageCount - 1),
+        pageSize: pagination.pageSize,
+      })
+    }
+  }, [pageCount, pagination.pageIndex, pagination.pageSize, onPaginationChange])
+
+  // Filter data locally (for category, price range filters - client-side only)
   const filteredData = useMemo(() => {
     let result = data
 
-    // Apply search filter
-    if (globalFilter) {
-      const searchValue = String(globalFilter).toLowerCase()
-      result = result.filter((product) => {
-        const name = product.name.toLowerCase()
-        const sku = product.sku.toLowerCase()
-        return name.includes(searchValue) || sku.includes(searchValue)
-      })
-    }
-
     if (selectedCategories.size > 0) {
       result = result.filter((product) => {
-        // Check if product category matches any selected category
         if (!product.category) return false
 
-        // Check direct match or parent-child relationship
         return Array.from(selectedCategories).some((selectedCat) => {
           if (product.category === selectedCat) return true
-          // Check if product category is a child of selected parent
           const parentCategory = categoryTree.find(
             (cat) => cat.value === selectedCat
           )
@@ -178,7 +285,6 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
               (child) => child.value === product.category
             )
           }
-          // Check if selected category is a child of product's parent
           const productParent = categoryTree.find((cat) =>
             cat.children?.some((child) => child.value === product.category)
           )
@@ -197,24 +303,10 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
       )
     }
 
-    // Apply location filter
-    // TODO: Implement location filter when selectedLocation is used
-    // if (selectedLocation) {
-    //   result = result.filter(
-    //     (product) => product.shippingLocation === selectedLocation
-    //   )
-    // }
-
     return result
-  }, [
-    data,
-    globalFilter,
-    selectedCategories,
-    selectedPriceRange,
-    categoryTree,
-    // selectedLocation,
-  ])
+  }, [data, selectedCategories, selectedPriceRange, categoryTree])
 
+  // Client-side pagination (when totalCount is not provided)
   const pageSize = pagination.pageSize || 8
   const pageIndex = (pagination.pageIndex || 0) + 1
   const startIndex = (pageIndex - 1) * pageSize
@@ -264,6 +356,14 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
       } else {
         next.delete(value)
       }
+      // 将选中的分类ID转换为数组并传递给父组件
+      const categoryIds = Array.from(next)
+      onCategoryChange?.(categoryIds)
+      // 分类变化时重置到第一页
+      onPaginationChange({
+        pageIndex: 0,
+        pageSize: pagination.pageSize,
+      })
       return next
     })
   }
@@ -273,12 +373,20 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
       <FilterToolbar
         showSearch={false}
         searchPlaceholder='Search'
-        searchValue={globalFilter || ''}
-        onSearchChange={(value) => onGlobalFilterChange?.(value)}
+        searchValue={searchInputValue}
+        onSearchChange={handleSearchInputChange}
+        onSearchClick={handleSearchClick}
         filters={[
           <ImageSearchInput
-            value={globalFilter || ''}
-            onChange={(e) => onGlobalFilterChange?.(e.target.value)}
+            key='image-search'
+            value={searchInputValue}
+            onChange={(e) => handleSearchInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              // 按 Enter 键立即搜索
+              if (e.key === 'Enter') {
+                handleSearchClick()
+              }
+            }}
             onImageSearchClick={() => {
               /* 打开上传图片 / 图片搜索弹窗 */
             }}
@@ -293,119 +401,255 @@ export function ProductsGrid({ data, search, navigate }: ProductsGridProps) {
           <PriceRangePopover
             key='price'
             value={selectedPriceRange}
-            onChange={setSelectedPriceRange}
+            onChange={(value) => {
+              setSelectedPriceRange(value)
+              // 价格范围变化时通知父组件
+              onPriceRangeChange?.(value)
+              // 价格范围变化时重置到第一页
+              onPaginationChange({
+                pageIndex: 0,
+                pageSize: pagination.pageSize,
+              })
+            }}
           />,
         ]}
       />
 
       {/* Grid Layout */}
-      <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
-        {paginatedData.map((product) => {
-          const isFavorite = selectedItems.has(product.id)
-
-          return (
-            <div
-              key={product.id}
-              className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
-              onClick={() => {
-                // 根据当前路由确定来源
-                let fromValue: string | undefined = undefined
-                if (location.pathname.includes('/winning-products')) {
-                  fromValue = 'winning-products'
-                } else if (location.pathname.includes('/all-products')) {
-                  fromValue = 'all-products'
-                }
-
-                nav({
-                  to: '/products/$productId',
-                  params: { productId: product.id },
-                  search: { from: fromValue },
-                })
-              }}
-            >
-              {/* Product Image */}
-              <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className='h-full w-full object-cover transition-transform group-hover:scale-105'
-                />
-              </div>
-
-              {/* Product Info */}
-              <div className='space-y-1.5 p-2.5'>
-                {/* Product Title */}
-                <h3 className='line-clamp-2 h-10 text-sm leading-tight font-semibold'>
-                  {product.name}
-                </h3>
-
-                {/* SPU */}
-                <p className='font-mono text-xs text-gray-600'>
-                  SPU:{product.sku}
-                </p>
-
-                {/* Price */}
-                <div className='text-base font-bold text-orange-500'>
-                  ${product.price.toFixed(2)}
-                </div>
-
-                {/* Action Buttons - Bottom */}
-                <div className='flex gap-1.5 pt-1.5'>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className={`h-7 flex-1 px-1 ${
-                      isFavorite
-                        ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
-                        : ''
-                    }`}
-                    title='Favorite'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleFavorite(product.id)
-                    }}
-                  >
-                    <Heart
-                      className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`}
-                    />
-                  </Button>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className='h-7 flex-1 px-1'
-                    title='Add to Cart'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      console.log('Add to cart:', product.id)
-                    }}
-                  >
-                    <ShoppingCart className='h-3.5 w-3.5' />
-                  </Button>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className='h-7 flex-1 px-1'
-                    title='Add to Store'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      console.log('Add to store:', product.id)
-                    }}
-                  >
-                    <Store className='h-3.5 w-3.5' />
-                  </Button>
-                </div>
+      <div className='relative'>
+        <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
+          {isLoading ? (
+            <div className='col-span-full flex h-96 items-center justify-center'>
+              <div className='flex items-center gap-2'>
+                <Loader2 className='h-4 w-4 animate-spin' />
+                <span>Loading...</span>
               </div>
             </div>
-          )
-        })}
+          ) : totalCount > 0 ? (
+            // Server-side pagination: use table rows
+            table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => {
+                const product = row.original
+                const isFavorite = selectedItems.has(product.id)
+
+                return (
+                  <div
+                    key={product.id}
+                    className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
+                    onClick={() => {
+                      // 根据当前路由确定来源
+                      let fromValue: string | undefined = undefined
+                      if (location.pathname.includes('/winning-products')) {
+                        fromValue = 'winning-products'
+                      } else if (location.pathname.includes('/all-products')) {
+                        fromValue = 'all-products'
+                      }
+
+                      nav({
+                        to: '/products/$productId',
+                        params: { productId: product.id },
+                        search: { from: fromValue },
+                      })
+                    }}
+                  >
+                    {/* Product Image */}
+                    <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className='h-full w-full object-cover transition-transform group-hover:scale-105'
+                      />
+                    </div>
+
+                    {/* Product Info */}
+                    <div className='space-y-1.5 p-2.5'>
+                      {/* Product Title */}
+                      <h3 className='line-clamp-2 h-10 text-sm leading-tight font-semibold'>
+                        {product.name}
+                      </h3>
+
+                      {/* SPU */}
+                      <p className='font-mono text-xs text-gray-600'>
+                        SPU:{product.sku}
+                      </p>
+
+                      {/* Price */}
+                      <div className='text-base font-bold text-orange-500'>
+                        ${product.price.toFixed(2)}
+                      </div>
+
+                      {/* Action Buttons - Bottom */}
+                      <div className='flex gap-1.5 pt-1.5'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className={`h-7 flex-1 px-1 ${
+                            isFavorite
+                              ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                              : ''
+                          }`}
+                          title='Favorite'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleFavorite(product.id)
+                          }}
+                        >
+                          <Heart
+                            className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`}
+                          />
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='h-7 flex-1 px-1'
+                          title='Add to Cart'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            console.log('Add to cart:', product.id)
+                          }}
+                        >
+                          <ShoppingCart className='h-3.5 w-3.5' />
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='h-7 flex-1 px-1'
+                          title='Add to Store'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            console.log('Add to store:', product.id)
+                          }}
+                        >
+                          <Store className='h-3.5 w-3.5' />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className='col-span-full flex h-24 items-center justify-center'>
+                <div className='text-muted-foreground'>No products found.</div>
+              </div>
+            )
+          ) : // Client-side pagination: use paginated filtered data
+          paginatedData.length > 0 ? (
+            paginatedData.map((product) => {
+              const isFavorite = selectedItems.has(product.id)
+
+              return (
+                <div
+                  key={product.id}
+                  className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
+                  onClick={() => {
+                    // 根据当前路由确定来源
+                    let fromValue: string | undefined = undefined
+                    if (location.pathname.includes('/winning-products')) {
+                      fromValue = 'winning-products'
+                    } else if (location.pathname.includes('/all-products')) {
+                      fromValue = 'all-products'
+                    }
+
+                    nav({
+                      to: '/products/$productId',
+                      params: { productId: product.id },
+                      search: { from: fromValue },
+                    })
+                  }}
+                >
+                  {/* Product Image */}
+                  <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className='h-full w-full object-cover transition-transform group-hover:scale-105'
+                    />
+                  </div>
+
+                  {/* Product Info */}
+                  <div className='space-y-1.5 p-2.5'>
+                    {/* Product Title */}
+                    <h3 className='line-clamp-2 h-10 text-sm leading-tight font-semibold'>
+                      {product.name}
+                    </h3>
+
+                    {/* SPU */}
+                    <p className='font-mono text-xs text-gray-600'>
+                      SPU:{product.sku}
+                    </p>
+
+                    {/* Price */}
+                    <div className='text-base font-bold text-orange-500'>
+                      ${product.price.toFixed(2)}
+                    </div>
+
+                    {/* Action Buttons - Bottom */}
+                    <div className='flex gap-1.5 pt-1.5'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className={`h-7 flex-1 px-1 ${
+                          isFavorite
+                            ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                            : ''
+                        }`}
+                        title='Favorite'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleFavorite(product.id)
+                        }}
+                      >
+                        <Heart
+                          className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`}
+                        />
+                      </Button>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className='h-7 flex-1 px-1'
+                        title='Add to Cart'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          console.log('Add to cart:', product.id)
+                        }}
+                      >
+                        <ShoppingCart className='h-3.5 w-3.5' />
+                      </Button>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className='h-7 flex-1 px-1'
+                        title='Add to Store'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          console.log('Add to store:', product.id)
+                        }}
+                      >
+                        <Store className='h-3.5 w-3.5' />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className='col-span-full flex h-24 items-center justify-center'>
+              <div className='text-muted-foreground'>No products found.</div>
+            </div>
+          )}
+        </div>
+        {isLoading && (
+          <div className='bg-background/50 absolute inset-0 flex items-center justify-center backdrop-blur-sm'>
+            <div className='flex flex-col items-center gap-2'>
+              <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
+              <p className='text-muted-foreground text-sm'>Loading...</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* No Results */}
-      {filteredData.length === 0 && (
-        <div className='text-muted-foreground flex h-24 items-center justify-center'>
-          No products found.
-        </div>
-      )}
+      {/* Pagination - only show when using server-side pagination */}
+      {totalCount > 0 && <DataTablePagination table={table} />}
     </div>
   )
 }

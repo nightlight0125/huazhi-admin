@@ -140,7 +140,7 @@ export function WalletTable({ data }: DataTableProps) {
 
       setIsLoadingRecharge(true)
       try {
-        const pageNo = urlPagination.pageIndex + 1 // react-table使用0-based索引，API使用1-based
+        const pageNo = urlPagination.pageIndex + 1
         const pageSize = urlPagination.pageSize
 
         const result = await getWalletList(String(customerId), pageNo, pageSize)
@@ -183,7 +183,6 @@ export function WalletTable({ data }: DataTableProps) {
 
   const columns = createWalletColumns()
 
-  // 对于充值记录，使用服务器端分页，禁用客户端分页
   const table = useReactTable({
     data: filteredData,
     columns,
@@ -213,14 +212,12 @@ export function WalletTable({ data }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    // 对于充值记录，使用服务器端分页，不启用客户端分页
     getPaginationRowModel:
       activeTab === 'recharge' ? undefined : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onPaginationChange,
     onGlobalFilterChange,
     onColumnFiltersChange,
-    // 设置服务器端分页的总数
     pageCount:
       activeTab === 'recharge'
         ? Math.ceil(totalRechargeCount / urlPagination.pageSize)
@@ -248,13 +245,11 @@ export function WalletTable({ data }: DataTableProps) {
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
-          {/* Tabs 下方右侧导出按钮 */}
           <div className='flex justify-end gap-2'>
             <Button
               variant='outline'
               className='space-x-1'
               onClick={() => {
-                // TODO: 接入实际导出逻辑（如导出为 CSV / Excel）
                 console.log('Export wallet records (current tab):', activeTab)
               }}
             >
@@ -264,7 +259,6 @@ export function WalletTable({ data }: DataTableProps) {
               variant='outline'
               className='space-x-2'
               onClick={() => {
-                // TODO: 接入实际导出逻辑（如导出为 CSV / Excel）
                 console.log('Export wallet records (current tab):', activeTab)
               }}
             >

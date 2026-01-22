@@ -4,7 +4,13 @@ import { DataTableColumnHeader } from '@/components/data-table'
 import { type PublishedProduct } from '../data/schema'
 import { PublishedProductsRowActions } from './published-products-row-actions'
 
-export const publishedProductsColumns: ColumnDef<PublishedProduct>[] = [
+type PublishedProductsColumnsOptions = {
+  onDeleteSuccess?: () => void
+}
+
+export const publishedProductsColumns = (
+  options?: PublishedProductsColumnsOptions
+): ColumnDef<PublishedProduct>[] => [
   {
     id: 'select',
     header: ({ table }) => (
@@ -62,6 +68,17 @@ export const publishedProductsColumns: ColumnDef<PublishedProduct>[] = [
     cell: ({ row }) => {
       return <div className='text-xs'>{row.getValue('storeName')}</div>
     },
+  },
+  {
+    id: 'category',
+    accessorKey: 'category',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='Category' />
+    ),
+    cell: ({ row }) => {
+      return <div className='text-xs'>{row.getValue('category') || '-'}</div>
+    },
+    enableHiding: true,
   },
   {
     accessorKey: 'price',
@@ -134,7 +151,12 @@ export const publishedProductsColumns: ColumnDef<PublishedProduct>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => <PublishedProductsRowActions row={row} />,
+    cell: ({ row }) => (
+      <PublishedProductsRowActions
+        row={row}
+        onDeleteSuccess={options?.onDeleteSuccess}
+      />
+    ),
     enableSorting: false,
   },
 ]

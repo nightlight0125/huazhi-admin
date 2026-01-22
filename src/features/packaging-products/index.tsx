@@ -4,7 +4,6 @@ import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { PackagingProductsGrid } from './components/packaging-products-grid'
-import { packagingProducts } from './data/data'
 
 export function PackagingProducts() {
   const [activeTab, setActiveTab] = useState<
@@ -42,11 +41,11 @@ export function PackagingProducts() {
             </TabsList>
 
             <TabsContent value='packaging-products' className='mt-0'>
-              <PackagingProductsGrid data={packagingProducts} tab='packaging-products' />
+              <PackagingProductsGrid tab='packaging-products' />
             </TabsContent>
 
             <TabsContent value='my-packaging' className='mt-0'>
-              <PackagingProductsGrid data={packagingProducts} tab='my-packaging' />
+              <PackagingProductsGrid tab='my-packaging' />
             </TabsContent>
           </Tabs>
         </div>

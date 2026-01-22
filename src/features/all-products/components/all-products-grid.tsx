@@ -1,33 +1,77 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getRouteApi, useNavigate } from '@tanstack/react-router'
-import { Heart, Search, ShoppingCart, Store } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { getStatesList, type StateItem } from '@/lib/api/logistics'
+import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
+import { DataTablePagination } from '@/components/data-table'
+import { FilterToolbar } from '@/components/filter-toolbar'
+import { ImageSearchInput } from '@/components/image-search-input'
+import { PriceRangePopover } from '@/components/price-range-popover'
+import { Button } from '@/components/ui/button'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { type Product } from '@/features/products/data/schema'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { type CountryItem, queryCountry } from '@/lib/api/logistics'
 import {
   collectProduct,
-  queryGoodClassList,
   type GoodClassItem,
+  queryGoodClassList,
 } from '@/lib/api/products'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
+import { CheckIcon } from '@radix-ui/react-icons'
+import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
-import { priceRanges } from '@/features/products/data/data'
-import { type Product } from '@/features/products/data/schema'
+  type ColumnDef,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
+} from '@tanstack/react-table'
+import { ChevronDown, Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import countries from 'world-countries'
 
 const route = getRouteApi('/_authenticated/all-products')
 
 type AllProductsGridProps = {
   data: Product[]
+  totalCount?: number
+  isLoading?: boolean
+  onCategoryChange?: (categoryIds: string[]) => void
+  onPriceRangeChange?: (
+    priceRange: { min: number; max: number } | undefined
+  ) => void
+  onLocationChange?: (deliveryId: string | undefined) => void
 }
+
+// Create a minimal column definition for the table
+const columns: ColumnDef<Product>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Name',
+  },
+  {
+    accessorKey: 'sku',
+    header: 'SKU',
+  },
+  {
+    accessorKey: 'category',
+    header: 'Category',
+  },
+]
 
 // Category item type
 type CategoryItem = {
@@ -112,7 +156,14 @@ function convertToCategoryTree(items: GoodClassItem[]): CategoryItem[] {
   return tree
 }
 
-export function AllProductsGrid({ data }: AllProductsGridProps) {
+export function AllProductsGrid({
+  data,
+  totalCount = 0,
+  isLoading = false,
+  onCategoryChange,
+  onPriceRangeChange,
+  onLocationChange,
+}: AllProductsGridProps) {
   const navigate = useNavigate()
   const { auth } = useAuthStore()
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
@@ -120,12 +171,18 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
     new Set()
   )
   const [selectedPriceRange, setSelectedPriceRange] = useState<
-    string | undefined
+    { min: number; max: number } | undefined
   >(undefined)
   const [selectedLocation, setSelectedLocation] = useState<string | undefined>(
     undefined
   )
+  const [locationPopoverOpen, setLocationPopoverOpen] = useState(false)
   const [categoryTree, setCategoryTree] = useState<CategoryItem[]>([])
+  const [rowSelection, setRowSelection] = useState({})
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  // 本地搜索输入值
+  const [searchInputValue, setSearchInputValue] = useState<string>('')
 
   // Fetch category data from API
   useEffect(() => {
@@ -148,7 +205,14 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
   }, [])
 
   // Synced with URL states
-  const { globalFilter, onGlobalFilterChange, pagination } = useTableUrlState({
+  const {
+    globalFilter,
+    onGlobalFilterChange,
+    pagination,
+    onPaginationChange,
+    columnFilters,
+    onColumnFiltersChange,
+  } = useTableUrlState({
     search: route.useSearch(),
     navigate: route.useNavigate(),
     pagination: { defaultPage: 1, defaultPageSize: 8 },
@@ -156,59 +220,73 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
     columnFilters: [],
   })
 
-  // Filter and paginate data
-  const filteredData = useMemo(() => {
-    let result = data
+  // 同步 globalFilter 到本地搜索输入值（当 URL 变化时）
+  useEffect(() => {
+    setSearchInputValue(globalFilter || '')
+  }, [globalFilter])
 
-    // Apply search filter
-    if (globalFilter) {
-      const searchValue = String(globalFilter).toLowerCase()
-      result = result.filter((product) => {
-        const name = product.name.toLowerCase()
-        const sku = product.sku.toLowerCase()
-        return name.includes(searchValue) || sku.includes(searchValue)
+  // 处理搜索输入变化（只更新本地状态，不调用接口）
+  const handleSearchInputChange = (value: string) => {
+    setSearchInputValue(value)
+  }
+
+  // 处理搜索按钮点击（调用接口）
+  const handleSearchClick = () => {
+    onGlobalFilterChange?.(searchInputValue)
+    // 搜索时重置到第一页
+    onPaginationChange({
+      pageIndex: 0,
+      pageSize: pagination.pageSize,
+    })
+  }
+
+  // Create table instance for pagination
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+      globalFilter,
+      pagination,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    globalFilterFn: (row, _columnId, filterValue) => {
+      const name = String(row.original.name || '').toLowerCase()
+      const sku = String(row.original.sku || '').toLowerCase()
+      const searchValue = String(filterValue).toLowerCase()
+      return name.includes(searchValue) || sku.includes(searchValue)
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    manualPagination: true, // 启用服务端分页
+    pageCount: totalCount > 0 ? Math.ceil(totalCount / pagination.pageSize) : 0,
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    onPaginationChange,
+    onGlobalFilterChange,
+    onColumnFiltersChange,
+  })
+
+  // Ensure page is in range
+  const pageCount =
+    totalCount > 0 ? Math.ceil(totalCount / pagination.pageSize) : 0
+  useEffect(() => {
+    if (pageCount > 0 && pagination.pageIndex >= pageCount) {
+      onPaginationChange({
+        pageIndex: Math.max(0, pageCount - 1),
+        pageSize: pagination.pageSize,
       })
     }
+  }, [pageCount, pagination.pageIndex, pagination.pageSize, onPaginationChange])
 
-    // Apply category filter
-    if (selectedCategories.size > 0) {
-      result = result.filter((product) => {
-        // Check if product category matches any selected category
-        // This is a simplified check - adjust based on your data structure
-        if (!product.category) return false
-
-        // Check direct match or parent-child relationship
-        return Array.from(selectedCategories).some((selectedCat) => {
-          if (product.category === selectedCat) return true
-          // Check if product category is a child of selected parent
-          const parentCategory = categoryTree.find(
-            (cat) => cat.value === selectedCat
-          )
-          if (parentCategory?.children) {
-            return parentCategory.children.some(
-              (child) => child.value === product.category
-            )
-          }
-          // Check if selected category is a child of product's parent
-          const productParent = categoryTree.find((cat) =>
-            cat.children?.some((child) => child.value === product.category)
-          )
-          if (productParent?.value === selectedCat) return true
-          return false
-        })
-      })
-    }
-
-    return result
-  }, [data, globalFilter, selectedCategories, categoryTree])
-
-  const pageSize = pagination.pageSize || 8
-  const pageIndex = (pagination.pageIndex || 0) + 1
-  const startIndex = (pageIndex - 1) * pageSize
-  const endIndex = startIndex + pageSize
-  const paginatedData = filteredData.slice(startIndex, endIndex)
-
-  const [locationOptions, setLocationOptions] = useState<StateItem[]>([])
+  const [locationOptions, setLocationOptions] = useState<CountryItem[]>([])
 
   const toggleFavorite = async (productId: string) => {
     const customerId = auth.user?.customerId
@@ -250,184 +328,270 @@ export function AllProductsGrid({ data }: AllProductsGridProps) {
       } else {
         next.delete(value)
       }
+      // 将选中的分类ID转换为数组并传递给父组件
+      const categoryIds = Array.from(next)
+      onCategoryChange?.(categoryIds)
+      // 分类变化时重置到第一页
+      onPaginationChange({
+        pageIndex: 0,
+        pageSize: pagination.pageSize,
+      })
       return next
     })
   }
 
-  const priceRangeOptions = [
-    { label: 'Price range', value: 'all' },
-    ...priceRanges.map((range) => ({ label: range.label, value: range.value })),
-  ]
-
   useEffect(() => {
     const fetchLocationOptions = async () => {
-      const locationOptions = await getStatesList()
-      setLocationOptions(locationOptions)
+      try {
+        const locationOptions = await queryCountry(1, 1000)
+        setLocationOptions(locationOptions)
+      } catch (error) {
+        console.error('Failed to load location options:', error)
+        setLocationOptions([])
+      }
     }
     void fetchLocationOptions()
   }, [])
 
   return (
     <div className='space-y-4'>
-      <div className='flex items-center gap-2'>
-        <div className='relative flex-1'>
-          <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
-          <Input
-            type='text'
-            placeholder='Search'
-            value={globalFilter || ''}
-            onChange={(e) => onGlobalFilterChange?.(e.target.value)}
-            className='pl-9'
-          />
-        </div>
-
-        <div className='flex flex-wrap items-center gap-2'>
+      <FilterToolbar
+        showSearch={false}
+        searchPlaceholder='Search'
+        searchValue={searchInputValue}
+        onSearchChange={handleSearchInputChange}
+        onSearchClick={handleSearchClick}
+        filters={[
+          <ImageSearchInput
+            key='image-search'
+            value={searchInputValue}
+            onChange={(e) => handleSearchInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              // 按 Enter 键立即搜索
+              if (e.key === 'Enter') {
+                handleSearchClick()
+              }
+            }}
+            onImageSearchClick={() => {
+              /* 打开上传图片 / 图片搜索弹窗 */
+            }}
+          />,
           <CategoryTreeFilterPopover
+            key='category'
             title='All categories'
             categories={categoryTree}
             selectedValues={selectedCategories}
             onValueChange={handleCategoryChange}
-          />
-
-          <Select
-            value={selectedPriceRange || 'all'}
-            onValueChange={(value) =>
-              setSelectedPriceRange(value === 'all' ? undefined : value)
-            }
+          />,
+          <PriceRangePopover
+            key='price'
+            value={selectedPriceRange}
+            onChange={(value) => {
+              setSelectedPriceRange(value)
+              // 价格范围变化时通知父组件
+              onPriceRangeChange?.(value)
+              // 价格范围变化时重置到第一页
+              onPaginationChange({
+                pageIndex: 0,
+                pageSize: pagination.pageSize,
+              })
+            }}
+          />,
+          <Popover
+            key='location'
+            open={locationPopoverOpen}
+            onOpenChange={setLocationPopoverOpen}
           >
-            <SelectTrigger className='min-w-[140px]'>
-              <SelectValue placeholder='Price range' />
-            </SelectTrigger>
-            <SelectContent>
-              {priceRangeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <PopoverTrigger asChild>
+              <Button
+                variant='outline'
+                size='sm'
+                className='min-w-[160px] justify-between'
+              >
+                {selectedLocation
+                  ? locationOptions.find((opt) => opt.id === selectedLocation)
+                      ?.name || 'Ship from anywhere'
+                  : 'Ship from anywhere'}
+                <ChevronDown className='ml-2 h-4 w-4 opacity-50' />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className='w-[200px] p-0' align='start'>
+              <Command>
+                <CommandList>
+                  <CommandEmpty>No locations found.</CommandEmpty>
+                  <CommandGroup>
+                    {locationOptions.map((option) => {
+                      const isSelected = selectedLocation === option.id
+                      return (
+                        <CommandItem
+                          key={option.id}
+                          onSelect={() => {
+                            if (isSelected) {
+                              // 如果点击的是已选中的项，取消选择
+                              setSelectedLocation(undefined)
+                              onLocationChange?.(undefined)
+                            } else {
+                              // 选择新的位置
+                              setSelectedLocation(option.id)
+                              onLocationChange?.(option.id)
+                            }
+                            setLocationPopoverOpen(false)
+                            // 位置变化时重置到第一页
+                            onPaginationChange({
+                              pageIndex: 0,
+                              pageSize: pagination.pageSize,
+                            })
+                          }}
+                        >
+                          <div
+                            className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border ${
+                              isSelected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'opacity-50'
+                            }`}
+                          >
+                            {isSelected && <CheckIcon className='h-4 w-4' />}
+                          </div>
+                          <div className='flex items-center gap-2'>
+                            {option.twocountrycode && (() => {
+                              const countryInfo = countries.find(
+                                (c) => c.cca2.toUpperCase() === option.twocountrycode?.toUpperCase()
+                              )
+                              const code = countryInfo?.cca2.toLowerCase() || option.twocountrycode?.toLowerCase() || ''
+                              const flagClass = code ? `fi fi-${code}` : ''
+                              return flagClass ? (
+                                <span
+                                  className={cn(flagClass, 'mr-1')}
+                                  aria-hidden='true'
+                                />
+                              ) : null
+                            })()}
+                            <span>{option.name || option.hzkj_name || option.description}</span>
+                          </div>
+                        </CommandItem>
+                      )
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>,
+        ]}
+      />
 
-          <Select
-            value={selectedLocation || 'all'}
-            onValueChange={(value) =>
-              setSelectedLocation(value === 'all' ? undefined : value)
-            }
-          >
-            <SelectTrigger className='min-w-[160px]'>
-              <SelectValue placeholder='Ship from anywhere' />
-            </SelectTrigger>
-            <SelectContent>
-              {locationOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.hzkj_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
+      {/* Product Grid */}
       <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
-        {paginatedData.map((product) => {
-          const isFavorite = selectedItems.has(product.id)
-
-          return (
-            <div
-              key={product.id}
-              className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
-              onClick={() =>
-                navigate({
-                  to: '/products/$productId',
-                  params: { productId: product.id },
-                  search: { from: undefined },
-                })
-              }
-            >
-              <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className='h-full w-full object-cover transition-transform group-hover:scale-105'
-                />
-              </div>
-
-              <div className='space-y-1.5 p-2.5'>
-                <h3
-                  className='overflow-hidden text-sm font-semibold break-words'
-                  style={{
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    lineHeight: '1.5',
-                    maxHeight: '3em',
-                    transform: 'translateZ(0)',
-                  }}
-                >
-                  {product.name.trim().replace(/\s+/g, ' ')}
-                </h3>
-
-                <p className='font-mono text-xs text-gray-600'>
-                  SPU:{product.sku}
-                </p>
-
-                <div className='text-base font-bold'>
-                  ${product.price.toFixed(2)}
-                </div>
-
-                <div className='flex gap-1.5 pt-1.5'>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className={`h-7 flex-1 px-1 ${
-                      isFavorite
-                        ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
-                        : ''
-                    }`}
-                    title='Favorite'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleFavorite(product.id)
-                    }}
-                  >
-                    <Heart
-                      className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`}
-                    />
-                  </Button>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className='h-7 flex-1 px-1'
-                    title='Add to Cart'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                    }}
-                  >
-                    <ShoppingCart className='h-3.5 w-3.5' />
-                  </Button>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className='h-7 flex-1 px-1'
-                    title='Add to Store'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                    }}
-                  >
-                    <Store className='h-3.5 w-3.5' />
-                  </Button>
-                </div>
-              </div>
+        {isLoading ? (
+          <div className='col-span-full flex h-96 items-center justify-center'>
+            <div className='flex items-center gap-2'>
+              <Loader2 className='h-4 w-4 animate-spin' />
+              <span>Loading...</span>
             </div>
-          )
-        })}
+          </div>
+        ) : table.getRowModel().rows?.length ? (
+          table.getRowModel().rows.map((row) => {
+            const product = row.original
+            const isFavorite = selectedItems.has(product.id)
+
+            return (
+              <div
+                key={product.id}
+                className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
+                onClick={() =>
+                  navigate({
+                    to: '/products/$productId',
+                    params: { productId: product.id },
+                    search: { from: undefined },
+                  })
+                }
+              >
+                <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className='h-full w-full object-cover transition-transform group-hover:scale-105'
+                  />
+                </div>
+
+                <div className='space-y-1.5 p-2.5'>
+                  <h3
+                    className='overflow-hidden text-sm font-semibold break-words'
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      lineHeight: '1.5',
+                      maxHeight: '3em',
+                      transform: 'translateZ(0)',
+                    }}
+                  >
+                    {product.name.trim().replace(/\s+/g, ' ')}
+                  </h3>
+
+                  <p className='font-mono text-xs text-gray-600'>
+                    SPU:{product.sku}
+                  </p>
+
+                  <div className='text-base font-bold'>
+                    ${product.price.toFixed(2)}
+                  </div>
+
+                  <div className='flex gap-1.5 pt-1.5'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      className={`h-7 flex-1 px-1 ${
+                        isFavorite
+                          ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                          : ''
+                      }`}
+                      title='Favorite'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleFavorite(product.id)
+                      }}
+                    >
+                      <Heart
+                        className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`}
+                      />
+                    </Button>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      className='h-7 flex-1 px-1'
+                      title='Add to Cart'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                      }}
+                    >
+                      <ShoppingCart className='h-3.5 w-3.5' />
+                    </Button>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      className='h-7 flex-1 px-1'
+                      title='Add to Store'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                      }}
+                    >
+                      <Store className='h-3.5 w-3.5' />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })
+        ) : (
+          <div className='col-span-full flex h-24 items-center justify-center'>
+            <div className='text-muted-foreground'>No products found.</div>
+          </div>
+        )}
       </div>
-      {filteredData.length === 0 && (
-        <div className='text-muted-foreground flex h-24 items-center justify-center'>
-          No products found.
-        </div>
-      )}
+
+      <DataTablePagination table={table} />
     </div>
   )
 }

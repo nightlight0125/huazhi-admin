@@ -21,6 +21,15 @@ export function WinningProducts() {
   const navigate = route.useNavigate()
   const [data, setData] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
+  const [categoryIds, setCategoryIds] = useState<string[]>([])
+  const [priceRange, setPriceRange] = useState<
+    | {
+        min: number
+        max: number
+      }
+    | undefined
+  >(undefined)
 
   // 获取分页状态和搜索状态（从 URL）
   const { pagination, globalFilter } = useTableUrlState({
@@ -42,10 +51,10 @@ export function WinningProducts() {
           pageSize,
           pageNo,
           productName: globalFilter || '',
-          minPrice: 0,
-          maxPrice: 99999999,
+          minPrice: priceRange?.min ?? 0,
+          maxPrice: priceRange?.max ?? 99999999,
           deliveryId: '',
-          categoryIds: [],
+          categoryIds: categoryIds,
           productTypes: [],
           productTags: ['002'],
         })
@@ -73,6 +82,7 @@ export function WinningProducts() {
         })
 
         setData(products)
+        setTotalCount(response.data?.totalCount || 0)
       } catch (error) {
         console.error('获取产品列表失败:', error)
         toast.error(
@@ -81,13 +91,30 @@ export function WinningProducts() {
             : 'Failed to load products. Please try again.'
         )
         setData([])
+        setTotalCount(0)
       } finally {
         setIsLoading(false)
       }
     }
 
     void fetchData()
-  }, [pagination.pageIndex, pagination.pageSize, globalFilter])
+  }, [
+    pagination.pageIndex,
+    pagination.pageSize,
+    globalFilter,
+    categoryIds,
+    priceRange,
+  ])
+
+  const handleCategoryChange = (ids: string[]) => {
+    setCategoryIds(ids)
+  }
+
+  const handlePriceRangeChange = (
+    range: { min: number; max: number } | undefined
+  ) => {
+    setPriceRange(range)
+  }
 
   return (
     <ProductsProvider>
@@ -96,13 +123,15 @@ export function WinningProducts() {
       </Header>
 
       <Main fluid>
-        {isLoading ? (
-          <div className='flex h-96 items-center justify-center'>
-            <p className='text-muted-foreground text-sm'>Loading products...</p>
-          </div>
-        ) : (
-          <ProductsGrid data={data} search={search} navigate={navigate} />
-        )}
+        <ProductsGrid
+          data={data}
+          search={search}
+          navigate={navigate}
+          totalCount={totalCount}
+          isLoading={isLoading}
+          onCategoryChange={handleCategoryChange}
+          onPriceRangeChange={handlePriceRangeChange}
+        />
       </Main>
     </ProductsProvider>
   )

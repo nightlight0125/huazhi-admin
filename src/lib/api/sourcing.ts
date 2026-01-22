@@ -2,6 +2,8 @@ import { apiClient } from '../api-client'
 
 // 保存询价单请求参数
 export interface SaveBillRequest {
+  id?: number | string // 编辑时传入，新建时为 0
+  createtime?: string // 编辑时传入，格式: "YYYY-MM-DD HH:mm:ss"
   hzkj_goodname: string
   hzkj_url: string
   hzkj_amount?: string
@@ -11,6 +13,7 @@ export interface SaveBillRequest {
   hzkj_combofield1?: string
   hzkj_accept_status?: string
   hzkj_customer_id?: string
+  hzkj_api?: boolean // 默认为 true
 }
 
 // 保存询价单响应
@@ -38,25 +41,51 @@ export interface SaveBillResponse {
 export async function saveBill(
   params: SaveBillRequest
 ): Promise<SaveBillResponse> {
+  // 格式化时间为 "YYYY-MM-DD HH:mm:ss" 格式
+  const formatDateTime = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  }
+
+  // 构建请求数据对象
+  const dataItem: Record<string, unknown> = {
+    id: params.id !== undefined ? Number(params.id) : 0,
+    createtime: params.createtime || formatDateTime(new Date()),
+    hzkj_goodname: params.hzkj_goodname,
+    hzkj_url: params.hzkj_url,
+    hzkj_api: params.hzkj_api !== undefined ? params.hzkj_api : true,
+  }
+
+  // 添加可选字段
+  if (params.hzkj_amount) {
+    dataItem.hzkj_amount = params.hzkj_amount
+  }
+  if (params.hzkj_textfield) {
+    dataItem.hzkj_textfield = params.hzkj_textfield
+  }
+  if (params.hzkj_picturefield && typeof params.hzkj_picturefield === 'string') {
+    dataItem.hzkj_picturefield = params.hzkj_picturefield
+  }
+  if (params.hzkj_target_quality) {
+    dataItem.hzkj_target_quality = params.hzkj_target_quality
+  }
+  if (params.hzkj_combofield1) {
+    dataItem.hzkj_combofield1 = params.hzkj_combofield1
+  }
+  if (params.hzkj_accept_status) {
+    dataItem.hzkj_accept_status = params.hzkj_accept_status
+  }
+  if (params.hzkj_customer_id) {
+    dataItem.hzkj_customer_id = params.hzkj_customer_id
+  }
+
   const requestData = {
-    data: {
-      hzkj_goodname: params.hzkj_goodname,
-      hzkj_url: params.hzkj_url,
-      ...(params.hzkj_amount && { hzkj_amount: params.hzkj_amount }),
-      ...(params.hzkj_textfield && { hzkj_textfield: params.hzkj_textfield }),
-      ...(params.hzkj_picturefield &&
-        typeof params.hzkj_picturefield === 'string' && {
-          hzkj_picturefield: params.hzkj_picturefield,
-        }),
-      ...(params.hzkj_target_quality && {
-        hzkj_target_quality: params.hzkj_target_quality,
-      }),
-      ...(params.hzkj_combofield1 && { hzkj_combofield1: params.hzkj_combofield1 }),
-      ...(params.hzkj_accept_status && {
-        hzkj_accept_status: params.hzkj_accept_status,
-      }),
-      ...(params.hzkj_customer_id && { hzkj_customer_id: params.hzkj_customer_id }),
-    },
+    data: [dataItem],
   }
 
   console.log('保存询价单请求数据:', JSON.stringify(requestData, null, 2))

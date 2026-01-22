@@ -1,11 +1,4 @@
-import { useEffect, useState } from 'react'
-import { z } from 'zod'
-import { useFieldArray, useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { addCusFreight, getLogsList, getStatesList } from '@/lib/api/logistics'
-import { getProductsList, type ApiProductItem } from '@/lib/api/products'
+import { SelectDropdown } from '@/components/select-dropdown'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,7 +14,16 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { SelectDropdown } from '@/components/select-dropdown'
+import { useCountries } from '@/hooks/use-countries'
+import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
+import { addCusFreight, getStatesList, queryCountry, type CountryItem } from '@/lib/api/logistics'
+import { getProductsList, type ApiProductItem } from '@/lib/api/products'
+import { useAuthStore } from '@/stores/auth-store'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useState } from 'react'
+import { useFieldArray, useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import { z } from 'zod'
 
 const shippingPlanItemSchema = z.object({
   from: z.string().min(1, 'Country is required'),
@@ -51,18 +53,17 @@ export function ShippingPlanDialog({
   onSuccess,
 }: ShippingPlanDialogProps) {
   const { auth } = useAuthStore()
-  const [countryOptions, setCountryOptions] = useState<
-    Array<{ label: string; value: string }>
-  >([])
-  const [methodOptions, setMethodOptions] = useState<
-    Array<{ label: string; value: string }>
-  >([])
   const [statesData, setStatesData] = useState<
     Array<{ id: string; hzkj_code?: string; hzkj_name?: string }>
   >([])
+  const [countriesData, setCountriesData] = useState<CountryItem[]>([])
   const [productsData, setProductsData] = useState<ApiProductItem[]>([])
   const [isLoadingStates, setIsLoadingStates] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // 使用 hook 获取国家数据和物流渠道数据，只在对话框打开时加载
+  const { countries: countryOptions, error: countriesError } = useCountries(1, 1000, open)
+  const { channels: methodOptions, error: channelsError } = useLogisticsChannels(1, 1000, open)
 
   const form = useForm<ShippingPlanFormValues>({
     resolver: zodResolver(shippingPlanFormSchema),
@@ -80,15 +81,15 @@ export function ShippingPlanDialog({
     name: 'plans',
   })
 
-  // 加载州/省列表和自定义渠道列表
+  // 加载州/省列表、国家列表和产品列表
   useEffect(() => {
     if (open) {
       const loadData = async () => {
         setIsLoadingStates(true)
         try {
-          const [statesData, channelsData, productsResponse] = await Promise.all([
+          const [statesData, countriesData, productsResponse] = await Promise.all([
             getStatesList(),
-            getLogsList(),
+            queryCountry(1, 1000),
             getProductsList({
               pageNo: 1,
               pageSize: 1000,
@@ -96,20 +97,8 @@ export function ShippingPlanDialog({
           ])
 
           setStatesData(statesData)
+          setCountriesData(countriesData)
           setProductsData(productsResponse.data?.products || [])
-
-          const countryOpts = statesData.map((state) => ({
-            label: state.hzkj_name || state.name || '',
-            value: state.hzkj_code || state.id || '',
-          }))
-          setCountryOptions(countryOpts)
-          // 使用channels数据作为方法下拉框选项（method字段）
-          const channelOpts = channelsData.map((channel) => ({
-            label: channel.name || '',
-            value: channel.id || '',
-          }))
-          setMethodOptions(channelOpts)
-          console.log('method options (from channels):', channelOpts)
         } catch (error) {
           console.error('Failed to load data:', error)
           toast.error('Failed to load data. Please try again.')
@@ -121,6 +110,21 @@ export function ShippingPlanDialog({
       loadData()
     }
   }, [open])
+
+  // 监听国家数据和物流渠道加载错误
+  useEffect(() => {
+    if (countriesError) {
+      console.error('Failed to load countries:', countriesError)
+      toast.error('Failed to load countries')
+    }
+  }, [countriesError])
+
+  useEffect(() => {
+    if (channelsError) {
+      console.error('Failed to load logistics channels:', channelsError)
+      toast.error('Failed to load logistics channels')
+    }
+  }, [channelsError])
 
   // 当弹框关闭时重置表单
   useEffect(() => {
@@ -155,15 +159,27 @@ export function ShippingPlanDialog({
       const destination: Record<string, string> = {}
       values.plans.forEach((plan) => {
         if (plan.from && plan.method) {
-          // plan.from 是国家代码（hzkj_code），需要找到对应的州/省 id
-          const state = statesData.find(
-            (s) => s.hzkj_code === plan.from || s.id === plan.from
-          )
-          if (state) {
-            // key 是州/省的 id，value 是自定义渠道的 id（plan.method）
-            destination[state.id] = plan.method
+          // plan.from 是国家 id，需要找到对应的国家，然后根据国家代码找到州/省
+          const country = countriesData.find((c) => c.id === plan.from)
+          if (country) {
+            // 获取国家代码（优先使用 twocountrycode，如果没有则使用 hzkj_code）
+            const countryCode = country.twocountrycode || country.hzkj_code
+            if (countryCode) {
+              // 根据国家代码查找对应的州/省
+              const state = statesData.find(
+                (s) => s.hzkj_code?.toUpperCase() === countryCode.toUpperCase()
+              )
+              if (state) {
+                // key 是州/省的 id，value 是自定义渠道的 id（plan.method）
+                destination[state.id] = plan.method
+              } else {
+                console.warn('未找到对应的州/省，国家代码:', countryCode, '国家:', country)
+              }
+            } else {
+              console.warn('国家没有代码，国家ID:', plan.from, '国家:', country)
+            }
           } else {
-            console.warn('未找到对应的州/省，plan.from:', plan.from)
+            console.warn('未找到对应的国家，plan.from:', plan.from)
           }
         }
       })
@@ -233,7 +249,6 @@ export function ShippingPlanDialog({
               onSubmit={form.handleSubmit(handleSubmit)}
               className='space-y-4 px-1'
             >
-              {/* Plans list */}
               <div className='space-y-3'>
                 <div>
                   <div className='text-sm font-medium'>Shipping Plan</div>
@@ -242,7 +257,6 @@ export function ShippingPlanDialog({
                   </div>
                 </div>
 
-                {/* SPU 下拉框（单个，不随 plans 遍历） */}
                 <FormField
                   control={form.control}
                   name='spu'

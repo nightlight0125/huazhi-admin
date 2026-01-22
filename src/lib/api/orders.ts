@@ -10,7 +10,8 @@ export interface QueryOrderRequest {
   pageSize: number
   shopId?: string // 商店ID，可选
   shopOrderStatus?: string // 商店订单状态，可选
-  countryId?: string // 国家ID，可选
+  countryId?: string | string[] // 国家ID，可选，支持字符串或数组
+  orderStatus?: string | string[] // 订单状态，可选，支持字符串或数组
   startDate?: string // 开始日期，可选
   endDate?: string // 结束日期，可选
 }
@@ -133,10 +134,10 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
   const address = apiOrder.hzkj_bill_address || apiOrder.hzkj_sam_address || ''
   const country = apiOrder.hzkj_country_address || ''
   const customerName = apiOrder.hzkj_customer_name?.GLang || apiOrder.hzkj_buyer || ''
-  
+
   // 创建日期
   const createdAt = apiOrder.createtime ? new Date(apiOrder.createtime) : new Date()
-  
+
   return {
     id: apiOrder.id,
     store: apiOrder.hzkj_shop_name?.GLang || '',
@@ -615,3 +616,75 @@ export async function requestPayment(
   return response.data
 }
 
+// 查询售后订单请求参数
+export interface QueryAfterSaleOrdersRequest {
+  data: {
+    hzkj_payingcustomer_id: string
+    [key: string]: unknown
+  }
+  pageSize: number
+  pageNo: number
+}
+
+// API 返回的售后订单项
+export interface ApiAfterSaleOrderItem {
+  id?: string
+  supportTicketNo?: string
+  hzOrderNo?: string
+  hzSku?: string
+  variant?: string
+  qty?: number
+  totalPrice?: number
+  productImage?: string
+  returnQty?: number
+  storeName?: string
+  type?: string
+  status?: string
+  createTime?: string
+  updateTime?: string
+  remarks?: string
+  reason?: string
+  [key: string]: unknown
+}
+
+// 查询售后订单响应
+export interface QueryAfterSaleOrdersResponse {
+  data?: {
+    rows?: ApiAfterSaleOrderItem[]
+    totalCount?: number
+    pageNo?: number
+    pageSize?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询售后订单 API
+export async function queryAfterSaleOrders(
+  params: QueryAfterSaleOrdersRequest
+): Promise<{ rows: ApiAfterSaleOrderItem[]; totalCount: number }> {
+  const response = await apiClient.post<QueryAfterSaleOrdersResponse>(
+    '/v2/hzkj/hzkj_ordercenter/hzkj_after_sale_orders/queryAfterSaleOrders',
+    params
+  )
+
+  console.log('查询售后订单响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to query after sale orders. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const rows = response.data.data?.rows || []
+  const totalCount = response.data.data?.totalCount || 0
+
+  return {
+    rows: Array.isArray(rows) ? rows : [],
+    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+  }
+}

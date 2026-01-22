@@ -1,4 +1,13 @@
-import { useEffect, useState } from 'react'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Table as UITable,
+} from '@/components/ui/table'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   type SortingState,
   type VisibilityState,
@@ -10,16 +19,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Table as UITable,
-} from '@/components/ui/table'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { useCallback, useEffect, useState } from 'react'
 import { type Logistics } from '../data/schema'
 import { EditShippingToDialog } from './edit-shipping-to-dialog'
 import { createLogisticsColumns } from './logistics-columns'
@@ -58,7 +58,6 @@ export function LogisticsTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [
-      { columnId: 'shippingFrom', searchKey: 'shippingFrom', type: 'array' },
       { columnId: 'shippingTo', searchKey: 'shippingTo', type: 'array' },
       {
         columnId: 'shippingMethod',
@@ -93,17 +92,13 @@ export function LogisticsTable({
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     globalFilterFn: (row, _columnId, filterValue) => {
-      const sku = String(row.getValue('sku')).toLowerCase()
-      const shippingFrom = String(row.getValue('shippingFrom')).toLowerCase()
-      const shippingTo = String(row.getValue('shippingTo')).toLowerCase()
-      const shippingMethod = String(
-        row.getValue('shippingMethod')
-      ).toLowerCase()
+      const sku = String(row.getValue('sku') || '').toLowerCase()
+      const shippingTo = String(row.getValue('shippingTo') || '').toLowerCase()
+      const shippingMethod = String(row.getValue('shippingMethod') || '').toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
 
       return (
         sku.includes(searchValue) ||
-        shippingFrom.includes(searchValue) ||
         shippingTo.includes(searchValue) ||
         shippingMethod.includes(searchValue)
       )
@@ -119,14 +114,30 @@ export function LogisticsTable({
   })
 
   useEffect(() => {
-    ensurePageInRange(pageCount)
+    // 只在 pageCount 变化且大于 0 时才调用 ensurePageInRange
+    // 避免在初始加载时触发不必要的导航
+    if (pageCount > 0) {
+      ensurePageInRange(pageCount)
+    }
   }, [pageCount, ensurePageInRange])
+
+  // 处理搜索，确保只触发一次请求
+  const handleSearch = useCallback(
+    (searchValue: string) => {
+      if (onGlobalFilterChange) {
+        onGlobalFilterChange(searchValue)
+      }
+    },
+    [onGlobalFilterChange]
+  )
 
   return (
     <div className='space-y-4'>
       <DataTableToolbar
         table={table}
         searchPlaceholder='please Enter SPU or Shipping From or Shipping To or Shipping Method'
+        showSearchButton={true}
+        onSearch={handleSearch}
       />
       <div className='overflow-hidden rounded-md border'>
         <UITable>

@@ -29,16 +29,12 @@ export function Overview() {
   // 获取统计数据
   useEffect(() => {
     const fetchData = async () => {
-      const customerId = auth.user?.customerId || auth.user?.id
-      if (!customerId) {
-        return
-      }
-
+      const customerId = auth.user?.customerId
       setIsLoading(true)
       try {
         const statistics = await graphicStatistics(String(customerId))
+        console.log('=======121')
 
-        // 将后端返回的对象格式转换为数组格式，并按日期排序
         const chartData: ChartDataItem[] = Object.entries(statistics)
           .map(([date, item]) => {
             const statItem = item as {
@@ -48,8 +44,8 @@ export function Overview() {
             }
             return {
               date,
-              orderQuantity: statItem.orderAmount || 0, // orderAmount 对应 Order Quantity
-              orderAmount: statItem.orderCount || 0, // orderCount 对应 Order Amount
+              orderQuantity: statItem.orderAmount || 0,
+              orderAmount: statItem.orderCount || 0,
               paidAmount: statItem.paidAmount || 0,
             }
           })
@@ -72,7 +68,7 @@ export function Overview() {
     }
 
     void fetchData()
-  }, [auth.user?.customerId, auth.user?.id])
+  }, [])
 
   // 计算 Y 轴的最大值（用于自适应）
   const maxValue = useMemo(() => {

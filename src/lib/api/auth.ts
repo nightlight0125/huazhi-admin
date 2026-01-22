@@ -1,4 +1,3 @@
-import { toast } from 'sonner'
 import { apiClient } from '../api-client'
 
 // 自定义错误类，用于携带 errorCode 信息
@@ -188,7 +187,6 @@ export async function getToken(
 // 注册请求参数
 export interface SignUpRequest {
   member: {
-    username: string
     email: string
     name: string
     phone: string
@@ -205,10 +203,7 @@ export interface SignUpResponse {
   [key: string]: unknown
 }
 
-// 注册 API
-// 注意：注册接口需要先获取 token 才能调用
 export async function memberSignUp(
-  username: string,
   email: string,
   name: string,
   phone: string,
@@ -216,11 +211,10 @@ export async function memberSignUp(
 ): Promise<SignUpResponse> {
   const requestData: SignUpRequest = {
     member: {
-      username,
       email,
       name,
       phone,
-      password, // 这里传入的是已经加密后的密码
+      password, 
     },
   }
 
@@ -228,26 +222,7 @@ export async function memberSignUp(
     '/v2/hzkj/base/member/add',
     requestData
   )
-
   console.log('注册响应:', response.data)
-
-  // 检查响应状态
-  if (!response.data.status) {
-    const errorMessage =
-      response.data.message || 'Registration failed. Please try again.'
-    const errorCode = response.data.errorCode
-
-    // 如果是 errorCode 为 "1001"，抛出错误以便上层处理导航
-    if (errorCode === '1001') {
-      // errorCode 为 "1001" 时，抛出错误以便上层处理跳转
-      throw new AuthError(errorMessage, errorCode)
-    } else {
-      // 其他错误码直接提示
-      toast.error(errorMessage)
-      throw new AuthError(errorMessage, errorCode)
-    }
-  }
-
   return response.data
 }
 

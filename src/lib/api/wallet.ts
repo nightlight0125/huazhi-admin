@@ -172,3 +172,39 @@ export async function getWalletInfo(
   }
 }
 
+// 请求支付接口请求参数
+export interface RequestWalletPaymentRequest {
+  customerId: string
+  amount: number
+  currency: string
+  currencyNumber: string
+}
+
+// 请求支付接口响应
+export interface RequestWalletPaymentResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 请求支付 API
+export async function requestWalletPayment(
+  request: RequestWalletPaymentRequest
+): Promise<RequestWalletPaymentResponse> {
+  const response = await apiClient.post<RequestWalletPaymentResponse>(
+    '/v2/hzkj/hzkj_customer/wallet/requestPayment',
+    request
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to request payment. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+

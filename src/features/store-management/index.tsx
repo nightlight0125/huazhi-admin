@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
@@ -51,7 +51,8 @@ export function StoreManagement() {
   const [connectDialogOpen, setConnectDialogOpen] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
   const [stores, setStores] = useState<Store[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
+  const [isSearching, setIsSearching] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
 
   // 从 auth store 获取用户信息
@@ -64,47 +65,72 @@ export function StoreManagement() {
   const pageSize = search.pageSize ? Number(search.pageSize) : 10
   const queryParam = search.filter || 'w'
 
+  // 使用 ref 跟踪是否是首次加载
+  const isFirstLoadRef = useRef(true)
+
   // 获取用户店铺列表
-  const fetchUserShops = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const response = await getUserShopList({
-        hzkjAccountId: user?.id || '',
-        queryParam,
-        pageNo,
-        pageSize,
-      })
+  const fetchUserShops = useCallback(
+    async (isSearch = false) => {
+      if (isSearch) {
+        setIsSearching(true)
+      } else {
+        setIsInitialLoading(true)
+      }
+      try {
+        const response = await getUserShopList({
+          hzkjAccountId: user?.id || '',
+          queryParam,
+          pageNo,
+          pageSize,
+        })
 
-      const mappedStores: Store[] = (
-        Array.isArray(response.list) ? response.list : []
-      ).map((item: any) => ({
-        name: item.name || '',
-        id: item.id || String(item.id || ''),
-        bindtime: item.bindtime || undefined,
-        createtime: item.createtime || undefined,
-        enable: item.enable !== undefined ? item.enable : undefined,
-        platform: item.platform || undefined,
-      }))
+        const mappedStores: Store[] = (
+          Array.isArray(response.list) ? response.list : []
+        ).map((item: any) => ({
+          name: item.name || '',
+          id: item.id || String(item.id || ''),
+          bindtime: item.bindtime || undefined,
+          createtime: item.createtime || undefined,
+          enable: item.enable !== undefined ? item.enable : undefined,
+          platform: item.platform || undefined,
+        }))
 
-      setStores(mappedStores)
-      setTotalCount(response.total || 0)
-    } catch (error) {
-      console.error('Failed to fetch user shops:', error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to load shops. Please try again.'
-      )
-      setStores([])
-      setTotalCount(0)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user?.id, pageNo, pageSize, queryParam])
+        setStores(mappedStores)
+        setTotalCount(response.total || 0)
+      } catch (error) {
+        console.error('Failed to fetch user shops:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load shops. Please try again.'
+        )
+        setStores([])
+        setTotalCount(0)
+      } finally {
+        if (isSearch) {
+          setIsSearching(false)
+        } else {
+          setIsInitialLoading(false)
+        }
+      }
+    },
+    [user?.id, pageNo, pageSize, queryParam]
+  )
 
+  // 首次加载
   useEffect(() => {
-    fetchUserShops()
-  }, [fetchUserShops])
+    if (user?.id && isFirstLoadRef.current) {
+      isFirstLoadRef.current = false
+      void fetchUserShops(false)
+    }
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 搜索/分页变化时加载（跳过首次加载）
+  useEffect(() => {
+    if (!isFirstLoadRef.current && user?.id) {
+      void fetchUserShops(true)
+    }
+  }, [pageNo, pageSize, queryParam]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePlatformClick = (platformName: string) => {
     setSelectedPlatform(platformName)
@@ -151,7 +177,7 @@ export function StoreManagement() {
         </Card>
 
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-          {isLoading ? (
+          {isInitialLoading ? (
             <div className='flex items-center justify-center py-8'>
               <p className='text-muted-foreground'>Loading shops...</p>
             </div>
@@ -159,7 +185,8 @@ export function StoreManagement() {
             <StoresTable
               data={stores}
               totalCount={totalCount}
-              onRefresh={fetchUserShops}
+              isLoading={isSearching}
+              onRefresh={() => fetchUserShops(true)}
             />
           )}
         </div>

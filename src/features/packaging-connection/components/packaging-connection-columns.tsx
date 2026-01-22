@@ -1,14 +1,13 @@
-import { type ColumnDef } from '@tanstack/react-table'
-import {
-  ChevronRight,
-  Image as ImageIcon,
-  Link2,
-  Link2Off,
-  Minus,
-} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { type ColumnDef } from '@tanstack/react-table'
+import {
+  ChevronRight,
+  Link2,
+  Link2Off,
+  Minus
+} from 'lucide-react'
 import { type StoreSku } from '../data/schema'
 
 export const createPackagingConnectionColumns = (options?: {
@@ -16,14 +15,12 @@ export const createPackagingConnectionColumns = (options?: {
   expandedRows?: Set<string>
   onDisconnect?: (storeSku: StoreSku) => void
   onConnect?: (storeSku: StoreSku) => void
-  isConnectedFilter?: boolean
 }): ColumnDef<StoreSku>[] => {
   const {
     onExpand,
     expandedRows = new Set(),
     onDisconnect,
     onConnect,
-    isConnectedFilter = false,
   } = options || {}
 
   return [
@@ -56,6 +53,7 @@ export const createPackagingConnectionColumns = (options?: {
       id: 'expand',
       header: '',
       cell: ({ row }) => {
+        console.log('row------------99996666:', row)
         const hasPackagingProducts =
           row.original.packagingProducts &&
           row.original.packagingProducts.length > 0
@@ -93,8 +91,8 @@ export const createPackagingConnectionColumns = (options?: {
           <div className='flex items-center gap-3'>
             <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
               <img
-                src={item.image}
-                alt={item.name}
+                src={item.hzkj_variant_picture || item.image}
+                alt={item.hzkj_local_sku_hzkj_name || item.name}
                 className='h-full w-full object-cover'
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
@@ -103,12 +101,12 @@ export const createPackagingConnectionColumns = (options?: {
               />
             </div>
             <div className='flex flex-col gap-1'>
-              <div className='text-sm font-medium'>{item.name}</div>
+              <div className='text-sm font-medium'>{item.hzkj_local_sku_hzkj_name || item.name}</div>
               <div className='text-muted-foreground text-xs'>
-                SKU: {item.sku}
+                SKU: {item.hzkj_shop_sku || item.sku}
               </div>
               <div className='text-muted-foreground text-xs'>
-                Variant ID: {item.variantId}
+                Variant ID: {item.hzkj_variantid || item.variantId}
               </div>
             </div>
           </div>
@@ -117,80 +115,27 @@ export const createPackagingConnectionColumns = (options?: {
       size: 300,
     },
     {
-      accessorKey: isConnectedFilter ? 'tdSku' : 'hzProduct',
-      id: isConnectedFilter ? 'tdSku' : 'hzProduct',
-      header: isConnectedFilter ? 'SKU' : 'Product',
+      accessorKey: 'Product' ,
+      header: 'Product',
       cell: ({ row }) => {
         const item = row.original
-        if (isConnectedFilter) {
-          if (item.hzProductImage && item.hzProductSku) {
             return (
               <div className='flex items-center gap-3'>
                 <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
                   <img
-                    src={item.hzProductImage}
+                    src={item.hzkj_shop_pd_package_hzkj_picturefield || item.hzProductImage || '/placeholder-image.png'}
                     alt='SKU'
                     className='h-full w-full object-cover'
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.src = '/placeholder-image.png'
-                    }}
                   />
                 </div>
                 <div className='flex flex-col gap-1'>
-                  <div className='text-sm font-medium'>SKU</div>
+                  <div className='text-sm font-medium'>{item.hzkj_local_sku_hzkj_sku_value || item.hzProductSku || '---'}</div>
                   <div className='text-muted-foreground text-xs'>
-                    SKU: {item.hzProductSku}
+                    SKU: {item.hzkj_local_sku_number || item.hzProductSku || '---'}
                   </div>
                 </div>
               </div>
             )
-          }
-          return (
-            <div className='flex items-center gap-3'>
-              <div className='bg-muted relative flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border'>
-                <ImageIcon className='text-muted-foreground h-6 w-6' />
-              </div>
-              <div className='flex flex-col gap-1'>
-                <div className='text-muted-foreground text-sm'>SKU: ---</div>
-              </div>
-            </div>
-          )
-        } else {
-          if (item.isConnected && item.hzProductImage && item.hzProductSku) {
-            return (
-              <div className='flex items-center gap-3'>
-                <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
-                  <img
-                    src={item.hzProductImage}
-                    alt='Product'
-                    className='h-full w-full object-cover'
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.src = '/placeholder-image.png'
-                    }}
-                  />
-                </div>
-                <div className='flex flex-col gap-1'>
-                  <div className='text-sm font-medium'>Product</div>
-                  <div className='text-muted-foreground text-xs'>
-                    SKU: {item.hzProductSku}
-                  </div>
-                </div>
-              </div>
-            )
-          }
-          return (
-            <div className='flex items-center gap-3'>
-              <div className='bg-muted relative flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border'>
-                <ImageIcon className='text-muted-foreground h-6 w-6' />
-              </div>
-              <div className='flex flex-col gap-1'>
-                <div className='text-muted-foreground text-sm'>---</div>
-              </div>
-            </div>
-          )
-        }
       },
       size: 250,
     },
@@ -202,7 +147,7 @@ export const createPackagingConnectionColumns = (options?: {
         return (
           <div className='flex items-center gap-2'>
             <span className='text-green-600'>$</span>
-            <span className='text-sm'>{item.storeName}</span>
+            <span className='text-sm'>{item.hzkj_od_pd_shop_name || item.storeName}</span>
           </div>
         )
       },
@@ -258,8 +203,9 @@ export const createPackagingConnectionColumns = (options?: {
       header: 'Price',
       cell: ({ row }) => {
         const item = row.original
+        const price = item.hzkj_variant_price ?? item.price
         return (
-          <div className='text-sm font-medium'>${item.price.toFixed(2)}</div>
+          <div className='text-sm font-medium'>${price.toFixed(2)}</div>
         )
       },
       size: 100,

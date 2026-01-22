@@ -6,11 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import {
-  addAccount,
-  queryRole,
-  updateAccountInfo,
-} from '@/lib/api/users'
+import { addAccount, queryRole, updateAccountInfo } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -202,7 +198,6 @@ export function UsersActionDialog({
     console.log('values.roleId', values.roleId)
 
     try {
-      // const encryptedPassword = encryptPassword(values.password)
       await addAccount({
         username: values.username,
         email: values.email,

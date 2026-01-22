@@ -1,16 +1,16 @@
-import { useState } from 'react'
-import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Search } from 'lucide-react'
+import { useState } from 'react'
 import { useStoreProducts } from './store-products-provider'
 
 export function StoreProductsPrimaryButtons() {
-  const { setOpen } = useStoreProducts()
+  const { setOpen, setSearchKeyword } = useStoreProducts()
   const [searchValue, setSearchValue] = useState('')
 
   const handleSearch = () => {
-    // TODO: 实现搜索逻辑
-    console.log('Search:', searchValue)
+    // 设置搜索关键词，触发 not-associated-connection-view 中的 useEffect 重新加载数据
+    setSearchKeyword(searchValue)
   }
 
   return (
@@ -21,11 +21,6 @@ export function StoreProductsPrimaryButtons() {
           placeholder='enter store product\name\ID'
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleSearch()
-            }
-          }}
           className='h-9 flex-1 rounded-md shadow-sm'
         />
         <Button

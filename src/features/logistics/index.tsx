@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
-import { getRouteApi } from '@tanstack/react-router'
-import { Plus } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { getCusList } from '@/lib/api/logistics'
-import { Button } from '@/components/ui/button'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { Button } from '@/components/ui/button'
+import { getCusList } from '@/lib/api/logistics'
+import { useAuthStore } from '@/stores/auth-store'
+import { getRouteApi } from '@tanstack/react-router'
+import { Plus } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { LogisticsTable } from './components/logistics-table'
 import { ShippingPlanDialog } from './components/shipping-plan-dialog'
 import { type Logistics } from './data/schema'
@@ -22,20 +22,37 @@ export function Logistics() {
   const [data, setData] = useState<Logistics[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const lastRequestKeyRef = useRef<string>('')
+  const isRequestingRef = useRef<boolean>(false)
 
   // 获取分页参数
   const pageNo = (search.page as number) || 1
   const pageSize = (search.pageSize as number) || 10
   const filter = (search.filter as string) || ''
 
-  const fetchLogistics = async () => {
+  const fetchLogistics = useCallback(async (forceRefresh?: boolean) => {
     if (!auth.user?.customerId) {
-      console.warn('No customerId available')
       setIsLoading(false)
       return
     }
 
+    const requestKey = `${auth.user.customerId}-${pageNo}-${pageSize}-${filter}`
+
+    // 如果请求参数没有变化且不是强制刷新，跳过请求
+    if (!forceRefresh && lastRequestKeyRef.current === requestKey) {
+      return
+    }
+
+    // 如果正在请求中，跳过（避免重复请求）
+    if (isRequestingRef.current) {
+      return
+    }
+
+    // 更新请求标识符和状态
+    lastRequestKeyRef.current = requestKey
+    isRequestingRef.current = true
     setIsLoading(true)
+
     try {
       const requestParams = {
         pageSize,
@@ -43,8 +60,6 @@ export function Logistics() {
         customerId: auth.user.customerId,
         spuOrDestination: filter || '',
       }
-
-      console.log('搜索请求参数:', requestParams)
 
       const result = await getCusList(requestParams)
 
@@ -75,8 +90,6 @@ export function Logistics() {
         }
       })
 
-      console.log('mappedData', mappedData)
-
       setData(mappedData)
       setTotalCount(result.totalCount)
     } catch (error) {
@@ -90,16 +103,13 @@ export function Logistics() {
       setTotalCount(0)
     } finally {
       setIsLoading(false)
+      isRequestingRef.current = false
     }
-  }
-
-  // 序列化过滤器参数以确保变化能被检测到
-  const filterStr = String(filter || '')
+  }, [auth.user?.customerId, pageNo, pageSize, filter])
 
   useEffect(() => {
     fetchLogistics()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.user?.customerId, pageNo, pageSize, filterStr])
+  }, [fetchLogistics])
 
   return (
     <>

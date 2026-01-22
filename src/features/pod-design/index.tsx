@@ -8,7 +8,7 @@ export function PodDesign() {
   const navigate = useNavigate()
 
   const handleCancel = () => {
-    navigate({ to: '/products' })
+    navigate({ to: '/all-products' })
   }
 
   const handleSave = () => {

@@ -33,7 +33,6 @@ import {
 } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import { ImageSearchInput } from '@/components/image-search-input'
 import { products } from '@/features/products/data/data'
 import { sourcingStatuses } from '../data/data'
 import { type Sourcing } from '../data/schema'
@@ -205,19 +204,12 @@ export function SourcingTable({ data, onRefresh, totalCount }: DataTableProps) {
         <DataTableToolbar
           table={table}
           searchPlaceholder='search'
-          showSearch={false}
-          customFilterSlot={
-            <ImageSearchInput
-              value={globalFilter || ''}
-              onChange={(e) => onGlobalFilterChange?.(e.target.value)}
-              onImageSearchClick={() => {}}
-            />
-          }
           filters={[
             {
               columnId: 'status',
               title: 'status',
               options: [...sourcingStatuses],
+              singleSelect: true,
             },
           ]}
         />

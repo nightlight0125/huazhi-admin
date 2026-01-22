@@ -1,13 +1,4 @@
-import { useEffect, useState } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { apiClient } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
   FormControl,
@@ -17,6 +8,14 @@ import {
   FormLabel,
 } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
+import { apiClient } from '@/lib/api-client'
+import { useAuthStore } from '@/stores/auth-store'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import { z } from 'zod'
 
 const notificationsFormSchema = z.object({
   mobile: z.boolean().default(false).optional(),
@@ -58,6 +57,7 @@ interface GetNotificationsResponse {
 export function NotificationsForm() {
   const { auth } = useAuthStore()
   const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const form = useForm<NotificationsFormValues>({
     resolver: zodResolver(notificationsFormSchema),
     defaultValues,
@@ -68,11 +68,6 @@ export function NotificationsForm() {
     const loadNotifications = async () => {
       try {
         const userId = auth.user?.id
-        if (!userId) {
-          setIsLoading(false)
-          return
-        }
-
         // 调用获取通知设置的 API
         const response = await apiClient.post<GetNotificationsResponse>(
           '/v2/hzkj/hzkj_member/hzkj_member_customer/getNotifications',
@@ -97,9 +92,6 @@ export function NotificationsForm() {
             security_emails: Boolean(notificationData.hzkj_security_emails),
             mobile: false,
           }
-
-          console.log('回填的表单数据:', formData)
-
           form.reset(formData)
         }
       } catch (error) {
@@ -110,13 +102,14 @@ export function NotificationsForm() {
     }
 
     void loadNotifications()
-  }, [auth.user?.id])
+  }, [])
 
   const boolToString = (value: boolean | undefined): string => {
     return value ? '1' : '0'
   }
 
   const onSubmit = async (data: NotificationsFormValues) => {
+    setIsSubmitting(true)
     try {
       const userId = auth.user?.id
 
@@ -132,7 +125,6 @@ export function NotificationsForm() {
         ],
       }
 
-      // 调用 API
       const response = await apiClient.post(
         '/v2/hzkj/hzkj_member/hzkj_member_customer/saveNotifications',
         requestData
@@ -153,6 +145,8 @@ export function NotificationsForm() {
           ? error.message
           : 'Failed to update notifications. Please try again.'
       )
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -189,6 +183,7 @@ export function NotificationsForm() {
                     <Switch
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
                     />
                   </FormControl>
                 </FormItem>
@@ -211,6 +206,7 @@ export function NotificationsForm() {
                     <Switch
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
                     />
                   </FormControl>
                 </FormItem>
@@ -231,6 +227,7 @@ export function NotificationsForm() {
                     <Switch
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
                     />
                   </FormControl>
                 </FormItem>
@@ -259,7 +256,7 @@ export function NotificationsForm() {
             />
           </div>
         </div>
-        <FormField
+        {/* <FormField
           control={form.control}
           name='mobile'
           render={({ field }) => (
@@ -268,6 +265,7 @@ export function NotificationsForm() {
                 <Checkbox
                   checked={field.value}
                   onCheckedChange={field.onChange}
+                  disabled={isSubmitting}
                 />
               </FormControl>
               <div className='space-y-1 leading-none'>
@@ -287,8 +285,11 @@ export function NotificationsForm() {
               </div>
             </FormItem>
           )}
-        />
-        <Button type='submit'>Update notifications</Button>
+        /> */}
+        <Button type='submit' disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+          {isSubmitting ? 'Updating...' : 'Update notifications'}
+        </Button>
       </form>
     </Form>
   )

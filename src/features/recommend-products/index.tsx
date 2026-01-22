@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
-import { getRouteApi } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { getRecommendProductsList } from '@/lib/api/products'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { getRecommendProductsList } from '@/lib/api/products'
+import { useAuthStore } from '@/stores/auth-store'
+import { getRouteApi } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { ProductsTableWithToolbar } from '../liked-products/components/products-table-with-toolbar'
 import { createRecommendProductsColumns } from './components/recommend-products-columns'
 import type { RecommendProduct } from './data/schema'
@@ -18,7 +18,7 @@ export function RecommendProducts() {
   const navigate = route.useNavigate()
   const { auth } = useAuthStore()
   const [data, setData] = useState<RecommendProduct[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -115,21 +115,14 @@ export function RecommendProducts() {
 
       <Main fluid>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
-          {isLoading ? (
-            <div className='flex h-96 items-center justify-center'>
-              <p className='text-muted-foreground text-sm'>
-                Loading recommend products...
-              </p>
-            </div>
-          ) : (
-            <ProductsTableWithToolbar
-              data={data}
-              columns={columns}
-              search={search}
-              navigate={navigate}
-              totalCount={totalCount}
-            />
-          )}
+          <ProductsTableWithToolbar
+            data={data}
+            columns={columns}
+            search={search}
+            navigate={navigate}
+            totalCount={totalCount}
+            isLoading={isLoading}
+          />
         </div>
       </Main>
     </>

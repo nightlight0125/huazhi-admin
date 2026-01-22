@@ -7,7 +7,6 @@ import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getToken, memberLogin } from '@/lib/api/auth'
-import { encryptPassword } from '@/lib/crypto-utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -58,10 +57,6 @@ export function UserAuthForm({
     const loadingToast = toast.loading('Signing in...')
 
     try {
-      // 加密密码
-      const encryptedPassword = encryptPassword(data.password)
-      console.log('encryptedPassword', encryptedPassword)
-
       // 检查当前 token 状态
       const currentToken = auth.accessToken
       const currentUser = auth.user
@@ -88,7 +83,7 @@ export function UserAuthForm({
       }
 
       // 获取到 token 后，调用会员登录接口
-      const loginResponse = await memberLogin(data.email, encryptedPassword)
+      const loginResponse = await memberLogin(data.email, data.password)
 
       // 确保使用最新的 token（如果登录响应中有新的 token，使用新的）
       const finalToken =

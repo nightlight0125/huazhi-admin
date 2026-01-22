@@ -7,7 +7,6 @@ import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { updatePassword } from '@/lib/api/users'
-import { encryptPassword } from '@/lib/crypto-utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,11 +43,8 @@ export function ForgotPasswordForm({
     const loadingToast = toast.loading('Updating password...')
 
     try {
-      // 加密新密码
-      const encryptedPassword = encryptPassword(data.password)
-
       // 调用重置密码 API（如果未认证，拦截器会自动处理）
-      await updatePassword(Number(userId), encryptedPassword)
+      await updatePassword(Number(userId), data.password)
 
       toast.dismiss(loadingToast)
       toast.success('Password updated successfully!')

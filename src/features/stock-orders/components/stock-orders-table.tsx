@@ -1,4 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { DataTableToolbar } from '@/components/data-table'
+import {
+  OrderPayDialog,
+  type OrderPayable,
+} from '@/components/order-pay-dialog'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { deleteStockOrder, queryOrder, requestPayment } from '@/lib/api/orders'
+import { useAuthStore } from '@/stores/auth-store'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -12,25 +29,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { HelpCircle } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { deleteStockOrder, queryOrder, requestPayment } from '@/lib/api/orders'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTableToolbar } from '@/components/data-table'
-import {
-  OrderPayDialog,
-  type OrderPayable,
-} from '@/components/order-pay-dialog'
 import { stockOrderStatuses } from '../data/data'
 import { type StockOrder } from '../data/schema'
 import { StockOrdersActionsMenu } from './stock-orders-actions-menu'
@@ -149,33 +149,37 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     }
   }, [fetchOrders])
 
-  const handlePay = (orderId: string) => {
-    const order = data.find((o) => o.id === orderId) as any
-    if (order) {
-      setSelectedOrderForPayment({
-        id: order.id,
-        getTotalAmount: () => {
-          // 优先使用后端返回的 hzkj_order_amount 字段
-          if (order.hzkj_order_amount !== undefined) {
-            const amount = order.hzkj_order_amount
-            return typeof amount === 'string'
-              ? parseFloat(amount) || 0
-              : typeof amount === 'number'
-                ? amount
-                : 0
-          }
+  const handlePay = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
 
-          // 如果没有 hzkj_order_amount，使用 cost.total
-          if (order.cost?.total !== undefined) {
-            return typeof order.cost.total === 'number'
-              ? order.cost.total
-              : parseFloat(String(order.cost.total)) || 0
-          }
-
-          return 0
-        },
+    try {
+      const response = await requestPayment({
+        customerId: String(customerId),
+        orderIds: [orderId],
+        type: 2, // 2 表示库存订单
       })
-      setPayDialogOpen(true)
+
+      // 获取返回的链接
+      const checkoutUrl = response.data as string
+      
+      if (checkoutUrl && typeof checkoutUrl === 'string') {
+        // 在新窗口中打开支付链接
+        window.open(checkoutUrl, '_blank')
+        toast.success('Opening payment page...')
+      } else {
+        toast.error('Payment URL not found in response')
+      }
+    } catch (error) {
+      console.error('Failed to request payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request payment. Please try again.'
+      )
     }
   }
 

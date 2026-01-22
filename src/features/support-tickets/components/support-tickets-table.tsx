@@ -1,19 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getRouteApi } from '@tanstack/react-router'
-import {
-  type SortingState,
-  type Table,
-  type VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import {
   TableBody,
   TableCell,
@@ -23,27 +8,56 @@ import {
   Table as UITable,
 } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import type { NavigateFn } from '@/hooks/use-table-url-state'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { deleteOrder } from '@/lib/api/orders'
+import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+  type Table,
+  type VisibilityState,
+} from '@tanstack/react-table'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { type SupportTicket, type SupportTicketStatus } from '../data/schema'
 import { SupportTicketsBulkActions } from './support-tickets-bulk-actions'
 import { createSupportTicketsColumns } from './support-tickets-columns'
 import { SupportTicketsReasonDialog } from './support-tickets-reason-dialog'
 
-const route = getRouteApi('/_authenticated/support-tickets/')
 
 type SupportTicketsTableProps = {
   data: SupportTicket[]
+  search: Record<string, unknown>
+  navigate: NavigateFn
+  totalCount: number
+  onRefresh?: () => void
 }
 
-export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
-  // Local UI state
+export function SupportTicketsTable({
+  data,
+  search,
+  navigate,
+  totalCount,
+  onRefresh,
+}: SupportTicketsTableProps) {
+  const { auth } = useAuthStore()
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [activeTab, setActiveTab] = useState<SupportTicketStatus>('all')
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false)
+  const [storeOptions, setStoreOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([])
 
-  // Synced with URL states
   const {
     globalFilter,
     onGlobalFilterChange,
@@ -53,14 +67,13 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     onPaginationChange,
     ensurePageInRange,
   } = useTableUrlState({
-    search: route.useSearch(),
-    navigate: route.useNavigate(),
+    search,
+    navigate,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
 
-  // Filter data based on active tab
   const filteredData = useMemo(() => {
     if (activeTab === 'all') return data
     return data.filter((ticket) => ticket.status === activeTab)
@@ -71,10 +84,34 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     // TODO: Implement edit functionality
   }
 
-  const handleCancel = (ticket: SupportTicket) => {
-    console.log('Cancel ticket:', ticket)
-    // TODO: Implement cancel functionality
-  }
+  const handleDelete = useCallback(
+    async (orderId: string) => {
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        toast.error('Customer ID is required')
+        return
+      }
+
+      try {
+        await deleteOrder({
+          customerId: String(customerId),
+          orderId,
+        })
+        toast.success('Support ticket deleted successfully')
+        // 刷新数据
+        onRefresh?.()
+      } catch (error) {
+        console.error('Failed to delete support ticket:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete support ticket. Please try again.'
+        )
+        throw error
+      }
+    },
+    [auth.user?.customerId, onRefresh]
+  )
 
   const handleReasonClick = () => {
     setReasonDialogOpen(true)
@@ -84,11 +121,14 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     () =>
       createSupportTicketsColumns({
         onEdit: handleEdit,
-        onCancel: handleCancel,
+        onDelete: handleDelete,
         onReasonClick: handleReasonClick,
       }),
-    []
+    [handleDelete]
   )
+
+  // 计算总页数
+  const pageCount = Math.ceil(totalCount / pagination.pageSize)
 
   const table = useReactTable({
     data: filteredData,
@@ -102,6 +142,8 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
       pagination,
     },
     enableRowSelection: true,
+    manualPagination: true,
+    pageCount,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -118,7 +160,6 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -127,7 +168,45 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
     onColumnFiltersChange,
   })
 
-  const pageCount = table.getPageCount()
+  // 获取店铺列表
+  useEffect(() => {
+    const fetchStores = async () => {
+      const userId = auth.user?.id
+      if (!userId) {
+        setStoreOptions([])
+        return
+      }
+
+      try {
+        const response = await getUserShopList({
+          hzkjAccountId: userId,
+          pageNo: 0,
+          pageSize: 100, // 获取足够多的店铺
+        })
+
+        // 将店铺列表映射为选项格式
+        const options = response.list
+          .filter((shop: ShopListItem) => shop.id) // 过滤掉没有 id 的店铺
+          .map((shop: ShopListItem) => ({
+            label: shop.name || shop.platform || String(shop.id || ''),
+            value: String(shop.id || ''),
+          }))
+
+        setStoreOptions(options)
+      } catch (error) {
+        console.error('Failed to fetch stores:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load stores. Please try again.'
+        )
+        setStoreOptions([])
+      }
+    }
+
+    void fetchStores()
+  }, [])
+
   useEffect(() => {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
@@ -141,7 +220,7 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
           {
             columnId: 'storeName',
             title: 'Store Name',
-            options: [{ label: 'Store 1', value: 'Store 1' }],
+            options: storeOptions,
           },
           {
             columnId: 'type',
@@ -155,7 +234,6 @@ export function SupportTicketsTable({ data }: SupportTicketsTableProps) {
         dateRange={{
           enabled: true,
           columnId: 'createTime',
-          // onDateRangeChange: setDateRange,
           placeholder: 'Select  Date Range',
         }}
       />

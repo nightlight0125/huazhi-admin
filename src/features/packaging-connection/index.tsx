@@ -1,17 +1,25 @@
-import { useMemo, useState } from 'react'
-import { Package, Store } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTableToolbar } from '@/components/data-table'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  queryCuShopPackageList,
+  queryOdPdPackageList,
+  type CuShopPackageListItem,
+  type OdPdPackageListItem,
+} from '@/lib/api/products'
+import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
+import { useAuthStore } from '@/stores/auth-store'
+import { Package, Store } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { ApplyPackagingDialog } from './components/apply-packaging-dialog'
 import { DisconnectConfirmDialog } from './components/disconnect-confirm-dialog'
 import {
   PackagingConnectionTable,
   usePackagingConnectionTable,
 } from './components/packaging-connection-table'
-import { packagingConnections } from './data/data'
 import { type PackagingProduct, type StoreSku } from './data/schema'
 
 type TabType = 'products' | 'stores' | 'order'
@@ -72,24 +80,229 @@ export function PackagingConnection() {
     setStoreSkuToDisconnect(null)
   }
 
+  const { auth } = useAuthStore()
+  const [storeNameOptions, setStoreNameOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([])
+  const [packagingData, setPackagingData] = useState<StoreSku[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [pageNo, setPageNo] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [statusFilterValue, setStatusFilterValue] = useState<
+    string[] | undefined
+  >(undefined)
+  const [storeFilterValue, setStoreFilterValue] = useState<
+    string[] | undefined
+  >(undefined)
+
+  // 获取店铺列表
+  useEffect(() => {
+    const fetchStores = async () => {
+      const userId = auth.user?.id
+      if (!userId) {
+        setStoreNameOptions([])
+        return
+      }
+
+      try {
+        const response = await getUserShopList({
+          hzkjAccountId: userId,
+          queryParam: 'w',
+          pageNo: 0,
+          pageSize: 100, // 获取足够多的店铺
+        })
+
+        // 将店铺列表映射为选项格式
+        const options = response.list
+          .filter((shop: ShopListItem) => shop.id) // 过滤掉没有 id 的店铺
+          .map((shop: ShopListItem) => ({
+            label: typeof shop.name === 'string' ? shop.name : (typeof shop.platform === 'string' ? shop.platform : String(shop.id || '')),
+            value: typeof shop.id === 'string' ? shop.id : String(shop.id || ''),
+          }))
+
+        setStoreNameOptions(options)
+      } catch (error) {
+        console.error('Failed to fetch stores:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load stores. Please try again.'
+        )
+        setStoreNameOptions([])
+      }
+    }
+
+    void fetchStores()
+  }, [auth.user?.id])
+
+  // 获取包装连接数据（Products、Order 和 Store tab）
+  useEffect(() => {
+    const fetchPackagingData = async () => {
+      const userId = auth.user?.id
+      const customerId = auth.user?.customerId
+      if (!userId || !customerId) {
+        setPackagingData([])
+        setTotalCount(0)
+        return
+      }
+
+      try {
+        // Store tab 使用不同的 API
+        if (activeTab === 'stores') {
+          const response = await queryCuShopPackageList({
+            data: {
+              hzkj_pk_shop_hzkj_customer_id: String(customerId),
+              accountId: String(userId),
+            },
+            pageSize,
+            pageNo,
+          })
+
+          // 将 API 数据映射为 StoreSku 格式
+          const mappedData: StoreSku[] = response.rows.map((item: CuShopPackageListItem) => ({
+            id: item.id || item.hzkj_pk_shop_variant_id || '',
+            image:
+              item.hzkj_pk_shop_product_image ||
+              'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=100&h=100&fit=crop',
+            name: item.hzkj_pk_shop_product_name || '',
+            sku: item.hzkj_pk_shop_sku || '',
+            variantId: item.hzkj_pk_shop_variant_id || '',
+            storeName: item.hzkj_pk_shop_name || '',
+            price: typeof item.hzkj_pk_shop_price === 'number' ? item.hzkj_pk_shop_price : 0,
+            isConnected: false, // Store tab 的数据默认不显示连接状态
+            packagingProducts: [],
+          }))
+
+          console.log('Store tab response:', mappedData)
+          setPackagingData(mappedData)
+          setTotalCount(response.totalCount || 0)
+          return
+        }
+
+        // Products 和 Order tab 使用 queryOdPdPackageList API
+        if (activeTab !== 'products' && activeTab !== 'order') {
+          setPackagingData([])
+          setTotalCount(0)
+          return
+        }
+
+        // 根据 tab 确定 hzkj_package_type
+        const packageType = activeTab === 'products' ? '1' : '2'
+
+        // 获取连接状态过滤值
+        let hzkjIsconnect: string | undefined
+        if (
+          statusFilterValue?.includes('connected') &&
+          statusFilterValue.length === 1
+        ) {
+          hzkjIsconnect = '1'
+        } else if (
+          statusFilterValue?.includes('unconnected') &&
+          statusFilterValue.length === 1
+        ) {
+          hzkjIsconnect = '0'
+        }
+
+        // 获取店铺过滤值
+        const shopId =
+          storeFilterValue && storeFilterValue.length > 0
+            ? storeFilterValue[0]
+            : '*'
+
+        const response = await queryOdPdPackageList({
+          data: {
+            hzkj_od_pd_shop_hzkj_customer_id: String(customerId),
+            hzkj_package_type: packageType,
+            accountId: String(userId),
+            hzkj_od_pd_shop_id: shopId,
+            str: '',
+            hzkj_isconnect: hzkjIsconnect,
+          },
+          pageSize,
+          pageNo,
+        })
+
+        // 将 API 数据映射为 StoreSku 格式
+        const mappedData: StoreSku[] = response.rows.map((item: OdPdPackageListItem) => ({
+          id: item.id || item.hzkj_od_pd_shop_variant_id || '',
+          image:
+            item.hzkj_od_pd_shop_product_image ||
+            'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=100&h=100&fit=crop',
+          name: item.hzkj_od_pd_shop_product_name || '',
+          sku: item.hzkj_od_pd_shop_sku || '',
+          variantId: item.hzkj_od_pd_shop_variant_id || '',
+          storeName: item.hzkj_od_pd_shop_name || '',
+          price: typeof item.hzkj_od_pd_shop_price === 'number' ? item.hzkj_od_pd_shop_price : 0,
+          isConnected: item.hzkj_isconnect === '1',
+          hzProductId: item.hzkj_hz_product_id,
+          hzProductImage: item.hzkj_hz_product_image,
+          hzProductSku: item.hzkj_hz_product_sku,
+          packagingProducts: [],
+        }))
+
+        console.log('response------------3333:', mappedData)
+        setPackagingData(mappedData)
+        setTotalCount(response.totalCount || 0)
+      } catch (error) {
+        console.error('Failed to fetch packaging data:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load packaging data. Please try again.'
+        )
+        setPackagingData([])
+        setTotalCount(0)
+      }
+    }
+
+    void fetchPackagingData()
+  }, [
+    activeTab,
+    auth.user?.id,
+    auth.user?.customerId,
+    pageNo,
+    pageSize,
+    statusFilterValue,
+    storeFilterValue,
+  ])
+
   const { table, expandedRows, handleExpand } = usePackagingConnectionTable(
-    packagingConnections,
+    packagingData,
     {
       onConnect: handleConnect,
       onDisconnect: handleDisconnect,
+      totalCount,
     }
   )
 
-  // Get unique store names for filter options
-  const storeNameOptions = useMemo(() => {
-    const uniqueStoreNames = Array.from(
-      new Set(packagingConnections.map((item) => item.storeName))
-    )
-    return uniqueStoreNames.map((storeName) => ({
-      label: storeName,
-      value: storeName,
-    }))
-  }, [])
+  // 监听分页变化
+  useEffect(() => {
+    const pagination = table.getState().pagination
+    if (pagination.pageIndex + 1 !== pageNo) {
+      setPageNo(pagination.pageIndex + 1)
+    }
+    if (pagination.pageSize !== pageSize) {
+      setPageSize(pagination.pageSize)
+    }
+  }, [table, pageNo, pageSize])
+
+  // 监听过滤变化
+  useEffect(() => {
+    const statusColumn = table.getColumn('status')
+    const storeColumn = table.getColumn('storeName')
+    if (statusColumn) {
+      const filterValue = statusColumn.getFilterValue() as string[] | undefined
+      if (JSON.stringify(filterValue) !== JSON.stringify(statusFilterValue)) {
+        setStatusFilterValue(filterValue)
+      }
+    }
+    if (storeColumn) {
+      const filterValue = storeColumn.getFilterValue() as string[] | undefined
+      if (JSON.stringify(filterValue) !== JSON.stringify(storeFilterValue)) {
+        setStoreFilterValue(filterValue)
+      }
+    }
+  }, [table, statusFilterValue, storeFilterValue])
 
   const handleStatusTabChange = (status: 'connected' | 'unconnected') => {
     const nextStatus =
@@ -174,7 +387,7 @@ export function PackagingConnection() {
                     ]}
                   />
                   <PackagingConnectionTable
-                    data={packagingConnections}
+                    data={packagingData}
                     table={table}
                     expandedRows={expandedRows}
                     onExpand={handleExpand}

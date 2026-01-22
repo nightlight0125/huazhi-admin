@@ -1,4 +1,13 @@
-import { useEffect, useState } from 'react'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Table as UITable,
+} from '@/components/ui/table'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   flexRender,
   getCoreRowModel,
@@ -13,16 +22,7 @@ import {
   type Table,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Table as UITable,
-} from '@/components/ui/table'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { useCallback, useEffect, useState } from 'react'
 import { LikedProductsBulkActions } from './liked-products-bulk-actions'
 
 type ProductsTableWithToolbarProps<TData> = {
@@ -33,6 +33,7 @@ type ProductsTableWithToolbarProps<TData> = {
   globalFilterFn?: (row: any, _columnId: string, filterValue: string) => boolean
   totalCount?: number // 服务端分页的总数
   onSearch?: (searchValue: string) => void // 搜索回调函数
+  isLoading?: boolean // 列表加载状态
 }
 
 export function ProductsTableWithToolbar<TData>({
@@ -43,6 +44,7 @@ export function ProductsTableWithToolbar<TData>({
   globalFilterFn,
   totalCount,
   onSearch,
+  isLoading = false,
 }: ProductsTableWithToolbarProps<TData>) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -65,19 +67,6 @@ export function ProductsTableWithToolbar<TData>({
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
-
-  // 处理搜索回调
-  const handleSearch = (searchValue: string) => {
-    if (onSearch) {
-      // 如果提供了 onSearch 回调，调用它
-      onSearch(searchValue)
-    } else {
-      // 否则使用默认行为：更新 URL 参数
-      if (onGlobalFilterChange) {
-        onGlobalFilterChange(searchValue)
-      }
-    }
-  }
 
   // 如果是服务端分页，计算总页数
   const pageCount =
@@ -118,9 +107,28 @@ export function ProductsTableWithToolbar<TData>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     onPaginationChange,
-    onGlobalFilterChange,
+    // 当没有提供 onSearch 时，设置 onGlobalFilterChange 用于同步状态和 URL
+    // 当提供了 onSearch 时，不设置 onGlobalFilterChange，避免重复触发
+    onGlobalFilterChange: onSearch ? undefined : onGlobalFilterChange,
     onColumnFiltersChange,
   })
+
+  // 处理搜索回调 - 使用 useCallback 避免重复创建
+  const handleSearch = useCallback(
+    (searchValue: string) => {
+      if (onSearch) {
+        // 如果提供了 onSearch 回调，调用它
+        onSearch(searchValue)
+      } else {
+        // 否则使用默认行为：直接调用 onGlobalFilterChange 更新 URL 参数
+        // 表格的 onGlobalFilterChange 已经被设置，会同步状态
+        if (onGlobalFilterChange) {
+          onGlobalFilterChange(searchValue)
+        }
+      }
+    },
+    [onSearch, onGlobalFilterChange]
+  )
 
   const finalPageCount = pageCount ?? table.getPageCount()
   useEffect(() => {
@@ -162,7 +170,20 @@ export function ProductsTableWithToolbar<TData>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading && data.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  <div className='flex items-center justify-center'>
+                    <p className='text-muted-foreground text-sm'>
+                      Loading...
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const productId = (row.original as any).id
                 return (

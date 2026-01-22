@@ -22,7 +22,6 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -31,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { products } from '../data/data'
@@ -61,9 +61,11 @@ export function ProductDesign() {
   const isUpdatingTextRef = useRef(false)
   const [noteName, setNoteName] = useState('')
   const [noteText, setNoteText] = useState('')
-  
+
   // Text editing state
-  const [selectedTextObject, setSelectedTextObject] = useState<Textbox | null>(null)
+  const [selectedTextObject, setSelectedTextObject] = useState<Textbox | null>(
+    null
+  )
   const [textContent, setTextContent] = useState('Teemdrop')
   const [fontFamily, setFontFamily] = useState('Arial')
   const [fontSize, setFontSize] = useState(22)
@@ -251,12 +253,12 @@ export function ProductDesign() {
     canvas.on('object:added', handleObjectAdded)
     canvas.on('object:modified', handleObjectModified)
     canvas.on('object:removed', handleObjectRemoved)
-    
+
     // 监听对象选择事件，更新文本编辑面板
     const handleSelectionCreated = (e: any) => {
       // 如果正在更新文本对象，跳过选择事件处理
       if (isUpdatingTextRef.current) return
-      
+
       const activeObject = e.selected?.[0] || e.target
       if (activeObject && activeObject.type === 'textbox') {
         const textbox = activeObject as Textbox
@@ -281,11 +283,11 @@ export function ProductDesign() {
         setSelectedTextObject(null)
       }
     }
-    
+
     const handleSelectionCleared = () => {
       setSelectedTextObject(null)
     }
-    
+
     canvas.on('selection:created', handleSelectionCreated)
     canvas.on('selection:updated', handleSelectionCreated)
     canvas.on('selection:cleared', handleSelectionCleared)
@@ -585,29 +587,31 @@ export function ProductDesign() {
     setSelectedTextObject(text)
     canvas.renderAll()
   }
-  
+
   // 更新文本对象属性 - 使用 ref 来避免依赖问题
   const updateTextObjectRef = useRef<((updates: any) => void) | null>(null)
-  
-  updateTextObjectRef.current = (updates: Partial<{
-    text: string
-    fontFamily: string
-    fontSize: number
-    opacity: number
-    charSpacing: number
-    fill: string
-    fontWeight: string | number
-    fontStyle: string
-    underline: boolean
-    linethrough: boolean
-    overline: boolean
-  }>) => {
+
+  updateTextObjectRef.current = (
+    updates: Partial<{
+      text: string
+      fontFamily: string
+      fontSize: number
+      opacity: number
+      charSpacing: number
+      fill: string
+      fontWeight: string | number
+      fontStyle: string
+      underline: boolean
+      linethrough: boolean
+      overline: boolean
+    }>
+  ) => {
     if (!fabricCanvasRef.current || !selectedTextObject) return
     const canvas = fabricCanvasRef.current
-    
+
     // 设置标志，防止选择事件触发状态更新
     isUpdatingTextRef.current = true
-    
+
     Object.entries(updates).forEach(([key, value]) => {
       if (key === 'text') {
         selectedTextObject.set('text', value as string)
@@ -618,64 +622,79 @@ export function ProductDesign() {
         ;(selectedTextObject as any)[key] = value
       }
     })
-    
+
     // 强制重新计算尺寸
     selectedTextObject.setCoords()
     canvas.renderAll()
-    
+
     // 延迟保存状态，避免频繁保存
     setTimeout(() => {
       saveState()
       isUpdatingTextRef.current = false
     }, 200)
   }
-  
+
   // 文本内容变化 - 使用防抖来优化性能
   useEffect(() => {
     if (!selectedTextObject || isUpdatingTextRef.current) return
-    
+
     const timeoutId = setTimeout(() => {
-      if (updateTextObjectRef.current && selectedTextObject.text !== textContent) {
+      if (
+        updateTextObjectRef.current &&
+        selectedTextObject.text !== textContent
+      ) {
         updateTextObjectRef.current({ text: textContent })
       }
     }, 50)
-    
+
     return () => clearTimeout(timeoutId)
   }, [textContent, selectedTextObject])
-  
+
   // 字体家族变化
   useEffect(() => {
     if (!selectedTextObject || isUpdatingTextRef.current) return
-    if (updateTextObjectRef.current && selectedTextObject.fontFamily !== fontFamily) {
+    if (
+      updateTextObjectRef.current &&
+      selectedTextObject.fontFamily !== fontFamily
+    ) {
       updateTextObjectRef.current({ fontFamily })
     }
   }, [fontFamily, selectedTextObject])
-  
+
   // 字体大小变化
   useEffect(() => {
     if (!selectedTextObject || isUpdatingTextRef.current) return
-    if (updateTextObjectRef.current && selectedTextObject.fontSize !== fontSize) {
+    if (
+      updateTextObjectRef.current &&
+      selectedTextObject.fontSize !== fontSize
+    ) {
       updateTextObjectRef.current({ fontSize })
     }
   }, [fontSize, selectedTextObject])
-  
+
   // 透明度变化
   useEffect(() => {
     if (!selectedTextObject || isUpdatingTextRef.current) return
     const newOpacity = fontOpacity / 100
-    if (updateTextObjectRef.current && selectedTextObject.opacity !== newOpacity) {
+    if (
+      updateTextObjectRef.current &&
+      selectedTextObject.opacity !== newOpacity
+    ) {
       updateTextObjectRef.current({ opacity: newOpacity })
     }
   }, [fontOpacity, selectedTextObject])
-  
+
   // 间距变化
   useEffect(() => {
     if (!selectedTextObject || isUpdatingTextRef.current) return
-    if (updateTextObjectRef.current && selectedTextObject.charSpacing !== textSpacing) {
+    if (
+      updateTextObjectRef.current &&
+      selectedTextObject.charSpacing !== textSpacing
+    ) {
       updateTextObjectRef.current({ charSpacing: textSpacing })
     }
   }, [textSpacing, selectedTextObject])
-  
+
   // 颜色变化
   useEffect(() => {
     if (!selectedTextObject || isUpdatingTextRef.current) return
@@ -683,19 +702,23 @@ export function ProductDesign() {
       updateTextObjectRef.current({ fill: textColor })
     }
   }, [textColor, selectedTextObject])
-  
+
   // 样式变化
   useEffect(() => {
     if (!selectedTextObject || isUpdatingTextRef.current) return
     if (updateTextObjectRef.current) {
-      const currentBold = selectedTextObject.fontWeight === 'bold' || selectedTextObject.fontWeight === 700
+      const currentBold =
+        selectedTextObject.fontWeight === 'bold' ||
+        selectedTextObject.fontWeight === 700
       const currentItalic = selectedTextObject.fontStyle === 'italic'
-      
-      if (currentBold !== textStyles.bold || 
-          currentItalic !== textStyles.italic ||
-          selectedTextObject.underline !== textStyles.underline ||
-          selectedTextObject.linethrough !== textStyles.linethrough ||
-          selectedTextObject.overline !== textStyles.overline) {
+
+      if (
+        currentBold !== textStyles.bold ||
+        currentItalic !== textStyles.italic ||
+        selectedTextObject.underline !== textStyles.underline ||
+        selectedTextObject.linethrough !== textStyles.linethrough ||
+        selectedTextObject.overline !== textStyles.overline
+      ) {
         updateTextObjectRef.current({
           fontWeight: textStyles.bold ? 'bold' : 'normal',
           fontStyle: textStyles.italic ? 'italic' : 'normal',
@@ -771,9 +794,9 @@ export function ProductDesign() {
     return (
       <div className='flex h-96 items-center justify-center'>
         <div className='text-center'>
-          <h2 className='mb-2 text-2xl font-bold'>产品未找到</h2>
-          <Button onClick={() => navigate({ to: '/products' })}>
-            返回产品列表
+          <h2 className='mb-2 text-2xl font-bold'>product not found</h2>
+          <Button onClick={() => navigate({ to: '/all-products' })}>
+            Back to product list
           </Button>
         </div>
       </div>
@@ -781,9 +804,9 @@ export function ProductDesign() {
   }
 
   return (
-    <div className='flex h-screen flex-col bg-background'>
+    <div className='bg-background flex h-screen flex-col'>
       {/* Top Toolbar */}
-      <div className='flex items-center justify-between border-b border-border bg-background px-4 py-3'>
+      <div className='border-border bg-background flex items-center justify-between border-b px-4 py-3'>
         <div className='flex items-center gap-3'>
           <Home className='h-4 w-4' />
         </div>
@@ -910,7 +933,7 @@ export function ProductDesign() {
 
       <div className='flex flex-1 overflow-hidden'>
         {/* Left Sidebar */}
-        <div className='w-64 border-r border-border bg-muted/50 p-4'>
+        <div className='border-border bg-muted/50 w-64 border-r p-4'>
           <div className='mb-6'>
             <div className='space-y-1'>
               <button
@@ -963,7 +986,7 @@ export function ProductDesign() {
             <div className='space-y-4'>
               <div
                 className={cn(
-                  'cursor-pointer rounded-md border-2 border-dashed border-border bg-background p-6 text-center transition-colors',
+                  'border-border bg-background cursor-pointer rounded-md border-2 border-dashed p-6 text-center transition-colors',
                   'hover:border-primary/50'
                 )}
                 onDrop={handleDrop}
@@ -989,7 +1012,7 @@ export function ProductDesign() {
                 />
               </div>
               {uploadedLogo && (
-                <div className='overflow-hidden rounded-md border border-border bg-background'>
+                <div className='border-border bg-background overflow-hidden rounded-md border'>
                   <img
                     src={uploadedLogo}
                     alt='Uploaded logo'
@@ -1002,8 +1025,8 @@ export function ProductDesign() {
 
           {activeTab === 'text' && (
             <div className='space-y-4'>
-              <div className='text-lg font-semibold text-foreground'>Text</div>
-              
+              <div className='text-foreground text-lg font-semibold'>Text</div>
+
               {/* Text Content */}
               <div className='space-y-2'>
                 <Label className='text-sm font-medium'>Text content:</Label>
@@ -1032,26 +1055,31 @@ export function ProductDesign() {
               {/* Font Family */}
               <div className='space-y-2'>
                 <Label className='text-sm font-medium'>Font family:</Label>
-                <Select value={fontFamily} onValueChange={(value) => {
-                  setFontFamily(value)
-                  // 立即更新，不等待 useEffect
-                  if (selectedTextObject && updateTextObjectRef.current) {
-                    isUpdatingTextRef.current = true
-                    selectedTextObject.set('fontFamily', value)
-                    fabricCanvasRef.current?.renderAll()
-                    setTimeout(() => {
-                      isUpdatingTextRef.current = false
-                      saveState()
-                    }, 100)
-                  }
-                }}>
+                <Select
+                  value={fontFamily}
+                  onValueChange={(value) => {
+                    setFontFamily(value)
+                    // 立即更新，不等待 useEffect
+                    if (selectedTextObject && updateTextObjectRef.current) {
+                      isUpdatingTextRef.current = true
+                      selectedTextObject.set('fontFamily', value)
+                      fabricCanvasRef.current?.renderAll()
+                      setTimeout(() => {
+                        isUpdatingTextRef.current = false
+                        saveState()
+                      }, 100)
+                    }
+                  }}
+                >
                   <SelectTrigger className='w-full'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='Arial'>Arial</SelectItem>
                     <SelectItem value='Helvetica'>Helvetica</SelectItem>
-                    <SelectItem value='Times New Roman'>Times New Roman</SelectItem>
+                    <SelectItem value='Times New Roman'>
+                      Times New Roman
+                    </SelectItem>
                     <SelectItem value='Courier New'>Courier New</SelectItem>
                     <SelectItem value='Verdana'>Verdana</SelectItem>
                     <SelectItem value='Georgia'>Georgia</SelectItem>
@@ -1068,7 +1096,9 @@ export function ProductDesign() {
 
               {/* Font Size */}
               <div className='space-y-2'>
-                <Label className='text-sm font-medium'>Font size: {fontSize}</Label>
+                <Label className='text-sm font-medium'>
+                  Font size: {fontSize}
+                </Label>
                 <input
                   type='range'
                   min='8'
@@ -1089,16 +1119,18 @@ export function ProductDesign() {
                       }, 200)
                     }
                   }}
-                  className='w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary'
+                  className='bg-muted accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg'
                   style={{
-                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${(fontSize - 8) / (100 - 8) * 100}%, hsl(var(--muted)) ${(fontSize - 8) / (100 - 8) * 100}%, hsl(var(--muted)) 100%)`
+                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${((fontSize - 8) / (100 - 8)) * 100}%, hsl(var(--muted)) ${((fontSize - 8) / (100 - 8)) * 100}%, hsl(var(--muted)) 100%)`,
                   }}
                 />
               </div>
 
               {/* Font Opacity */}
               <div className='space-y-2'>
-                <Label className='text-sm font-medium'>Font opacity: {fontOpacity}</Label>
+                <Label className='text-sm font-medium'>
+                  Font opacity: {fontOpacity}
+                </Label>
                 <input
                   type='range'
                   min='0'
@@ -1118,16 +1150,18 @@ export function ProductDesign() {
                       }, 200)
                     }
                   }}
-                  className='w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary'
+                  className='bg-muted accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg'
                   style={{
-                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${fontOpacity}%, hsl(var(--muted)) ${fontOpacity}%, hsl(var(--muted)) 100%)`
+                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${fontOpacity}%, hsl(var(--muted)) ${fontOpacity}%, hsl(var(--muted)) 100%)`,
                   }}
                 />
               </div>
 
               {/* Spacing */}
               <div className='space-y-2'>
-                <Label className='text-sm font-medium'>Spacing: {textSpacing}</Label>
+                <Label className='text-sm font-medium'>
+                  Spacing: {textSpacing}
+                </Label>
                 <input
                   type='range'
                   min='0'
@@ -1148,19 +1182,21 @@ export function ProductDesign() {
                       }, 200)
                     }
                   }}
-                  className='w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary'
+                  className='bg-muted accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg'
                   style={{
-                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${textSpacing}%, hsl(var(--muted)) ${textSpacing}%, hsl(var(--muted)) 100%)`
+                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${textSpacing}%, hsl(var(--muted)) ${textSpacing}%, hsl(var(--muted)) 100%)`,
                   }}
                 />
               </div>
 
               {/* Text Color */}
               <div className='space-y-2'>
-                <Label className='text-sm font-medium'>Text color: {textColor}</Label>
+                <Label className='text-sm font-medium'>
+                  Text color: {textColor}
+                </Label>
                 <div className='flex items-center gap-2'>
                   <div
-                    className='h-10 w-10 rounded border border-border cursor-pointer'
+                    className='border-border h-10 w-10 cursor-pointer rounded border'
                     style={{ backgroundColor: textColor }}
                   />
                   <Input
@@ -1180,7 +1216,7 @@ export function ProductDesign() {
                         }, 200)
                       }
                     }}
-                    className='flex-1 h-10 cursor-pointer'
+                    className='h-10 flex-1 cursor-pointer'
                   />
                   <Input
                     type='text'
@@ -1189,7 +1225,10 @@ export function ProductDesign() {
                       const newValue = e.target.value
                       setTextColor(newValue)
                       // 立即更新到画布
-                      if (selectedTextObject && /^#[0-9A-F]{6}$/i.test(newValue)) {
+                      if (
+                        selectedTextObject &&
+                        /^#[0-9A-F]{6}$/i.test(newValue)
+                      ) {
                         isUpdatingTextRef.current = true
                         selectedTextObject.set('fill', newValue)
                         fabricCanvasRef.current?.renderAll()
@@ -1199,7 +1238,7 @@ export function ProductDesign() {
                         }, 200)
                       }
                     }}
-                    className='w-24 h-10 font-mono text-sm'
+                    className='h-10 w-24 font-mono text-sm'
                     placeholder='#000000'
                   />
                 </div>
@@ -1215,11 +1254,14 @@ export function ProductDesign() {
                     size='sm'
                     onClick={() => {
                       const newBold = !textStyles.bold
-                      setTextStyles(prev => ({ ...prev, bold: newBold }))
+                      setTextStyles((prev) => ({ ...prev, bold: newBold }))
                       // 立即更新到画布
                       if (selectedTextObject) {
                         isUpdatingTextRef.current = true
-                        selectedTextObject.set('fontWeight', newBold ? 'bold' : 'normal')
+                        selectedTextObject.set(
+                          'fontWeight',
+                          newBold ? 'bold' : 'normal'
+                        )
                         selectedTextObject.setCoords()
                         fabricCanvasRef.current?.renderAll()
                         setTimeout(() => {
@@ -1240,11 +1282,14 @@ export function ProductDesign() {
                     size='sm'
                     onClick={() => {
                       const newItalic = !textStyles.italic
-                      setTextStyles(prev => ({ ...prev, italic: newItalic }))
+                      setTextStyles((prev) => ({ ...prev, italic: newItalic }))
                       // 立即更新到画布
                       if (selectedTextObject) {
                         isUpdatingTextRef.current = true
-                        selectedTextObject.set('fontStyle', newItalic ? 'italic' : 'normal')
+                        selectedTextObject.set(
+                          'fontStyle',
+                          newItalic ? 'italic' : 'normal'
+                        )
                         selectedTextObject.setCoords()
                         fabricCanvasRef.current?.renderAll()
                         setTimeout(() => {
@@ -1265,7 +1310,10 @@ export function ProductDesign() {
                     size='sm'
                     onClick={() => {
                       const newUnderline = !textStyles.underline
-                      setTextStyles(prev => ({ ...prev, underline: newUnderline }))
+                      setTextStyles((prev) => ({
+                        ...prev,
+                        underline: newUnderline,
+                      }))
                       // 立即更新到画布
                       if (selectedTextObject) {
                         isUpdatingTextRef.current = true
@@ -1279,7 +1327,8 @@ export function ProductDesign() {
                       }
                     }}
                     className={cn(
-                      textStyles.underline && 'bg-primary text-primary-foreground'
+                      textStyles.underline &&
+                        'bg-primary text-primary-foreground'
                     )}
                   >
                     Underline
@@ -1290,7 +1339,10 @@ export function ProductDesign() {
                     size='sm'
                     onClick={() => {
                       const newLinethrough = !textStyles.linethrough
-                      setTextStyles(prev => ({ ...prev, linethrough: newLinethrough }))
+                      setTextStyles((prev) => ({
+                        ...prev,
+                        linethrough: newLinethrough,
+                      }))
                       // 立即更新到画布
                       if (selectedTextObject) {
                         isUpdatingTextRef.current = true
@@ -1304,7 +1356,8 @@ export function ProductDesign() {
                       }
                     }}
                     className={cn(
-                      textStyles.linethrough && 'bg-primary text-primary-foreground'
+                      textStyles.linethrough &&
+                        'bg-primary text-primary-foreground'
                     )}
                   >
                     Linethrough
@@ -1315,7 +1368,10 @@ export function ProductDesign() {
                     size='sm'
                     onClick={() => {
                       const newOverline = !textStyles.overline
-                      setTextStyles(prev => ({ ...prev, overline: newOverline }))
+                      setTextStyles((prev) => ({
+                        ...prev,
+                        overline: newOverline,
+                      }))
                       // 立即更新到画布
                       if (selectedTextObject) {
                         isUpdatingTextRef.current = true
@@ -1329,7 +1385,8 @@ export function ProductDesign() {
                       }
                     }}
                     className={cn(
-                      textStyles.overline && 'bg-primary text-primary-foreground'
+                      textStyles.overline &&
+                        'bg-primary text-primary-foreground'
                     )}
                   >
                     Overline
@@ -1342,7 +1399,7 @@ export function ProductDesign() {
           {activeTab === 'notes' && (
             <div className='space-y-4'>
               <div className='space-y-2'>
-                <div className='text-sm font-medium text-foreground'>Name</div>
+                <div className='text-foreground text-sm font-medium'>Name</div>
                 <Input
                   placeholder='Enter name'
                   value={noteName}
@@ -1352,7 +1409,7 @@ export function ProductDesign() {
               </div>
 
               <div className='space-y-2'>
-                <div className='text-sm font-medium text-foreground'>Notes</div>
+                <div className='text-foreground text-sm font-medium'>Notes</div>
                 <div className='relative'>
                   <Textarea
                     placeholder='Enter notes'
@@ -1375,8 +1432,8 @@ export function ProductDesign() {
         </div>
 
         {/* Main Content Area */}
-        <div className='flex flex-1 flex-col overflow-hidden bg-background'>
-          <div className='flex flex-1 items-center justify-center overflow-auto bg-muted/30 p-8'>
+        <div className='bg-background flex flex-1 flex-col overflow-hidden'>
+          <div className='bg-muted/30 flex flex-1 items-center justify-center overflow-auto p-8'>
             <div className='bg-background shadow-lg'>
               <canvas ref={canvasRef} />
             </div>

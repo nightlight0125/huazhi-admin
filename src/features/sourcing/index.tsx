@@ -17,7 +17,7 @@ export function Sourcing() {
   const navigate = route.useNavigate()
   const { auth } = useAuthStore()
   const [data, setData] = useState<Sourcing[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [_isLoading, setIsLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
 
@@ -148,19 +148,11 @@ export function Sourcing() {
 
       <Main fluid>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
-          {isLoading ? (
-            <div className='flex h-96 items-center justify-center'>
-              <p className='text-muted-foreground text-sm'>
-                Loading sourcing list...
-              </p>
-            </div>
-          ) : (
-            <SourcingTable
-              data={data}
-              onRefresh={() => setRefreshKey((prev) => prev + 1)}
-              totalCount={totalCount}
-            />
-          )}
+          <SourcingTable
+            data={data}
+            onRefresh={() => setRefreshKey((prev) => prev + 1)}
+            totalCount={totalCount}
+          />
         </div>
       </Main>
     </>

@@ -219,7 +219,7 @@ export async function getCusList(
   // 数据在 response.data.data.data 中（根据日志显示）
   const dataObj = response.data.data
   let rows: CusFreightItem[] = []
-  
+
   // 尝试多种可能的数据结构
   if (Array.isArray(dataObj?.data)) {
     rows = dataObj.data as CusFreightItem[]
@@ -228,7 +228,7 @@ export async function getCusList(
   } else if (Array.isArray(dataObj)) {
     rows = dataObj as CusFreightItem[]
   }
-  
+
   const totalCount = dataObj?.totalCount || 0
 
   console.log('Extracted rows:', rows)
@@ -286,5 +286,71 @@ export async function calcuFreight(
   // 提取运费选项数据
   const data = response.data.data
   return Array.isArray(data) ? data : []
+}
+
+// 国家/地区数据接口
+export interface CountryItem {
+  id?: string
+  number?: string
+  name?: string
+  hzkj_code?: string
+  hzkj_name?: string
+  twocountrycode?: string // 两位国家代码，如 "CN", "US", "HK"
+  simplespell?: string // 简化拼写，如 "CHN", "USA"
+  description?: string // 英文名称
+  fullname?: string // 全名
+  areacode?: string // 区号
+  [key: string]: unknown
+}
+
+// 查询国家/地区列表请求参数
+export interface QueryCountryRequest {
+  data: Record<string, unknown>
+  pageSize: number
+  pageNo: number
+}
+
+// 查询国家/地区列表响应
+export interface QueryCountryResponse {
+  data?: {
+    filter?: string
+    lastPage?: boolean
+    pageNo?: number
+    pageSize?: number
+    rows?: CountryItem[]
+    totalCount?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询国家/地区列表 API
+export async function queryCountry(
+  pageNo: number = 1,
+  pageSize: number = 1000
+): Promise<CountryItem[]> {
+  const requestData: QueryCountryRequest = {
+    data: {},
+    pageSize,
+    pageNo,
+  }
+
+  const response = await apiClient.post<QueryCountryResponse>(
+    '/v2/hzkj/base/bd_country/queryCountry',
+    requestData
+  )
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to query country list. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const rows = response.data.data?.rows
+  return Array.isArray(rows) ? rows : []
 }
 

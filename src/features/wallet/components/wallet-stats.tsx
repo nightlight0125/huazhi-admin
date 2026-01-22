@@ -3,7 +3,17 @@ import { Building2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getCurrency, type CurrencyItem } from '@/lib/api/base'
-import { getWalletInfo } from '@/lib/api/wallet'
+import { getWalletInfo, requestWalletPayment } from '@/lib/api/wallet'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -45,6 +55,9 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
   >(null)
   const [walletBalance, setWalletBalance] = useState(0)
   const [rebateAmount, setRebateAmount] = useState(0)
+  const [amountError, setAmountError] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const hasInitializedCurrency = useRef(false)
 
   // 获取货币列表
@@ -108,6 +121,96 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
     void fetchWalletInfo()
   }, [auth.user?.customerId, auth.user?.id])
 
+  // 验证输入
+  const validateInput = () => {
+    // 验证金额
+    const amount = parseFloat(topupAmount)
+    if (!topupAmount || topupAmount === '0' || isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount greater than 0')
+      return false
+    }
+
+    // 验证货币
+    if (!currency) {
+      toast.error('Please select a currency')
+      return false
+    }
+
+    // 获取客户ID
+    const customerId = auth.user?.customerId || auth.user?.id
+    if (!customerId) {
+      toast.error('Customer ID not found. Please login again.')
+      return false
+    }
+
+    // 获取货币信息
+    const selectedCurrency = currencies.find((c) => c.id === currency)
+    if (!selectedCurrency) {
+      toast.error('Currency not found')
+      return false
+    }
+
+    return true
+  }
+
+  // 处理支付请求
+  const handlePaymentRequest = async () => {
+    if (!validateInput()) {
+      return
+    }
+
+    const amount = parseFloat(topupAmount)
+    const customerId = auth.user?.customerId || auth.user?.id
+    const selectedCurrency = currencies.find((c) => c.id === currency)!
+
+    setIsLoading(true)
+    try {
+      const response = await requestWalletPayment({
+        customerId: String(customerId),
+        amount: amount,
+        currency: currency,
+        currencyNumber: selectedCurrency.number.toLowerCase(),
+      })
+
+      // 检查返回的 data 是否是链接
+      if (response.data && typeof response.data === 'string') {
+        // 在新窗口打开链接
+        window.open(response.data, '_blank', 'noopener,noreferrer')
+        toast.success('Redirecting to payment page...')
+      } else {
+        toast.success('Payment request submitted successfully')
+      }
+
+      // 重置表单
+      setTopupAmount('0')
+      setSelectedPaymentMethod(null)
+      setShowConfirmDialog(false)
+
+      // 刷新钱包信息
+      const walletInfo = await getWalletInfo(String(customerId), 1, 10)
+      setWalletBalance(walletInfo.balance)
+      setRebateAmount(walletInfo.rebateAmount)
+    } catch (error) {
+      console.error('Failed to request payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request payment. Please try again.'
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 处理按钮点击，显示确认弹框
+  const handleButtonClick = () => {
+    if (!validateInput()) {
+      return
+    }
+    setSelectedPaymentMethod('bank-transfer')
+    setShowConfirmDialog(true)
+  }
+
   return (
     <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card -mx-4 grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:px-6'>
       {/* Account Balance and Benefits Card */}
@@ -164,29 +267,55 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
             <CardDescription>Topup Amount</CardDescription>
           </div>
           <CardContent className='p-0 pt-4'>
-            <div className='flex gap-2'>
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className='h-9 w-[100px]'>
-                  <SelectValue>
-                    {currencies.find((c) => c.id === currency)?.number || 'USD'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {currencies.map((currencyItem) => (
-                    <SelectItem key={currencyItem.id} value={currencyItem.id}>
-                      {currencyItem.number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                id='topup-amount'
-                type='number'
-                value={topupAmount}
-                onChange={(e) => setTopupAmount(e.target.value)}
-                placeholder='Enter amount'
-                className='h-9 flex-1'
-              />
+            <div className='space-y-2'>
+              <div className='flex gap-2'>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger className='h-9 w-[100px]'>
+                    <SelectValue>
+                      {currencies.find((c) => c.id === currency)?.number ||
+                        'USD'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencies.map((currencyItem) => (
+                      <SelectItem key={currencyItem.id} value={currencyItem.id}>
+                        {currencyItem.number}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  id='topup-amount'
+                  type='number'
+                  min='0'
+                  step='0.01'
+                  value={topupAmount}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const numValue = parseFloat(value)
+
+                    // 检查是否为负数
+                    if (
+                      value !== '' &&
+                      (numValue < 0 || value.startsWith('-'))
+                    ) {
+                      setAmountError('Amount cannot be negative')
+                      return
+                    }
+
+                    // 清除错误并更新值
+                    setAmountError('')
+                    setTopupAmount(value)
+                  }}
+                  placeholder='Enter amount'
+                  className={
+                    amountError ? 'border-destructive h-9 flex-1' : 'h-9 flex-1'
+                  }
+                />
+              </div>
+              {amountError && (
+                <p className='text-destructive text-xs'>{amountError}</p>
+              )}
             </div>
           </CardContent>
         </CardHeader>
@@ -207,7 +336,8 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
                     : 'outline'
                 }
                 className='h-auto flex-col items-start gap-2 p-3'
-                onClick={() => setSelectedPaymentMethod('bank-transfer')}
+                disabled={isLoading}
+                onClick={handleButtonClick}
               >
                 <Building2 className='h-5 w-5' />
                 <span className='text-sm font-medium'>Bank Transfer</span>
@@ -260,6 +390,35 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Payment Request</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to proceed with this payment request?
+              <br />
+              <br />
+              <strong>Amount:</strong>{' '}
+              {currencies.find((c) => c.id === currency)?.number || 'USD'}{' '}
+              {parseFloat(topupAmount || '0').toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handlePaymentRequest}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Processing...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

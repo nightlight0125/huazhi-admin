@@ -1,10 +1,3 @@
-import { useEffect, useState } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'sonner'
-import { apiClient } from '@/lib/api-client'
-import { getLogsList, getStatesList } from '@/lib/api/logistics'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,9 +13,27 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
+import { apiClient } from '@/lib/api-client'
+import { queryCountry, type CountryItem } from '@/lib/api/logistics'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import worldCountries from 'world-countries'
+import { z } from 'zod'
 // Input replaced by SelectDropdown for country selection
 import { SelectDropdown } from '@/components/select-dropdown'
 import { type Logistics } from '../data/schema'
+
+// 创建国旗图标组件
+const createFlagIcon = (countryCode: string) => {
+  const FlagIcon = ({ className }: { className?: string }) => {
+    const code = countryCode.toLowerCase()
+    return <span className={`fi fi-${code} ${className || ''}`} />
+  }
+  return FlagIcon
+}
 
 const editShippingSchema = z.object({
   shippingTo: z.string().min(1, 'Shipping To is required'),
@@ -47,41 +58,48 @@ export function EditShippingToDialog({
   onSubmit,
 }: EditShippingToDialogProps) {
   const [countryOptions, setCountryOptions] = useState<
-    Array<{ label: string; value: string }>
-  >([])
-  const [methodOptions, setMethodOptions] = useState<
-    Array<{ label: string; value: string }>
-  >([])
-  const [, setStatesData] = useState<
-    Array<{ id: string; hzkj_code?: string; hzkj_name?: string }>
+    Array<{ label: string; value: string; icon?: React.ComponentType<{ className?: string }> }>
   >([])
   const [, setIsLoadingData] = useState(false)
   const [, setIsSubmitting] = useState(false)
 
-  // load states and channels when dialog opens
+  // 使用 hook 获取物流渠道数据，只在对话框打开时加载
+  const { channels: methodOptions, error: channelsError } = useLogisticsChannels(1, 1000, open)
+
+  // load countries when dialog opens
   useEffect(() => {
     if (!open) return
     const load = async () => {
       setIsLoadingData(true)
       try {
-        const [states, channels] = await Promise.all([
-          getStatesList(),
-          getLogsList(),
-        ])
-        setStatesData(states)
-        const countryOpts = states.map((s) => ({
-          label: s.hzkj_name || s.name || '',
-          value: s.id || '', // use id so we can send destinationId directly
-        }))
+        const countries = await queryCountry(1, 1000) // 获取国家列表，最多1000条
+        // 将国家数据映射为选项格式，包含图标
+        const countryOpts = countries
+          .filter((country) => country.id) // 过滤掉没有ID的国家
+          .map((country: CountryItem) => {
+            // 优先使用 twocountrycode，如果没有则使用 hzkj_code
+            const countryCode = country.twocountrycode || country.hzkj_code
+            
+            // 在 world-countries 库中查找对应的国家信息
+            const countryInfo = countryCode
+              ? worldCountries.find(
+                  (c: any) => c.cca2?.toUpperCase() === countryCode.toUpperCase()
+                )
+              : null
+
+            // 生成国家代码（用于图标）
+            const code = (countryInfo as any)?.cca2?.toLowerCase() || countryCode?.toLowerCase() || ''
+            
+            return {
+              label: country.hzkj_name || country.name || country.description || '',
+              value: country.id || '', // use id so we can send destinationId directly
+              icon: code ? createFlagIcon(code) : undefined,
+            }
+          })
         setCountryOptions(countryOpts)
-        const channelOpts = channels.map((c) => ({
-          label: c.name || '',
-          value: c.id || '',
-        }))
-        setMethodOptions(channelOpts)
       } catch (error) {
-        console.error('Failed to load states/channels:', error)
-        toast.error('Failed to load countries or channels')
+        console.error('Failed to load countries:', error)
+        toast.error('Failed to load countries')
       } finally {
         setIsLoadingData(false)
       }
@@ -89,6 +107,14 @@ export function EditShippingToDialog({
 
     load()
   }, [open])
+
+  // 监听物流渠道加载错误
+  useEffect(() => {
+    if (channelsError) {
+      console.error('Failed to load logistics channels:', channelsError)
+      toast.error('Failed to load logistics channels')
+    }
+  }, [channelsError])
 
   const form = useForm<EditShippingValues>({
     resolver: zodResolver(editShippingSchema),

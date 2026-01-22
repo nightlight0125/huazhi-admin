@@ -12,6 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { Loader2 } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   Table,
@@ -24,26 +25,30 @@ import {
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { DataTableBulkActions } from '@/features/tasks/components/data-table-bulk-actions'
 import { type Store } from '../data/schema'
-import { createStoresColumns } from './stores-columns'
 import { EditStoreNameDialog } from './edit-store-name-dialog'
+import { createStoresColumns } from './stores-columns'
 
 const route = getRouteApi('/_authenticated/store-management')
 
 type DataTableProps = {
   data: Store[]
   totalCount?: number
+  isLoading?: boolean
   onRefresh?: () => void
 }
 
-export function StoresTable({ data, totalCount, onRefresh }: DataTableProps) {
-  // Local UI-only states
+export function StoresTable({
+  data,
+  totalCount,
+  isLoading = false,
+  onRefresh,
+}: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingStore, setEditingStore] = useState<Store | null>(null)
 
-  // Synced with URL states
   const {
     globalFilter,
     onGlobalFilterChange,
@@ -137,7 +142,7 @@ export function StoresTable({ data, totalCount, onRefresh }: DataTableProps) {
         table={table}
         searchPlaceholder='Filter by store name or ID...'
       />
-      <div className='rounded-md border'>
+      <div className='relative rounded-md border'>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -216,6 +221,14 @@ export function StoresTable({ data, totalCount, onRefresh }: DataTableProps) {
             )}
           </TableBody>
         </Table>
+        {isLoading && (
+          <div className='bg-background/50 absolute inset-0 flex items-center justify-center backdrop-blur-sm'>
+            <div className='flex flex-col items-center gap-2'>
+              <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
+              <p className='text-muted-foreground text-sm'>Loading...</p>
+            </div>
+          </div>
+        )}
       </div>
       <DataTablePagination table={table} />
       <DataTableBulkActions table={table} />

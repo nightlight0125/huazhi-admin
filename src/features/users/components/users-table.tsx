@@ -1,4 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
+import { queryRole } from '@/lib/api/users'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 import {
   flexRender,
   getCoreRowModel,
@@ -10,20 +22,8 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { useAuthStore } from '@/stores/auth-store'
-import { queryRole } from '@/lib/api/users'
-import { cn } from '@/lib/utils'
-import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
-import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { Loader2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { type User } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { usersColumns as columns } from './users-columns'
@@ -39,11 +39,12 @@ type DataTableProps = {
   search: Record<string, unknown>
   navigate: NavigateFn
   totalCount: number
+  isLoading?: boolean
   onFiltersChange?: (filters: {
     role?: string[]
     status?: string[]
     username?: string
-  }) => void
+  }, forceRefresh?: boolean) => void
 }
 
 export function UsersTable({
@@ -51,19 +52,25 @@ export function UsersTable({
   search,
   navigate,
   totalCount,
+  isLoading = false,
   onFiltersChange,
 }: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [searchInputValue, setSearchInputValue] = useState<string>('')
-  const isInitialMount = useRef(true)
   const prevColumnFiltersRef = useRef<string>('')
+  const isInitialMount = useRef(true)
+  const onFiltersChangeRef = useRef(onFiltersChange)
+  
+  // 更新 ref 中的回调函数
+  useEffect(() => {
+    onFiltersChangeRef.current = onFiltersChange
+  }, [onFiltersChange])
 
   const { auth } = useAuthStore()
   const roles = auth.roles
 
-  // 如果角色列表为空，尝试加载（作为后备）
   useEffect(() => {
     if (roles.length === 0) {
       const fetchRoles = async () => {
@@ -95,7 +102,6 @@ export function UsersTable({
         columnId: 'role',
         searchKey: 'role',
         type: 'array',
-        // 在源头处理：确保 role 值始终是字符串数组
         deserialize: (value: unknown) => {
           if (Array.isArray(value)) {
             return value.map((v) => String(v))
@@ -139,11 +145,13 @@ export function UsersTable({
           { label: 'Active', value: 'active' },
           { label: 'Inactive', value: 'inactive' },
         ],
+        singleSelect: true,
       },
       {
         columnId: 'role',
         title: 'role',
         options: roleOptions,
+        singleSelect: true,
       },
     ],
     [roleOptions]
@@ -178,12 +186,30 @@ export function UsersTable({
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  // 提取过滤器值转换逻辑
-  const extractFilters = useMemo(() => {
+
+  // 监听筛选器变化并触发请求
+  useEffect(() => {
+    const currentFiltersStr = JSON.stringify(columnFilters)
+    
+    // 如果是初始挂载，只更新 ref，不触发请求（初始加载由父组件处理）
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      prevColumnFiltersRef.current = currentFiltersStr
+      return
+    }
+
+    // 如果筛选器没有变化，不触发请求
+    if (currentFiltersStr === prevColumnFiltersRef.current) {
+      return
+    }
+
+    // 更新 ref
+    prevColumnFiltersRef.current = currentFiltersStr
+    
+    // 重新计算 filters，确保使用最新的值
     const roleFilter = columnFilters.find((f) => f.id === 'role')
     const statusFilter = columnFilters.find((f) => f.id === 'status')
-
-    return {
+    const filters = {
       role:
         Array.isArray(roleFilter?.value) && roleFilter.value.length > 0
           ? roleFilter.value
@@ -194,30 +220,80 @@ export function UsersTable({
           : undefined,
       username: searchInputValue || undefined,
     }
+    
+    console.log('Filters changed, triggering request:', filters)
+    
+    // 使用 setTimeout 延迟执行，避免在快速连续变化时触发多次请求
+    const timeoutId = setTimeout(() => {
+      onFiltersChangeRef.current?.(filters)
+    }, 100)
+    
+    return () => {
+      clearTimeout(timeoutId)
+    }
   }, [columnFilters, searchInputValue])
 
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      prevColumnFiltersRef.current = JSON.stringify(columnFilters)
-      return
-    }
-
-    const currentFiltersStr = JSON.stringify(columnFilters)
-    if (currentFiltersStr === prevColumnFiltersRef.current) {
-      return
-    }
-
-    prevColumnFiltersRef.current = currentFiltersStr
-    onFiltersChange?.(extractFilters)
-  }, [columnFilters, onFiltersChange, extractFilters])
-
-  const handleSearchClick = () => {
+  const handleSearchClick = (searchValue?: string) => {
+    // 使用传入的 searchValue，如果没有则使用 searchInputValue
+    const currentSearchValue = searchValue ?? searchInputValue
+    
+    console.log('handleSearchClick called with:', {
+      searchValue,
+      searchInputValue,
+      currentSearchValue,
+    })
+    
     const usernameColumn = table.getColumn('username')
     if (usernameColumn) {
-      usernameColumn.setFilterValue(searchInputValue)
+      usernameColumn.setFilterValue(currentSearchValue)
     }
-    onFiltersChange?.(extractFilters)
+    
+    // 更新 searchInputValue 状态，确保同步
+    setSearchInputValue(currentSearchValue)
+    
+    // 搜索按钮点击时，立即触发请求更新列表
+    // 重新计算 filters，确保使用最新的搜索值
+    const roleFilter = columnFilters.find((f) => f.id === 'role')
+    const statusFilter = columnFilters.find((f) => f.id === 'status')
+    const filters = {
+      role:
+        Array.isArray(roleFilter?.value) && roleFilter.value.length > 0
+          ? roleFilter.value
+          : undefined,
+      status:
+        Array.isArray(statusFilter?.value) && statusFilter.value.length > 0
+          ? statusFilter.value
+          : undefined,
+      // 确保 username 字段正确传递，使用当前搜索值
+      username: currentSearchValue.trim() || undefined,
+    }
+    
+    console.log('Search button clicked, triggering request:', {
+      currentSearchValue,
+      'filters.username': filters.username,
+      filters,
+    })
+    console.log('onFiltersChangeRef.current:', onFiltersChangeRef.current)
+    
+    // 更新 prevColumnFiltersRef，防止 useEffect 再次触发请求
+    // 构建一个包含 username 的 filters 字符串来更新 ref
+    const filtersWithUsername = JSON.stringify([
+      ...columnFilters.filter((f) => f.id !== 'username'),
+      { id: 'username', value: currentSearchValue },
+    ])
+    prevColumnFiltersRef.current = filtersWithUsername
+    
+    // 直接调用，确保搜索按钮点击时立即更新列表
+    // 使用 setTimeout 确保在下一个事件循环中执行，避免与 setFilterValue 冲突
+    setTimeout(() => {
+      if (onFiltersChangeRef.current) {
+        console.log('Calling onFiltersChange from search button with filters:', filters)
+        // 传递第二个参数 forceRefresh=true 来强制刷新
+        onFiltersChangeRef.current(filters, true)
+      } else {
+        console.warn('onFiltersChangeRef.current is null or undefined')
+      }
+    }, 0)
   }
 
   return (
@@ -230,21 +306,6 @@ export function UsersTable({
         onSearch={handleSearchClick}
         onFilterChange={() => {}}
         filters={filters}
-        customFilterSlot={
-          <Input
-            type='text'
-            placeholder='search'
-            value={searchInputValue}
-            onChange={(e) => setSearchInputValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSearchClick()
-              }
-            }}
-            className='h-8 w-[150px] lg:w-[250px]'
-          />
-        }
-        showSearch={false}
       />
       <div className='overflow-hidden rounded-md border'>
         <Table>
@@ -274,7 +335,19 @@ export function UsersTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  <div className='flex items-center justify-center gap-2'>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

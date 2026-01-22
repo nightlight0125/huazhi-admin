@@ -90,18 +90,18 @@ export function AffiliatePlan() {
             >
               Referral Links
             </TabsTrigger>
-            <TabsTrigger
+            {/* <TabsTrigger
               value='commission-records'
               className='data-[state=active]:text-primary px-4 text-sm'
             >
               Commission Records
-            </TabsTrigger>
-            <TabsTrigger
+            </TabsTrigger> */}
+            {/* <TabsTrigger
               value='withdraw-records'
               className='data-[state=active]:text-primary px-4 text-sm'
             >
               Withdraw Records
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger
               value='recommended-list'
               className='data-[state=active]:text-primary px-4 text-sm'

@@ -1,13 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import {
-  type ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
-import { Link2, Minus, Plus, Sparkles } from 'lucide-react'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
@@ -17,65 +9,130 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { queryShopifyConnectedProducts } from '@/lib/api/products'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  useReactTable,
+  type ColumnDef,
+  type PaginationState,
+} from '@tanstack/react-table'
+import { Link2, Loader2, Minus, Plus, Sparkles } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { type StoreProduct } from '../data/schema'
 import { AssociatedBulkActions } from './associated-bulk-actions'
 
 interface AssociatedStoreProductsTableProps {
-  data: StoreProduct[]
+  data?: StoreProduct[]
 }
 
 export function AssociatedStoreProductsTable({
-  data,
+  data: _data,
 }: AssociatedStoreProductsTableProps) {
+  const { auth } = useAuthStore()
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [globalFilter, setGlobalFilter] = useState('')
   const [disconnectProductId, setDisconnectProductId] = useState<string | null>(
     null
   )
-  const [expandedStoreNames, setExpandedStoreNames] = useState<Set<string>>(
-    new Set()
-  )
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [data, setData] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
-  // 按店铺分组数据
-  const groupedByStore = useMemo(() => {
-    const groups = new Map<string, StoreProduct[]>()
-    data.forEach((item) => {
-      const storeName = item.storeName
-      if (!groups.has(storeName)) {
-        groups.set(storeName, [])
+  // 判断输入是否全是数字
+  const isNumeric = (str: string) => {
+    return /^\d+$/.test(str.trim())
+  }
+
+  // 使用 ref 来跟踪上一次的 globalFilter，以便在搜索条件改变时重置分页
+  const prevGlobalFilterRef = useRef<string>('')
+
+  // 当搜索条件改变时，重置到第一页
+  useEffect(() => {
+    if (prevGlobalFilterRef.current !== globalFilter) {
+      prevGlobalFilterRef.current = globalFilter
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    }
+  }, [globalFilter])
+
+  // 获取数据
+  useEffect(() => {
+    const fetchData = async () => {
+      const customerId = auth.user?.customerId
+      const accountId = auth.user?.id
+
+      if (!customerId || !accountId) {
+        console.warn('Customer ID or Account ID not available')
+        return
       }
-      groups.get(storeName)!.push(item)
-    })
-    return groups
-  }, [data])
 
-  // 获取展开后的扁平数据
-  const flattenedData = useMemo(() => {
-    const result: StoreProduct[] = []
-    groupedByStore.forEach((products, storeName) => {
-      if (expandedStoreNames.has(storeName)) {
-        // 展开的店铺：显示所有产品
-        result.push(...products)
-      } else {
-        // 折叠的店铺：只显示第一个产品
-        if (products.length > 0) {
-          result.push(products[0])
+      setIsLoading(true)
+      try {
+        // 构建请求参数
+        const requestParams: any = {
+          shopId: '2337110780475925504', // 写死的 shopId
+          customerId: String(customerId),
+          accountId: String(accountId),
+          pageIndex: pagination.pageIndex + 1,
+          pageSize: pagination.pageSize,
         }
+
+        // 根据搜索条件添加参数
+        if (globalFilter && globalFilter.trim()) {
+          if (isNumeric(globalFilter)) {
+            requestParams.productId = globalFilter.trim()
+          } else {
+            requestParams.productName = globalFilter.trim()
+          }
+        }
+
+        const response = await queryShopifyConnectedProducts(requestParams)
+
+        const apiProducts = response?.rows || []
+        setData(apiProducts)
+        setTotalCount(response?.totalCount || 0)
+      } catch (error) {
+        console.error('Failed to fetch Shopify connected products:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load products. Please try again.'
+        )
+        setData([])
+        setTotalCount(0)
+      } finally {
+        setIsLoading(false)
       }
-    })
-    return result
-  }, [groupedByStore, expandedStoreNames])
+    }
+
+    void fetchData()
+  }, [
+    pagination.pageIndex,
+    pagination.pageSize,
+    globalFilter,
+    auth.user?.customerId,
+    auth.user?.id,
+  ])
 
   // 获取选中的产品 ID
   const selectedIds = useMemo(() => {
     return new Set(
       Object.keys(rowSelection)
-        .map((index) => flattenedData[Number(index)]?.id)
+        .map((index) => {
+          const item = data[Number(index)]
+          return item?.entryId || item?.localSpuId || ''
+        })
         .filter(Boolean)
     )
-  }, [rowSelection, flattenedData])
+  }, [rowSelection, data])
 
   // 清除所有选中
   const handleClearSelection = () => {
@@ -95,22 +152,17 @@ export function AssociatedStoreProductsTable({
     }
   }
 
-  // 切换店铺展开/折叠
-  const handleToggleStoreExpand = (storeName: string) => {
-    const newExpanded = new Set(expandedStoreNames)
-    if (newExpanded.has(storeName)) {
-      newExpanded.delete(storeName)
-    } else {
-      newExpanded.add(storeName)
-    }
-    setExpandedStoreNames(newExpanded)
-  }
-
-  // 判断是否是店铺的第一个产品
-  const isFirstProductOfStore = (product: StoreProduct) => {
-    const storeName = product.storeName
-    const storeProducts = groupedByStore.get(storeName) || []
-    return storeProducts[0]?.id === product.id
+  // 切换展开/折叠
+  const handleToggleExpand = (rowId: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(rowId)) {
+        next.delete(rowId)
+      } else {
+        next.add(rowId)
+      }
+      return next
+    })
   }
 
   // 创建列定义
@@ -147,24 +199,25 @@ export function AssociatedStoreProductsTable({
         header: 'Store Name',
         cell: ({ row }) => {
           const item = row.original
-          const isFirst = isFirstProductOfStore(item)
+          if (!item) return null
+          const hasItems = (item as any).items && (item as any).items.length > 0
+          const isExpanded = expandedRows.has(row.id)
           return (
             <div className='flex items-center gap-2'>
-              {isFirst && (
+              {hasItems && (
                 <button
-                  onClick={() => handleToggleStoreExpand(item.storeName)}
+                  onClick={() => handleToggleExpand(row.id)}
                   className='flex h-5 w-5 items-center justify-center rounded text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700'
-                  aria-label={`${expandedStoreNames.has(item.storeName) ? 'Collapse' : 'Expand'} ${item.storeName}`}
+                  aria-label={isExpanded ? 'Collapse' : 'Expand'}
                 >
-                  {expandedStoreNames.has(item.storeName) ? (
+                  {isExpanded ? (
                     <Minus className='h-3.5 w-3.5' />
                   ) : (
                     <Plus className='h-3.5 w-3.5' />
                   )}
                 </button>
               )}
-              <span className='text-green-600'>$</span>
-              <span>{item.storeName}</span>
+              <span>{(item as any).shopName}</span>
             </div>
           )
         },
@@ -177,17 +230,25 @@ export function AssociatedStoreProductsTable({
           return (
             <div className='flex items-center gap-3'>
               <img
-                src={item.image}
-                alt={item.name}
+                src={item.shopSpuPicture}
                 className='h-16 w-16 shrink-0 rounded object-cover'
               />
               <div className='flex flex-col gap-1'>
-                <div className='text-sm font-medium'>{item.name}</div>
-                <div className='text-muted-foreground text-xs'>
-                  Product ID: {item.id}
+                <div
+                  className='truncate text-sm font-medium'
+                  style={{ maxWidth: '250px' }}
+                  title={(item as any).shopSpuTitle}
+                >
+                  {(item as any).shopSpuTitle}
                 </div>
                 <div className='text-muted-foreground text-xs'>
-                  Price: ${item.storePrice.toFixed(2)}
+                  Product ID: {(item as any).productID}
+                </div>
+                <div className='text-muted-foreground text-xs'>
+                  Price: $
+                  {parseFloat(
+                    String((item as any).shopSpuPrice || '0')
+                  ).toFixed(2)}
                 </div>
               </div>
             </div>
@@ -202,7 +263,11 @@ export function AssociatedStoreProductsTable({
           return (
             <div className='flex justify-center'>
               <button
-                onClick={() => handleDisconnect(item.id)}
+                onClick={() =>
+                  handleDisconnect(
+                    (item as any).entryId || (item as any).localSpuId || ''
+                  )
+                }
                 className='relative flex h-8 w-8 items-center justify-center rounded-full bg-red-500 transition-colors hover:bg-red-600 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none'
                 aria-label='Disconnect product'
               >
@@ -217,56 +282,88 @@ export function AssociatedStoreProductsTable({
       {
         id: 'product',
         header: 'Product',
-        cell: () => (
-          <div className='flex items-center gap-3'>
-            <div className='bg-muted flex h-16 w-16 shrink-0 items-center justify-center rounded object-cover'>
-              <span className='text-muted-foreground text-xs'>POD</span>
+        cell: ({ row }) => {
+          const item = row.original
+          return (
+            <div className='flex items-center gap-3'>
+              <div className='bg-muted flex h-16 w-16 shrink-0 items-center justify-center rounded object-cover'>
+                <img
+                  src={item.localSpuPicture}
+                  className='h-16 w-16 shrink-0 rounded object-cover'
+                />
+              </div>
+              <div className='flex flex-col gap-1'>
+                <div className='text-sm font-medium'>{item.localSpuId}</div>
+                <div className='text-muted-foreground text-xs'>
+                  TD SPU: {item.localSpuNumber}
+                </div>
+                <div className='text-muted-foreground text-xs'>
+                  Price: $
+                  {(typeof (item as any).localSpuPrice === 'number'
+                    ? (item as any).localSpuPrice
+                    : parseFloat(String((item as any).localSpuPrice || '0'))
+                  ).toFixed(2)}
+                </div>
+              </div>
             </div>
-            <div className='flex flex-col gap-1'>
-              <div className='text-sm font-medium'>—</div>
-              <div className='text-muted-foreground text-xs'>TD SPU: ---</div>
-              <div className='text-muted-foreground text-xs'>Price: $0.00</div>
-            </div>
-          </div>
-        ),
+          )
+        },
       },
       {
         id: 'category',
         header: 'Category',
-        cell: () => <div className='text-muted-foreground text-xs'>---</div>,
+        cell: ({ row }) => {
+          const item = row.original
+          return (
+            <div className='text-muted-foreground text-xs'>
+              {item.category || '---'}
+            </div>
+          )
+        },
       },
     ],
-    [expandedStoreNames, groupedByStore]
+    [expandedRows]
   )
 
+  const pageCount =
+    totalCount > 0 ? Math.ceil(totalCount / pagination.pageSize) : 0
+
   const table = useReactTable({
-    data: flattenedData,
+    data: data,
     columns,
     state: {
       rowSelection,
       globalFilter,
+      pagination,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    manualPagination: true, // 启用服务端分页
+    pageCount,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getRowId: (row, index) => row.id || String(index),
-    globalFilterFn: (row, _columnId, filterValue) => {
-      const item = row.original
-      const searchLower = String(filterValue).toLowerCase()
-      const nameMatch = item.name.toLowerCase().includes(searchLower)
-      const idMatch = item.id.toLowerCase().includes(searchLower)
-      const storeNameMatch = item.storeName.toLowerCase().includes(searchLower)
-      return nameMatch || idMatch || storeNameMatch
+    getRowId: (row, index) => {
+      if (!row.original) {
+        return String(index)
+      }
+      const item = row.original as any
+      return item.entryId || item.localSpuId || String(index)
     },
+    // 移除客户端过滤，因为搜索在服务端进行
+    globalFilterFn: () => true,
   })
 
-  // 展开/折叠时重置分页
+  // 确保页码在有效范围内
   useEffect(() => {
-    table.setPageIndex(0)
-  }, [expandedStoreNames, table])
+    if (pageCount > 0 && pagination.pageIndex >= pageCount) {
+      setPagination((prev) => ({
+        ...prev,
+        pageIndex: Math.max(0, pageCount - 1),
+      }))
+    }
+  }, [pageCount, pagination.pageIndex])
 
   return (
     <div className='space-y-4'>
@@ -278,6 +375,11 @@ export function AssociatedStoreProductsTable({
         table={table}
         searchPlaceholder='enter store product\name\ID'
         searchKey='name'
+        onSearch={(searchValue) => {
+          // 当点击搜索按钮时，只更新 globalFilter 状态，触发 API 调用
+          // 不更新表格的 globalFilter，因为输入框应该保持用户输入的值
+          setGlobalFilter(searchValue)
+        }}
       />
       <div className='overflow-hidden rounded-md border'>
         <Table>
@@ -315,23 +417,174 @@ export function AssociatedStoreProductsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className='text-xs'
-                  data-state={row.getIsSelected() && 'selected'}
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
+                  <div className='flex items-center justify-center gap-2'>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => {
+                const item = row.original
+                const isExpanded = expandedRows.has(row.id)
+                const hasItems =
+                  item && (item as any).items && (item as any).items.length > 0
+
+                return (
+                  <>
+                    <TableRow
+                      key={row.id}
+                      className='text-xs'
+                      data-state={row.getIsSelected() && 'selected'}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {isExpanded &&
+                      hasItems &&
+                      (item as any).items.map(
+                        (variant: any, variantIndex: number) => (
+                          <TableRow
+                            key={`${row.id}-variant-${variantIndex}`}
+                            className='bg-muted/50 text-xs'
+                            data-state={row.getIsSelected() && 'selected'}
+                          >
+                            {/* Select column */}
+                            <TableCell>
+                              <Checkbox
+                                checked={false}
+                                disabled
+                                aria-label='Select variant'
+                                className='translate-y-[2px] opacity-50'
+                              />
+                            </TableCell>
+                            {/* Store Name column */}
+                            <TableCell>
+                              <div className='flex items-center gap-2 pl-8'>
+                                <span>{(item as any).shopName}</span>
+                              </div>
+                            </TableCell>
+                            {/* Store Product column */}
+                            <TableCell>
+                              <div className='flex items-center gap-3'>
+                                {variant.shopVariantPicture && (
+                                  <img
+                                    src={variant.shopVariantPicture}
+                                    alt={variant.shopVariantTitle || 'Variant'}
+                                    className='h-16 w-16 shrink-0 rounded object-cover'
+                                  />
+                                )}
+                                <div className='flex flex-col gap-1'>
+                                  <div
+                                    className='truncate text-sm font-medium'
+                                    style={{ maxWidth: '250px' }}
+                                    title={
+                                      variant.shopVariantTitle ||
+                                      variant.localSkuCName ||
+                                      'Variant'
+                                    }
+                                  >
+                                    {variant.shopVariantTitle ||
+                                      variant.localSkuCName ||
+                                      'Variant'}
+                                  </div>
+                                  <div className='text-muted-foreground text-xs'>
+                                    Product ID:{' '}
+                                    {variant.shopVariantId ||
+                                      variant.localSkuNumber ||
+                                      '-'}
+                                  </div>
+                                  <div className='text-muted-foreground text-xs'>
+                                    Price: $
+                                    {parseFloat(
+                                      String(variant.shopVariantPrice || '0')
+                                    ).toFixed(2)}
+                                  </div>
+                                  {variant.localSkuValue && (
+                                    <div className='text-muted-foreground text-xs'>
+                                      {variant.localSkuValue}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            {/* Disconnect column */}
+                            <TableCell>
+                              <div className='flex justify-center'>
+                                <button
+                                  onClick={() =>
+                                    handleDisconnect(
+                                      variant.shopVariantId ||
+                                        variant.localSkuNumber ||
+                                        ''
+                                    )
+                                  }
+                                  className='relative flex h-8 w-8 items-center justify-center rounded-full bg-red-500 transition-colors hover:bg-red-600 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none'
+                                  aria-label='Disconnect variant'
+                                >
+                                  <Link2 className='h-4 w-4 text-white' />
+                                  <Sparkles className='absolute -top-1 -left-1 h-3 w-3 text-white' />
+                                </button>
+                              </div>
+                            </TableCell>
+                            {/* Product column */}
+                            <TableCell>
+                              <div className='flex items-center gap-3'>
+                                <div className='bg-muted flex h-16 w-16 shrink-0 items-center justify-center rounded object-cover'>
+                                  {variant.localSkuPicture ? (
+                                    <img
+                                      src={variant.localSkuPicture}
+                                      className='h-16 w-16 shrink-0 rounded object-cover'
+                                    />
+                                  ) : (
+                                    <span className='text-muted-foreground text-xs'>
+                                      POD
+                                    </span>
+                                  )}
+                                </div>
+                                <div className='flex flex-col gap-1'>
+                                  <div className='text-sm font-medium'>
+                                    {variant.localSkuEName || '-'}
+                                  </div>
+                                  <div className='text-muted-foreground text-xs'>
+                                    TD SPU: {variant.localSkuNumber || '---'}
+                                  </div>
+                                  <div className='text-muted-foreground text-xs'>
+                                    Price: $
+                                    {(typeof variant.localSkuPrice === 'number'
+                                      ? variant.localSkuPrice
+                                      : parseFloat(
+                                          String(variant.localSkuPrice || '0')
+                                        )
+                                    ).toFixed(2)}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            {/* Category column */}
+                            <TableCell>
+                              <div className='text-muted-foreground text-xs'>
+                                {variant.category || '---'}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
                       )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+                  </>
+                )
+              })
             ) : (
               <TableRow>
                 <TableCell

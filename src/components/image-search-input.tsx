@@ -14,6 +14,8 @@ type ImageSearchInputProps = {
   value?: string
   /** 输入变化回调 */
   onChange?: InputHTMLAttributes<HTMLInputElement>['onChange']
+  /** 键盘事件回调 */
+  onKeyDown?: InputHTMLAttributes<HTMLInputElement>['onKeyDown']
   /** 点击图片搜索按钮时触发 */
   onImageSearchClick?: () => void
   /** 选择图片文件后的回调 */
@@ -33,6 +35,7 @@ export function ImageSearchInput({
   placeholder = 'Search by name or upload image',
   value,
   onChange,
+  onKeyDown,
   onImageSearchClick,
   onFileSelect,
   suffix,
@@ -64,6 +67,7 @@ export function ImageSearchInput({
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          onKeyDown={onKeyDown}
           className='h-8 border-0 bg-transparent pr-1 pl-8 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0'
         />
       </div>
@@ -81,19 +85,19 @@ export function ImageSearchInput({
               className='hidden'
               onChange={handleFileChange}
             />
-          <Button
-            type='button'
-            variant='ghost'
-            size='icon'
-            className='h-7 w-7 rounded-full'
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              className='h-7 w-7 rounded-full'
               onClick={() => {
                 fileInputRef.current?.click()
                 onImageSearchClick?.()
               }}
-          >
-            <ImageIcon className='h-4 w-4' />
-            <span className='sr-only'>Search by image</span>
-          </Button>
+            >
+              <ImageIcon className='h-4 w-4' />
+              <span className='sr-only'>Search by image</span>
+            </Button>
           </>
         )}
       </div>

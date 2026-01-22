@@ -1,5 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { format } from 'date-fns'
+import { DataTableToolbar } from '@/components/data-table'
+import {
+  OrderPayDialog,
+  type OrderPayable,
+} from '@/components/order-pay-dialog'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { deleteOrder, queryOrder, requestPayment } from '@/lib/api/orders'
+import { useAuthStore } from '@/stores/auth-store'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -12,27 +28,11 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { format } from 'date-fns'
 import { HelpCircle } from 'lucide-react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { deleteOrder, queryOrder, requestPayment } from '@/lib/api/orders'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTableToolbar } from '@/components/data-table'
-import {
-  OrderPayDialog,
-  type OrderPayable,
-} from '@/components/order-pay-dialog'
 import { orderStatuses } from '../data/data'
 import { type Order, type OrderProduct } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
@@ -57,6 +57,7 @@ type DataTableProps = {
   orderStatusOptions?: FilterOption[]
   countryOptions?: FilterOption[]
 }
+
 
 function ProductDetailRow({
   product,
@@ -171,6 +172,9 @@ export function OrdersTable({
   const [totalCount, setTotalCount] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
   const lastRequestParamsRef = useRef<string>('')
+
+console.log('countryOptions------------999999999999:', countryOptions)
+
 
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -296,14 +300,26 @@ export function OrdersTable({
       activeTab && activeTab !== '' ? String(activeTab) : undefined
 
     const countryFilter = columnFilters.find((f) => f.id === 'country')
-    const countryId =
+    const countryIds =
       countryFilter &&
       Array.isArray(countryFilter.value) &&
       countryFilter.value.length > 0
-        ? String(countryFilter.value[0])
+        ? countryFilter.value.map((id) => String(id))
         : undefined
 
-    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryId || ''}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${activeTab}`
+    // 获取平台订单状态过滤值（支持多选）
+    const platformOrderStatusFilter = columnFilters.find((f) => f.id === 'platformOrderStatus')
+    const orderStatus =
+      platformOrderStatusFilter &&
+      Array.isArray(platformOrderStatusFilter.value) &&
+      platformOrderStatusFilter.value.length > 0
+        ? platformOrderStatusFilter.value.map((status) => String(status))
+        : undefined
+
+    // 将国家ID数组和订单状态数组转换为字符串用于请求key（用于去重）
+    const countryIdsKey = countryIds ? countryIds.sort().join(',') : ''
+    const orderStatusKey = orderStatus ? orderStatus.sort().join(',') : ''
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryIdsKey}-${orderStatusKey}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${activeTab}`
 
     if (lastRequestParamsRef.current === requestKey) {
       return
@@ -322,7 +338,8 @@ export function OrdersTable({
         pageSize,
         shopId,
         shopOrderStatus,
-        countryId,
+        countryId: countryIds, // 传递国家ID数组
+        orderStatus, // 传递订单状态数组
         startDate: formattedDateRange?.startDate,
         endDate: formattedDateRange?.endDate,
       })
@@ -600,7 +617,7 @@ export function OrdersTable({
             columnId: 'platformOrderStatus',
             title: 'Store Order Status',
             options: platformOrderStatusOptions,
-            singleSelect: true,
+            // 移除 singleSelect: true，支持多选
           },
           // {
           //   columnId: 'status',
@@ -612,7 +629,6 @@ export function OrdersTable({
             columnId: 'country',
             title: 'Country',
             options: countryOptions,
-            singleSelect: true,
           },
         ]}
       />
