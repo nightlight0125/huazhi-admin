@@ -228,7 +228,7 @@ function PaginationControl({
 export function NotAssociatedConnectionView() {
   const { auth } = useAuthStore()
   // shopId 写死
-  const SHOP_ID = '2337110780475925504'
+  const SHOP_ID = '0'
 
   const [storeProducts, setStoreProducts] = useState<StoreProductItem[]>([])
   const [totalStoreProducts, setTotalStoreProducts] = useState(0)

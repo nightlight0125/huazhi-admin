@@ -53,7 +53,6 @@ export const createPackagingConnectionColumns = (options?: {
       id: 'expand',
       header: '',
       cell: ({ row }) => {
-        console.log('row------------99996666:', row)
         const hasPackagingProducts =
           row.original.packagingProducts &&
           row.original.packagingProducts.length > 0
@@ -91,8 +90,8 @@ export const createPackagingConnectionColumns = (options?: {
           <div className='flex items-center gap-3'>
             <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
               <img
-                src={item.hzkj_variant_picture || item.image}
-                alt={item.hzkj_local_sku_hzkj_name || item.name}
+                src={item.hzkj_variant_picture || item.hzkj_shop_package_hzkj_pur_price}
+               
                 className='h-full w-full object-cover'
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
@@ -101,12 +100,12 @@ export const createPackagingConnectionColumns = (options?: {
               />
             </div>
             <div className='flex flex-col gap-1'>
-              <div className='text-sm font-medium'>{item.hzkj_local_sku_hzkj_name || item.name}</div>
+              <div className='text-sm font-medium'>{item.hzkj_local_sku_hzkj_name || item.hzkj_shop_package_hzkj_name}</div>
               <div className='text-muted-foreground text-xs'>
-                SKU: {item.hzkj_shop_sku || item.sku}
+                SKU: {item.hzkj_shop_sku || item.hzkj_shop_package_number}
               </div>
               <div className='text-muted-foreground text-xs'>
-                Variant ID: {item.hzkj_variantid || item.variantId}
+                Variant ID: {item.hzkj_variantid || '---'}
               </div>
             </div>
           </div>
@@ -123,15 +122,15 @@ export const createPackagingConnectionColumns = (options?: {
               <div className='flex items-center gap-3'>
                 <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
                   <img
-                    src={item.hzkj_shop_pd_package_hzkj_picturefield || item.hzProductImage || '/placeholder-image.png'}
+                    src={item.hzkj_local_sku_hzkj_picturefield ||  ''}
                     alt='SKU'
                     className='h-full w-full object-cover'
                   />
                 </div>
                 <div className='flex flex-col gap-1'>
-                  <div className='text-sm font-medium'>{item.hzkj_local_sku_hzkj_sku_value || item.hzProductSku || '---'}</div>
+                  <div className='text-sm font-medium'>{item.hzkj_local_sku_hzkj_name || '---'}</div>
                   <div className='text-muted-foreground text-xs'>
-                    SKU: {item.hzkj_local_sku_number || item.hzProductSku || '---'}
+                    SKU: {item.hzkj_local_sku_number ||  '---'}
                   </div>
                 </div>
               </div>
@@ -147,7 +146,7 @@ export const createPackagingConnectionColumns = (options?: {
         return (
           <div className='flex items-center gap-2'>
             <span className='text-green-600'>$</span>
-            <span className='text-sm'>{item.hzkj_od_pd_shop_name || item.storeName}</span>
+            <span className='text-sm'>{item.hzkj_od_pd_shop_name || item.hzkj_pk_shop_name}</span>
           </div>
         )
       },
@@ -203,9 +202,13 @@ export const createPackagingConnectionColumns = (options?: {
       header: 'Price',
       cell: ({ row }) => {
         const item = row.original
-        const price = item.hzkj_variant_price ?? item.price
+        const price = item.hzkj_variant_price ?? item.hzkj_shop_package_hzkj_pur_price
+        const formattedPrice =
+          price != null && typeof price === 'number' && !isNaN(price)
+            ? price.toFixed(2)
+            : '0.00'
         return (
-          <div className='text-sm font-medium'>${price.toFixed(2)}</div>
+          <div className='text-sm font-medium'>${formattedPrice}</div>
         )
       },
       size: 100,

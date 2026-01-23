@@ -5,9 +5,7 @@ import { Main } from '@/components/layout/main'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   queryCuShopPackageList,
-  queryOdPdPackageList,
-  type CuShopPackageListItem,
-  type OdPdPackageListItem,
+  queryOdPdPackageList
 } from '@/lib/api/products'
 import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
 import { useAuthStore } from '@/stores/auth-store'
@@ -133,21 +131,15 @@ export function PackagingConnection() {
     }
 
     void fetchStores()
-  }, [auth.user?.id])
+  }, [])
 
   // 获取包装连接数据（Products、Order 和 Store tab）
   useEffect(() => {
     const fetchPackagingData = async () => {
       const userId = auth.user?.id
       const customerId = auth.user?.customerId
-      if (!userId || !customerId) {
-        setPackagingData([])
-        setTotalCount(0)
-        return
-      }
 
       try {
-        // Store tab 使用不同的 API
         if (activeTab === 'stores') {
           const response = await queryCuShopPackageList({
             data: {
@@ -158,23 +150,7 @@ export function PackagingConnection() {
             pageNo,
           })
 
-          // 将 API 数据映射为 StoreSku 格式
-          const mappedData: StoreSku[] = response.rows.map((item: CuShopPackageListItem) => ({
-            id: item.id || item.hzkj_pk_shop_variant_id || '',
-            image:
-              item.hzkj_pk_shop_product_image ||
-              'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=100&h=100&fit=crop',
-            name: item.hzkj_pk_shop_product_name || '',
-            sku: item.hzkj_pk_shop_sku || '',
-            variantId: item.hzkj_pk_shop_variant_id || '',
-            storeName: item.hzkj_pk_shop_name || '',
-            price: typeof item.hzkj_pk_shop_price === 'number' ? item.hzkj_pk_shop_price : 0,
-            isConnected: false, // Store tab 的数据默认不显示连接状态
-            packagingProducts: [],
-          }))
-
-          console.log('Store tab response:', mappedData)
-          setPackagingData(mappedData)
+          setPackagingData(response.rows || [])
           setTotalCount(response.totalCount || 0)
           return
         }
@@ -221,27 +197,7 @@ export function PackagingConnection() {
           pageSize,
           pageNo,
         })
-
-        // 将 API 数据映射为 StoreSku 格式
-        const mappedData: StoreSku[] = response.rows.map((item: OdPdPackageListItem) => ({
-          id: item.id || item.hzkj_od_pd_shop_variant_id || '',
-          image:
-            item.hzkj_od_pd_shop_product_image ||
-            'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=100&h=100&fit=crop',
-          name: item.hzkj_od_pd_shop_product_name || '',
-          sku: item.hzkj_od_pd_shop_sku || '',
-          variantId: item.hzkj_od_pd_shop_variant_id || '',
-          storeName: item.hzkj_od_pd_shop_name || '',
-          price: typeof item.hzkj_od_pd_shop_price === 'number' ? item.hzkj_od_pd_shop_price : 0,
-          isConnected: item.hzkj_isconnect === '1',
-          hzProductId: item.hzkj_hz_product_id,
-          hzProductImage: item.hzkj_hz_product_image,
-          hzProductSku: item.hzkj_hz_product_sku,
-          packagingProducts: [],
-        }))
-
-        console.log('response------------3333:', mappedData)
-        setPackagingData(mappedData)
+        setPackagingData(response.rows || [])
         setTotalCount(response.totalCount || 0)
       } catch (error) {
         console.error('Failed to fetch packaging data:', error)

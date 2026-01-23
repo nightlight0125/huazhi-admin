@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
 import { getAddress, type AddressItem } from '@/lib/api/users'
 import { useAuthStore } from '@/stores/auth-store'
 import { useNavigate } from '@tanstack/react-router'
@@ -64,13 +65,8 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [shippingAddress, setShippingAddress] = useState<AddressItem | null>(null)
 
-  const shippingMethodOptions = [
-    { value: 'tdpacket-sensitive', label: 'TDPacket Sensitive' },
-    { value: 'tdpacket-electro', label: 'TDPacket Electro' },
-    { value: 'yun-electro-econo', label: 'YUN-Electro-Econo' },
-    { value: 'tdpacket-pure-battery', label: 'TDPacket Pure battery' },
-    { value: 'yun-fast-electro', label: 'YUN-Fast-Electro' },
-  ]
+  // 使用 hook 获取物流渠道数据
+  const { channels: shippingMethodOptions, isLoading: isLoadingChannels } = useLogisticsChannels()
 
   const couponOptions = [
     { value: 'none', label: 'No coupon' },
@@ -166,18 +162,28 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                 <SelectValue placeholder='Please select' />
               </SelectTrigger>
               <SelectContent>
-                {shippingMethodOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                {isLoadingChannels ? (
+                  <SelectItem value="loading" disabled>
+                    Loading...
                   </SelectItem>
-                ))}
+                ) : shippingMethodOptions.length > 0 ? (
+                  shippingMethodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-options" disabled>
+                    No shipping methods available
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
-            {selectedShippingMethod && (
+            {/* {selectedShippingMethod && (
               <span className='text-sm text-red-600'>
                 Estimated Delivery Time: - Day(s)
               </span>
-            )}
+            )} */}
           </div>
         </div>
 

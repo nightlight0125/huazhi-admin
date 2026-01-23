@@ -78,7 +78,7 @@ export function AssociatedStoreProductsTable({
       try {
         // 构建请求参数
         const requestParams: any = {
-          shopId: '2337110780475925504', // 写死的 shopId
+          shopId: '0', // 写死的 shopId
           customerId: String(customerId),
           accountId: String(accountId),
           pageIndex: pagination.pageIndex + 1,
