@@ -1,18 +1,4 @@
-import { useEffect, useState } from 'react'
-import { getRouteApi } from '@tanstack/react-router'
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { getWalletList, type ApiFundRecordItem } from '@/lib/api/wallet'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { Button } from '@/components/ui/button'
 import {
   TableBody,
@@ -23,11 +9,26 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { getWalletList, type ApiFundRecordItem } from '@/lib/api/wallet'
+import { getInvoiceRecords, type ApiInvoiceRecordItem } from '@/lib/api/orders'
+import { useAuthStore } from '@/stores/auth-store'
+import { getRouteApi } from '@tanstack/react-router'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { walletRecordTypes } from '../data/data'
 import { type WalletRecord, type WalletRecordType } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
-import { createWalletColumns } from './wallet-columns'
+import { createInvoiceColumns, createWalletColumns } from './wallet-columns'
 
 const route = getRouteApi('/_authenticated/wallet')
 
@@ -88,6 +89,11 @@ export function WalletTable({ data }: DataTableProps) {
   const [rechargeRecords, setRechargeRecords] = useState<WalletRecord[]>([])
   const [isLoadingRecharge, setIsLoadingRecharge] = useState(false)
   const [totalRechargeCount, setTotalRechargeCount] = useState(0)
+  
+  // Invoice Records 的状态（使用原始 API 数据）
+  const [invoiceRecords, setInvoiceRecords] = useState<ApiInvoiceRecordItem[]>([])
+  const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
+  const [totalInvoiceCount, setTotalInvoiceCount] = useState(0)
 
   // 使用URL状态管理
   const {
@@ -132,12 +138,7 @@ export function WalletTable({ data }: DataTableProps) {
         return
       }
 
-      const customerId = auth.user?.customerId || auth.user?.id
-      if (!customerId) {
-        console.warn('No customer ID available')
-        return
-      }
-
+      const customerId = auth.user?.customerId 
       setIsLoadingRecharge(true)
       try {
         const pageNo = urlPagination.pageIndex + 1
@@ -172,20 +173,72 @@ export function WalletTable({ data }: DataTableProps) {
     auth.user?.id,
   ])
 
-  // 根据当前tab选择数据源
+  // 获取 Invoice Records（直接使用后端返回的原始数据）
+  useEffect(() => {
+    const fetchInvoiceRecords = async () => {
+      if (activeTab !== 'invoice') {
+        return
+      }
+
+      const customerId = auth.user?.customerId 
+      if (!customerId) {
+        setInvoiceRecords([])
+        setTotalInvoiceCount(0)
+        return
+      }
+
+      setIsLoadingInvoice(true)
+      try {
+        const pageNo = urlPagination.pageIndex + 1
+        const pageSize = urlPagination.pageSize
+
+        const result = await getInvoiceRecords(String(customerId), pageNo, pageSize)
+        // 直接使用后端返回的原始数据，不进行转换
+        setInvoiceRecords(result.rows)
+        setTotalInvoiceCount(result.totalCount)
+      } catch (error) {
+        console.error('Failed to fetch invoice records:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load invoice records. Please try again.'
+        )
+        setInvoiceRecords([])
+        setTotalInvoiceCount(0)
+      } finally {
+        setIsLoadingInvoice(false)
+      }
+    }
+
+    void fetchInvoiceRecords()
+  }, [
+    activeTab,
+    urlPagination.pageIndex,
+    urlPagination.pageSize,
+    auth.user?.customerId,
+    auth.user?.id,
+  ])
+
+  // 根据当前tab选择数据源和列定义
   const filteredData =
     activeTab === 'recharge'
       ? rechargeRecords
-      : data.filter((record) => {
-          if (activeTab === 'invoice') return record.type === 'invoice'
-          return true
-        })
+      : activeTab === 'invoice'
+        ? invoiceRecords
+        : data.filter((record) => {
+            if (activeTab === 'invoice') return record.type === 'invoice'
+            return true
+          })
 
-  const columns = createWalletColumns()
+  // 根据 activeTab 选择不同的列定义
+  const columns =
+    activeTab === 'invoice' ? createInvoiceColumns() : createWalletColumns()
 
-  const table = useReactTable({
-    data: filteredData,
-    columns,
+  // 这里同时支持两种数据结构（WalletRecord 和 ApiInvoiceRecordItem），
+  // 为了简化类型推导，使用 any 让 Table 以运行时数据为准
+  const table = useReactTable<any>({
+    data: filteredData as any[],
+    columns: columns as any,
     state: {
       sorting,
       columnVisibility,
@@ -199,21 +252,32 @@ export function WalletTable({ data }: DataTableProps) {
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     globalFilterFn: (row, _columnId, filterValue) => {
-      const description = String(row.getValue('description')).toLowerCase()
-      const paymentMethod = String(row.getValue('paymentMethod')).toLowerCase()
-      const notes = String(row.getValue('notes') || '').toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
+      
+      if (activeTab === 'invoice') {
+        // Invoice Records: 搜索 Clients Order Number
+        const item = row.original as ApiInvoiceRecordItem
+        const clientsOrderNumber = String(
+          item.hzkj_source_number || ''
+        ).toLowerCase()
+        return clientsOrderNumber.includes(searchValue)
+      } else {
+        // Recharge Records: 搜索原有字段
+        const description = String(row.getValue('description')).toLowerCase()
+        const paymentMethod = String(row.getValue('paymentMethod')).toLowerCase()
+        const notes = String(row.getValue('notes') || '').toLowerCase()
 
-      return (
-        description.includes(searchValue) ||
-        paymentMethod.includes(searchValue) ||
-        notes.includes(searchValue)
-      )
+        return (
+          description.includes(searchValue) ||
+          paymentMethod.includes(searchValue) ||
+          notes.includes(searchValue)
+        )
+      }
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel:
-      activeTab === 'recharge' ? undefined : getPaginationRowModel(),
+      activeTab === 'recharge' || activeTab === 'invoice' ? undefined : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onPaginationChange,
     onGlobalFilterChange,
@@ -221,14 +285,16 @@ export function WalletTable({ data }: DataTableProps) {
     pageCount:
       activeTab === 'recharge'
         ? Math.ceil(totalRechargeCount / urlPagination.pageSize)
-        : undefined,
-    manualPagination: activeTab === 'recharge',
+        : activeTab === 'invoice'
+          ? Math.ceil(totalInvoiceCount / urlPagination.pageSize)
+          : undefined,
+    manualPagination: activeTab === 'recharge' || activeTab === 'invoice',
   })
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <Tabs
-        defaultValue='recharge'
+        value={activeTab}
         className='space-y-4'
         onValueChange={(value) => setActiveTab(value as WalletRecordType)}
       >
@@ -297,7 +363,8 @@ export function WalletTable({ data }: DataTableProps) {
                 ))}
               </TableHeader>
               <TableBody>
-                {isLoadingRecharge && activeTab === 'recharge' ? (
+                {((isLoadingRecharge && activeTab === 'recharge') || 
+                  (isLoadingInvoice && activeTab === 'invoice')) ? (
                   <TableRow>
                     <TableCell
                       colSpan={columns.length}

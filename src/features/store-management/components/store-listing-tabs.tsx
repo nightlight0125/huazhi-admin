@@ -1,10 +1,4 @@
-import { useEffect, useState } from 'react'
-import { flexRender, type Table as TanstackTable } from '@tanstack/react-table'
-import { ChevronDown } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import type { ShopInfo } from '@/stores/shop-store'
-import { getUserShop } from '@/lib/api/shop'
+import { RichTextEditor } from '@/components/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -29,8 +23,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTableToolbar } from '@/components/data-table'
-import { RichTextEditor } from '@/components/rich-text-editor'
+import { getUserShop } from '@/lib/api/shop'
+import { useAuthStore } from '@/stores/auth-store'
+import type { ShopInfo } from '@/stores/shop-store'
+import {
+  flexRender,
+  type Table as TanstackTable,
+} from '@tanstack/react-table'
+import { ChevronDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { VariantPricingBulkActions } from './variant-pricing-bulk-actions'
 import { type VariantPricing } from './variant-pricing-schema'
 
@@ -50,7 +52,8 @@ type StoreListingTabsProps = {
   selectedTags: string[]
   setSelectedTags: (tags: string[]) => void
   variantPricingTable: TanstackTable<VariantPricing>
-  columns: any[]
+  // 可选：保留 columns 以兼容现有调用处（当前组件内部未使用）
+  columns?: any[]
 }
 
 export function StoreListingTabs({
@@ -61,12 +64,72 @@ export function StoreListingTabs({
   variantPricingTable,
   columns,
 }: StoreListingTabsProps) {
+  // 为了兼容现有调用处，这里接收 columns 但当前不使用
+  void columns
   const [stores, setStores] = useState<
     Array<{ id: string; name: string; value: string }>
   >([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [selectedStore, setSelectedStore] = useState('')
+  const [bulkReviseType, setBulkReviseType] = useState('price-change')
+  const [bulkReviseValue, setBulkReviseValue] = useState('')
+  const [updateTrigger, setUpdateTrigger] = useState(0)
   const { auth } = useAuthStore()
+
+  // 批量修改处理函数
+  const handleBulkRevise = () => {
+    if (!bulkReviseValue.trim()) {
+      toast.error('Please enter a value')
+      return
+    }
+
+    const selectedRows =
+      variantPricingTable.getFilteredSelectedRowModel().rows
+
+    if (selectedRows.length === 0) {
+      toast.error('Please select at least one row')
+      return
+    }
+
+    // 保存值用于提示（在清空之前）
+    const valueToShow = bulkReviseValue
+    const typeLabel = bulkReviseType === 'price-change' ? 'price' : 'shipping fee'
+
+    // 保存当前选择状态
+    const currentSelection = variantPricingTable.getState().rowSelection
+
+    // 批量更新选中行的数据
+    selectedRows.forEach((row) => {
+      const variant = row.original as VariantPricing
+      if (bulkReviseType === 'price-change') {
+        variant.yourPrice = bulkReviseValue
+      } else if (bulkReviseType === 'shipping-fee') {
+        variant.shippingFee = bulkReviseValue
+      }
+    })
+
+    // 通过临时修改 rowSelection 来触发表格重新渲染
+    // 先清空选择
+    variantPricingTable.resetRowSelection()
+    // 然后立即恢复选择（使用 setTimeout 确保在下一个渲染周期）
+    setTimeout(() => {
+      variantPricingTable.setRowSelection(currentSelection)
+    }, 0)
+
+    // 强制表格重新渲染
+    setUpdateTrigger((prev) => prev + 1)
+
+    // 清空输入框
+    setBulkReviseValue('')
+    
+    // 显示成功提示
+    toast.success(
+      `Updated ${selectedRows.length} row(s) with ${typeLabel}: ${valueToShow}`
+    )
+
+    // 清空选择（可选）
+    // variantPricingTable.resetRowSelection()
+  }
 
   // 获取店铺列表
   useEffect(() => {
@@ -340,38 +403,49 @@ export function StoreListingTabs({
             </div>
 
             {/* Variant pricing table */}
-            <div className='space-y-1.5'>
-              <div className='text-xs font-semibold'>Variant Pricing</div>
+            <div className='space-y-1.5' style={{ marginTop: '30px' }}>
+              {/* <div className='text-xs font-semibold'>Variant Pricing</div> */}
 
               <div className='space-y-1.5'>
-                <DataTableToolbar
-                  table={variantPricingTable}
-                  showSearch={false}
-                  filters={[]}
-                  bulkRevise={{
-                    enabled: true,
-                    placeholder: 'Bulk Reviser',
-                    options: [
-                      {
-                        label: 'Price Change',
-                        value: 'price-change',
-                      },
-                      {
-                        label: 'Shipping Fee',
-                        value: 'shipping-fee',
-                      },
-                    ],
-                    onApply: (type, value) => {
-                      const selectedRows =
-                        variantPricingTable.getFilteredSelectedRowModel().rows
-                      console.log('Bulk revise:', type, value, selectedRows)
-                      // TODO: 实现批量修改逻辑
-                    },
-                  }}
-                />
+                {/* Bulk Revise */}
+                <div className='flex items-center gap-2'>
+                  <span className='text-xs font-medium'>Bulk Revise</span>
+                  <div className='flex items-center'>
+                    <Select
+                      value={bulkReviseType}
+                      onValueChange={setBulkReviseType}
+                    >
+                      <SelectTrigger className='h-8 w-32 rounded-r-none border-r-0 text-xs'>
+                        <SelectValue placeholder='Select' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='price-change'>Price Change</SelectItem>
+                        <SelectItem value='shipping-fee'>Shipping Fee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder='Enter value'
+                      value={bulkReviseValue}
+                      onChange={(e) => setBulkReviseValue(e.target.value)}
+                      className='h-8 w-32 rounded-l-none border-l-0 text-xs'
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleBulkRevise()
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleBulkRevise}
+                    className='h-8 bg-orange-600 text-white hover:bg-orange-700'
+                    size='sm'
+                  >
+                    Confirm
+                  </Button>
+                </div>
 
                 {/* Table */}
-                <div className='border-border overflow-x-auto rounded-lg border'>
+                <div className='border-border overflow-x-auto rounded-lg border' key={updateTrigger}>
                   <Table>
                     <TableHeader>
                       {variantPricingTable
@@ -421,7 +495,9 @@ export function StoreListingTabs({
                       ) : (
                         <TableRow>
                           <TableCell
-                            colSpan={columns.length}
+                            colSpan={
+                              variantPricingTable.getAllColumns().length
+                            }
                             className='h-24 text-center'
                           >
                             No results.

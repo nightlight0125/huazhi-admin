@@ -142,7 +142,7 @@ export async function delRecommendProducts(
 // 查询商品分类请求参数
 export interface QueryGoodClassRequest {
   data: {
-    groupNumber?: string
+    group_number?: string
   }
   pageNo: number
   pageSize: number
@@ -179,7 +179,7 @@ export async function queryGoodClassList(
 ): Promise<GoodClassItem[]> {
   const requestData: QueryGoodClassRequest = {
     data: {
-      ...(group_number && { group_number: group_number }),
+      ...(group_number && { group_number }),
     },
     pageNo,
     pageSize,
@@ -206,7 +206,7 @@ export async function queryGoodClassList(
 // 查询 SKU 记录请求参数
 export interface QuerySkuByCustomerRequest {
   data: {
-    hzkj_cus_id: number
+    hzkj_cus_id: string
     hzkj_good_id?: string
     hzkj_public?: string
     hzkj_str?: string // 搜索字段
@@ -242,7 +242,7 @@ export interface QuerySkuByCustomerResponse {
 // 查询 SKU 记录 API（支持可选 goodId、hzkj_str 和返回总数）
 export async function querySkuByCustomer(
   goodId: string | undefined,
-  customerId: number,
+  customerId: string,
   publicFlag: string = '0',
   pageNo: number = 1,
   pageSize: number = 10,
@@ -668,7 +668,7 @@ export async function queryShopifyUnconnectedProducts(
 export interface QueryOdPdPackageListRequest {
   data: {
     hzkj_od_pd_shop_hzkj_customer_id: string
-    hzkj_package_type: string // "1" for Products, "2" for Order
+    hzkj_package_type?: string // "1" for Products, "2" for Order, undefined for unconnected
     accountId: string
     hzkj_od_pd_shop_id?: string
     str?: string
@@ -802,4 +802,150 @@ export async function queryCuShopPackageList(
     rows,
     totalCount,
   }
+}
+
+// 购买产品请求参数
+export interface BuyProductRequest {
+  customerId: string
+  customChannelId: string
+  detail: Array<{
+    skuId: string
+    quantity: number
+    flag: number
+  }>
+}
+
+// 购买产品响应
+export interface BuyProductResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 购买产品 API
+export async function buyProduct(
+  params: BuyProductRequest
+): Promise<BuyProductResponse> {
+  const response = await apiClient.post<BuyProductResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/buyProduct',
+    params
+  )
+
+  console.log('购买产品响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to buy product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 保存自定义设计请求参数
+export interface SaveCustomizationRequest {
+  customerId: string
+  skuId: string
+  image: string
+  brandName: string
+  size: string
+}
+
+// 保存自定义设计响应
+export interface SaveCustomizationResponse {
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 保存自定义设计 API
+export async function saveCustomization(
+  params: SaveCustomizationRequest
+): Promise<SaveCustomizationResponse> {
+  const response = await apiClient.post<SaveCustomizationResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/customization',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to save customization. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 删除店铺包装请求参数
+export interface DeleteShopPackageRequest {
+  shopPackageId: string
+}
+
+// 删除店铺包装响应
+export interface DeleteShopPackageResponse {
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 删除店铺包装 API
+export async function deleteShopPackage(
+  params: DeleteShopPackageRequest
+): Promise<DeleteShopPackageResponse> {
+  const response = await apiClient.post<DeleteShopPackageResponse>(
+    '/v2/hzkj/hzkj_customer/bindPackage/deleteShopPackage',
+    params
+  )
+
+  console.log('删除店铺包装响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to delete shop package. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 连接店铺商品与本地 SKU 请求参数
+export interface LinkProductRequest {
+  customerId: string
+  localSkuId: string
+  shopSkuId: string
+}
+
+// 连接店铺商品与本地 SKU 响应
+export interface LinkProductResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 连接店铺商品与本地 SKU API
+export async function linkProduct(
+  params: LinkProductRequest
+): Promise<LinkProductResponse> {
+  const response = await apiClient.post<LinkProductResponse>(
+    '/v2/hzkj/hzkj_commodity/products/linkProduct',
+    params
+  )
+
+  console.log('连接店铺商品与本地 SKU 响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to link product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
 }

@@ -25,6 +25,7 @@ import {
   type Table,
   type VisibilityState,
 } from '@tanstack/react-table'
+import { type DateRange } from 'react-day-picker'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { type SupportTicket, type SupportTicketStatus } from '../data/schema'
@@ -39,6 +40,12 @@ type SupportTicketsTableProps = {
   navigate: NavigateFn
   totalCount: number
   onRefresh?: () => void
+  dateRange?: DateRange | undefined
+  onDateRangeChange?: (dateRange: DateRange | undefined) => void
+  selectedStore?: string | undefined
+  onStoreChange?: (store: string | undefined) => void
+  selectedType?: string | undefined
+  onTypeChange?: (type: string | undefined) => void
 }
 
 export function SupportTicketsTable({
@@ -47,6 +54,11 @@ export function SupportTicketsTable({
   navigate,
   totalCount,
   onRefresh,
+  onDateRangeChange,
+  selectedStore,
+  onStoreChange,
+  selectedType,
+  onTypeChange,
 }: SupportTicketsTableProps) {
   const { auth } = useAuthStore()
   const [rowSelection, setRowSelection] = useState({})
@@ -71,8 +83,51 @@ export function SupportTicketsTable({
     navigate,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
-    columnFilters: [],
+    columnFilters: [
+      {
+        columnId: 'storeName',
+        searchKey: 'store',
+        type: 'array',
+      },
+      {
+        columnId: 'type',
+        searchKey: 'type',
+        type: 'array',
+      },
+    ],
   })
+
+  // 监听 columnFilters 变化，同步到父组件
+  useEffect(() => {
+    const storeFilter = columnFilters.find((f) => f.id === 'storeName')
+    const typeFilter = columnFilters.find((f) => f.id === 'type')
+    
+    if (onStoreChange) {
+      const storeValue =
+        storeFilter &&
+        Array.isArray(storeFilter.value) &&
+        storeFilter.value.length > 0
+          ? String(storeFilter.value[0])
+          : undefined
+      const finalStoreValue = storeValue === '*' ? undefined : storeValue
+      if (finalStoreValue !== selectedStore) {
+        onStoreChange(finalStoreValue)
+      }
+    }
+    
+    if (onTypeChange) {
+      const typeValue =
+        typeFilter &&
+        Array.isArray(typeFilter.value) &&
+        typeFilter.value.length > 0
+          ? String(typeFilter.value[0])
+          : undefined
+      const finalTypeValue = typeValue === '*' ? undefined : typeValue
+      if (finalTypeValue !== selectedType) {
+        onTypeChange(finalTypeValue)
+      }
+    }
+  }, [columnFilters, selectedStore, selectedType, onStoreChange, onTypeChange])
 
   const filteredData = useMemo(() => {
     if (activeTab === 'all') return data
@@ -220,21 +275,30 @@ export function SupportTicketsTable({
           {
             columnId: 'storeName',
             title: 'Store Name',
-            options: storeOptions,
+            options: [
+              { label: 'All Stores', value: '*' },
+              ...storeOptions,
+            ],
+            singleSelect: true,
           },
           {
             columnId: 'type',
             title: 'Type',
             options: [
+              { label: 'All Types', value: '*' },
               { label: 'Product return', value: 'Product return' },
               { label: 'Other', value: 'Other' },
             ],
+            singleSelect: true,
           },
         ]}
         dateRange={{
           enabled: true,
           columnId: 'createTime',
-          placeholder: 'Select  Date Range',
+          placeholder: 'Select Date Range',
+          onDateRangeChange: (range) => {
+            onDateRangeChange?.(range)
+          },
         }}
       />
       <Tabs

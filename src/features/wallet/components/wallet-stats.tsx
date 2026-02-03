@@ -1,9 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
-import { Building2, Wallet } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { getCurrency, type CurrencyItem } from '@/lib/api/base'
-import { getWalletInfo, requestWalletPayment } from '@/lib/api/wallet'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +26,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { getCurrency, type CurrencyItem } from '@/lib/api/base'
+import { getWalletInfo, requestWalletPayment } from '@/lib/api/wallet'
+import { useAuthStore } from '@/stores/auth-store'
+import { Building2, Wallet } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { type WalletStats } from '../data/schema'
 
 interface WalletStatsProps {
@@ -207,6 +207,14 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
     if (!validateInput()) {
       return
     }
+    
+    // Bank Transfer 最小金额不能低于 0.5
+    const amount = parseFloat(topupAmount)
+    if (amount < 0.5) {
+      toast.error('Minimum amount for Bank Transfer is 0.5')
+      return
+    }
+    
     setSelectedPaymentMethod('bank-transfer')
     setShowConfirmDialog(true)
   }

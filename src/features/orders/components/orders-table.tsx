@@ -173,9 +173,6 @@ export function OrdersTable({
   const [refreshKey, setRefreshKey] = useState(0)
   const lastRequestParamsRef = useRef<string>('')
 
-console.log('countryOptions------------999999999999:', countryOptions)
-
-
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -254,7 +251,6 @@ console.log('countryOptions------------999999999999:', countryOptions)
     ],
   })
 
-  // 格式化日期范围（只有当开始和结束日期都存在时才格式化）
   const formattedDateRange = useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
       return {
@@ -294,8 +290,6 @@ console.log('countryOptions------------999999999999:', countryOptions)
         ? String(storeFilter.value[0])
         : undefined
 
-    // 使用 activeTab 的值作为 shopOrderStatus 传给后端
-    // 如果 activeTab 是空字符串（对应 'All' 标签），则不传 shopOrderStatus
     const shopOrderStatus =
       activeTab && activeTab !== '' ? String(activeTab) : undefined
 
@@ -338,11 +332,13 @@ console.log('countryOptions------------999999999999:', countryOptions)
         pageSize,
         shopId,
         shopOrderStatus,
-        countryId: countryIds, // 传递国家ID数组
-        orderStatus, // 传递订单状态数组
+        countryId: countryIds,
+        orderStatus, 
         startDate: formattedDateRange?.startDate,
         endDate: formattedDateRange?.endDate,
       })
+
+      console.log('queryOrder response ------111111111:', response)
 
       setData(response.orders as any)
       setTotalCount(response.total)

@@ -35,6 +35,12 @@ export const storeSkuSchema = z.object({
   hzkj_local_sku_number: z.string().optional(),
   hzkj_od_pd_shop_name: z.string().optional(),
   hzkj_variant_price: z.number().optional(),
+  // Additional API fields for different data sources
+  hzkj_shop_package_hzkj_pur_price: z.string().optional(),
+  hzkj_shop_package_hzkj_name: z.string().optional(),
+  hzkj_shop_package_number: z.string().optional(),
+  hzkj_local_sku_hzkj_picturefield: z.string().optional(),
+  hzkj_pk_shop_name: z.string().optional(),
 })
 
 export type PackagingProduct = z.infer<typeof packagingProductSchema>

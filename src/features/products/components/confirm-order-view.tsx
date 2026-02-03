@@ -22,11 +22,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
+import { buyProduct } from '@/lib/api/products'
 import { getAddress, type AddressItem } from '@/lib/api/users'
 import { useAuthStore } from '@/stores/auth-store'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 export interface ConfirmOrderItem {
   id: string
@@ -68,6 +70,8 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   // 使用 hook 获取物流渠道数据
   const { channels: shippingMethodOptions, isLoading: isLoadingChannels } = useLogisticsChannels()
 
+  console.log(orderData, 'shippingMethodOptions')
+
   const couponOptions = [
     { value: 'none', label: 'No coupon' },
     { value: 'coupon1', label: 'Coupon 1' },
@@ -78,10 +82,38 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     navigate({ to: '/settings' })
   }
 
-  const handlePay = () => {
-    // TODO: 实现支付逻辑
-    console.log('Pay clicked', orderData)
-    // 支付成功后可以关闭确认订单视图或跳转到订单列表
+  const handlePay = async () => {
+    const customerId = auth.user?.customerId
+   
+    if (!selectedShippingMethod) {
+      toast.error('Please select a shipping method')
+      return
+    }
+
+    try {
+      const response = await buyProduct({
+        customerId: String(customerId),
+        customChannelId: selectedShippingMethod,
+        detail: orderData.items.map((item) => ({
+          skuId: item.id,
+          quantity: item.quantity,
+          flag: 0,
+        })),
+      })
+      if (response.status) {
+        toast.success('Order placed successfully')
+        navigate({ to: '/orders' })
+      } else {
+        toast.error(response.message)
+      }
+    } catch (error) {
+      console.error('Failed to place order:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to place order. Please try again.'
+      )
+    }
   }
 
   // 获取地址信息 - 组件加载时调用

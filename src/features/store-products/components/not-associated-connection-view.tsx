@@ -248,16 +248,14 @@ export function NotAssociatedConnectionView() {
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false)
   const [storeSearchValue, setStoreSearchValue] = useState('') // Store Products 的搜索输入值
   const [storeSearchKeyword, setStoreSearchKeyword] = useState<string>('') // Store Products 实际用于搜索的关键词
-  const { searchKeyword } = useStoreProducts() // 从 provider 获取 TeemDrop Products 的搜索关键词
+  const { searchKeyword } = useStoreProducts() 
   
-  // TeemDrop Products 相关状态
   const [teemDropProducts, setTeemDropProducts] = useState<TeemDropProductItem[]>([])
   const [totalTeemDropProducts, setTotalTeemDropProducts] = useState(0)
   const [isLoadingTeemDropProducts, setIsLoadingTeemDropProducts] = useState(false)
 
   const handleStoreProductSelect = (storeProductId: string) => {
     setSelectedStoreProductId(storeProductId)
-    // 选择 Store Product 时，重置 TeemDrop Products 到第一页
     setTdPage(1)
   }
 
@@ -347,7 +345,7 @@ export function NotAssociatedConnectionView() {
       try {
         const result = await querySkuByCustomer(
           undefined, // goodId 不传，后端请求中不会包含 hzkj_good_id 字段
-          Number(customerId),
+          String(customerId),
           '0', // hzkj_public 默认 "0"
           tdPage,
           tdPageSize,

@@ -58,8 +58,7 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
   })
   const [activeTab, setActiveTab] = useState('')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
-  const [selectedOrderForPayment, setSelectedOrderForPayment] =
-    useState<OrderPayable | null>(null)
+  const [selectedOrderForPayment] = useState<OrderPayable | null>(null)
 
   const {
     globalFilter,

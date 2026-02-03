@@ -1,32 +1,39 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate } from '@tanstack/react-router'
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getSortedRowModel,
-  type SortingState,
-  useReactTable,
-  type VisibilityState,
-} from '@tanstack/react-table'
-import { Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import {
-  collectProduct,
-  type GoodClassItem,
-  queryGoodClassList,
-} from '@/lib/api/products'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { Button } from '@/components/ui/button'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
 import { DataTablePagination } from '@/components/data-table'
 import { FilterToolbar } from '@/components/filter-toolbar'
 import { ImageSearchInput } from '@/components/image-search-input'
 import { PriceRangePopover } from '@/components/price-range-popover'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { type Product } from '@/features/products/data/schema'
+import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
+import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
+import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
+import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import {
+  collectProduct,
+  type GoodClassItem,
+  queryGoodClassList,
+} from '@/lib/api/products'
+import { useAuthStore } from '@/stores/auth-store'
+import { useLocation, useNavigate } from '@tanstack/react-router'
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type RowSelectionState,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
+} from '@tanstack/react-table'
+import { Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 
 // Category item type
 type CategoryItem = {
@@ -163,6 +170,41 @@ export function ProductsGrid({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   // 本地搜索输入值
   const [searchInputValue, setSearchInputValue] = useState<string>('')
+  
+  // Store Listing Tabs 相关状态
+  const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
+  const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
+    string[]
+  >([])
+  const [storeListingTagsPopoverOpen, setStoreListingTagsPopoverOpen] =
+    useState(false)
+  const [storeListingRowSelection, setStoreListingRowSelection] =
+    useState<RowSelectionState>({})
+  const [storeListingSorting, setStoreListingSorting] = useState<SortingState>(
+    []
+  )
+  const [storeListingColumnFilters, setStoreListingColumnFilters] =
+    useState<ColumnFiltersState>([])
+
+  // 为 StoreListingTabs 准备 Variant Pricing 表格
+  const variantPricingColumns = useMemo(() => createVariantPricingColumns(), [])
+  const variantPricingData = useMemo(() => mockVariantPricingData, [])
+  const variantPricingTable = useReactTable<VariantPricing>({
+    data: variantPricingData,
+    columns: variantPricingColumns,
+    state: {
+      rowSelection: storeListingRowSelection,
+      sorting: storeListingSorting,
+      columnFilters: storeListingColumnFilters,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setStoreListingRowSelection,
+    onSortingChange: setStoreListingSorting,
+    onColumnFiltersChange: setStoreListingColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
 
   // Fetch category data from API
   useEffect(() => {
@@ -517,7 +559,7 @@ export function ProductsGrid({
                           title='Add to Store'
                           onClick={(e) => {
                             e.stopPropagation()
-                            console.log('Add to store:', product.id)
+                            setIsStoreListingOpen(true)
                           }}
                         >
                           <Store className='h-3.5 w-3.5' />
@@ -622,7 +664,7 @@ export function ProductsGrid({
                         title='Add to Store'
                         onClick={(e) => {
                           e.stopPropagation()
-                          console.log('Add to store:', product.id)
+                          setIsStoreListingOpen(true)
                         }}
                       >
                         <Store className='h-3.5 w-3.5' />
@@ -650,6 +692,25 @@ export function ProductsGrid({
 
       {/* Pagination - only show when using server-side pagination */}
       {totalCount > 0 && <DataTablePagination table={table} />}
+
+      {/* Store listing 右侧抽屉 */}
+      <Sheet open={isStoreListingOpen} onOpenChange={setIsStoreListingOpen}>
+        <SheetContent
+          side='right'
+          className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
+        >
+          <div className='flex h-full text-sm'>
+            <StoreListingTabs
+              tagsPopoverOpen={storeListingTagsPopoverOpen}
+              setTagsPopoverOpen={setStoreListingTagsPopoverOpen}
+              selectedTags={storeListingSelectedTags}
+              setSelectedTags={setStoreListingSelectedTags}
+              variantPricingTable={variantPricingTable}
+              columns={variantPricingColumns}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

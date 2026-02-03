@@ -354,3 +354,54 @@ export async function queryCountry(
   return Array.isArray(rows) ? rows : []
 }
 
+// 仓库数据接口
+export interface WarehouseItem {
+  id: string
+  number?: string
+  name?: string
+  hzkj_name?: string | { GLang?: string; zh_CN?: string; [key: string]: unknown }
+  [key: string]: unknown
+}
+
+// 查询仓库列表响应
+export interface GetWarehouseListResponse {
+  data?: {
+    filter?: string
+    lastPage?: boolean
+    pageNo?: number
+    pageSize?: number
+    rows?: WarehouseItem[]
+    totalCount?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询仓库列表 API
+export async function getWarehouseList(
+  pageNo: number = 1,
+  pageSize: number = 10
+): Promise<WarehouseItem[]> {
+  const response = await apiClient.get<GetWarehouseListResponse>(
+    '/v2/hzkj/sbd/bd_warehouse/queryWareHouse',
+    {
+      params: {
+        pageNo: String(pageNo),
+        pageSize: String(pageSize),
+      },
+    }
+  )
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to get warehouse list. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const rows = response.data.data?.rows
+  return Array.isArray(rows) ? rows : []
+}

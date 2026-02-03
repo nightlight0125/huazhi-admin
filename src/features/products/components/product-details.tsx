@@ -450,7 +450,6 @@ export function ProductDetails() {
 
   const selectedCountry = countryOptions.find((c) => c.value === selectedTo)
 
-  console.log('countryOptions:', countryOptions)
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
   const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false)
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
@@ -473,16 +472,21 @@ export function ProductDetails() {
   // 获取 SKU 记录
   useEffect(() => {
     const fetchSkuRecords = async () => {
-      if (!productId) return
 
       const customerId = auth.user?.customerId
+      console.log('customerId:', customerId)
+
+      if (!customerId) {
+        console.error('Customer ID is required')
+        return
+      }
 
       setIsLoadingSku(true)
       try {
         const records = await querySkuByCustomer(
-          productId,
-          customerId ? Number(customerId) : 0,
-          '0',
+          undefined,
+          customerId,
+          '1',
           1,
           100
         )
@@ -924,12 +928,12 @@ export function ProductDetails() {
 
                     {/* 价格和MOQ */}
                     <div className='flex items-center gap-4'>
-                      <div className='text-3xl font-bold text-orange-500'>
+                    <div className='text-3xl font-bold text-orange-500 dark:text-orange-300'>
                         ${(productData?.price ?? 0).toFixed(2)}
                       </div>
-                      <div className='rounded border border-gray-300 bg-gray-50 px-3 py-1 text-sm'>
-                        MOQ: 1
-                      </div>
+                    <div className='rounded border border-gray-300 bg-gray-50 px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'>
+                      MOQ: 1
+                    </div>
                     </div>
 
                     {apiProduct &&
@@ -1648,7 +1652,29 @@ export function ProductDetails() {
                       className='w-full'
                       size='lg'
                       onClick={() => {
-                        navigate({ to: `/products/${productData.id}/design` })
+                        // 设计前需要选择且只能选择一个属性（父级规格 ID 作为 skuId）
+                        const selectedEntries = Object.entries(selectedSpecs).filter(
+                          ([, v]) => v && v !== ''
+                        )
+
+                        if (selectedEntries.length === 0) {
+                          toast.error('Please select one attribute before design')
+                          return
+                        }
+
+                        if (selectedEntries.length > 1) {
+                          toast.error('You can only select one attribute for design')
+                          return
+                        }
+
+                        // 父级规格 ID（hzkj_sku_spec_id）作为 skuId 传递给设计页
+                        const [skuId] = selectedEntries[0]
+
+                        navigate({
+                          to: '/products/$productId/design',
+                          params: { productId: productData.id },
+                          search: { from: 'packaging-products', skuId },
+                        })
                       }}
                     >
                       <div className='flex w-full items-center justify-start'>
@@ -1658,14 +1684,6 @@ export function ProductDetails() {
                     </Button>
                   )}
                 </div>
-
-                {/* 喜欢按钮 */}
-                {/* <div className='pt-4'>
-                <Button variant='ghost' className='w-full'>
-                  <Heart className='mr-2 h-4 w-4' />
-                  喜欢这个产品
-                </Button>
-              </div> */}
               </CardContent>
             </Card>
           </div>
@@ -1679,18 +1697,6 @@ export function ProductDetails() {
           >
             <div className='flex h-full text-sm'>
               {/* 左侧：Listing 类型菜单（与 StoreManagement 保持一致） */}
-              <div className='bg-muted/30 w-48 border-r px-3 py-4'>
-                <div className='mb-2 text-sm font-semibold'>Manual Listing</div>
-                <button className='bg-primary/10 text-primary hover:bg-primary/15 mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm font-medium transition-colors'>
-                  Custom Editing
-                </button>
-                <div className='text-muted-foreground mt-4 mb-2 text-sm font-semibold'>
-                  Template Listing
-                </div>
-                <button className='text-muted-foreground hover:bg-muted/50 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors'>
-                  Add New Template
-                </button>
-              </div>
 
               {/* 右侧：Tabs + 表单内容 */}
               <StoreListingTabs

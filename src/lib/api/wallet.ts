@@ -53,7 +53,7 @@ export async function getWalletList(
 ): Promise<{ rows: ApiFundRecordItem[]; totalCount: number }> {
   const requestData: GetWalletListRequest = {
     data: {
-      hzkj_customer_masterid: customerId,
+      hzkj_customer: customerId,
     },
     pageSize,
     pageNo,

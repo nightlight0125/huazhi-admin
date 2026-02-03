@@ -1,5 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { getProduct, saveCustomization, type ApiProductItem } from '@/lib/api/products'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { Canvas, Group, Image, Textbox } from 'fabric'
 import {
   Download,
@@ -19,22 +32,8 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { packagingProducts } from '@/features/packaging-products/data/data'
-import { type PackagingProduct } from '@/features/packaging-products/data/schema'
-import { products } from '../data/data'
-import { type Product } from '../data/schema'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 type ActiveTab = 'logo' | 'text' | 'notes'
 
@@ -42,12 +41,31 @@ export function ProductDesign() {
   const { productId } = useParams({
     from: '/_authenticated/products/$productId/design',
   } as any)
+  const search = useSearch({
+    from: '/_authenticated/products/$productId/design',
+  } as any)
   const navigate = useNavigate()
+  const { auth } = useAuthStore()
 
-  // 查找产品数据
-  const regularProduct = products.find((p) => p.id === productId)
-  const packagingProduct = packagingProducts.find((p) => p.id === productId)
-  const product = regularProduct || packagingProduct
+  // 从 API 获取产品数据
+  const [product, setProduct] = useState<ApiProductItem | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!productId) return
+
+      try {
+        const productData = await getProduct(productId)
+        setProduct(productData)
+      } catch (error) {
+        console.error('Failed to fetch product:', error)
+        toast.error('Failed to load product data')
+      }
+    }
+
+    void fetchProduct()
+  }, [productId])
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricCanvasRef = useRef<Canvas | null>(null)
@@ -86,12 +104,16 @@ export function ProductDesign() {
     const canvas = fabricCanvasRef.current
     // 手动构建包含背景图片的 JSON
     const canvasJson = canvas.toJSON()
-    const productData = product as Product | PackagingProduct
+    // 获取产品图片，优先使用 hzkj_picurl_tag，如果没有则使用其他图片字段
+    const productImage = 
+      (typeof product.hzkj_picurl_tag === 'string' ? product.hzkj_picurl_tag : '') ||
+      (typeof product.hzkj_picturefield === 'string' ? product.hzkj_picturefield : '') ||
+      ''
     // 添加背景图片信息到 JSON
     const jsonWithBackground = {
       ...canvasJson,
       backgroundImage: {
-        src: productData.image,
+        src: productImage,
         // 保存背景图片的缩放信息
         scaleX: canvas.backgroundImage?.scaleX || 1,
         scaleY: canvas.backgroundImage?.scaleY || 1,
@@ -123,11 +145,17 @@ export function ProductDesign() {
 
     // 加载产品图片作为背景
     // 使用 fetch 获取图片并转换为 base64，避免跨域问题
-    const productData = product as Product | PackagingProduct
+    // 获取产品图片，优先使用 hzkj_picurl_tag，如果没有则使用其他图片字段
+    const productImage = 
+      (typeof product.hzkj_picurl_tag === 'string' ? product.hzkj_picurl_tag : '') ||
+      (typeof product.hzkj_picturefield === 'string' ? product.hzkj_picturefield : '') ||
+      ''
+    if (!productImage) return
+    
     const loadBackgroundImage = async () => {
       try {
         // 尝试通过 fetch 获取图片（支持 CORS）
-        const response = await fetch(productData.image, {
+        const response = await fetch(productImage, {
           mode: 'cors',
         })
         if (response.ok) {
@@ -182,7 +210,7 @@ export function ProductDesign() {
       const imgElement = new window.Image()
       imgElement.crossOrigin = 'anonymous'
       imgElement.onload = () => {
-        Image.fromURL(productData.image)
+        Image.fromURL(productImage)
           .then((img) => {
             const maxSize = 600
             const scale = Math.min(
@@ -209,7 +237,7 @@ export function ProductDesign() {
       }
       imgElement.onerror = () => {
         // 如果 crossOrigin 失败，尝试不使用 crossOrigin
-        Image.fromURL(productData.image)
+        Image.fromURL(productImage)
           .then((img) => {
             const maxSize = 600
             const scale = Math.min(
@@ -234,7 +262,7 @@ export function ProductDesign() {
             console.error('Failed to load product image:', error)
           })
       }
-      imgElement.src = productData.image
+      imgElement.src = productImage
     }
 
     loadBackgroundImage()
@@ -437,8 +465,13 @@ export function ProductDesign() {
   const restoreBackgroundImage = useCallback(
     (scaleX?: number, scaleY?: number) => {
       if (!fabricCanvasRef.current || !product) return Promise.resolve()
-      const productData = product as Product | PackagingProduct
-      return Image.fromURL(productData.image)
+      // 获取产品图片，优先使用 hzkj_picurl_tag，如果没有则使用其他图片字段
+      const productImage = 
+        (typeof product.hzkj_picurl_tag === 'string' ? product.hzkj_picurl_tag : '') ||
+        (typeof product.hzkj_picturefield === 'string' ? product.hzkj_picturefield : '') ||
+        ''
+      if (!productImage) return Promise.resolve()
+      return Image.fromURL(productImage)
         .then((img) => {
           const maxSize = 600
           const defaultScale = Math.min(
@@ -768,7 +801,14 @@ export function ProductDesign() {
 
     try {
       const canvas = fabricCanvasRef.current
-      const productData = product as Product | PackagingProduct
+      // 获取产品名称
+      const productName = 
+        (typeof product.name === 'string' ? product.name : '') ||
+        (typeof product.name === 'object' && product.name !== null 
+          ? (product.name as { GLang?: string; zh_CN?: string }).GLang || 
+            (product.name as { GLang?: string; zh_CN?: string }).zh_CN || ''
+          : '') ||
+        'design'
 
       // 使用 fabric.js 的 toDataURL 方法导出图片
       const dataURL = canvas.toDataURL({
@@ -779,7 +819,7 @@ export function ProductDesign() {
 
       // 创建下载链接
       const link = document.createElement('a')
-      link.download = `${productData.name || 'design'}-${Date.now()}.png`
+      link.download = `${productName}-${Date.now()}.png`
       link.href = dataURL
       document.body.appendChild(link)
       link.click()
@@ -787,6 +827,60 @@ export function ProductDesign() {
     } catch (error) {
       console.error('Failed to save image:', error)
       alert('保存图片失败。请确保所有图片都已正确加载。')
+    }
+  }
+
+  // 保存设计到服务器
+  const handleSaveDesign = async () => {
+    if (!fabricCanvasRef.current || !product) {
+      toast.error('Product data not loaded')
+      return
+    }
+
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found. Please login again.')
+      return
+    }
+
+    // 获取 SKU ID - 优先使用路由 search 中传入的 skuId，其次使用 product.id，最后使用 productId
+    const skuIdFromSearch = (search as { skuId?: string }).skuId
+    const skuId = skuIdFromSearch || product.id || productId
+    if (!skuId) {
+      toast.error('SKU ID not found')
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      const canvas = fabricCanvasRef.current
+
+      // 导出画布为 base64 图片
+      const imageData = canvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 1,
+      })
+
+      // 调用保存 API
+      await saveCustomization({
+        customerId: String(customerId),
+        skuId: String(skuId),
+        image: imageData,
+        brandName: noteText || '',
+        size: '1',
+      })
+
+      toast.success('Design saved successfully')
+    } catch (error) {
+      console.error('Failed to save design:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to save design. Please try again.'
+      )
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -925,6 +1019,8 @@ export function ProductDesign() {
             size='icon'
             title='Save design'
             className='h-8 w-8'
+            onClick={handleSaveDesign}
+            disabled={isSaving || !product}
           >
             <Save className='h-4 w-4' />
           </Button>

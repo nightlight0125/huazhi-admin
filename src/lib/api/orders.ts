@@ -94,6 +94,8 @@ export interface ApiOrderItem {
     zh_TW?: string
     [key: string]: unknown
   }
+  hzkj_fre_quo_amount?: number | string
+  hzkj_customer_channel_name?: number | string
 }
 
 // 查询订单响应
@@ -128,6 +130,8 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     productLink: '',
     price: Number(item.hzkj_shop_price) || 0,
     totalPrice: Number(item.hzkj_amount) || 0,
+    hzkj_fre_quo_amount: apiOrder.hzkj_fre_quo_amount || 0,
+    hzkj_customer_channel_name: apiOrder.hzkj_customer_channel_name || '',
   }))
 
   // 提取地址信息
@@ -182,6 +186,8 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     createtime: apiOrder.createtime,
     hzkj_customer_name: apiOrder.hzkj_customer_name,
     providers: apiOrder.hzkj_deliveryway,
+    hzkj_fre_quo_amount: apiOrder.hzkj_fre_quo_amount,
+    hzkj_customer_channel_name: apiOrder.hzkj_customer_channel_name,
   } as Order
 }
 
@@ -193,6 +199,7 @@ export async function queryOrder(
     '/v2/hzkj/hzkj_ordercenter/order/queryOrder',
     params
   )
+  console.log('queryOrder response:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -620,15 +627,38 @@ export async function requestPayment(
 export interface QueryAfterSaleOrdersRequest {
   data: {
     hzkj_payingcustomer_id: string
+    hzkj_shop_id?: string // 店铺ID，可以是 "*" 表示所有
+    hzkj_sales_type?: string // 销售类型，可以是 "*" 表示所有
+    start_date?: string // 开始日期，格式: "YYYY-MM-DD HH:mm:ss"
+    end_date?: string // 结束日期，格式: "YYYY-MM-DD HH:mm:ss"
+    str?: string // 搜索字段
     [key: string]: unknown
   }
   pageSize: number
   pageNo: number
 }
 
+// API 返回的售后订单项中的 item
+export interface ApiAfterSaleOrderItemEntry {
+  id?: string
+  hzkj_localsku_number?: string // Order NO
+  hzkj_localsku_name?: string // SKU
+  hzkj_qty?: number // QTY
+  hzkj_localsku_hzkj_pur_price?: number // Total Price
+  hzkj_localsku_hzkj_picturefield?: string // 图片
+  [key: string]: unknown
+}
+
 // API 返回的售后订单项
 export interface ApiAfterSaleOrderItem {
   id?: string
+  number?: string // NO 显示的是 number
+  hzkj_after_entryentity?: {
+    item?: ApiAfterSaleOrderItemEntry[]
+    [key: string]: unknown
+  }
+  hzkj_sales_type?: string // type 对应的是 hzkj_sales_type
+  createtime?: string // Create Time 对应的是 createtime
   supportTicketNo?: string
   hzOrderNo?: string
   hzSku?: string
@@ -680,6 +710,81 @@ export async function queryAfterSaleOrders(
     throw new Error(errorMessage)
   }
 
+  const rows = response.data.data?.rows || []
+  const totalCount = response.data.data?.totalCount || 0
+
+  return {
+    rows: Array.isArray(rows) ? rows : [],
+    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+  }
+}
+
+// Invoice Records 项（API返回的数据结构）
+export interface ApiInvoiceRecordItem {
+  hzkj_source_number?: string // 客户订单号
+  hzkj_order_amount?: number // 订单金额
+  hzkj_datetimefield?: string // 日期时间
+  normal?: string // 状态
+  [key: string]: unknown
+}
+
+// 获取 Invoice Records 请求参数
+export interface GetInvoiceRecordsRequest {
+  data: {
+    hzkj_orderstatus: string
+    hzkj_customer_id: string
+  }
+  pageSize: number
+  pageNo: number
+}
+
+// 获取 Invoice Records 响应
+export interface GetInvoiceRecordsResponse {
+  data?: {
+    rows?: ApiInvoiceRecordItem[]
+    totalCount?: number
+    pageNo?: number
+    pageSize?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 获取 Invoice Records API
+export async function getInvoiceRecords(
+  customerId: string,
+  pageNo: number = 1,
+  pageSize: number = 10
+): Promise<{ rows: ApiInvoiceRecordItem[]; totalCount: number }> {
+  const requestData: GetInvoiceRecordsRequest = {
+    data: {
+      hzkj_orderstatus: '0',
+      hzkj_customer_id: customerId,
+    },
+    pageSize,
+    pageNo,
+  }
+
+  console.log('获取 Invoice Records 请求数据:', JSON.stringify(requestData, null, 2))
+
+  const response = await apiClient.post<GetInvoiceRecordsResponse>(
+    '/v2/hzkj/hzkj_ordercenter/hzkj_orders/getInvoiceRecords',
+    requestData
+  )
+
+  console.log('获取 Invoice Records 响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to get invoice records. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回数据
   const rows = response.data.data?.rows || []
   const totalCount = response.data.data?.totalCount || 0
 

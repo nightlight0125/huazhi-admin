@@ -38,11 +38,18 @@ import {
   type SortingState,
   useReactTable,
   type VisibilityState,
+  type RowSelectionState,
+  type ColumnFiltersState,
 } from '@tanstack/react-table'
 import { ChevronDown, Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import countries from 'world-countries'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
+import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
+import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
+import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
 
 const route = getRouteApi('/_authenticated/all-products')
 
@@ -183,6 +190,41 @@ export function AllProductsGrid({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   // 本地搜索输入值
   const [searchInputValue, setSearchInputValue] = useState<string>('')
+  
+  // Store Listing Tabs 相关状态
+  const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
+  const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
+    string[]
+  >([])
+  const [storeListingTagsPopoverOpen, setStoreListingTagsPopoverOpen] =
+    useState(false)
+  const [storeListingRowSelection, setStoreListingRowSelection] =
+    useState<RowSelectionState>({})
+  const [storeListingSorting, setStoreListingSorting] = useState<SortingState>(
+    []
+  )
+  const [storeListingColumnFilters, setStoreListingColumnFilters] =
+    useState<ColumnFiltersState>([])
+
+  // 为 StoreListingTabs 准备 Variant Pricing 表格
+  const variantPricingColumns = useMemo(() => createVariantPricingColumns(), [])
+  const variantPricingData = useMemo(() => mockVariantPricingData, [])
+  const variantPricingTable = useReactTable<VariantPricing>({
+    data: variantPricingData,
+    columns: variantPricingColumns,
+    state: {
+      rowSelection: storeListingRowSelection,
+      sorting: storeListingSorting,
+      columnFilters: storeListingColumnFilters,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setStoreListingRowSelection,
+    onSortingChange: setStoreListingSorting,
+    onColumnFiltersChange: setStoreListingColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
 
   // Fetch category data from API
   useEffect(() => {
@@ -575,6 +617,7 @@ export function AllProductsGrid({
                       title='Add to Store'
                       onClick={(e) => {
                         e.stopPropagation()
+                        setIsStoreListingOpen(true)
                       }}
                     >
                       <Store className='h-3.5 w-3.5' />
@@ -592,6 +635,25 @@ export function AllProductsGrid({
       </div>
 
       <DataTablePagination table={table} />
+
+      {/* Store listing 右侧抽屉 */}
+      <Sheet open={isStoreListingOpen} onOpenChange={setIsStoreListingOpen}>
+        <SheetContent
+          side='right'
+          className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
+        >
+          <div className='flex h-full text-sm'>
+            <StoreListingTabs
+              tagsPopoverOpen={storeListingTagsPopoverOpen}
+              setTagsPopoverOpen={setStoreListingTagsPopoverOpen}
+              selectedTags={storeListingSelectedTags}
+              setSelectedTags={setStoreListingSelectedTags}
+              variantPricingTable={variantPricingTable}
+              columns={variantPricingColumns}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

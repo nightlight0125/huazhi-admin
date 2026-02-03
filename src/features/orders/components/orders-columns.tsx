@@ -1,6 +1,14 @@
-import { useState } from 'react'
-import { format } from 'date-fns'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
+import { format } from 'date-fns'
 import {
   CreditCard,
   Edit,
@@ -10,15 +18,7 @@ import {
   ShoppingBag,
   Trash2,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import { useState } from 'react'
 import { type Order } from '../data/schema'
 
 interface OrderDeleteCellProps {
@@ -281,8 +281,8 @@ export const createOrdersColumns = (options?: {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.hzkj_actual_cost || '---'}</div>
-            <div>{order.trackingNumber || '---'}</div>
+            <div>{order.hzkj_fre_quo_amount || 0}</div>
+            <div>{order.hzkj_customer_channel_name || '---'}</div>
           </div>
         )
       },

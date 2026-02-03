@@ -1,13 +1,3 @@
-import { useEffect, useState } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronDown } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import type { ShopInfo } from '@/stores/shop-store'
-import { getUserShop } from '@/lib/api/shop'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -32,6 +22,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { ChevronDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import { z } from 'zod'
 
 const formSchema = z.object({
   shops: z.array(z.string()).min(1, {
@@ -49,7 +48,7 @@ export function StoreProductsImportDialog({
   onOpenChange,
 }: StoreProductsImportDialogProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
-  const [shops, setShops] = useState<ShopInfo[]>([])
+  const [shops, setShops] = useState<ShopListItem[]>([])
   const [isLoadingShops, setIsLoadingShops] = useState(false)
   const { auth } = useAuthStore()
 
@@ -72,22 +71,16 @@ export function StoreProductsImportDialog({
 
       setIsLoadingShops(true)
       try {
-        const response = await getUserShop(userId)
-        console.log('获取店铺 API 完整响应:', response)
-        console.log('response.data:', response.data)
-        console.log('response.data 类型:', typeof response.data)
+        const { list } = await getUserShopList({
+          hzkjAccountId: userId,
+          // 可根据需要调整查询参数和分页
+          queryParam: 'w',
+          pageNo: 0,
+          pageSize: 100,
+        })
 
-        // 根据实际 API 响应结构处理数据
-        let shopsData: ShopInfo[] = []
-        if (response.errorCode === '0' && response.data) {
-          const data = response.data as { data?: ShopInfo[] }
-          shopsData = (data.data as ShopInfo[]) || []
-        }
-
-        // 尝试多种可能的数据结构
-
-        console.log('最终解析的店铺列表:', shopsData)
-        setShops(shopsData)
+        console.log('最终解析的店铺列表:', list)
+        setShops(list)
       } catch (error) {
         console.error('获取店铺列表失败:', error)
         toast.error(

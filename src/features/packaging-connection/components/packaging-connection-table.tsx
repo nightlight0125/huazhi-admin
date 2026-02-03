@@ -158,8 +158,12 @@ export function PackagingConnectionTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
+            {(() => {
+              // 使用 getRowModel() 获取经过过滤、排序和分页后的行
+              const rows = table.getRowModel().rows
+              console.log('Rendering table rows:', rows.length, 'from data:', data.length, 'columnFilters:', table.getState().columnFilters)
+              return rows?.length ? (
+                rows.map((row) => {
                 const item = row.original
                 const isExpanded = expandedRows.has(row.id)
                 const hasPackagingProducts =
@@ -271,7 +275,8 @@ export function PackagingConnectionTable({
                   No data
                 </TableCell>
               </TableRow>
-            )}
+            )
+            })()}
           </TableBody>
         </Table>
       </div>
@@ -283,11 +288,13 @@ export function PackagingConnectionTable({
 
 // Export hook to create table in parent component
 export function usePackagingConnectionTable(
-  data: StoreSku[],
+  data: StoreSku[] | any[],
   options?: {
     onConnect?: (storeSku: StoreSku) => void
     onDisconnect?: (storeSku: StoreSku) => void
+    onDelete?: (item: any) => void
     totalCount?: number
+    activeTab?: 'products' | 'stores' | 'order'
   }
 ) {
   const [rowSelection, setRowSelection] = useState({})
@@ -319,6 +326,10 @@ export function usePackagingConnectionTable(
     options?.onConnect?.(storeSku)
   }
 
+  const handleDelete = (item: any) => {
+    options?.onDelete?.(item)
+  }
+
   // Get status filter value from columnFilters
   // Create columns based on filter state
   const columns = useMemo(() => {
@@ -327,12 +338,16 @@ export function usePackagingConnectionTable(
       expandedRows,
       onDisconnect: handleDisconnect,
       onConnect: handleConnect,
+      onDelete: handleDelete,
+      isStoreTab: options?.activeTab === 'stores',
     })
   }, [
     handleExpand,
     expandedRows,
     handleDisconnect,
     handleConnect,
+    handleDelete,
+    options?.activeTab,
   ])
 
   const [pagination, setPagination] = useState({

@@ -11,7 +11,7 @@ import {
 import { type ColumnDef, type Row } from '@tanstack/react-table'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { type SupportTicket } from '../data/schema'
+import { type SupportTicket, type SupportTicketStatus } from '../data/schema'
 
 interface SupportTicketDeleteCellProps {
   row: Row<SupportTicket>
@@ -128,31 +128,40 @@ export const createSupportTicketsColumns = (options?: {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='No.' />
       ),
-      cell: ({ row }) => (
-        <div className='font-medium'>{row.getValue('supportTicketNo')}</div>
-      ),
+      cell: ({ row }) => {
+        return <div className='font-medium'>{row.original?.number}</div>
+      },
     },
     {
       id: 'hzOrder',
       header: 'Order',
       cell: ({ row }) => {
-        console.log(row.original)
-        console.log("==========================")
         const ticket = row.original
         return (
           <div className='flex items-center gap-3'>
-            <div className='bg-muted h-12 w-12 flex-shrink-0 rounded border'>
-              {/* Placeholder for product image */}
-              <div className='text-muted-foreground flex h-full w-full items-center justify-center text-xs'>
-                Image
+            {ticket.productImage ? (
+              <img
+                src={ticket.productImage}
+                alt={ticket.hzSku}
+                className='h-12 w-12 flex-shrink-0 rounded border object-cover'
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                }}
+              />
+            ) : (
+              <div className='bg-muted h-12 w-12 flex-shrink-0 rounded border'>
+                <div className='text-muted-foreground flex h-full w-full items-center justify-center text-xs'>
+                  No Image
+                </div>
               </div>
-            </div>
+            )}
             <div className='space-y-0.5 text-sm'>
-              <div>Order NO: {ticket.hzOrderNo}</div>
-              <div>SKU: {ticket.hzSku}</div>
-              <div>Variant: {ticket.variant}</div>
-              <div>QTY: {ticket.qty}</div>
-              <div>Total Price: ${ticket.totalPrice}</div>
+              <div>Order NO: {ticket.hzOrderNo || '--'}</div>
+              <div>SKU: {ticket.hzSku || '--'}</div>
+              <div>Variant: {ticket.variant || '--'}</div>
+              <div>QTY: {ticket.qty || 0}</div>
+              <div>Total Price: ${(ticket.totalPrice || 0).toFixed(2)}</div>
             </div>
           </div>
         )
@@ -164,11 +173,14 @@ export const createSupportTicketsColumns = (options?: {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='Qty' />
       ),
-      cell: ({ row }) => (
-        <div className='w-10 text-center text-xs'>
-          {row.getValue('returnQty')}
-        </div>
-      ),
+      cell: ({ row }) => {
+        // qty 是 hzkj_after_entryentity 中的 item 数组中的 hzkj_qty（在转换时已经映射到 returnQty）
+        return (
+          <div className='w-10 text-center text-xs'>
+            {row.getValue('returnQty') || 0}
+          </div>
+        )
+      },
       size: 40,
     },
     {
@@ -176,14 +188,21 @@ export const createSupportTicketsColumns = (options?: {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='Store Name' />
       ),
-      cell: ({ row }) => <div>{row.getValue('storeName')}</div>,
+      cell: ({ row }) => {
+        const ticket = row.original
+        console.log('ticket', ticket)
+        return <div>{ticket.hzkj_shop_name}</div>
+      },
     },
     {
       accessorKey: 'type',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='Type' />
       ),
-      cell: ({ row }) => <div>{row.getValue('type')}</div>,
+      cell: ({ row }) => {
+        const ticket = row.original
+        return <div>{ticket.hzkj_sales_type_title}</div>
+      },
     },
     {
       accessorKey: 'status',
@@ -191,9 +210,13 @@ export const createSupportTicketsColumns = (options?: {
         <DataTableColumnHeader column={column} title='Status' />
       ),
       cell: ({ row }) => {
-        const status = row.getValue('status') as SupportTicket['status']
+        const rawStatus = row.getValue('status') as SupportTicket['status']
+        const status: Exclude<SupportTicketStatus, 'all'> = 
+          rawStatus && ['processing', 'finished', 'refused', 'cancelled'].includes(rawStatus)
+            ? rawStatus
+            : 'processing'
         const statusConfig: Record<
-          SupportTicket['status'],
+          Exclude<SupportTicketStatus, 'all'>,
           { label: string; className: string }
         > = {
           processing: {
@@ -217,7 +240,7 @@ export const createSupportTicketsColumns = (options?: {
               'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize',
           },
         }
-        const config = statusConfig[status] || statusConfig.processing
+        const config = statusConfig[status]
         return (
           <Badge variant='outline' className={config.className}>
             {config.label}

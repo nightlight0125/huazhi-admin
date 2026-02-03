@@ -1,7 +1,42 @@
-import { type ColumnDef } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { type ColumnDef } from '@tanstack/react-table'
+import { useEffect, useState } from 'react'
 import { type VariantPricing } from './variant-pricing-schema'
+
+// Editable cell component
+type EditableCellProps = {
+  value: string
+  onValueChange: (value: string) => void
+  className?: string
+  placeholder?: string
+}
+
+function EditableCell({
+  value,
+  onValueChange,
+  className,
+  placeholder,
+}: EditableCellProps) {
+  const [localValue, setLocalValue] = useState(value || '')
+
+  useEffect(() => {
+    setLocalValue(value || '')
+  }, [value])
+
+  return (
+    <Input
+      value={localValue}
+      onChange={(e) => {
+        const newValue = e.target.value
+        setLocalValue(newValue)
+        onValueChange(newValue)
+      }}
+      className={className}
+      placeholder={placeholder}
+    />
+  )
+}
 
 export const createVariantPricingColumns = (): ColumnDef<VariantPricing>[] => [
   {
@@ -40,48 +75,51 @@ export const createVariantPricingColumns = (): ColumnDef<VariantPricing>[] => [
     accessorKey: 'sku',
     header: 'SKU',
     cell: ({ row }) => (
-      <div className='text-xs'>{row.getValue('sku')}</div>
-    ),
-  },
-  {
-    accessorKey: 'cjColor',
-    header: 'CJ Color',
-    cell: ({ row }) => (
-      <div className='text-xs'>{row.getValue('cjColor')}</div>
+      <EditableCell
+        value={row.getValue('sku') as string}
+        onValueChange={(newValue) => {
+          ;(row.original as VariantPricing).sku = newValue
+        }}
+        className='h-6 w-20 text-center text-xs'
+      />
     ),
   },
   {
     accessorKey: 'color',
     header: 'Color',
     cell: ({ row }) => (
-      <Input
-        value={row.getValue('color')}
+      <EditableCell
+        value={row.getValue('color') as string}
+        onValueChange={(newValue) => {
+          ;(row.original as VariantPricing).color = newValue
+        }}
         className='h-6 w-20 text-center text-xs'
-        readOnly
       />
     ),
   },
   {
-    accessorKey: 'rrp',
-    header: 'RRP',
-    cell: ({ row }) => {
-      const rrp = row.getValue('rrp') as number
-      return (
-        <div className='flex flex-col'>
-          <span className='text-xs'>${rrp.toFixed(2)}</span>
-          <span className='text-muted-foreground text-[10px]'>
-            Estimated Profit 325%
-          </span>
-        </div>
-      )
-    },
+    accessorKey: 'size',
+    header: 'Size',
+    cell: ({ row }) => (
+      <EditableCell
+        value={(row.getValue('size') as string) || ''}
+        onValueChange={(newValue) => {
+          ;(row.original as VariantPricing & { size?: string }).size = newValue
+        }}
+        className='h-6 w-20 text-center text-xs'
+      />
+    ),
   },
   {
     accessorKey: 'cjPrice',
-    header: 'CJ Price',
+    header: 'TD Price',
     cell: ({ row }) => {
-      const price = row.getValue('cjPrice') as number
-      return <div className='text-xs'>${price.toFixed(2)}</div>
+      const price = row.getValue('cjPrice') as number | undefined
+      return (
+        <div className='text-xs'>
+          {price != null ? `$${price.toFixed(2)}` : '--'}
+        </div>
+      )
     },
   },
   {
@@ -93,7 +131,7 @@ export const createVariantPricingColumns = (): ColumnDef<VariantPricing>[] => [
   },
   {
     accessorKey: 'totalDropshippingPrice',
-    header: 'Total Dropshipping Price',
+    header: 'Total TD Price',
     cell: ({ row }) => (
       <div className='text-xs'>
         {row.getValue('totalDropshippingPrice') || '--'}
@@ -103,13 +141,21 @@ export const createVariantPricingColumns = (): ColumnDef<VariantPricing>[] => [
   {
     accessorKey: 'yourPrice',
     header: () => <span className='text-primary'>* Your Price</span>,
-    cell: ({ row }) => (
-      <Input
-        value={row.getValue('yourPrice') || ''}
-        className='h-6 w-16 text-xs'
-        placeholder='Enter price'
-      />
-    ),
+    cell: ({ row }) => {
+      // 直接读取 row.original 以确保获取最新值
+      const variant = row.original as VariantPricing
+      return (
+        <EditableCell
+          key={`yourPrice-${variant.id}-${variant.yourPrice || ''}`}
+          value={variant.yourPrice || ''}
+          onValueChange={(newValue) => {
+            variant.yourPrice = newValue
+          }}
+          className='h-6 w-16 text-xs'
+          placeholder='Enter price'
+        />
+      )
+    },
   },
 ]
 

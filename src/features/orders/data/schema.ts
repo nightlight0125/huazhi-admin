@@ -84,7 +84,7 @@ export const orderSchema = z.object({
   postalCode: z.string(),          // 邮政编码
   taxNumber: z.string(),           // 税号
   productList: z.array(orderProductSchema), // 产品列表
-  
+
   // 保留原有字段以兼容现有代码
   storeName: z.string(),           // 店铺名称
   platformOrderNumber: z.string(), // 平台订单号
@@ -119,6 +119,8 @@ export const orderSchema = z.object({
   hzkj_customer_name: z.any().optional(),
   providers: z.string().optional(), // 物流提供商（原始字段）
   hzkj_actual_cost: z.number().optional(), // 实际成本
+  hzkj_fre_quo_amount: z.number().optional(), // 运费
+  hzkj_customer_channel_name: z.string().optional(), // 客户渠道名称
 })
 
 export type Order = z.infer<typeof orderSchema>
