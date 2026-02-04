@@ -843,6 +843,8 @@ export interface AddressItem {
   hzkj_textfield?: string
   hzkj_tax_id1?: string
   hzkj_textfield1?: string
+  // 扩展：用于下单时的国家 ID
+  hzkj_country2_id?: string | number
   hzkj_country2_number?: string
   hzkj_admindivision2_number?: string
   hzkj_admindivision2_id?: string | number

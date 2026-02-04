@@ -77,7 +77,6 @@ export function ProductDesign() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const historyIndexRef = useRef(-1)
   const isUpdatingTextRef = useRef(false)
-  const [noteName, setNoteName] = useState('')
   const [noteText, setNoteText] = useState('')
 
   // Text editing state
@@ -1494,16 +1493,6 @@ export function ProductDesign() {
 
           {activeTab === 'notes' && (
             <div className='space-y-4'>
-              <div className='space-y-2'>
-                <div className='text-foreground text-sm font-medium'>Name</div>
-                <Input
-                  placeholder='Enter name'
-                  value={noteName}
-                  onChange={(e) => setNoteName(e.target.value)}
-                  className='h-9'
-                />
-              </div>
-
               <div className='space-y-2'>
                 <div className='text-foreground text-sm font-medium'>Notes</div>
                 <div className='relative'>

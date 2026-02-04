@@ -84,7 +84,17 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
 
   const handlePay = async () => {
     const customerId = auth.user?.customerId
-   
+
+    if (!customerId) {
+      toast.error('Customer ID not found. Please login again.')
+      return
+    }
+
+    if (!shippingAddress) {
+      toast.error('Please add a shipping address before paying')
+      return
+    }
+
     if (!selectedShippingMethod) {
       toast.error('Please select a shipping method')
       return
@@ -94,6 +104,18 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       const response = await buyProduct({
         customerId: String(customerId),
         customChannelId: selectedShippingMethod,
+        // 地址信息映射
+        firstName: shippingAddress.hzkj_customer_first_name ?? '',
+        lastName: shippingAddress.hzkj_customer_last_name ?? '',
+        phone: shippingAddress.hzkj_phone ?? '',
+        countryId: String(shippingAddress.hzkj_country2_id ?? ''),
+        admindivisionId: String(shippingAddress.hzkj_admindivision2_id ?? ''),
+        city: shippingAddress.hzkj_city ?? '',
+        address1: shippingAddress.hzkj_textfield ?? '',
+        address2: shippingAddress.hzkj_address2 ?? '',
+        postCode: shippingAddress.hzkj_textfield1 ?? '',
+        taxId: shippingAddress.hzkj_tax_id1 ?? '',
+        note: shippingAddress.hzkj_textfield3 ?? '',
         detail: orderData.items.map((item) => ({
           skuId: item.id,
           quantity: item.quantity,
@@ -211,11 +233,6 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                 )}
               </SelectContent>
             </Select>
-            {/* {selectedShippingMethod && (
-              <span className='text-sm text-red-600'>
-                Estimated Delivery Time: - Day(s)
-              </span>
-            )} */}
           </div>
         </div>
 

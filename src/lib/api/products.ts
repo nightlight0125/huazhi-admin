@@ -294,6 +294,61 @@ export async function querySkuByCustomer(
   return skuRecords
 }
 
+// 查询客户已绑定包装 API 请求参数
+export interface QueryCustomerBindPackageAPIRequest {
+  data: {
+    number: string
+    hzkj_cus_id: string
+    hzkj_good_hzkj_goodtype_id: string
+  }
+  pageSize: number
+  pageNo: number
+}
+
+// 查询客户已绑定包装 API 响应
+export interface QueryCustomerBindPackageAPIResponse {
+  data?: {
+    rows?: unknown[]
+    totalCount?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+export async function queryCustomerBindPackageAPI(
+  params: QueryCustomerBindPackageAPIRequest
+): Promise<{ rows: unknown[]; totalCount: number }> {
+  const response = await apiClient.post<QueryCustomerBindPackageAPIResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_sku_record/queryCustomerBindPackageAPI',
+    params
+  )
+
+  console.log('查询客户绑定包装响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query customer bound packages. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const rows = Array.isArray(response.data.data?.rows)
+    ? response.data.data!.rows!
+    : []
+  const totalCount =
+    typeof response.data.data?.totalCount === 'number'
+      ? (response.data.data.totalCount as number)
+      : 0
+
+  return {
+    rows,
+    totalCount,
+  }
+}
+
 // 获取产品详情请求参数
 export interface GetProductRequest {
   productId: string
@@ -564,18 +619,24 @@ export interface SelectSpecGetSkuRequest {
   specIds: string[] // 规格值ID列表
 }
 
+// 根据规格选择获取 SKU 响应数据项
+export interface SelectSpecGetSkuResponseItem {
+  number?: string // SKU编码
+  souprice?: number // 标准原价
+  price?: number // 建议销售价
+  netweight?: number // 产品净重
+  name?: unknown // 配货名
+  id?: string // id
+  pic?: string // 图片
+  enname?: unknown // 英文配货名
+  [key: string]: unknown
+}
+
 // 根据规格选择获取 SKU 响应
 export interface SelectSpecGetSkuResponse {
-  data?: {
-    id?: string
-    sku?: string
-    price?: number
-    stock?: number
-    image?: string
-    [key: string]: unknown
-  }
+  data?: SelectSpecGetSkuResponseItem[] // 返回数组
   errorCode?: string
-  message?: string
+  message?: string | null
   status?: boolean
   [key: string]: unknown
 }
@@ -808,6 +869,19 @@ export async function queryCuShopPackageList(
 export interface BuyProductRequest {
   customerId: string
   customChannelId: string
+  // 收货地址相关信息
+  firstName: string
+  lastName: string
+  phone: string
+  countryId: string
+  admindivisionId: string
+  city: string
+  address1: string
+  address2: string
+  postCode: string
+  taxId: string
+  note: string
+  // 订单明细
   detail: Array<{
     skuId: string
     quantity: number

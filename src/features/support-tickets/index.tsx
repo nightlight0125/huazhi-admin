@@ -26,9 +26,10 @@ export function SupportTickets() {
   const lastRequestKeyRef = useRef<string>('')
   const isRequestingRef = useRef<boolean>(false)
 
-  // 获取分页参数
+  // 获取分页参数和搜索关键词
   const pageNo = (search.page as number) || 1
   const pageSize = (search.pageSize as number) || 10
+  const searchKeyword = (search.filter as string) || ''
 
   const fetchAfterSaleOrders = useCallback(
     async (forceRefresh?: boolean) => {
@@ -46,8 +47,8 @@ export function SupportTickets() {
             }
           : undefined
 
-      // 构建请求 key，包含所有筛选条件
-      const requestKey = `${auth.user.customerId}-${pageNo}-${pageSize}-${selectedStore || '*'}-${selectedType || '*'}-${formattedDateRange?.start_date || ''}-${formattedDateRange?.end_date || ''}`
+      // 构建请求 key，包含所有筛选条件（包括搜索关键词）
+      const requestKey = `${auth.user.customerId}-${pageNo}-${pageSize}-${selectedStore || '*'}-${selectedType || '*'}-${searchKeyword || '*'}-${formattedDateRange?.start_date || ''}-${formattedDateRange?.end_date || ''}`
 
       // 如果请求参数没有变化且不是强制刷新，跳过请求
       if (!forceRefresh && lastRequestKeyRef.current === requestKey) {
@@ -74,7 +75,7 @@ export function SupportTickets() {
               start_date: formattedDateRange.start_date,
               end_date: formattedDateRange.end_date,
             }),
-            str: '',
+            str: searchKeyword || '',
           },
           pageSize,
           pageNo,
@@ -108,6 +109,7 @@ export function SupportTickets() {
       dateRange,
       selectedStore,
       selectedType,
+      searchKeyword,
     ]
   )
 
@@ -117,12 +119,12 @@ export function SupportTickets() {
 
   // 当筛选条件变化时，重置到第一页并重新获取数据
   useEffect(() => {
-    if (dateRange || selectedStore || selectedType) {
+    if (dateRange || selectedStore || selectedType || searchKeyword) {
       // 重置请求 key，强制重新获取
       lastRequestKeyRef.current = ''
       fetchAfterSaleOrders(true)
     }
-  }, [dateRange, selectedStore, selectedType, fetchAfterSaleOrders])
+  }, [dateRange, selectedStore, selectedType, searchKeyword, fetchAfterSaleOrders])
 
   return (
     <>
@@ -132,25 +134,20 @@ export function SupportTickets() {
 
       <Main fluid>
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
-          {isLoading ? (
-            <div className='flex items-center justify-center py-8'>
-              <p className='text-muted-foreground'>Loading support tickets...</p>
-            </div>
-          ) : (
-            <SupportTicketsTable
-              data={data}
-              search={search}
-              navigate={navigate}
-              totalCount={totalCount}
-              onRefresh={fetchAfterSaleOrders}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              selectedStore={selectedStore}
-              onStoreChange={setSelectedStore}
-              selectedType={selectedType}
-              onTypeChange={setSelectedType}
-            />
-          )}
+          <SupportTicketsTable
+            data={data}
+            search={search}
+            navigate={navigate}
+            totalCount={totalCount}
+            isLoading={isLoading}
+            onRefresh={fetchAfterSaleOrders}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            selectedStore={selectedStore}
+            onStoreChange={setSelectedStore}
+            selectedType={selectedType}
+            onTypeChange={setSelectedType}
+          />
         </div>
       </Main>
     </>

@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   deleteShopPackage,
   queryCuShopPackageList,
+  queryCustomerBindPackageAPI,
   queryOdPdPackageList,
   type OdPdPackageListItem,
 } from '@/lib/api/products'
@@ -64,6 +65,8 @@ const tabs = [
 ]
 
 export function PackagingConnection() {
+  const { auth } = useAuthStore()
+
   const [activeTab, setActiveTab] = useState<TabType>('products')
   const [statusTab, setStatusTab] = useState<
     'all' | 'connected' | 'unconnected'
@@ -78,9 +81,36 @@ export function PackagingConnection() {
     useState<StoreSku | null>(null)
   const [itemToDelete, setItemToDelete] = useState<any | null>(null)
 
-  const handleConnect = (storeSku: StoreSku) => {
+  const handleConnect = async (storeSku: StoreSku) => {
     setSelectedStoreSku(storeSku)
-    setConnectDialogOpen(true)
+
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found. Please login again.')
+      return
+    }
+
+    try {
+      // 调用查询客户已绑定包装的接口
+      await queryCustomerBindPackageAPI({
+        data: {
+          number: storeSku.hzkj_local_sku_number || '',
+          hzkj_cus_id: String(customerId),
+          hzkj_good_hzkj_goodtype_id: storeSku.id,
+        },
+        pageSize: 10,
+        pageNo: 1,
+      })
+      // 后续可以根据接口返回的数据更新对话框内容
+      setConnectDialogOpen(true)
+    } catch (error) {
+      console.error('Failed to query customer bound packages:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to query customer bound packages. Please try again.'
+      )
+    }
   }
 
   const handleDisconnect = (storeSku: StoreSku) => {
@@ -91,14 +121,10 @@ export function PackagingConnection() {
   const handleConnectDialogConfirm = (selectedProducts: PackagingProduct[]) => {
     console.log('Selected products:', selectedProducts)
     console.log('Store SKU:', selectedStoreSku)
-    // TODO: Implement the connection logic here
-    // This would typically involve an API call to associate the packaging products with the store SKU
   }
 
   const handleDisconnectConfirm = () => {
     console.log('Disconnecting:', storeSkuToDisconnect)
-    // TODO: Implement the disconnect logic here
-    // This would typically involve an API call to disconnect the packaging products from the store SKU
     setDisconnectDialogOpen(false)
     setStoreSkuToDisconnect(null)
   }
@@ -150,8 +176,6 @@ export function PackagingConnection() {
       )
     }
   }
-
-  const { auth } = useAuthStore()
   const [storeNameOptions, setStoreNameOptions] = useState<
     Array<{ label: string; value: string }>
   >([])

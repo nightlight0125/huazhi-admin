@@ -18,15 +18,14 @@ import {
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
-  getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
   type SortingState,
   type Table,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { type DateRange } from 'react-day-picker'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
 import { type SupportTicket, type SupportTicketStatus } from '../data/schema'
 import { SupportTicketsBulkActions } from './support-tickets-bulk-actions'
@@ -39,6 +38,7 @@ type SupportTicketsTableProps = {
   search: Record<string, unknown>
   navigate: NavigateFn
   totalCount: number
+  isLoading?: boolean
   onRefresh?: () => void
   dateRange?: DateRange | undefined
   onDateRangeChange?: (dateRange: DateRange | undefined) => void
@@ -53,6 +53,7 @@ export function SupportTicketsTable({
   search,
   navigate,
   totalCount,
+  isLoading = false,
   onRefresh,
   onDateRangeChange,
   selectedStore,
@@ -198,23 +199,12 @@ export function SupportTicketsTable({
     },
     enableRowSelection: true,
     manualPagination: true,
+    manualFiltering: true, // 启用服务端过滤
     pageCount,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
-    globalFilterFn: (row, _columnId, filterValue) => {
-      const supportTicketNo = String(
-        row.getValue('supportTicketNo') || ''
-      ).toLowerCase()
-      const hzOrderNo = String(row.original.hzOrderNo || '').toLowerCase()
-      const searchValue = String(filterValue).toLowerCase()
-
-      return (
-        supportTicketNo.includes(searchValue) || hzOrderNo.includes(searchValue)
-      )
-    },
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -275,10 +265,7 @@ export function SupportTicketsTable({
           {
             columnId: 'storeName',
             title: 'Store Name',
-            options: [
-              { label: 'All Stores', value: '*' },
-              ...storeOptions,
-            ],
+            options: storeOptions,
             singleSelect: true,
           },
           {
@@ -334,7 +321,18 @@ export function SupportTicketsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  <div className='flex items-center justify-center py-4'>
+                    <p className='text-muted-foreground'>Loading support tickets...</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

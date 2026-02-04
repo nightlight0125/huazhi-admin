@@ -9,9 +9,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { type SupportTicket, type SupportTicketStatus } from '../data/schema'
+import { type SupportTicket } from '../data/schema'
 
 interface SupportTicketDeleteCellProps {
   row: Row<SupportTicket>
@@ -136,13 +136,13 @@ export const createSupportTicketsColumns = (options?: {
       id: 'hzOrder',
       header: 'Order',
       cell: ({ row }) => {
-        const ticket = row.original
+        const entryEntity = row.original.hzkj_after_entryentity
+        const ticket = entryEntity?.item?.[0] || (entryEntity as any)?.[0] || {}
         return (
           <div className='flex items-center gap-3'>
-            {ticket.productImage ? (
+            {ticket.hzkj_localsku_hzkj_picturefield ? (
               <img
-                src={ticket.productImage}
-                alt={ticket.hzSku}
+                src={ticket.hzkj_localsku_hzkj_picturefield}
                 className='h-12 w-12 flex-shrink-0 rounded border object-cover'
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
@@ -157,11 +157,11 @@ export const createSupportTicketsColumns = (options?: {
               </div>
             )}
             <div className='space-y-0.5 text-sm'>
-              <div>Order NO: {ticket.hzOrderNo || '--'}</div>
-              <div>SKU: {ticket.hzSku || '--'}</div>
-              <div>Variant: {ticket.variant || '--'}</div>
-              <div>QTY: {ticket.qty || 0}</div>
-              <div>Total Price: ${(ticket.totalPrice || 0).toFixed(2)}</div>
+              <div>Order NO: {ticket.hzkj_localsku_number || ticket.id || '--'}</div>
+              <div>SKU: {ticket.hzkj_localsku_name || '--'}</div>
+              <div>Variant: {ticket.hzkj_localsku_hzkj_sku_value || ticket.id || '--'}</div>
+              <div>QTY: {ticket.hzkj_qty || 0}</div>
+              <div>Total Price: ${(ticket.hzkj_localsku_hzkj_pur_price || 0).toFixed(2)}</div>
             </div>
           </div>
         )
@@ -174,7 +174,6 @@ export const createSupportTicketsColumns = (options?: {
         <DataTableColumnHeader column={column} title='Qty' />
       ),
       cell: ({ row }) => {
-        // qty 是 hzkj_after_entryentity 中的 item 数组中的 hzkj_qty（在转换时已经映射到 returnQty）
         return (
           <div className='w-10 text-center text-xs'>
             {row.getValue('returnQty') || 0}
@@ -201,7 +200,29 @@ export const createSupportTicketsColumns = (options?: {
       ),
       cell: ({ row }) => {
         const ticket = row.original
-        return <div>{ticket.hzkj_sales_type_title}</div>
+        const salesType = ticket.hzkj_sales_type
+        let typeLabel = salesType || 'Unknown'
+        
+        if (typeof salesType === 'string') {
+          switch (salesType.toUpperCase()) {
+            case 'A':
+              typeLabel = 'Refund & Return'
+              break
+            case 'B':
+              typeLabel = 'Refund'
+              break
+            case 'C':
+              typeLabel = 'Re-shipment'
+              break
+            case 'D':
+              typeLabel = 'Return Only'
+              break
+            default:
+              typeLabel = salesType
+          }
+        }
+        
+        return <div>{typeLabel}</div>
       },
     },
     {
@@ -210,40 +231,47 @@ export const createSupportTicketsColumns = (options?: {
         <DataTableColumnHeader column={column} title='Status' />
       ),
       cell: ({ row }) => {
-        const rawStatus = row.getValue('status') as SupportTicket['status']
-        const status: Exclude<SupportTicketStatus, 'all'> = 
-          rawStatus && ['processing', 'finished', 'refused', 'cancelled'].includes(rawStatus)
-            ? rawStatus
-            : 'processing'
-        const statusConfig: Record<
-          Exclude<SupportTicketStatus, 'all'>,
-          { label: string; className: string }
-        > = {
-          processing: {
-            label: 'Processing',
-            className:
-              'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white capitalize',
-          },
-          finished: {
-            label: 'Finished',
-            className:
-              'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white capitalize',
-          },
-          refused: {
-            label: 'Refused',
-            className:
-              'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white capitalize',
-          },
-          cancelled: {
-            label: 'Cancelled',
-            className:
-              'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize',
-          },
+        const ticket = row.original
+        const statusValue = ticket.hzkj_orderstatus
+        // 将字符串转换为数字
+        const statusNumber = statusValue ? parseInt(String(statusValue), 10) : null
+        
+        // 根据数字映射状态
+        // 取消 → 0, 待支付 → 1, 已支付 → 2, 处理中 → 3, 已发货 → 4
+        let statusLabel = 'Unknown'
+        let statusClassName = 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
+        
+        if (statusNumber !== null && !isNaN(statusNumber)) {
+          switch (statusNumber) {
+            case 0:
+              statusLabel = 'Cancelled'
+              statusClassName = 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
+              break
+            case 1:
+              statusLabel = 'Awaiting Payment'
+              statusClassName = 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white capitalize'
+              break
+            case 2:
+              statusLabel = 'Paid'
+              statusClassName = 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white capitalize'
+              break
+            case 3:
+              statusLabel = 'Processing'
+              statusClassName = 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white capitalize'
+              break
+            case 4:
+              statusLabel = 'Shipped'
+              statusClassName = 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white capitalize'
+              break
+            default:
+              statusLabel = 'Unknown'
+              statusClassName = 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
+          }
         }
-        const config = statusConfig[status]
+        
         return (
-          <Badge variant='outline' className={config.className}>
-            {config.label}
+          <Badge variant='outline' className={statusClassName}>
+            {statusLabel}
           </Badge>
         )
       },
@@ -253,7 +281,10 @@ export const createSupportTicketsColumns = (options?: {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='Create Time' />
       ),
-      cell: ({ row }) => <div>{row.getValue('createTime')}</div>,
+      cell: ({ row }) => {
+        const ticket = row.original
+        return <div>{ticket.createtime}</div>
+      },
     },
     {
       accessorKey: 'reason',
@@ -262,7 +293,8 @@ export const createSupportTicketsColumns = (options?: {
       ),
       cell: ({ row }) => {
         const ticket = row.original
-        const reason = (row.getValue('reason') as string) || '---'
+        const reasonValue = ticket.hzkj_resason_name
+        const reason = typeof reasonValue === 'string' ? reasonValue : '---'
         return (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -288,21 +320,19 @@ export const createSupportTicketsColumns = (options?: {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => {
-        const ticket = row.original
-
         return (
           <div className='flex gap-2'>
-            <Button
+            {/* <Button
               variant='outline'
               size='sm'
               className='h-7 px-2 text-xs'
               onClick={(e) => {
                 e.stopPropagation()
-                onEdit?.(ticket)
+                onEdit?.(row.original)
               }}
             >
               <Pencil className='mr-1 h-3.5 w-3.5' />
-            </Button>
+            </Button> */}
             <SupportTicketDeleteCell row={row} onDelete={onDelete} />
           </div>
         )
