@@ -8,10 +8,10 @@ import {
 } from '@/components/ui/dialog'
 import {
   linkProduct,
-  queryShopifyUnconnectedProducts,
   querySkuByCustomer,
-  type ShopifyUnconnectedProductItem,
+  queryUnconnectedVariants,
   type SkuRecordItem,
+  type UnconnectedVariantItem,
 } from '@/lib/api/products'
 import { useAuthStore } from '@/stores/auth-store'
 import { Link2 } from 'lucide-react'
@@ -25,6 +25,9 @@ interface StoreProduct {
   image: string
   description: string
   variantId: string
+  variantid?: string // 后端返回的字段名（小写）
+  picture?: string // 后端返回的图片字段
+  title?: string // 后端返回的标题字段
 }
 
 interface TeemDropProduct {
@@ -40,6 +43,8 @@ interface ProductsConnectionDialogProps {
   onConfirm: (
     connections: Array<{ storeProductId: string; teemDropProductId: string }>
   ) => void
+  leftProductId?: string // 左侧选中产品的 ID
+  rightProductId?: string // 右侧选中产品的 ID
 }
 
 /* ===================== component ===================== */
@@ -48,6 +53,8 @@ export function ProductsConnectionDialog({
   open,
   onOpenChange,
   onConfirm,
+  leftProductId,
+  rightProductId: _rightProductId,
 }: ProductsConnectionDialogProps) {
   const { auth } = useAuthStore()
 
@@ -191,40 +198,41 @@ export function ProductsConnectionDialog({
     if (!open) return
 
     const customerId = auth.user?.customerId
-    const accountId = auth.user?.id
-
-    
-    const SHOP_ID = '0'
 
     const fetchStoreProducts = async () => {
+      if (!leftProductId || !customerId) {
+        setStoreProducts([])
+        return
+      }
+
       setIsLoadingStoreProducts(true)
       try {
-        const result = await queryShopifyUnconnectedProducts({
-          shopId: SHOP_ID,
+        // 使用 queryUnconnectedVariants 接口，传入 leftProductId 作为 productId
+        const result = await queryUnconnectedVariants({
           customerId: String(customerId),
-          accountId: String(accountId),
-          pageIndex: 0,
-          pageSize: 100,
+          productId: String(leftProductId),
         })
 
-        const formatted: StoreProduct[] = result.rows.map(
-          (item: ShopifyUnconnectedProductItem & { [key: string]: unknown }) => {
-            const productId = item.productId as string | number | undefined
-            const spuImg = item.spuImg as string | undefined
-            const spuTitle = item.spuTitle as string | undefined
-
-            const id =
-              typeof productId === 'string'
-                ? productId
-                : productId != null
-                  ? String(productId)
-                  : ''
+        // 转换 API 数据为组件需要的格式
+        const formatted: StoreProduct[] = result.map(
+          (item: UnconnectedVariantItem) => {
+            // 后端返回的字段：variantid (小写), title, picture
+            const variantid = typeof item.variantid === 'string' 
+              ? item.variantid 
+              : typeof item.variantId === 'string'
+                ? item.variantId
+                : String(item.variantid || item.variantId || item.id || '')
+            const id = variantid
+            const picture = typeof item.picture === 'string' ? item.picture : (typeof item.image === 'string' ? item.image : '')
+            const title = typeof item.title === 'string' ? item.title : (typeof item.description === 'string' ? item.description : id)
 
             return {
               id,
-              image: typeof spuImg === 'string' ? spuImg : '',
-              description: typeof spuTitle === 'string' ? spuTitle : id,
-              variantId: id,
+              image: picture,
+              description: title,
+              variantId: variantid,
+              variantid: variantid, // 保留原始字段，用于 key
+              picture: picture, // 保留原始字段，用于显示
             }
           }
         )
@@ -294,7 +302,7 @@ export function ProductsConnectionDialog({
 
     void fetchStoreProducts()
     void fetchTeemDropProducts()
-  }, [open, auth.user?.customerId, auth.user?.id, selectedStoreProductId])
+  }, [open, auth.user?.customerId, auth.user?.id, selectedStoreProductId, leftProductId])
 
   /* ---------- core logic ---------- */
 
@@ -325,11 +333,6 @@ export function ProductsConnectionDialog({
   const handleConfirm = () => {
     const customerId = auth.user?.customerId
 
-    if (!customerId) {
-      toast.error('Missing customerId, please re-login.')
-      return
-    }
-
     if (connections.length === 0) {
       toast.error('Please connect at least one product.')
       return
@@ -341,7 +344,6 @@ export function ProductsConnectionDialog({
           connections.map((conn) =>
             linkProduct({
               customerId: String(customerId),
-              // 修正：左边为 shopSkuId，右边为 localSkuId
               shopSkuId: conn.storeProductId,
               localSkuId: conn.teemDropProductId,
             })
@@ -397,19 +399,19 @@ export function ProductsConnectionDialog({
 
                   return (
                     <div
-                      key={product.id}
+                      key={product.variantid}
                       onClick={() => setSelectedStoreProductId(product.id)}
                       className={`cursor-pointer rounded-lg border p-3 transition ${selected || isConnectedToSameIndex ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
                     >
                       <div className='flex gap-3'>
                         <img
-                          src={product.image}
+                          src={product.picture}
                           className='h-14 w-14 rounded object-cover'
                         />
                         <div className='flex-1'>
-                          <p className='text-sm'>{product.description}</p>
+                          <p className='text-sm'>{product.description || product.title}</p>
                           <p className='text-muted-foreground text-xs'>
-                            Variant ID: {product.variantId}
+                            Variant ID: {product.variantid || product.variantId}
                           </p>
                         </div>
                         {connected && (

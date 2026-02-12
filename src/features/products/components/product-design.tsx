@@ -19,6 +19,7 @@ import {
   Home,
   Image as ImageIcon,
   Layers,
+  Loader2,
   Minus,
   MoveVertical,
   Pencil,
@@ -71,6 +72,7 @@ export function ProductDesign() {
   const fabricCanvasRef = useRef<Canvas | null>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('logo')
   const [uploadedLogo, setUploadedLogo] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [zoom, setZoom] = useState(100)
   const [history, setHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
@@ -397,19 +399,24 @@ export function ProductDesign() {
   }, [product, saveState])
 
   const handleFileSelect = useCallback((files: FileList | null) => {
-    if (!files || files.length === 0 || !fabricCanvasRef.current) return
+    if (!files || files.length === 0 || !fabricCanvasRef.current) {
+      setIsUploadingImage(false)
+      return
+    }
 
     const file = files[0]
     // 验证文件类型
     const validTypes = ['image/png', 'image/jpg', 'image/jpeg']
     if (!validTypes.includes(file.type)) {
       alert('只支持 PNG, JPG, JPEG 格式')
+      setIsUploadingImage(false)
       return
     }
 
     // 验证文件大小（10MB）
     if (file.size > 10 * 1024 * 1024) {
       alert('文件大小不能超过 10MB')
+      setIsUploadingImage(false)
       return
     }
 
@@ -438,12 +445,21 @@ export function ProductDesign() {
             fabricCanvasRef.current?.add(img)
             fabricCanvasRef.current?.setActiveObject(img)
             fabricCanvasRef.current?.renderAll()
+            // 处理完成后隐藏 loading
+            setIsUploadingImage(false)
           })
           .catch((error) => {
             console.error('Failed to load image:', error)
             alert('图片加载失败，请重试')
+            setIsUploadingImage(false)
           })
+      } else {
+        setIsUploadingImage(false)
       }
+    }
+    reader.onerror = () => {
+      alert('文件读取失败，请重试')
+      setIsUploadingImage(false)
     }
     reader.readAsDataURL(file)
   }, [])
@@ -835,14 +851,8 @@ export function ProductDesign() {
       toast.error('Product data not loaded')
       return
     }
-
     const customerId = auth.user?.customerId
-    if (!customerId) {
-      toast.error('Customer ID not found. Please login again.')
-      return
-    }
 
-    // 获取 SKU ID - 优先使用路由 search 中传入的 skuId，其次使用 product.id，最后使用 productId
     const skuIdFromSearch = (search as { skuId?: string }).skuId
     const skuId = skuIdFromSearch || product.id || productId
     if (!skuId) {
@@ -853,8 +863,6 @@ export function ProductDesign() {
     try {
       setIsSaving(true)
       const canvas = fabricCanvasRef.current
-
-      // 导出画布为 base64 图片
       const imageData = canvas.toDataURL({
         format: 'png',
         quality: 1,
@@ -871,6 +879,17 @@ export function ProductDesign() {
       })
 
       toast.success('Design saved successfully')
+      
+      // 跳转到 packaging-products 页面的 My Packaging tab
+      navigate({
+        to: '/packaging-products',
+        search: {
+          tab: 'my-packaging',
+          page: 1,
+          pageSize: 18,
+          filter: '',
+        },
+      })
     } catch (error) {
       console.error('Failed to save design:', error)
       toast.error(
@@ -1082,28 +1101,52 @@ export function ProductDesign() {
               <div
                 className={cn(
                   'border-border bg-background cursor-pointer rounded-md border-2 border-dashed p-6 text-center transition-colors',
-                  'hover:border-primary/50'
+                  'hover:border-primary/50',
+                  isUploadingImage && 'pointer-events-none opacity-50'
                 )}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <div className='flex flex-col items-center space-y-2'>
-                  <Plus className='text-muted-foreground h-6 w-6' />
-                  <p className='text-muted-foreground text-sm'>
-                    Click or drag files here to upload
-                  </p>
-                  <p className='text-muted-foreground mt-1 text-xs'>
-                    Only png, jpg, JPEG can be uploaded, and the size does not
-                    exceed 10MB
-                  </p>
-                </div>
+                {isUploadingImage ? (
+                  <div className='flex flex-col items-center justify-center space-y-3 py-4'>
+                    <Loader2 className='text-primary h-8 w-8 animate-spin' />
+                    <p className='text-primary font-medium text-sm'>
+                      Uploading image...
+                    </p>
+                    <p className='text-muted-foreground text-xs'>
+                      Please wait while we process your image
+                    </p>
+                  </div>
+                ) : (
+                  <div className='flex flex-col items-center space-y-2'>
+                    <Plus className='text-muted-foreground h-6 w-6' />
+                    <p className='text-muted-foreground text-sm'>
+                      Click or drag files here to upload
+                    </p>
+                    <p className='text-muted-foreground mt-1 text-xs'>
+                      Only png, jpg, JPEG can be uploaded, and the size does not
+                      exceed 10MB
+                    </p>
+                  </div>
+                )}
                 <input
                   ref={fileInputRef}
                   type='file'
                   accept='image/png,image/jpg,image/jpeg'
                   className='hidden'
-                  onChange={(e) => handleFileSelect(e.target.files)}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      // 点击"打开"后立即显示 loading
+                      setIsUploadingImage(true)
+                      handleFileSelect(e.target.files)
+                    } else {
+                      // 用户取消选择时，隐藏 loading
+                      setIsUploadingImage(false)
+                    }
+                    // 重置 input 值，允许重复选择同一文件
+                    e.target.value = ''
+                  }}
                 />
               </div>
               {uploadedLogo && (

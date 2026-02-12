@@ -16,7 +16,12 @@ import { HelpCircle } from 'lucide-react'
 import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { deleteOrder, queryOrder, requestPayment } from '@/lib/api/orders'
+import {
+  deleteOrder,
+  queryOrder,
+  requestPayment,
+  updateSalOutOrder,
+} from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,7 +35,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTableToolbar } from '@/components/data-table'
 import {
-  EditAddressDialog,
   type AddressData,
 } from '@/components/edit-address-dialog'
 import {
@@ -43,6 +47,7 @@ import { SampleOrdersActionsMenu } from './sample-orders-actions-menu'
 import { SampleOrdersBulkActions } from './sample-orders-bulk-actions'
 import { createSampleOrdersColumns } from './sample-orders-columns'
 import { SampleOrdersTableFooter } from './sample-orders-table-footer'
+import { OrdersEditAddressDialog } from '@/features/orders/components/orders-edit-address-dialog'
 
 const route = getRouteApi('/_authenticated/sample-orders/')
 
@@ -226,13 +231,60 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
-  const handleConfirmEditAddress = (addressData: AddressData) => {
-    console.log(
-      'Updated address for order:',
-      editAddressDialog.order?.id,
-      addressData
-    )
-    setEditAddressDialog({ open: false, order: null })
+  const handleConfirmEditAddress = async (addressData: AddressData) => {
+    const order = editAddressDialog.order as any
+    const customerId = auth.user?.customerId
+
+    if (!order || !customerId) {
+      toast.error('Order or customer information is missing')
+      setEditAddressDialog({ open: false, order: null })
+      return
+    }
+
+    // 对于样品订单，目前后端没有提供行级 lingItems，detail 先传空数组
+    const detail: any[] = []
+
+    const firstName =
+      (addressData as any).firstName ??
+      addressData.customerName.split(' ')[0] ??
+      ''
+    const lastName =
+      (addressData as any).lastName ??
+      addressData.customerName.split(' ').slice(1).join(' ') ??
+      ''
+
+    try {
+      await updateSalOutOrder({
+        orderId: order.id,
+        customerId: String(customerId),
+        firstName,
+        lastName,
+        phone: addressData.phoneNumber,
+        countryId: (addressData as any).countryId ?? '',
+        admindivisionId: (addressData as any).admindivisionId,
+        city: addressData.city,
+        address1: addressData.address,
+        address2: addressData.address2,
+        postCode: addressData.postalCode,
+        taxId: (addressData as any).taxId || '',
+        customChannelId: '',
+        email: addressData.email || '',
+        wareHouse:
+          (addressData as any).warehouseId ?? addressData.shippingOrigin,
+        detail,
+      })
+
+      toast.success('Sample order address updated successfully')
+      setEditAddressDialog({ open: false, order: null })
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('Failed to update sample order address:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update sample order address. Please try again.'
+      )
+    }
   }
 
   const handleAddPackage = (orderId: string) => {
@@ -532,20 +584,14 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         }}
       />
 
-      <EditAddressDialog
+      <OrdersEditAddressDialog
         open={editAddressDialog.open}
         onOpenChange={(open) =>
           setEditAddressDialog({ ...editAddressDialog, open })
         }
-        initialData={
-          editAddressDialog.order
-            ? {
-                customerName: editAddressDialog.order.address.name,
-                address: editAddressDialog.order.address.address,
-                country: editAddressDialog.order.address.country,
-              }
-            : undefined
-        }
+        // 对于样品订单，底层数据同样来自 queryOrder/transformApiOrderToOrder，
+        // 因此可以复用普通订单的 OrdersEditAddressDialog 映射逻辑
+        order={editAddressDialog.order as any}
         onConfirm={handleConfirmEditAddress}
       />
     </div>

@@ -147,11 +147,14 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='description' />
     ),
-    cell: ({ row }) => (
-      <div className='max-w-[200px] truncate text-sm font-medium'>
-        {row.getValue('description')}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const value = row.original.description as string
+      return (
+        <div className='max-w-[200px] truncate text-sm font-medium'>
+          {value || '-'}
+        </div>
+      )
+    },
   },
   {
     accessorKey: 'paymentMethod',
@@ -159,7 +162,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
       <DataTableColumnHeader column={column} title='paymentMethod' />
     ),
     cell: ({ row }) => {
-      const paymentMethod = row.getValue('paymentMethod') as string
+      const paymentMethod = row.original.paymentMethod as string
       return <div className='text-sm'>{paymentMethod || '-'}</div>
     },
   },
@@ -169,7 +172,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
       <DataTableColumnHeader column={column} title='date' />
     ),
     cell: ({ row }) => {
-      const date = row.getValue('date') as Date
+      const date = row.original.date as Date
       return (
         <div className='text-sm'>
           {new Intl.DateTimeFormat('zh-CN', {
@@ -189,7 +192,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
       <DataTableColumnHeader column={column} title='amount' />
     ),
     cell: ({ row }) => {
-      const amount = row.getValue('amount') as number
+      const amount = row.original.amount as number
       const record = row.original
       const isRecharge = record.type === 'recharge'
 
@@ -212,7 +215,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
       <DataTableColumnHeader column={column} title='cashback' />
     ),
     cell: ({ row }) => {
-      const cashback = row.getValue('cashback') as number | undefined
+      const cashback = row.original.cashback as number | undefined
       if (!cashback) {
         return <span className='text-muted-foreground'>-</span>
       }
@@ -224,24 +227,6 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
             style: 'currency',
             currency: 'CNY',
           }).format(cashback)}
-        </div>
-      )
-    },
-  },
-  {
-    accessorKey: 'notes',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='notes' />
-    ),
-    cell: ({ row }) => {
-      const notes = row.getValue('notes') as string | undefined
-      if (!notes) {
-        return <span className='text-muted-foreground'>-</span>
-      }
-
-      return (
-        <div className='text-muted-foreground max-w-[200px] truncate text-sm'>
-          {notes}
         </div>
       )
     },

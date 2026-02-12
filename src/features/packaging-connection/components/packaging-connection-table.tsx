@@ -295,6 +295,8 @@ export function usePackagingConnectionTable(
     onDelete?: (item: any) => void
     totalCount?: number
     activeTab?: 'products' | 'stores' | 'order'
+    initialPageIndex?: number
+    initialPageSize?: number
   }
 ) {
   const [rowSelection, setRowSelection] = useState({})
@@ -351,13 +353,13 @@ export function usePackagingConnectionTable(
   ])
 
   const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
+    pageIndex: options?.initialPageIndex ?? 0,
+    pageSize: options?.initialPageSize ?? 10,
   })
 
   const totalCount = options?.totalCount
   const pageCount =
-    totalCount !== undefined
+    totalCount !== undefined && pagination.pageSize > 0
       ? Math.ceil(totalCount / pagination.pageSize)
       : undefined
 

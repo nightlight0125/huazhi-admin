@@ -15,8 +15,7 @@ import {
   Loader2,
   Minus,
   Plus,
-  ShoppingBag,
-  Trash2,
+  Trash2
 } from 'lucide-react'
 import { useState } from 'react'
 import { type Order } from '../data/schema'
@@ -181,7 +180,6 @@ export const createOrdersColumns = (options?: {
           (order as any).hzkj_shop_name?.GLang || order.storeName || order.store
         return (
           <div className='flex items-center gap-2'>
-            <ShoppingBag className='h-4 w-4 text-green-600' />
             <span className='font-medium'>{shopName}</span>
           </div>
         )

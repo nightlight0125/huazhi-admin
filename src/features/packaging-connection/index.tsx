@@ -8,6 +8,7 @@ import {
   queryCuShopPackageList,
   queryCustomerBindPackageAPI,
   queryOdPdPackageList,
+  unBindOdPdPackage,
   type OdPdPackageListItem,
 } from '@/lib/api/products'
 import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
@@ -123,10 +124,106 @@ export function PackagingConnection() {
     console.log('Store SKU:', selectedStoreSku)
   }
 
-  const handleDisconnectConfirm = () => {
-    console.log('Disconnecting:', storeSkuToDisconnect)
+  const handleDisconnectConfirm = async () => {
+    if (!storeSkuToDisconnect) {
+      toast.error('Invalid item data')
+      setDisconnectDialogOpen(false)
+      setStoreSkuToDisconnect(null)
+      return
+    }
+
+    // 使用行数据的 id
+    const odPdPackageId = storeSkuToDisconnect.id
+
+    if (!odPdPackageId) {
+      toast.error('Package ID not found')
+      setDisconnectDialogOpen(false)
+      setStoreSkuToDisconnect(null)
+      return
+    }
+
+    try {
+      await unBindOdPdPackage({
+        odPdPackageId: String(odPdPackageId),
+      })
+      toast.success('Package disconnected successfully')
     setDisconnectDialogOpen(false)
     setStoreSkuToDisconnect(null)
+
+      // 重新获取数据
+      const userId = auth.user?.id
+      const customerId = auth.user?.customerId
+
+      if (activeTab === 'stores') {
+        if (userId && customerId) {
+          const response = await queryCuShopPackageList({
+            data: {
+              hzkj_pk_shop_hzkj_customer_id: String(customerId),
+              accountId: String(userId),
+            },
+            pageSize,
+            pageNo,
+          })
+          setPackagingData((response.rows || []) as any[])
+          setTotalCount(response.totalCount || 0)
+        }
+      } else if (activeTab === 'products' || activeTab === 'order') {
+        if (userId && customerId) {
+          // 获取连接状态过滤值
+          let hzkjIsconnect: string | undefined
+          if (
+            statusFilterValue?.includes('connected') &&
+            statusFilterValue.length === 1
+          ) {
+            hzkjIsconnect = '1'
+          } else if (
+            statusFilterValue?.includes('unconnected') &&
+            statusFilterValue.length === 1
+          ) {
+            hzkjIsconnect = '0'
+          }
+
+          // 根据 tab 确定 hzkj_package_type
+          const packageType =
+            hzkjIsconnect === '0'
+              ? undefined
+              : activeTab === 'products'
+                ? '1'
+                : '2'
+
+          // 获取店铺过滤值
+          const shopId =
+            storeFilterValue && storeFilterValue.length > 0
+              ? storeFilterValue[0]
+              : '*'
+
+          const response = await queryOdPdPackageList({
+            data: {
+              hzkj_od_pd_shop_hzkj_customer_id: String(customerId),
+              ...(packageType && { hzkj_package_type: packageType }),
+              accountId: String(userId),
+              hzkj_od_pd_shop_id: shopId,
+              str: '',
+              hzkj_isconnect: hzkjIsconnect,
+            },
+            pageSize,
+            pageNo,
+          })
+          const transformedData = (response.rows || []).map(
+            transformOdPdPackageToStoreSku
+          )
+          setPackagingData(transformedData)
+          setTotalCount(response.totalCount || 0)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to disconnect package:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to disconnect package. Please try again.'
+      )
+    }
   }
 
   const handleDelete = (item: any) => {
@@ -343,6 +440,8 @@ export function PackagingConnection() {
       onDelete: handleDelete,
       totalCount,
       activeTab,
+      initialPageIndex: pageNo - 1,
+      initialPageSize: pageSize,
     }
   )
 
@@ -381,14 +480,36 @@ export function PackagingConnection() {
     }
   }, [statusFilterValue, table])
 
-  // 监听分页变化
+  // 监听分页变化 - 从表格同步到父组件状态
   useEffect(() => {
+    if (!table) return
+    
     const pagination = table.getState().pagination
-    if (pagination.pageIndex + 1 !== pageNo) {
-      setPageNo(pagination.pageIndex + 1)
+    const newPageNo = pagination.pageIndex + 1
+    const newPageSize = pagination.pageSize
+    
+    if (newPageNo !== pageNo) {
+      setPageNo(newPageNo)
     }
-    if (pagination.pageSize !== pageSize) {
-      setPageSize(pagination.pageSize)
+    if (newPageSize !== pageSize) {
+      setPageSize(newPageSize)
+    }
+  }, [table, table?.getState().pagination.pageIndex, table?.getState().pagination.pageSize])
+
+  // 同步父组件状态到表格分页
+  useEffect(() => {
+    if (!table) return
+    
+    const currentPagination = table.getState().pagination
+    const expectedPageIndex = pageNo - 1
+    const expectedPageSize = pageSize
+    
+    if (
+      currentPagination.pageIndex !== expectedPageIndex ||
+      currentPagination.pageSize !== expectedPageSize
+    ) {
+      table.setPageIndex(expectedPageIndex)
+      table.setPageSize(expectedPageSize)
     }
   }, [table, pageNo, pageSize])
 

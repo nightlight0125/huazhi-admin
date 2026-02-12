@@ -9,6 +9,7 @@ export interface ApiFundRecordItem {
   hzkj_datetimefield?: string
   hzkj_amountfield?: number
   hzkj_amountfield1?: number
+  hzkj_amountfield2?: number
   hzkj_status?: string
   [key: string]: unknown
 }
@@ -23,6 +24,11 @@ export interface ApiWalletItem {
 export interface GetWalletListRequest {
   data: {
     hzkj_customer: string
+    // 资金记录日期范围
+    hzkj_datetimefield_start?: string
+    hzkj_datetimefield_end?: string
+    // 搜索：主账号 ID
+    hzkj_customer_masterid?: string
   }
   pageSize: number
   pageNo: number
@@ -49,12 +55,27 @@ export interface GetWalletListResponse {
 export async function getWalletList(
   customerId: string,
   pageNo: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  hzkj_datetimefield_start?: string,
+  hzkj_datetimefield_end?: string,
+  hzkj_customer_masterid?: string
 ): Promise<{ rows: ApiFundRecordItem[]; totalCount: number }> {
+  const data: GetWalletListRequest['data'] = {
+    hzkj_customer: customerId,
+  }
+
+  if (hzkj_datetimefield_start) {
+    data.hzkj_datetimefield_start = hzkj_datetimefield_start
+  }
+  if (hzkj_datetimefield_end) {
+    data.hzkj_datetimefield_end = hzkj_datetimefield_end
+  }
+  if (hzkj_customer_masterid) {
+    data.hzkj_customer_masterid = hzkj_customer_masterid
+  }
+
   const requestData: GetWalletListRequest = {
-    data: {
-      hzkj_customer: customerId,
-    },
+    data,
     pageSize,
     pageNo,
   }

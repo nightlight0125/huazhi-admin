@@ -23,6 +23,7 @@ export function SupportTickets() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedStore, setSelectedStore] = useState<string | undefined>(undefined)
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined)
+  const [selectedOrderStatus, setSelectedOrderStatus] = useState<string | undefined>(undefined)
   const lastRequestKeyRef = useRef<string>('')
   const isRequestingRef = useRef<boolean>(false)
 
@@ -47,8 +48,8 @@ export function SupportTickets() {
             }
           : undefined
 
-      // 构建请求 key，包含所有筛选条件（包括搜索关键词）
-      const requestKey = `${auth.user.customerId}-${pageNo}-${pageSize}-${selectedStore || '*'}-${selectedType || '*'}-${searchKeyword || '*'}-${formattedDateRange?.start_date || ''}-${formattedDateRange?.end_date || ''}`
+      // 构建请求 key，包含所有筛选条件（包括搜索关键词和订单状态）
+      const requestKey = `${auth.user.customerId}-${pageNo}-${pageSize}-${selectedStore || '*'}-${selectedType || '*'}-${selectedOrderStatus || '*'}-${searchKeyword || '*'}-${formattedDateRange?.start_date || ''}-${formattedDateRange?.end_date || ''}`
 
       // 如果请求参数没有变化且不是强制刷新，跳过请求
       if (!forceRefresh && lastRequestKeyRef.current === requestKey) {
@@ -74,6 +75,9 @@ export function SupportTickets() {
             ...(formattedDateRange && {
               start_date: formattedDateRange.start_date,
               end_date: formattedDateRange.end_date,
+            }),
+            ...(selectedOrderStatus !== undefined && {
+              hzkj_orderstatus: selectedOrderStatus,
             }),
             str: searchKeyword || '',
           },
@@ -109,6 +113,7 @@ export function SupportTickets() {
       dateRange,
       selectedStore,
       selectedType,
+      selectedOrderStatus,
       searchKeyword,
     ]
   )
@@ -119,12 +124,12 @@ export function SupportTickets() {
 
   // 当筛选条件变化时，重置到第一页并重新获取数据
   useEffect(() => {
-    if (dateRange || selectedStore || selectedType || searchKeyword) {
+    if (dateRange || selectedStore || selectedType || selectedOrderStatus !== undefined || searchKeyword) {
       // 重置请求 key，强制重新获取
       lastRequestKeyRef.current = ''
       fetchAfterSaleOrders(true)
     }
-  }, [dateRange, selectedStore, selectedType, searchKeyword, fetchAfterSaleOrders])
+  }, [dateRange, selectedStore, selectedType, selectedOrderStatus, searchKeyword, fetchAfterSaleOrders])
 
   return (
     <>
@@ -147,6 +152,8 @@ export function SupportTickets() {
             onStoreChange={setSelectedStore}
             selectedType={selectedType}
             onTypeChange={setSelectedType}
+            selectedOrderStatus={selectedOrderStatus}
+            onOrderStatusChange={setSelectedOrderStatus}
           />
         </div>
       </Main>

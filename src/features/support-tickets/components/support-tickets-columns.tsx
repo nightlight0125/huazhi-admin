@@ -96,7 +96,7 @@ export const createSupportTicketsColumns = (options?: {
   onDelete?: (orderId: string) => void | Promise<void>
   onReasonClick?: (ticket: SupportTicket) => void
 }): ColumnDef<SupportTicket>[] => {
-  const { onEdit, onDelete, onReasonClick } = options || {}
+  const { onDelete, onReasonClick } = options || {}
 
   return [
     {
@@ -202,26 +202,26 @@ export const createSupportTicketsColumns = (options?: {
         const ticket = row.original
         const salesType = ticket.hzkj_sales_type
         let typeLabel = salesType || 'Unknown'
-        
+
         if (typeof salesType === 'string') {
           switch (salesType.toUpperCase()) {
             case 'A':
               typeLabel = 'Refund & Return'
               break
             case 'B':
-              typeLabel = 'Refund'
+              typeLabel = 'Refund only'
               break
             case 'C':
-              typeLabel = 'Re-shipment'
+              typeLabel = 'Reshipment'
               break
             case 'D':
-              typeLabel = 'Return Only'
+              typeLabel = 'Return only'
               break
             default:
               typeLabel = salesType
           }
         }
-        
+
         return <div>{typeLabel}</div>
       },
     },

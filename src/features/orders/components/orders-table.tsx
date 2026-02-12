@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTableToolbar } from '@/components/data-table'
 import {
   OrderPayDialog,
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { deleteOrder, queryOrder, requestPayment } from '@/lib/api/orders'
+import { deleteOrder, queryOrder, requestPayment, updateSalOutOrder } from '@/lib/api/orders'
 import { useAuthStore } from '@/stores/auth-store'
 import { getRouteApi } from '@tanstack/react-router'
 import {
@@ -29,7 +30,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { format } from 'date-fns'
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, Loader2 } from 'lucide-react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
@@ -62,15 +63,42 @@ type DataTableProps = {
 function ProductDetailRow({
   product,
   onModifyProduct,
+  orderId,
+  orderNumber,
+  onDelete,
 }: {
   product: OrderProduct
   onModifyProduct?: () => void
+  orderId: string
+  orderNumber?: string
+  onDelete?: (orderId: string) => void | Promise<void>
 }) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!onDelete) return
+
+    setIsDeleting(true)
+    try {
+      await onDelete(orderId)
+      setDeleteDialogOpen(false)
+    } catch (error) {
+      console.error('删除订单失败:', error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const fieldLabels = ['Shopify', 'SKU', 'Price', 'Quantity']
   const leftButtons = ['Store', 'HZ']
   const rightButtons = [
     { label: 'Modify Product', onClick: onModifyProduct || (() => {}) },
-    { label: 'Delete', onClick: () => {} },
+    { label: 'Delete', onClick: handleDeleteClick },
   ]
 
   // 格式化数值：如果是数字则保留两位小数，否则显示原值或 ---
@@ -88,6 +116,7 @@ function ProductDetailRow({
   }
 
   return (
+    <React.Fragment>
     <TableRow className='bg-muted/30'>
       <TableCell colSpan={100} className='px-3 py-2'>
         <div className='flex items-start justify-between gap-2'>
@@ -157,6 +186,43 @@ function ProductDetailRow({
         </div>
       </TableCell>
     </TableRow>
+    <ConfirmDialog
+      open={deleteDialogOpen}
+      onOpenChange={(newOpen) => {
+        if (!isDeleting) {
+          setDeleteDialogOpen(newOpen)
+        }
+      }}
+      handleConfirm={handleConfirmDelete}
+      destructive
+      isLoading={isDeleting}
+      title={<span className='text-destructive'>Delete Order</span>}
+      desc={
+        <>
+          <p className='mb-2'>
+            Are you sure you want to delete this order?
+            <br />
+            This action cannot be undone.
+          </p>
+          {orderNumber && (
+            <p className='text-muted-foreground text-sm'>
+              Order Number: <strong>{orderNumber}</strong>
+            </p>
+          )}
+        </>
+      }
+      confirmText={
+        isDeleting ? (
+          <>
+            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+            Deleting...
+          </>
+        ) : (
+          'Delete'
+        )
+      }
+    />
+  </React.Fragment>
   )
 }
 
@@ -173,7 +239,6 @@ export function OrdersTable({
   const [refreshKey, setRefreshKey] = useState(0)
   const lastRequestParamsRef = useRef<string>('')
 
-  // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -405,8 +470,10 @@ export function OrdersTable({
     }
   }
 
-  const handleConfirmEditAddress = (_addressData: {
+  const handleConfirmEditAddress = async (addressData: {
     customerName: string
+    firstName?: string
+    lastName?: string
     address: string
     address2?: string
     city: string
@@ -416,8 +483,77 @@ export function OrdersTable({
     phoneNumber: string
     email?: string
     shippingOrigin: string
+    countryId?: number
+    admindivisionId?: string
+    cityId?: string
+    warehouseId?: string
+    taxId?: string
   }) => {
+    const order = editAddressDialog.order
+    const customerId = auth.user?.customerId
+
+    if (!order || !customerId) {
+      toast.error('Order or customer information is missing')
     setEditAddressDialog({ open: false, order: null })
+      return
+    }
+
+    const rawOrder = order as any
+
+    // 构造明细列表 detail
+    const detail =
+      (rawOrder.lingItems || []).map((item: any) => ({
+        entryId: String(item.entryId || ''),
+        skuId: String(
+          item.hzkj_local_sku_id ||
+          item.hzkj_local_sku_id2 ||
+          item.hzkj_local_sku ||
+          ''
+        ),
+        quantity: Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0,
+        flag: 0,
+      })).filter((d: any) => d.entryId && d.skuId) || []
+
+    const firstName =
+      addressData.firstName ??
+      addressData.customerName.split(' ')[0] ??
+      ''
+    const lastName =
+      addressData.lastName ??
+      addressData.customerName.split(' ').slice(1).join(' ') ??
+      ''
+
+    try {
+      await updateSalOutOrder({
+        orderId: rawOrder.id || order.id,
+        customerId: String(customerId),
+        firstName,
+        lastName,
+        phone: addressData.phoneNumber,
+        countryId: addressData.countryId ?? '',
+        admindivisionId: addressData.admindivisionId,
+        city: addressData.city,
+        address1: addressData.address,
+        address2: addressData.address2,
+        postCode: addressData.postalCode,
+      taxId: addressData.taxId || '',
+        customChannelId: '',
+        email: addressData.email || '',
+        wareHouse: addressData.warehouseId ?? addressData.shippingOrigin,
+        detail,
+      })
+
+      toast.success('Order address updated successfully')
+      setEditAddressDialog({ open: false, order: null })
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('Failed to update order address:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update order address. Please try again.'
+      )
+    }
   }
 
   const handleEditCustomerName = (orderId: string) => {
@@ -751,6 +887,9 @@ export function OrdersTable({
                                 <ProductDetailRow
                                   key={idx}
                                   product={product}
+                                  orderId={order.id}
+                                  orderNumber={order.orderNumber}
+                                  onDelete={handleDelete}
                                   onModifyProduct={() => {
                                     setModifyProductDialog({
                                       open: true,

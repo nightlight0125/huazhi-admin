@@ -248,7 +248,10 @@ export function NotAssociatedConnectionView() {
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false)
   const [storeSearchValue, setStoreSearchValue] = useState('') // Store Products 的搜索输入值
   const [storeSearchKeyword, setStoreSearchKeyword] = useState<string>('') // Store Products 实际用于搜索的关键词
-  const { searchKeyword } = useStoreProducts() 
+  const { searchKeyword } = useStoreProducts()
+  // 用于传递给弹框的 ID
+  const [dialogLeftProductId, setDialogLeftProductId] = useState<string>('')
+  const [dialogRightProductId, setDialogRightProductId] = useState<string>('') 
   
   const [teemDropProducts, setTeemDropProducts] = useState<TeemDropProductItem[]>([])
   const [totalTeemDropProducts, setTotalTeemDropProducts] = useState(0)
@@ -267,17 +270,10 @@ export function NotAssociatedConnectionView() {
     )
   }
 
-  // 加载 Store Products
   useEffect(() => {
     const fetchStoreProducts = async () => {
       const customerId = auth.user?.customerId
       const accountId = auth.user?.id
-
-      if (!customerId || !accountId) {
-        console.warn('Missing customerId or accountId')
-        return
-      }
-
       setIsLoadingStoreProducts(true)
       try {
         const result = await queryShopifyUnconnectedProducts({
@@ -410,16 +406,17 @@ export function NotAssociatedConnectionView() {
             {
               storeProducts.length > 0 ? (
                 storeProducts.map((product) => {
-                  const isSelected = selectedStoreProductId === product.id
+                  const productId = (product as any).productId || product.id
+                  const isSelected = selectedStoreProductId === productId
 
                   return (
-                      <div key={product.id} className={`relative cursor-pointer rounded-lg border p-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`} onClick={() => handleStoreProductSelect(product.id)}>
+                      <div key={productId} className={`relative cursor-pointer rounded-lg border p-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`} onClick={() => handleStoreProductSelect(product.id)}>
                       <div className='flex items-start gap-3'>
                         <img src={product.image} alt={product.description} className='h-16 w-16 shrink-0 rounded object-cover' />
                         <div className='min-w-0 flex-1'>
                           <p className='mb-1 text-sm'>{product.description}</p>
                           <p className='text-muted-foreground text-xs'>
-                            Variant ID: {product.variantId}
+                           Product ID: {typeof productId === 'string' ? productId : String(productId || '')}
                           </p>
                         </div>
                       </div>
@@ -483,7 +480,6 @@ export function NotAssociatedConnectionView() {
                       {product.hzkj_picturefield ? (
                         <img
                           src={product.hzkj_picturefield }
-                          alt={product.name}
                           className='h-16 w-16 shrink-0 rounded object-cover'
                         />
                       ) : (
@@ -492,7 +488,7 @@ export function NotAssociatedConnectionView() {
                         </div>
                       )}
                       <div className='min-w-0 flex-1'>
-                        <p className='mb-1 text-sm'>{product.name}</p>
+                        <p className='mb-1 text-sm'>{typeof product.hzkj_bg_enname === 'string' ? product.hzkj_bg_enname : String(product.hzkj_bg_enname || '')}</p>
                         <p className='text-muted-foreground text-xs'>
                           SPU: {product.number }
                         </p>
@@ -502,7 +498,30 @@ export function NotAssociatedConnectionView() {
                           variant='outline'
                           size='sm'
                           className='h-7 shrink-0 px-3 text-xs'
-                          onClick={() => setConnectionDialogOpen(true)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // 获取左侧选中产品的 productId
+                            const selectedStoreProduct = storeProducts.find(
+                              (p) => {
+                                const pId = (p as any).productId || p.id
+                                return pId === selectedStoreProductId
+                              }
+                            )
+                            const leftProductId = (selectedStoreProduct as any)?.productId || selectedStoreProduct?.id || selectedStoreProductId
+                            
+                            // 获取右侧当前点击的产品的 id
+                            const rightProductId = product.id || ''
+                            
+                            // 打印这两个值
+                            console.log('左侧选中产品的 ID:', leftProductId)
+                            console.log('右侧选中产品的 ID:', rightProductId)
+                            
+                            // 保存这两个 ID，传递给弹框
+                            setDialogLeftProductId(leftProductId)
+                            setDialogRightProductId(rightProductId)
+                            
+                            setConnectionDialogOpen(true)
+                          }}
                         >
                           Connect
                         </Button>
@@ -536,6 +555,8 @@ export function NotAssociatedConnectionView() {
       <ProductsConnectionDialog
         open={connectionDialogOpen}
         onOpenChange={setConnectionDialogOpen}
+        leftProductId={dialogLeftProductId}
+        rightProductId={dialogRightProductId}
         onConfirm={(newConnections) => {
           // 更新连接状态
           setConnections(newConnections)

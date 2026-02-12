@@ -27,11 +27,20 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
-import { type SupportTicket, type SupportTicketStatus } from '../data/schema'
+import { type SupportTicket } from '../data/schema'
 import { SupportTicketsBulkActions } from './support-tickets-bulk-actions'
 import { createSupportTicketsColumns } from './support-tickets-columns'
 import { SupportTicketsReasonDialog } from './support-tickets-reason-dialog'
 
+// 订单状态选项配置
+const orderStatusOptions = [
+  { value: 'all', label: 'All', statusValue: undefined },
+  { value: 'shipped', label: 'Shipped', statusValue: '4' },
+  { value: 'processing', label: 'Processing', statusValue: '3' },
+  { value: 'paid', label: 'Paid', statusValue: '2' },
+  { value: 'pending_payment', label: 'Pending Payment', statusValue: '1' },
+  { value: 'cancelled', label: 'Cancelled', statusValue: '0' },
+] as const
 
 type SupportTicketsTableProps = {
   data: SupportTicket[]
@@ -46,6 +55,8 @@ type SupportTicketsTableProps = {
   onStoreChange?: (store: string | undefined) => void
   selectedType?: string | undefined
   onTypeChange?: (type: string | undefined) => void
+  selectedOrderStatus?: string | undefined
+  onOrderStatusChange?: (status: string | undefined) => void
 }
 
 export function SupportTicketsTable({
@@ -60,12 +71,14 @@ export function SupportTicketsTable({
   onStoreChange,
   selectedType,
   onTypeChange,
+  selectedOrderStatus,
+  onOrderStatusChange,
 }: SupportTicketsTableProps) {
   const { auth } = useAuthStore()
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [activeTab, setActiveTab] = useState<SupportTicketStatus>('all')
+  const [activeTab, setActiveTab] = useState<string>('all')
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false)
   const [storeOptions, setStoreOptions] = useState<
     Array<{ label: string; value: string }>
@@ -129,6 +142,31 @@ export function SupportTicketsTable({
       }
     }
   }, [columnFilters, selectedStore, selectedType, onStoreChange, onTypeChange])
+
+  // 根据 selectedOrderStatus 同步 activeTab
+  useEffect(() => {
+    if (selectedOrderStatus === undefined) {
+      if (activeTab !== 'all') {
+        setActiveTab('all')
+      }
+    } else {
+      const matchingOption = orderStatusOptions.find(
+        (opt) => opt.statusValue === selectedOrderStatus
+      )
+      if (matchingOption && activeTab !== matchingOption.value) {
+        setActiveTab(matchingOption.value)
+      }
+    }
+  }, [selectedOrderStatus, activeTab])
+
+  // 处理 tab 切换
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    const selectedOption = orderStatusOptions.find((opt) => opt.value === value)
+    if (onOrderStatusChange && selectedOption) {
+      onOrderStatusChange(selectedOption.statusValue)
+    }
+  }
 
   const filteredData = useMemo(() => {
     if (activeTab === 'all') return data
@@ -217,11 +255,8 @@ export function SupportTicketsTable({
   useEffect(() => {
     const fetchStores = async () => {
       const userId = auth.user?.id
-      if (!userId) {
-        setStoreOptions([])
-        return
-      }
-
+      if (!userId) return
+      
       try {
         const response = await getUserShopList({
           hzkjAccountId: userId,
@@ -270,11 +305,12 @@ export function SupportTicketsTable({
           },
           {
             columnId: 'type',
-            title: 'Type',
+            title: 'After-Sales RMA Order',
             options: [
-              { label: 'All Types', value: '*' },
-              { label: 'Product return', value: 'Product return' },
-              { label: 'Other', value: 'Other' },
+              { label: 'Refund & Return', value: 'A' },
+              { label: 'Refund only', value: 'B' },
+              { label: 'Reshipment', value: 'C' },
+              { label: 'Return only', value: 'D' },
             ],
             singleSelect: true,
           },
@@ -290,15 +326,15 @@ export function SupportTicketsTable({
       />
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setActiveTab(value as SupportTicketStatus)}
+        onValueChange={handleTabChange}
         className='w-full'
       >
-        <TabsList className='grid w-full grid-cols-5'>
-          <TabsTrigger value='all'>All</TabsTrigger>
-          <TabsTrigger value='processing'>Processing</TabsTrigger>
-          <TabsTrigger value='finished'>Finished</TabsTrigger>
-          <TabsTrigger value='refused'>Refused</TabsTrigger>
-          <TabsTrigger value='cancelled'>Cancelled</TabsTrigger>
+        <TabsList className='grid w-full grid-cols-6'>
+          {orderStatusOptions.map((option) => (
+            <TabsTrigger key={option.value} value={option.value}>
+              {option.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
       </Tabs>
 

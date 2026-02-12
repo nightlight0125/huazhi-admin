@@ -176,8 +176,6 @@ export function ProductsGrid({
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
     string[]
   >([])
-  const [storeListingTagsPopoverOpen, setStoreListingTagsPopoverOpen] =
-    useState(false)
   const [storeListingRowSelection, setStoreListingRowSelection] =
     useState<RowSelectionState>({})
   const [storeListingSorting, setStoreListingSorting] = useState<SortingState>(
@@ -701,8 +699,6 @@ export function ProductsGrid({
         >
           <div className='flex h-full text-sm'>
             <StoreListingTabs
-              tagsPopoverOpen={storeListingTagsPopoverOpen}
-              setTagsPopoverOpen={setStoreListingTagsPopoverOpen}
               selectedTags={storeListingSelectedTags}
               setSelectedTags={setStoreListingSelectedTags}
               variantPricingTable={variantPricingTable}

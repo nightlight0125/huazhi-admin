@@ -43,7 +43,6 @@ import { packagingProducts } from '@/features/packaging-products/data/data'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
 import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
-import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
 import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
 import {
   calcuFreight,
@@ -56,10 +55,9 @@ import {
 import {
   collectProduct,
   getProduct,
-  querySkuByCustomer,
   selectSpecGetSku,
   type ApiProductItem,
-  type SkuRecordItem,
+  type SelectSpecGetSkuResponseItem,
 } from '@/lib/api/products'
 import { getUserShop } from '@/lib/api/shop'
 import { cn } from '@/lib/utils'
@@ -201,7 +199,6 @@ export function ProductDetails() {
   const from = search.from as string | undefined
   const isFromPackagingProducts =
     from?.startsWith('packaging-products') ?? false
-  const isFromLikedProducts = from === 'liked-products'
   const isFromWinningProducts = from === 'winning-products'
   const isFromAllProducts = from === 'all-products'
   const shouldShowCollectionButton = isFromWinningProducts || isFromAllProducts
@@ -430,8 +427,6 @@ export function ProductDetails() {
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
     string[]
   >([])
-  const [storeListingTagsPopoverOpen, setStoreListingTagsPopoverOpen] =
-    useState(false)
   const [storeListingRowSelection, setStoreListingRowSelection] =
     useState<RowSelectionState>({})
   const [storeListingSorting, setStoreListingSorting] = useState<SortingState>(
@@ -439,47 +434,6 @@ export function ProductDetails() {
   )
   const [storeListingColumnFilters, setStoreListingColumnFilters] =
     useState<ColumnFiltersState>([])
-  const [, setSkuRecords] = useState<SkuRecordItem[]>([])
-  const [, setIsLoadingSku] = useState(false)
-
- 
-  // 获取 SKU 记录
-  useEffect(() => {
-    const fetchSkuRecords = async () => {
-
-      const customerId = auth.user?.customerId
-      if (!customerId) {
-        return
-      }
-
-      setIsLoadingSku(true)
-      try {
-        const records = await querySkuByCustomer(
-          undefined,
-          customerId,
-          '1',
-          1,
-          100
-        )
-        // 处理返回类型：可能是数组或对象
-        const skuRecords = Array.isArray(records) ? records : records.rows
-        setSkuRecords(skuRecords)
-        console.log('SKU 记录:', skuRecords)
-      } catch (error) {
-        console.error('Failed to fetch SKU records:', error)
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load SKU records. Please try again.'
-        )
-        setSkuRecords([])
-      } finally {
-        setIsLoadingSku(false)
-      }
-    }
-
-    void fetchSkuRecords()
-  }, [productId])
 
   // 复制SPU功能
   const handleCopySPU = () => {
@@ -700,8 +654,230 @@ export function ProductDetails() {
     fetchStores()
   }, [isPublishDialogOpen, auth.user?.id])
 
-  const variantPricingColumns = useMemo(() => createVariantPricingColumns(), [])
-  const variantPricingData = useMemo(() => mockVariantPricingData, [])
+  // 获取规格信息用于生成列
+  const specInfo = useMemo(() => {
+    if (!apiProduct) return []
+    const skuSpecs = Array.isArray(
+      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
+    )
+      ? ((apiProduct as Record<string, unknown>)
+          .hzkj_sku_spec_e as Array<{
+          hzkj_sku_spec_id?: string
+          hzkj_sku_spec_enname?: string
+          hzkj_sku_spec_name?: string
+          hzkj_sku_spec_number?: string
+          [key: string]: unknown
+        }>)
+      : []
+
+    return skuSpecs
+      .map((spec) => ({
+        specId: spec.hzkj_sku_spec_id || '',
+        specName: spec.hzkj_sku_spec_enname || spec.hzkj_sku_spec_name || '',
+        specNumber: spec.hzkj_sku_spec_number || '',
+      }))
+      .filter((spec) => spec.specId && spec.specName)
+  }, [apiProduct])
+
+  const variantPricingColumns = useMemo(
+    () => createVariantPricingColumns(specInfo),
+    [specInfo]
+  )
+
+  // 从产品数据生成 variant pricing 数据
+  const [variantPricingData, setVariantPricingData] = useState<VariantPricing[]>([])
+  const [isLoadingVariantPricing, setIsLoadingVariantPricing] = useState(false)
+
+  // 生成所有规格组合（笛卡尔积）
+  const generateAllSpecCombinations = (): Array<Record<string, string>> => {
+    if (!apiProduct || specInfo.length === 0) return []
+
+    const skuSpecs = Array.isArray(
+      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
+    )
+      ? ((apiProduct as Record<string, unknown>)
+          .hzkj_sku_spec_e as Array<{
+          hzkj_sku_spec_id?: string
+          hzkj_sku_spec_enname?: string
+          hzkj_sku_specvalue_e?: Array<{
+            hzkj_sku_specvalue_id?: string
+            hzkj_sku_specvalue_enname?: string
+            [key: string]: unknown
+          }>
+          [key: string]: unknown
+        }>)
+      : []
+
+    // 收集所有规格值
+    const specValuesList: Array<Array<{ specId: string; valueId: string; valueName: string }>> = []
+    skuSpecs.forEach((spec) => {
+      if (spec.hzkj_sku_spec_id && Array.isArray(spec.hzkj_sku_specvalue_e)) {
+        const values = spec.hzkj_sku_specvalue_e
+          .map((value) => ({
+            specId: spec.hzkj_sku_spec_id!,
+            valueId: value.hzkj_sku_specvalue_id || '',
+            valueName: value.hzkj_sku_specvalue_enname || '',
+          }))
+          .filter((v) => v.valueId)
+        if (values.length > 0) {
+          specValuesList.push(values)
+        }
+      }
+    })
+
+    // 生成笛卡尔积
+    const combinations: Array<Record<string, string>> = []
+    const generateCombinations = (
+      current: Record<string, string>,
+      index: number
+    ) => {
+      if (index === specValuesList.length) {
+        combinations.push({ ...current })
+        return
+      }
+
+      specValuesList[index].forEach((item) => {
+        generateCombinations(
+          {
+            ...current,
+            [item.specId]: item.valueId,
+            [`${item.specId}_name`]: item.valueName,
+          },
+          index + 1
+        )
+      })
+    }
+
+    generateCombinations({}, 0)
+    return combinations
+  }
+
+  useEffect(() => {
+    const fetchVariantPricingData = async () => {
+      if (!apiProduct || !productId) {
+        setVariantPricingData([])
+        return
+      }
+
+      setIsLoadingVariantPricing(true)
+      try {
+        // 获取产品图片
+        const productImage =
+          (apiProduct as Record<string, unknown>)?.picture ||
+          (apiProduct as Record<string, unknown>)?.hzkj_picurl_tag ||
+          ''
+
+        // 获取产品价格（作为默认值）
+        const productPrice: number =
+          typeof (apiProduct as Record<string, unknown>)?.hzkj_pur_price ===
+          'number'
+            ? ((apiProduct as Record<string, unknown>).hzkj_pur_price as number)
+            : typeof (apiProduct as Record<string, unknown>)?.price === 'number'
+              ? ((apiProduct as Record<string, unknown>).price as number)
+              : 0
+
+        // 生成所有规格组合
+        const specCombinations = generateAllSpecCombinations()
+
+        if (specCombinations.length === 0) {
+          setVariantPricingData([])
+          setIsLoadingVariantPricing(false)
+          return
+        }
+
+        // 为每个组合调用 selectSpecGetSku 获取 SKU
+        const variantDataPromises = specCombinations.map(async (combination) => {
+          // 提取规格值 ID
+          const specIds = Object.keys(combination)
+            .filter((key) => !key.endsWith('_name'))
+            .map((key) => combination[key])
+            .filter((id) => id)
+
+          if (specIds.length === 0) {
+            return null
+          }
+
+          try {
+            const response = await selectSpecGetSku({
+              productId: String(productId),
+              specIds,
+            })
+
+            if (
+              Array.isArray(response.data) &&
+              response.data.length > 0
+            ) {
+              const skuData = response.data[0] as SelectSpecGetSkuResponseItem
+              const skuNumber = skuData?.number || ''
+              // 处理价格，优先使用 price，其次使用 souprice，最后使用产品默认价格
+              let skuPrice: number = productPrice
+              const rawPrice = (skuData as any).price
+              const rawSouprice = (skuData as any).souprice
+              if (rawPrice !== undefined && typeof rawPrice === 'number') {
+                skuPrice = rawPrice
+              } else if (rawSouprice !== undefined && typeof rawSouprice === 'number') {
+                skuPrice = rawSouprice
+              }
+
+              // Shipping Fee 默认 0
+              const shippingCost = 0
+              const totalPrice: number = skuPrice + shippingCost
+
+              // 构建规格值映射
+              const specValues: Record<string, string> = {}
+              specInfo.forEach((spec) => {
+                const valueName = combination[`${spec.specId}_name`] || ''
+                specValues[`spec_${spec.specId}`] = valueName
+              })
+
+              // 使用产品图片
+              const skuImage =
+                typeof skuData?.pic === 'string' && skuData.pic.trim()
+                  ? skuData.pic
+                  : typeof productImage === 'string'
+                    ? productImage.split(';')[0] || productImage
+                    : ''
+
+              return {
+                id: skuData?.id || String(Math.random()),
+                skuId: skuData?.id,
+                sku: skuNumber,
+                image: skuImage,
+                cjPrice: skuPrice,
+                shippingFee: '$0.00',
+                totalDropshippingPrice: `$${totalPrice.toFixed(2)}`,
+                yourPrice: undefined,
+                ...specValues,
+              } as VariantPricing
+            }
+          } catch (error) {
+            console.error('Failed to get SKU for spec combination:', error)
+            return null
+          }
+
+          return null
+        })
+
+        const variantDataResults = await Promise.all(variantDataPromises)
+        const variantData = variantDataResults.filter(
+          (item): item is VariantPricing => item !== null
+        )
+
+        setVariantPricingData(variantData)
+      } catch (error) {
+        console.error('Failed to fetch variant pricing data:', error)
+        setVariantPricingData([])
+      } finally {
+        setIsLoadingVariantPricing(false)
+      }
+    }
+
+    void fetchVariantPricingData()
+  }, [
+    apiProduct,
+    productId,
+    specInfo,
+  ])
   const variantPricingTable = useReactTable<VariantPricing>({
     data: variantPricingData,
     columns: variantPricingColumns,
@@ -744,7 +920,7 @@ export function ProductDetails() {
   // 处理品牌定制
   const handleBrandConnect = (
     productId: string,
-    brandType: keyof import('@/features/product-connections/data/schema').BrandConnection,
+    _brandType: keyof import('@/features/product-connections/data/schema').BrandConnection,
     brandItem: BrandItem
   ) => {
     alert(`产品 ${productId} 已连接品牌项目: ${brandItem.name}`)
@@ -1674,12 +1850,21 @@ export function ProductDetails() {
 
               {/* 右侧：Tabs + 表单内容 */}
               <StoreListingTabs
-                tagsPopoverOpen={storeListingTagsPopoverOpen}
-                setTagsPopoverOpen={setStoreListingTagsPopoverOpen}
                 selectedTags={storeListingSelectedTags}
                 setSelectedTags={setStoreListingSelectedTags}
                 variantPricingTable={variantPricingTable}
                 columns={variantPricingColumns}
+                productTitle={productData?.name || ''}
+                productId={productId}
+                apiProduct={apiProduct}
+                specInfo={specInfo}
+                selectedSellingPlatform={selectedSellingPlatform}
+                selectedTo={selectedTo}
+                selectedShippingMethod={selectedShippingMethod}
+                selectedDestinationId={selectedDestinationId}
+                shippingMethodOptions={shippingMethodOptions}
+                isLoadingVariantPricing={isLoadingVariantPricing}
+                richTextContent={richTextContent}
               />
             </div>
 

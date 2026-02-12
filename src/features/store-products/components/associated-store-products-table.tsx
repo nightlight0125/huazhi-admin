@@ -9,7 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { queryShopifyConnectedProducts } from '@/lib/api/products'
+import {
+  queryShopifyConnectedProducts,
+  unlinkProduct,
+} from '@/lib/api/products'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   flexRender,
@@ -144,11 +147,68 @@ export function AssociatedStoreProductsTable({
     setDisconnectProductId(productId)
   }
 
-  const handleConfirmDisconnect = () => {
-    if (disconnectProductId) {
-      // TODO: 实现断开连接逻辑
-      console.log('Disconnect product:', disconnectProductId)
+  const handleConfirmDisconnect = async () => {
+    if (!disconnectProductId) return
+
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found. Please login again.')
       setDisconnectProductId(null)
+      return
+    }
+
+    try {
+      await unlinkProduct({
+        customerId: String(customerId),
+        shopSkuId: String(disconnectProductId),
+      })
+
+      toast.success('Product disconnected successfully')
+      setDisconnectProductId(null)
+
+      // 重新获取数据
+      const accountId = auth.user?.id
+      if (accountId) {
+        setIsLoading(true)
+        try {
+          const requestParams: any = {
+            shopId: '0',
+            customerId: String(customerId),
+            accountId: String(accountId),
+            pageIndex: pagination.pageIndex + 1,
+            pageSize: pagination.pageSize,
+          }
+
+          if (globalFilter && globalFilter.trim()) {
+            if (isNumeric(globalFilter)) {
+              requestParams.productId = globalFilter.trim()
+            } else {
+              requestParams.productName = globalFilter.trim()
+            }
+          }
+
+          const response = await queryShopifyConnectedProducts(requestParams)
+          const apiProducts = response?.rows || []
+          setData(apiProducts)
+          setTotalCount(response?.totalCount || 0)
+        } catch (error) {
+          console.error('Failed to refresh products:', error)
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Failed to refresh products. Please try again.'
+          )
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to disconnect product:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to disconnect product. Please try again.'
+      )
     }
   }
 
@@ -260,14 +320,16 @@ export function AssociatedStoreProductsTable({
         header: '',
         cell: ({ row }) => {
           const item = row.original
+          // 如果是父级行（有 items 属性），不显示 disconnect 按钮
+          const hasItems = (item as any).items && (item as any).items.length > 0
+          if (hasItems) {
+            return null
+          }
+          const shopVariantId = (item as any).shopVariantId || ''
           return (
             <div className='flex justify-center'>
               <button
-                onClick={() =>
-                  handleDisconnect(
-                    (item as any).entryId || (item as any).localSpuId || ''
-                  )
-                }
+                onClick={() => handleDisconnect(shopVariantId)}
                 className='relative flex h-8 w-8 items-center justify-center rounded-full bg-red-500 transition-colors hover:bg-red-600 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none'
                 aria-label='Disconnect product'
               >

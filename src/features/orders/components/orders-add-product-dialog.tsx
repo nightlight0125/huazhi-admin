@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select'
 import { querySkuByCustomer, type SkuRecordItem } from '@/lib/api/products'
 import { useAuthStore } from '@/stores/auth-store'
-import { Loader2 } from 'lucide-react'
+import { Image as ImageIcon, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { type OrderProduct } from '../data/schema'
@@ -138,16 +138,6 @@ export function OrdersAddProductDialog({
                   value={sku}
                   onValueChange={(value) => {
                     setSku(value)
-                    // 根据选择的 SKU 自动填充相关信息
-                    const selectedSku = skuOptions.find(
-                      (item) => item.id === value
-                    )
-                    if (selectedSku) {
-                      // 自动填充 title（如果有 hzkj_sku_name）
-                      if (selectedSku.hzkj_sku_name) {
-                        setTitle(String(selectedSku.hzkj_sku_name))
-                      }
-                    }
                   }}
                   disabled={isLoadingSku}
                 >
@@ -173,18 +163,29 @@ export function OrdersAddProductDialog({
                       </div>
                     ) : (
                       skuOptions
-                        .filter((item) => item.id)
-                        .map((item) => (
-                          <SelectItem
-                            key={item.id}
-                            value={item.id!}
-                            className='max-w-full'
-                          >
-                            <span className='block truncate max-w-full'>
-                              {String(item.hzkj_bg_enname || 'Unknown SKU')}
-                            </span>
-                          </SelectItem>
-                        ))
+                        .filter(
+                          (item) =>
+                            (item as any).number || item.hzkj_sku_number
+                        )
+                        .map((item) => {
+                          const number =
+                            (item as any).number || item.hzkj_sku_number || ''
+                          const name =
+                            (item as any).name ||
+                            item.hzkj_sku_name ||
+                            'Unknown SKU'
+                          return (
+                            <SelectItem
+                              key={item.id || number}
+                              value={number}
+                              className='max-w-full'
+                            >
+                              <span className='block truncate max-w-full'>
+                                {String(name)}
+                              </span>
+                            </SelectItem>
+                          )
+                        })
                     )}
                   </SelectContent>
                 </Select>
@@ -215,16 +216,35 @@ export function OrdersAddProductDialog({
                 placeholder='Please enter the product title'
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                disabled={true}
               />
             </div>
 
             <div className='space-y-2'>
               <Label htmlFor='imageUrl'>Image URL</Label>
-              <img
-                src='https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png'
-                alt='Product Image'
-              />
+              <div className='flex items-center gap-3'>
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt='Product Image'
+                    className='h-12 w-12 rounded object-cover'
+                    onError={(e) => {
+                      // 如果图片加载失败，隐藏图片元素
+                      ;(e.target as HTMLImageElement).style.display = 'none'
+                    }}
+                  />
+                ) : (
+                  <div className='bg-muted flex h-12 w-12 items-center justify-center rounded'>
+                    <ImageIcon className='text-muted-foreground h-6 w-6' />
+                  </div>
+                )}
+                <Input
+                  id='imageUrl'
+                  placeholder='Please enter the image URL'
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className='flex-1'
+                />
+              </div>
             </div>
           </div>
         </div>

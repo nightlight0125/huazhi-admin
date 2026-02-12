@@ -188,6 +188,28 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     providers: apiOrder.hzkj_deliveryway,
     hzkj_fre_quo_amount: apiOrder.hzkj_fre_quo_amount,
     hzkj_customer_channel_name: apiOrder.hzkj_customer_channel_name,
+    // 额外挂载编辑地址需要用到的原始字段（保持原始命名，方便直接读取）
+    // 收货地址行信息
+    hzkj_address1: (apiOrder as any).hzkj_address1,
+    hzkj_address2: (apiOrder as any).hzkj_address2,
+    hzkj_admindivision_id: (apiOrder as any).hzkj_admindivision_id,
+    hzkj_admindivision_name:
+      (apiOrder as any).hzkj_admindivision_name?.GLang ||
+      (apiOrder as any).hzkj_admindivision_name?.zh_CN ||
+      (apiOrder as any).hzkj_admindivision_name?.zh_TW ||
+      (apiOrder as any).hzkj_admindivision_name,
+    hzkj_city: (apiOrder as any).hzkj_city,
+    hzkj_country_id: (apiOrder as any).hzkj_country_id,
+    // 客户名拆分字段
+    hzkj_customer_first_name: (apiOrder as any).hzkj_customer_first_name,
+    hzkj_customer_last_name: (apiOrder as any).hzkj_customer_last_name,
+    // 联系方式
+    hzkj_phone: (apiOrder as any).hzkj_phone,
+    hzkj_email: (apiOrder as any).hzkj_email,
+    // 仓库与税号
+    hzkj_dst_warehouse_id: (apiOrder as any).hzkj_dst_warehouse_id,
+    hzkj_dst_warehouse_name: (apiOrder as any).hzkj_dst_warehouse_name,
+    hzkj_tax_id: (apiOrder as any).hzkj_tax_id,
   } as Order
 }
 
@@ -295,10 +317,72 @@ export async function deleteOrder(
   return response.data
 }
 
+// ---------- 更新发货订单（修改地址等） ----------
+
+export interface UpdateSalOutOrderDetailItem {
+  entryId: string
+  skuId: string
+  quantity: number
+  flag: number
+}
+
+export interface UpdateSalOutOrderRequest {
+  orderId: string
+  customerId: string | number
+  firstName: string
+  lastName: string
+  phone: string
+  countryId: string | number
+  admindivisionId?: string | number
+  city: string
+  address1: string
+  address2?: string
+  postCode: string
+  taxId?: string
+  customChannelId?: string
+  email?: string
+  wareHouse: string | number
+  detail: UpdateSalOutOrderDetailItem[]
+}
+
+export interface UpdateSalOutOrderResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 更新销售出库订单（修改收货信息等）
+export async function updateSalOutOrder(
+  params: UpdateSalOutOrderRequest
+): Promise<UpdateSalOutOrderResponse> {
+  const response = await apiClient.post<UpdateSalOutOrderResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/updateSalOutOrder',
+    params
+  )
+
+  console.log('更新发货订单响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to update order. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 创建售后订单请求参数
 export interface AddRMAOrderRequest {
   customerId: string
   orderId: string
+  // 售后类型：A-Return and refund, B-Refund only, C-Reshipment, D-Returns only
+  salesType: string
+  // 售后原因，直接使用售后原因接口返回的 ID/编码
+  reason: string
+  // 客户备注（问题描述，可选）
   cusNote?: string
 }
 
@@ -318,6 +402,8 @@ export async function addRMAOrder(
   const requestData = {
     customerId: params.customerId,
     orderId: params.orderId,
+    salesType: params.salesType,
+    reason: params.reason,
     cusNote: params.cusNote || '',
   }
 
@@ -338,6 +424,61 @@ export async function addRMAOrder(
   }
 
   return response.data
+}
+
+// 售后原因项
+export interface AfterSaleReasonItem {
+  id?: string
+  // 名称字段后端可能存在多种命名，前端不做硬编码，只做兜底展示
+  name?: string
+  reason?: string
+  [key: string]: unknown
+}
+
+// 查询售后原因列表请求参数
+export interface QueryAfterSaleReasonListRequest {
+  data: Record<string, unknown>
+  pageSize: number
+  pageNo: number
+}
+
+// 查询售后原因列表响应
+export interface QueryAfterSaleReasonListResponse {
+  data?: {
+    rows?: AfterSaleReasonItem[]
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询售后原因列表 API
+export async function queryAfterSaleReasonList(
+  pageNo: number = 1,
+  pageSize: number = 10
+): Promise<AfterSaleReasonItem[]> {
+  const requestData: QueryAfterSaleReasonListRequest = {
+    data: {},
+    pageNo,
+    pageSize,
+  }
+
+  const response = await apiClient.post<QueryAfterSaleReasonListResponse>(
+    '/v2/hzkj/hzkj_ordercenter/hzkj_after_sales_reason/queryAfterSaleResopnList',
+    requestData
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query after sale reasons. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const rows = response.data.data?.rows || []
+  return Array.isArray(rows) ? rows : []
 }
 
 // 删除库存订单请求参数
@@ -733,6 +874,11 @@ export interface GetInvoiceRecordsRequest {
   data: {
     hzkj_orderstatus: string
     hzkj_customer_id: string
+    // 可选的时间范围过滤字段
+    hzkj_datetimefield_start?: string
+    hzkj_datetimefield_end?: string
+    // 可选的 Clients Order Number 过滤字段
+    hzkj_source_number?: string
   }
   pageSize: number
   pageNo: number
@@ -757,13 +903,31 @@ export interface GetInvoiceRecordsResponse {
 export async function getInvoiceRecords(
   customerId: string,
   pageNo: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  // 可选的时间范围参数，当输入日期时由前端传入
+  hzkj_datetimefield_start?: string,
+  hzkj_datetimefield_end?: string,
+  // 可选的 Clients Order Number（搜索框）
+  hzkj_source_number?: string
 ): Promise<{ rows: ApiInvoiceRecordItem[]; totalCount: number }> {
+  const data: GetInvoiceRecordsRequest['data'] = {
+    hzkj_orderstatus: '0',
+    hzkj_customer_id: customerId,
+  }
+
+  // 如果有日期过滤条件，则附加到请求数据中
+  if (hzkj_datetimefield_start) {
+    data.hzkj_datetimefield_start = hzkj_datetimefield_start
+  }
+  if (hzkj_datetimefield_end) {
+    data.hzkj_datetimefield_end = hzkj_datetimefield_end
+  }
+  if (hzkj_source_number) {
+    data.hzkj_source_number = hzkj_source_number
+  }
+
   const requestData: GetInvoiceRecordsRequest = {
-    data: {
-      hzkj_orderstatus: '0',
-      hzkj_customer_id: customerId,
-    },
+    data,
     pageSize,
     pageNo,
   }
@@ -787,6 +951,8 @@ export async function getInvoiceRecords(
   // 返回数据
   const rows = response.data.data?.rows || []
   const totalCount = response.data.data?.totalCount || 0
+
+  console.log('获取 Invoice Records 响应数据1111111111:', rows)
 
   return {
     rows: Array.isArray(rows) ? rows : [],

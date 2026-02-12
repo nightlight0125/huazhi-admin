@@ -297,7 +297,8 @@ export async function querySkuByCustomer(
 // 查询客户已绑定包装 API 请求参数
 export interface QueryCustomerBindPackageAPIRequest {
   data: {
-    number: string
+    number?: string
+    hzkj_pack_material_id?: string[]
     hzkj_cus_id: string
     hzkj_good_hzkj_goodtype_id: string
   }
@@ -347,6 +348,47 @@ export async function queryCustomerBindPackageAPI(
     rows,
     totalCount,
   }
+}
+
+// ---------------- 包装应用：绑定店铺 SKU 与包装产品 ----------------
+
+export interface AddCuOdPdPackageItem {
+  id: string // 行 id（例如变体行 id）
+  hzkj_shop_pd_package_id: string // 包装产品 id
+  hzkj_package_type: string // 包装类型：1/2 等
+  hzkj_order_pd_pk_qty: number // 数量
+}
+
+export interface AddCuOdPdPackageRequest {
+  data: AddCuOdPdPackageItem[]
+}
+
+export interface AddCuOdPdPackageResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+export async function addCuOdPdPackageAPI(
+  params: AddCuOdPdPackageRequest
+): Promise<AddCuOdPdPackageResponse> {
+  const response = await apiClient.post<AddCuOdPdPackageResponse>(
+    '/v2/hzkj/hzkj_customer/hzkj_od_pd_package_tb/addCuOdPdPackage',
+    params
+  )
+
+  console.log('addCuOdPdPackageAPI 响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to apply packaging. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
 }
 
 // 获取产品详情请求参数
@@ -725,6 +767,57 @@ export async function queryShopifyUnconnectedProducts(
   }
 }
 
+// 查询未连接变体请求参数
+export interface QueryUnconnectedVariantsRequest {
+  customerId: string
+  productId: string
+}
+
+// 未连接变体项
+export interface UnconnectedVariantItem {
+  variantid?: string // 后端返回的字段名（小写）
+  title?: string
+  picture?: string
+  id?: string
+  image?: string
+  description?: string
+  variantId?: string
+  productId?: string
+  [key: string]: unknown
+}
+
+// 查询未连接变体响应
+export interface QueryUnconnectedVariantsResponse {
+  data?: UnconnectedVariantItem[]
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询未连接变体 API
+export async function queryUnconnectedVariants(
+  params: QueryUnconnectedVariantsRequest
+): Promise<UnconnectedVariantItem[]> {
+  const response = await apiClient.post<QueryUnconnectedVariantsResponse>(
+    '/v2/hzkj/hzkj_customer/products/queryUnconnectedVariants',
+    params
+  )
+
+  console.log('查询未连接变体响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query unconnected variants. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  // 返回数据数组
+  return Array.isArray(response.data.data) ? response.data.data : []
+}
+
 // 查询包装连接列表请求参数
 export interface QueryOdPdPackageListRequest {
   data: {
@@ -1018,6 +1111,139 @@ export async function linkProduct(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to link product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 解绑店铺商品与本地 SKU 请求参数
+export interface UnlinkProductRequest {
+  customerId: string
+  shopSkuId: string
+}
+
+// 解绑店铺商品与本地 SKU 响应
+export interface UnlinkProductResponse {
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 解绑店铺商品与本地 SKU API
+export async function unlinkProduct(
+  params: UnlinkProductRequest
+): Promise<UnlinkProductResponse> {
+  const response = await apiClient.post<UnlinkProductResponse>(
+    '/v2/hzkj/hzkj_commodity/products/unlinkProduct',
+    params
+  )
+
+  console.log('解绑店铺商品与本地 SKU 响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to unlink product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 查询绑定材料 API 请求参数
+export interface QueryBindMaterialApiRequest {
+  data: Record<string, unknown>
+  pageSize: number
+  pageNo: number
+}
+
+// 包装材料项
+export interface PackMaterialItem {
+  id: string
+  number: string
+  name: string
+  [key: string]: unknown
+}
+
+// 查询绑定材料 API 响应
+export interface QueryBindMaterialApiResponse {
+  data?: {
+    rows?: PackMaterialItem[]
+    totalCount?: number
+    filter?: string
+    lastPage?: boolean
+    pageNo?: number
+    pageSize?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询绑定材料 API
+export async function queryBindMaterialApi(
+  params: QueryBindMaterialApiRequest
+): Promise<{ rows: PackMaterialItem[]; totalCount: number }> {
+  const response = await apiClient.post<QueryBindMaterialApiResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_pack_material/queryBindMaterialApi',
+    params
+  )
+
+  console.log('查询绑定材料响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query bind material. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const rows = Array.isArray(response.data.data?.rows)
+    ? response.data.data!.rows!
+    : []
+  const totalCount =
+    typeof response.data.data?.totalCount === 'number'
+      ? (response.data.data.totalCount as number)
+      : 0
+
+  return {
+    rows,
+    totalCount,
+  }
+}
+
+// 解绑订单产品包装请求参数
+export interface UnBindOdPdPackageRequest {
+  odPdPackageId: string
+}
+
+// 解绑订单产品包装响应
+export interface UnBindOdPdPackageResponse {
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 解绑订单产品包装 API
+export async function unBindOdPdPackage(
+  params: UnBindOdPdPackageRequest
+): Promise<UnBindOdPdPackageResponse> {
+  const response = await apiClient.post<UnBindOdPdPackageResponse>(
+    '/v2/hzkj/hzkj_customer/bindPackage/unBindOdPdPackage',
+    params
+  )
+
+  console.log('解绑订单产品包装响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to unbind order product package. Please try again.'
     throw new Error(errorMessage)
   }
 

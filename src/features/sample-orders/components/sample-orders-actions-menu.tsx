@@ -63,6 +63,8 @@ export function SampleOrdersActionsMenu({
       await addRMAOrder({
         customerId: String(customerId),
         orderId: order.id,
+        salesType: 'A', // 默认值：A-Return and refund
+        reason: '', // 默认值：空字符串，实际使用时应该从对话框获取
       })
       toast.success('RMA order created successfully')
       setRmaDialogOpen(false)

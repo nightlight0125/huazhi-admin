@@ -76,13 +76,24 @@ export function OrderPayDialog({
     // 调用支付接口
     setIsLoading(true)
     try {
-      await requestPayment({
+      const response = await requestPayment({
         customerId: String(customerId),
         orderIds: [order.id],
         type: orderType, // 1=样品订单，2=库存订单
       })
 
-      toast.success('Payment request submitted successfully')
+      // 检查返回的 data 是否是支付链接（URL）
+      const paymentUrl =
+        typeof response.data === 'string' ? response.data : undefined
+
+      if (paymentUrl && paymentUrl.startsWith('http')) {
+        // 在新页面打开支付链接
+        window.open(paymentUrl, '_blank', 'noopener,noreferrer')
+        toast.success('Redirecting to payment page...')
+      } else {
+        toast.success('Payment request submitted successfully')
+      }
+
       onOpenChange(false)
       // 调用成功回调，刷新数据
       onPaymentSuccess?.()
