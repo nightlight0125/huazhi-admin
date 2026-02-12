@@ -1,13 +1,12 @@
 'use client'
 
-import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
-import { showSubmittedData } from '@/lib/show-submitted-data'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { deleteAccount } from '@/lib/api/users'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type User } from '../data/schema'
+import { useUsers } from './users-provider'
 
 type UserDeleteDialogProps = {
   open: boolean
@@ -20,13 +19,32 @@ export function UsersDeleteDialog({
   onOpenChange,
   currentRow,
 }: UserDeleteDialogProps) {
-  const [value, setValue] = useState('')
+  const { auth } = useAuthStore()
+  const { onRefresh } = useUsers()
 
-  const handleDelete = () => {
-    if (value.trim() !== currentRow.username) return
+  const handleDelete = async () => {
+    // 获取当前登录用户的 id 作为 customerId
+    const currentUserId = auth.user?.customerId
 
-    onOpenChange(false)
-    showSubmittedData(currentRow, '以下用户已被删除：')
+    const loadingToast = toast.loading('Deleting user...')
+
+    try {
+      await deleteAccount(String(currentUserId), currentRow.id)
+
+      toast.dismiss(loadingToast)
+      toast.success('User deleted successfully!')
+      onOpenChange(false)
+      // 刷新用户列表
+      onRefresh?.()
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete user. Please try again.'
+      toast.error(errorMessage)
+      console.error('Delete user error:', error)
+    }
   }
 
   return (
@@ -34,44 +52,24 @@ export function UsersDeleteDialog({
       open={open}
       onOpenChange={onOpenChange}
       handleConfirm={handleDelete}
-      disabled={value.trim() !== currentRow.username}
       title={
         <span className='text-destructive'>
           <AlertTriangle
             className='stroke-destructive me-1 inline-block'
             size={18}
           />{' '}
-          删除用户
+          delete user
         </span>
       }
       desc={
         <div className='space-y-4'>
           <p className='mb-2'>
-            您确定要删除用户{' '}
+            Are you sure you want to delete the user{' '}
             <span className='font-bold'>{currentRow.username}</span> 吗？
             <br />
-            此操作将永久删除系统中角色为{' '}
-            <span className='font-bold'>
-              {currentRow.role.toUpperCase()}
-            </span>{' '}
-            的用户。此操作无法撤销。
+            This action will permanently delete the user from the system. This
+            action cannot be undone.
           </p>
-
-          <Label className='my-2'>
-            用户名：
-            <Input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder='输入用户名以确认删除'
-            />
-          </Label>
-
-          <Alert variant='destructive'>
-            <AlertTitle>警告！</AlertTitle>
-            <AlertDescription>
-              请谨慎操作，此操作无法回滚。
-            </AlertDescription>
-          </Alert>
         </div>
       }
       confirmText='删除'

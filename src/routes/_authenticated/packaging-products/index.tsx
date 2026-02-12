@@ -8,6 +8,7 @@ export const Route = createFileRoute('/_authenticated/packaging-products/')({
       page: Number(search.page) || 1,
       pageSize: Number(search.pageSize) || 18,
       filter: (search.filter as string) || '',
+      tab: (search.tab === 'my-packaging' ? 'my-packaging' : 'packaging-products') as 'packaging-products' | 'my-packaging',
     }
   },
 })

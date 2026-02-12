@@ -1,15 +1,25 @@
-import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { PackagingProductsGrid } from './components/packaging-products-grid'
-import { packagingProducts } from './data/data'
+import { getRouteApi } from '@tanstack/react-router'
+
+const route = getRouteApi('/_authenticated/packaging-products/')
 
 export function PackagingProducts() {
-  const [activeTab, setActiveTab] = useState<
-    'packaging-products' | 'my-packaging'
-  >('packaging-products')
+  const navigate = route.useNavigate()
+  const search = route.useSearch()
+  const activeTab = search.tab || 'packaging-products'
+
+  const handleTabChange = (value: string) => {
+    navigate({
+      search: {
+        ...search,
+        tab: value as 'packaging-products' | 'my-packaging',
+      },
+    })
+  }
 
   return (
     <>
@@ -21,9 +31,7 @@ export function PackagingProducts() {
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
           <Tabs
             value={activeTab}
-            onValueChange={(value) =>
-              setActiveTab(value as 'packaging-products' | 'my-packaging')
-            }
+            onValueChange={handleTabChange}
             className='w-full'
           >
             <TabsList className='mb-4 grid h-9 w-fit grid-cols-2 gap-1'>
@@ -42,11 +50,11 @@ export function PackagingProducts() {
             </TabsList>
 
             <TabsContent value='packaging-products' className='mt-0'>
-              <PackagingProductsGrid data={packagingProducts} tab='packaging-products' />
+              <PackagingProductsGrid tab='packaging-products' />
             </TabsContent>
 
             <TabsContent value='my-packaging' className='mt-0'>
-              <PackagingProductsGrid data={packagingProducts} tab='my-packaging' />
+              <PackagingProductsGrid tab='my-packaging' />
             </TabsContent>
           </Tabs>
         </div>

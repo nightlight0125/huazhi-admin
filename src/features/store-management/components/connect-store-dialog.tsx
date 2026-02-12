@@ -1,7 +1,3 @@
-import { useCallback, useEffect, useState } from 'react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { shopifyCallback, shopifyOAuth } from '@/lib/api/shop'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,6 +6,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { shopifyCallback, shopifyOAuth } from '@/lib/api/shop'
+import { useAuthStore } from '@/stores/auth-store'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 interface ConnectStoreDialogProps {
   open: boolean
@@ -59,7 +59,6 @@ export function ConnectStoreDialog({
 
   const handleNext = async () => {
     if (platformName !== 'Shopify') {
-      // 如果不是 Shopify，直接调用 onNext
       onNext()
       onOpenChange(false)
       return
@@ -103,9 +102,32 @@ export function ConnectStoreDialog({
             return
           }
 
-          // 尝试从窗口 URL 中获取 code（如果同源）
-          // 注意：由于跨域限制，通常无法直接读取窗口 URL
-          // 这里需要后端回调处理，或者使用 postMessage
+          // 尝试从窗口 URL 中直接获取 code（仅当与当前页面同源时才可行）
+          const href = authWindow.location.href
+
+          // 只有在同源情况下，浏览器才允许我们读取 authWindow.location
+          if (href && href.startsWith(window.location.origin)) {
+            const url = new URL(href)
+            const codeFromUrl = url.searchParams.get('code')
+            const shopFromUrl = url.searchParams.get('shop')
+            const stateFromUrl = url.searchParams.get('state')
+
+            console.log('codeFromUrl:', codeFromUrl)
+            console.log('shopFromUrl:', shopFromUrl)
+            console.log('stateFromUrl:', stateFromUrl)  
+
+            if (codeFromUrl && shopFromUrl && stateFromUrl === state) {
+              clearInterval(checkAuthWindow)
+              setIsLoading(false)
+
+              // 关闭监听并关闭窗口
+              window.removeEventListener('message', messageHandler)
+              authWindow.close()
+
+              // 调用回调逻辑
+              handleCallback(codeFromUrl, shopFromUrl, stateFromUrl)
+            }
+          }
         } catch (error) {
           // 跨域访问会失败，这是正常的
         }

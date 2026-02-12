@@ -1,13 +1,20 @@
+'use client'
+
+import { useState } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Pencil, Trash2 } from 'lucide-react'
+import { AlertTriangle, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { apiClient } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type Logistics } from '../data/schema'
 
 export const createLogisticsColumns = (
-  onEditShippingTo?: (row: Logistics) => void
+  onEditShippingTo?: (row: Logistics) => void,
+  onDeleteSuccess?: () => void
 ): ColumnDef<Logistics>[] => {
   return [
     {
@@ -48,9 +55,9 @@ export const createLogisticsColumns = (
         return (
           <div className='flex items-center gap-3'>
             <div className='bg-muted h-16 w-16 flex-shrink-0 overflow-hidden rounded border'>
-              {logistics.productImage ? (
+              {logistics.pic ? (
                 <img
-                  src={logistics.productImage}
+                  src={logistics.pic}
                   alt='Product'
                   className='h-full w-full object-cover'
                 />
@@ -65,8 +72,14 @@ export const createLogisticsColumns = (
             </div>
             <div className='space-y-0.5 text-sm'>
               <div className='font-medium'>{logistics.sku}</div>
-              <div className='text-muted-foreground'>
-                Variant: {logistics.variant}
+              <div
+                className='text-muted-foreground max-w-[200px] truncate'
+                title={`Variant: ${logistics.variant}`}
+              >
+                Variant:{' '}
+                {logistics.variant && logistics.variant.length > 20
+                  ? `${logistics.variant.substring(0, 20)}...`
+                  : logistics.variant}
               </div>
             </div>
           </div>
@@ -110,13 +123,10 @@ export const createLogisticsColumns = (
             >
               <Pencil className='mr-1 h-3.5 w-3.5' />
             </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 border-red-200 px-2 text-xs text-red-500'
-            >
-              <Trash2 className='mr-1 h-3.5 w-3.5' />
-            </Button>
+            <DeleteLogisticsDialog
+              logistics={logistics}
+              onSuccess={onDeleteSuccess}
+            />
           </div>
         )
       },
@@ -124,4 +134,79 @@ export const createLogisticsColumns = (
       size: 150,
     },
   ]
+}
+
+type DeleteProps = {
+  logistics: Logistics
+  onSuccess?: () => void
+}
+
+function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const handleConfirm = async () => {
+    setLoading(true)
+    const loadingToast = toast.loading('Deleting...')
+    try {
+      // call the backend API
+      const rawEntryId =
+        (logistics as any).entryId ??
+        (logistics as any).entry_id ??
+        (logistics as any).data?.entryId ??
+        (logistics as any).data?.entry_id ??
+        (logistics as any).entryIdStr ??
+        (logistics as any).entryid ??
+        ''
+
+      await apiClient.post('/v2/hzkj/hzkj_logistics/hzkj_cus_freight/delCus', {
+        id: String(logistics.id),
+        entryId: String(rawEntryId ?? ''),
+      })
+
+      toast.dismiss(loadingToast)
+      toast.success('Deleted successfully')
+      setOpen(false)
+      // trigger refresh in parent if provided
+      onSuccess?.()
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      const msg = error instanceof Error ? error.message : 'Delete failed'
+      toast.error(msg)
+      console.error('Delete logistics error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant='outline'
+        size='sm'
+        className='h-7 border-red-200 px-2 text-xs text-red-500'
+        onClick={() => setOpen(true)}
+      >
+        <Trash2 className='mr-1 h-3.5 w-3.5' />
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        handleConfirm={handleConfirm}
+        title={
+          <span className='text-destructive'>
+            <AlertTriangle
+              className='stroke-destructive me-1 inline-block'
+              size={18}
+            />{' '}
+            delete freight
+          </span>
+        }
+        desc={`Are you sure you want to delete the freight for SKU: ${logistics.sku}?`}
+        confirmText='Delete'
+        destructive
+        isLoading={loading}
+      />
+    </>
+  )
 }

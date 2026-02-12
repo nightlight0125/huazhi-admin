@@ -7,7 +7,6 @@ import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { updatePassword } from '@/lib/api/users'
-import { encryptPassword } from '@/lib/crypto-utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,8 +28,8 @@ export function ForgotPasswordForm({
   ...props
 }: React.HTMLAttributes<HTMLFormElement>) {
   const navigate = useNavigate()
-  const { auth } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
+  const userId = useAuthStore((state) => state.auth.user?.id)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -38,22 +37,14 @@ export function ForgotPasswordForm({
   })
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    // 获取当前登录用户的 id
-    const userId = auth.user?.id
-    if (!userId) {
-      toast.error('User not authenticated. Please login again.')
-      return
-    }
+    // 如果能进入这个页面，说明已经通过路由认证检查
+    // API 拦截器也会自动检查，所以这里直接使用即可
 
-    setIsLoading(true)
     const loadingToast = toast.loading('Updating password...')
 
     try {
-      // 加密新密码
-      const encryptedPassword = encryptPassword(data.password)
-
-      // 调用重置密码 API
-      await updatePassword(Number(userId), encryptedPassword)
+      // 调用重置密码 API（如果未认证，拦截器会自动处理）
+      await updatePassword(Number(userId), data.password)
 
       toast.dismiss(loadingToast)
       toast.success('Password updated successfully!')

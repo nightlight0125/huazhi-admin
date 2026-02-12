@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react'
-import { Check, Image as ImageIcon, Pencil, Plus, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,6 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Check, Image as ImageIcon, Pencil, Plus, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { type OrderProduct } from '../data/schema'
 import { OrdersAddProductDialog } from './orders-add-product-dialog'
 
@@ -89,6 +89,8 @@ export function OrdersModifyProductDialog({
   onConfirm,
 }: OrdersModifyProductDialogProps) {
   // Use fake products if no products provided
+
+  console.log('initialProducts', initialProducts)
   const productsToUse =
     initialProducts.length > 0 ? initialProducts : generateFakeProducts()
 
@@ -112,11 +114,23 @@ export function OrdersModifyProductDialog({
   const handleEdit = (index: number) => {
     setEditingIndex(index)
     setProducts(
-      products.map((p, i) =>
-        i === index
-          ? { ...p, isEditing: true, tempSku: p.id, tempQuantity: p.quantity }
-          : p
-      )
+      products.map((p, i) => {
+        if (i !== index) return p
+
+        // 初始编辑值来源：优先使用后端字段，其次使用原有字段
+        const initialSku = p.hzkj_shop_sku || p.id || ''
+        const initialQty =
+          (p.hzkj_src_qty && parseInt(String(p.hzkj_src_qty))) ||
+          p.quantity ||
+          1
+
+        return {
+          ...p,
+          isEditing: true,
+          tempSku: initialSku,
+          tempQuantity: initialQty,
+        }
+      })
     )
   }
 
@@ -129,11 +143,19 @@ export function OrdersModifyProductDialog({
     setProducts(
       products.map((p, i) => {
         if (i === index) {
+          const qty = product.tempQuantity!
+          const priceNum =
+            (p.hzkj_shop_price && parseFloat(String(p.hzkj_shop_price))) ||
+            p.price ||
+            0
+
           return {
             ...p,
-            id: p.tempSku!,
-            quantity: p.tempQuantity!,
-            totalPrice: p.price * p.tempQuantity!,
+            // 更新后端字段和本地字段
+            hzkj_shop_sku: product.tempSku!,
+            hzkj_src_qty: String(qty),
+            quantity: qty,
+            totalPrice: priceNum * qty,
             isEditing: false,
             tempSku: undefined,
             tempQuantity: undefined,
@@ -189,7 +211,6 @@ export function OrdersModifyProductDialog({
   }
 
   const handleConfirm = () => {
-    // Remove isEditing, tempSku, tempQuantity properties before passing to parent
     const cleanedProducts = products.map(
       ({ isEditing, tempSku, tempQuantity, ...rest }) => rest
     )
@@ -198,7 +219,6 @@ export function OrdersModifyProductDialog({
   }
 
   const handleCancel = () => {
-    // Reset to initial products
     const productsToUse =
       initialProducts.length > 0 ? initialProducts : generateFakeProducts()
     setProducts(productsToUse.map((p) => ({ ...p, isEditing: false })))
@@ -249,15 +269,15 @@ export function OrdersModifyProductDialog({
                 ) : (
                   products.map((product, index) => {
                     const isEditing = editingIndex === index
+                    const productId = product.id || `product-${index}`
 
                     return (
-                      <TableRow key={product.id}>
+                      <TableRow key={productId}>
                         <TableCell>
                           <div className='flex items-center gap-3'>
-                            {product.productImageUrl ? (
+                            {product.hzkj_picture ? (
                               <img
-                                src={product.productImageUrl}
-                                alt={product.productName}
+                                src={product.hzkj_picture}
                                 className='h-12 w-12 rounded object-cover'
                               />
                             ) : (
@@ -267,10 +287,10 @@ export function OrdersModifyProductDialog({
                             )}
                             <div className='flex flex-col'>
                               <Badge variant='secondary' className='mb-1 w-fit'>
-                                {product.id.substring(0, 2).toUpperCase()}
+                                {product?.hzkj_local_sku || '--'}
                               </Badge>
                               <span className='text-sm'>
-                                {product.productName}
+                                {product.productName || '--'}
                               </span>
                             </div>
                           </div>
@@ -278,14 +298,18 @@ export function OrdersModifyProductDialog({
                         <TableCell>
                           {isEditing ? (
                             <Input
-                              value={product.tempSku || product.id}
+                              value={
+                                product.tempSku ?? product.hzkj_shop_sku ?? ''
+                              }
                               onChange={(e) =>
                                 handleSkuChange(index, e.target.value)
                               }
                               className='h-8 w-40'
                             />
                           ) : (
-                            <span className='text-sm'>{product.id}</span>
+                            <span className='text-sm'>
+                              {product.hzkj_shop_sku || product.tempSku || '--'}
+                            </span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -293,7 +317,12 @@ export function OrdersModifyProductDialog({
                             <Input
                               type='number'
                               min={1}
-                              value={product.tempQuantity ?? product.quantity}
+                              value={
+                                product.tempQuantity ??
+                                (product.hzkj_src_qty
+                                  ? parseInt(String(product.hzkj_src_qty))
+                                  : 1)
+                              }
                               onChange={(e) =>
                                 handleQuantityChange(
                                   index,
@@ -303,12 +332,22 @@ export function OrdersModifyProductDialog({
                               className='h-8 w-20'
                             />
                           ) : (
-                            <span className='text-sm'>{product.quantity}</span>
+                            <span className='text-sm'>
+                              {product.hzkj_src_qty ?? product.quantity}
+                            </span>
                           )}
                         </TableCell>
                         <TableCell>
                           <span className='text-sm'>
-                            ${product.price.toFixed(2)}
+                            {(() => {
+                              const priceStr =
+                                product.hzkj_shop_price ?? String(product.price)
+                              const priceNum = parseFloat(priceStr)
+                              const formatted = !isNaN(priceNum)
+                                ? priceNum.toFixed(2)
+                                : priceStr || '0.00'
+                              return `$${formatted}`
+                            })()}
                           </span>
                         </TableCell>
                         <TableCell>

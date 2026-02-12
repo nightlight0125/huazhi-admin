@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
 import type {
   ColumnFiltersState,
   OnChangeFn,
   PaginationState,
 } from '@tanstack/react-table'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type SearchRecord = Record<string, unknown>
 
@@ -110,6 +110,22 @@ export function useTableUrlState(
   const [columnFilters, setColumnFilters] =
     useState<ColumnFiltersState>(initialColumnFilters)
 
+  const isInternalUpdateRef = useRef(false)
+  const prevInitialFiltersRef = useRef<string>(JSON.stringify(initialColumnFilters))
+  
+  useEffect(() => {
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false
+      return
+    }
+    
+    const currentStr = JSON.stringify(initialColumnFilters)
+    if (prevInitialFiltersRef.current !== currentStr) {
+      prevInitialFiltersRef.current = currentStr
+      setColumnFilters(initialColumnFilters)
+    }
+  }, [initialColumnFilters])
+
   const pagination: PaginationState = useMemo(() => {
     const rawPage = (search as SearchRecord)[pageKey]
     const rawPageSize = (search as SearchRecord)[pageSizeKey]
@@ -139,6 +155,16 @@ export function useTableUrlState(
     return typeof raw === 'string' ? raw : ''
   })
 
+  // 同步 globalFilter 状态与 URL 参数的变化
+  useEffect(() => {
+    if (!globalFilterEnabled) return
+    const raw = (search as SearchRecord)[globalFilterKey]
+    const newValue = typeof raw === 'string' ? raw : ''
+    if (newValue !== globalFilter) {
+      setGlobalFilter(newValue)
+    }
+  }, [search, globalFilterKey, globalFilterEnabled, globalFilter])
+
   const onGlobalFilterChange: OnChangeFn<string> | undefined =
     globalFilterEnabled
       ? (updater) => {
@@ -161,6 +187,7 @@ export function useTableUrlState(
   const onColumnFiltersChange: OnChangeFn<ColumnFiltersState> = (updater) => {
     const next =
       typeof updater === 'function' ? updater(columnFilters) : updater
+    isInternalUpdateRef.current = true
     setColumnFilters(next)
 
     const patch: Record<string, unknown> = {}
@@ -180,6 +207,8 @@ export function useTableUrlState(
         patch[cfg.searchKey] = value.length > 0 ? serialize(value) : undefined
       }
     }
+
+    prevInitialFiltersRef.current = JSON.stringify(next)
 
     navigate({
       search: (prev) => ({

@@ -104,7 +104,9 @@ export function HotSellingProductsBulkActions({
           <DropdownMenuItem onClick={() => handleBulkAction('sort_by_ranking')}>
             Sort by Ranking
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleBulkAction('sort_by_quantity')}>
+          <DropdownMenuItem
+            onClick={() => handleBulkAction('sort_by_quantity')}
+          >
             Sort by Quantity
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleBulkAction('sort_by_amount')}>
@@ -153,4 +155,3 @@ export function HotSellingProductsBulkActions({
     </BulkActionsToolbar>
   )
 }
-

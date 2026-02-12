@@ -5,8 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { getToken, memberSignUp, AuthError } from '@/lib/api/auth'
-import { encryptPassword } from '@/lib/crypto-utils'
+import { AuthError, getToken, memberSignUp } from '@/lib/api/auth'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +20,6 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 
 const formSchema = z.object({
-  username: z.string().min(1, 'Please enter your username'),
   email: z.email({
     message: 'Please enter a valid email address',
   }),
@@ -44,7 +42,6 @@ export function SignUpForm({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: '',
       email: '',
       name: '',
       phone: '',
@@ -59,11 +56,6 @@ export function SignUpForm({
     const loadingToast = toast.loading('Creating account...')
 
     try {
-      // 加密密码（密码+盐值，转大写后MD5加密，结果转大写）
-      const encryptedPassword = encryptPassword(data.password)
-      console.log('原始密码:', data.password)
-      console.log('加密后密码:', encryptedPassword)
-
       // 检查当前 token 状态
       const currentToken = auth.accessToken
       const currentUser = auth.user
@@ -87,16 +79,13 @@ export function SignUpForm({
 
       // 获取到 token 后，调用注册接口
       const response = await memberSignUp(
-        data.username,
         data.email,
         data.name,
         data.phone,
-        encryptedPassword
+        data.password
       )
 
       toast.dismiss(loadingToast)
-
-      // 注册成功后跳转到登录页面
       if (response.status) {
         toast.success('Account created successfully! Please sign in.')
         navigate({ to: '/sign-in', replace: true })
@@ -107,7 +96,7 @@ export function SignUpForm({
       }
     } catch (error) {
       toast.dismiss(loadingToast)
-      
+
       // 如果是 AuthError 且 errorCode 为 "1001"，跳转到登录页面
       if (error instanceof AuthError && error.errorCode === '1001') {
         const errorMessage =
@@ -147,19 +136,6 @@ export function SignUpForm({
         className={cn('grid gap-3', className)}
         {...props}
       >
-        <FormField
-          control={form.control}
-          name='username'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder='Enter your username' {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <FormField
           control={form.control}
           name='email'

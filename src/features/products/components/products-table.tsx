@@ -29,7 +29,7 @@ import { productsColumns as columns } from './products-columns'
 import { ProductsGridView } from './products-grid-view'
 import { ProductsViewToggle } from './products-view-toggle'
 
-const route = getRouteApi('/_authenticated/products/')
+const route = getRouteApi('/_authenticated/products/' as any)
 
 type DataTableProps = {
   data: Product[]
@@ -53,7 +53,7 @@ export function ProductsTable({ data }: DataTableProps) {
     ensurePageInRange,
   } = useTableUrlState({
     search: route.useSearch(),
-    navigate: route.useNavigate(),
+    navigate: route.useNavigate() as any,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [

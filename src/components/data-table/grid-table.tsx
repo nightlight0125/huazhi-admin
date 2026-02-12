@@ -96,7 +96,7 @@ export function DataGridTable<TData>({
   // 根据路由路径获取对应的路由
   const getRoute = () => {
     if (routePath === '/_authenticated/products/') {
-      return getRouteApi('/_authenticated/products/')
+      return getRouteApi('/_authenticated/products/' as any)
     }
     return getRouteApi('/_authenticated/tasks/')
   }
@@ -114,7 +114,7 @@ export function DataGridTable<TData>({
     ensurePageInRange,
   } = useTableUrlState({
     search: route.useSearch(),
-    navigate: route.useNavigate(),
+    navigate: route.useNavigate() as any,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: filters.map((filter) => ({

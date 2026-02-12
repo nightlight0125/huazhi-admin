@@ -13,10 +13,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
-import { type WalletRecord } from '../data/schema'
 
 interface DataTableBulkActionsProps {
-  table: Table<WalletRecord>
+  // 由于 WalletTable 在不同 tab 下使用了不同的数据类型（WalletRecord 和 ApiInvoiceRecordItem），
+  // 这里使用 Table<any> 来兼容两种情况
+  table: Table<any>
 }
 
 export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {

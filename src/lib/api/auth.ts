@@ -1,4 +1,3 @@
-import { toast } from 'sonner'
 import { apiClient } from '../api-client'
 
 // 自定义错误类，用于携带 errorCode 信息
@@ -188,7 +187,6 @@ export async function getToken(
 // 注册请求参数
 export interface SignUpRequest {
   member: {
-    username: string
     email: string
     name: string
     phone: string
@@ -205,10 +203,7 @@ export interface SignUpResponse {
   [key: string]: unknown
 }
 
-// 注册 API
-// 注意：注册接口需要先获取 token 才能调用
 export async function memberSignUp(
-  username: string,
   email: string,
   name: string,
   phone: string,
@@ -216,11 +211,10 @@ export async function memberSignUp(
 ): Promise<SignUpResponse> {
   const requestData: SignUpRequest = {
     member: {
-      username,
       email,
       name,
       phone,
-      password, // 这里传入的是已经加密后的密码
+      password, 
     },
   }
 
@@ -228,26 +222,75 @@ export async function memberSignUp(
     '/v2/hzkj/base/member/add',
     requestData
   )
-
   console.log('注册响应:', response.data)
+  return response.data
+}
 
-  // 检查响应状态
-  if (!response.data.status) {
-    const errorMessage =
-      response.data.message || 'Registration failed. Please try again.'
-    const errorCode = response.data.errorCode
+// 检查登录状态请求参数
+export interface GetUserStatusRequest {
+  accountId: string
+}
 
-    // 如果是 errorCode 为 "1001"，抛出错误以便上层处理导航
-    if (errorCode === '1001') {
-      // errorCode 为 "1001" 时，抛出错误以便上层处理跳转
-      throw new AuthError(errorMessage, errorCode)
-    } else {
-      // 其他错误码直接提示
-      toast.error(errorMessage)
-      throw new AuthError(errorMessage, errorCode)
+// 检查登录状态响应
+export interface GetUserStatusResponse {
+  status: boolean
+  data?: {
+    isValid?: boolean
+    userId?: string
+    accountId?: string
+    [key: string]: unknown
+  }
+  message?: string
+  errorCode?: string
+  [key: string]: unknown
+}
+
+/**
+ * 检查登录状态 API
+ * 调用后端 getUserStatus 接口验证当前用户的登录状态
+ */
+export async function checkLoginStatus(): Promise<GetUserStatusResponse> {
+  const { useAuthStore } = await import('@/stores/auth-store')
+  const { auth } = useAuthStore.getState()
+  
+  // 如果没有用户信息或 accountId，直接返回未认证
+  if (!auth.user?.accountNo && !auth.user?.id) {
+    return {
+      status: false,
+      message: 'User not authenticated',
     }
   }
 
-  return response.data
+  // 使用 accountNo 或 id 作为 accountId
+  const accountId = auth.user.accountNo || auth.user.id
+
+  try {
+    const requestData: GetUserStatusRequest = {
+      accountId,
+    }
+
+    const response = await apiClient.post<GetUserStatusResponse>(
+      '/v2/hzkj/hzkj_member/member/getUserStatus',
+      requestData
+    )
+
+    // 如果接口返回 status 为 false，说明登录状态无效
+    if (!response.data.status) {
+      return {
+        status: false,
+        message: response.data.message || 'Login status invalid',
+        errorCode: response.data.errorCode,
+      }
+    }
+
+    return response.data
+  } catch (error) {
+    // 如果请求失败（如 401），说明 token 无效
+    console.error('Failed to check login status:', error)
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to check login status',
+    }
+  }
 }
 

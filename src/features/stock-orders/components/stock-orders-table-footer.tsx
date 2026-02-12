@@ -7,10 +7,12 @@ import { type StockOrder } from '../data/schema'
 
 type StockOrdersTableFooterProps = {
   table: Table<StockOrder>
+  totalRows?: number // 服务端分页的总数
 }
 
 export function StockOrdersTableFooter({
   table,
+  totalRows = 0,
 }: StockOrdersTableFooterProps) {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
@@ -19,6 +21,8 @@ export function StockOrdersTableFooter({
   const selectedCount = selectedRows.length
   const isAllPageSelected = table.getIsAllPageRowsSelected()
   const isSomePageSelected = table.getIsSomePageRowsSelected()
+  const paginationState = table.getState().pagination
+  const pageSize = paginationState.pageSize
 
   const handlePageSelect = (checked: boolean) => {
     if (checked) {
@@ -80,8 +84,14 @@ export function StockOrdersTableFooter({
         </div>
       </div>
 
-      {/* Center: Pagination */}
-      <div className='flex items-center gap-2'>
+      {/* Center: Pagination and row count */}
+      <div className='flex items-center gap-4'>
+        <div className='text-sm text-muted-foreground'>
+          Showing {totalRows === 0 ? 0 : paginationState.pageIndex * pageSize + 1} to{' '}
+          {Math.min((paginationState.pageIndex + 1) * pageSize, totalRows)} of{' '}
+          {totalRows} orders
+        </div>
+        <div className='flex items-center gap-2'>
         <Button
           variant='outline'
           size='icon'
@@ -119,8 +129,8 @@ export function StockOrdersTableFooter({
         >
           <ChevronRight className='h-4 w-4' />
         </Button>
+        </div>
       </div>
-
     </div>
   )
 }

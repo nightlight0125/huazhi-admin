@@ -1,5 +1,12 @@
-import { useMemo, useState } from 'react'
-import { format } from 'date-fns'
+import { DataTablePagination } from '@/components/data-table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   type SortingState,
   type Table as TanstackTable,
@@ -13,15 +20,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { DataTablePagination } from '@/components/data-table'
+import { format } from 'date-fns'
+import { useMemo, useState } from 'react'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
 import { PackagingConnectionBulkActions } from './packaging-connection-bulk-actions'
 import { createPackagingConnectionColumns } from './packaging-connection-columns'
@@ -76,13 +76,6 @@ export function PackagingConnectionTable({
     // TODO: Implement connect logic
   }
 
-  // Get status filter from external table if provided
-  const statusFilter = externalTable
-    ?.getState()
-    .columnFilters.find((f) => f.id === 'status')?.value as string[] | undefined
-  const isConnectedFilter =
-    statusFilter?.includes('connected') && statusFilter.length === 1
-
   // Create columns based on filter state (only used if no external table)
   const columns = useMemo(() => {
     return createPackagingConnectionColumns({
@@ -90,14 +83,12 @@ export function PackagingConnectionTable({
       expandedRows,
       onDisconnect: handleDisconnect,
       onConnect: handleConnect,
-      isConnectedFilter: isConnectedFilter ?? false,
     })
   }, [
     handleExpand,
     expandedRows,
     handleDisconnect,
     handleConnect,
-    isConnectedFilter,
   ])
 
   // Only create internal table if no external table provided
@@ -140,6 +131,10 @@ export function PackagingConnectionTable({
 
   const table = externalTable || internalTable
 
+  console.log('internalTable------------8888888888888888:')
+
+  console.log('table------------999999999999:', table)
+
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <div className='overflow-hidden rounded-md border'>
@@ -163,8 +158,12 @@ export function PackagingConnectionTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
+            {(() => {
+              // 使用 getRowModel() 获取经过过滤、排序和分页后的行
+              const rows = table.getRowModel().rows
+              console.log('Rendering table rows:', rows.length, 'from data:', data.length, 'columnFilters:', table.getState().columnFilters)
+              return rows?.length ? (
+                rows.map((row) => {
                 const item = row.original
                 const isExpanded = expandedRows.has(row.id)
                 const hasPackagingProducts =
@@ -273,10 +272,11 @@ export function PackagingConnectionTable({
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  暂无数据
+                  No data
                 </TableCell>
               </TableRow>
-            )}
+            )
+            })()}
           </TableBody>
         </Table>
       </div>
@@ -288,10 +288,15 @@ export function PackagingConnectionTable({
 
 // Export hook to create table in parent component
 export function usePackagingConnectionTable(
-  data: StoreSku[],
+  data: StoreSku[] | any[],
   options?: {
     onConnect?: (storeSku: StoreSku) => void
     onDisconnect?: (storeSku: StoreSku) => void
+    onDelete?: (item: any) => void
+    totalCount?: number
+    activeTab?: 'products' | 'stores' | 'order'
+    initialPageIndex?: number
+    initialPageSize?: number
   }
 ) {
   const [rowSelection, setRowSelection] = useState({})
@@ -323,13 +328,11 @@ export function usePackagingConnectionTable(
     options?.onConnect?.(storeSku)
   }
 
-  // Get status filter value from columnFilters
-  const statusFilter = columnFilters.find((f) => f.id === 'status')?.value as
-    | string[]
-    | undefined
-  const isConnectedFilter =
-    statusFilter?.includes('connected') && statusFilter.length === 1
+  const handleDelete = (item: any) => {
+    options?.onDelete?.(item)
+  }
 
+  // Get status filter value from columnFilters
   // Create columns based on filter state
   const columns = useMemo(() => {
     return createPackagingConnectionColumns({
@@ -337,15 +340,28 @@ export function usePackagingConnectionTable(
       expandedRows,
       onDisconnect: handleDisconnect,
       onConnect: handleConnect,
-      isConnectedFilter,
+      onDelete: handleDelete,
+      isStoreTab: options?.activeTab === 'stores',
     })
   }, [
     handleExpand,
     expandedRows,
     handleDisconnect,
     handleConnect,
-    isConnectedFilter,
+    handleDelete,
+    options?.activeTab,
   ])
+
+  const [pagination, setPagination] = useState({
+    pageIndex: options?.initialPageIndex ?? 0,
+    pageSize: options?.initialPageSize ?? 10,
+  })
+
+  const totalCount = options?.totalCount
+  const pageCount =
+    totalCount !== undefined && pagination.pageSize > 0
+      ? Math.ceil(totalCount / pagination.pageSize)
+      : undefined
 
   const table = useReactTable({
     data,
@@ -356,8 +372,12 @@ export function usePackagingConnectionTable(
       rowSelection,
       globalFilter,
       columnFilters,
+      pagination,
     },
     enableRowSelection: true,
+    manualPagination: totalCount !== undefined, // 如果提供了 totalCount，启用服务端分页
+    pageCount, // 设置总页数
+    onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -374,7 +394,8 @@ export function usePackagingConnectionTable(
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel:
+      totalCount === undefined ? getPaginationRowModel() : undefined, // 服务端分页时不使用客户端分页模型
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),

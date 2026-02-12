@@ -29,14 +29,19 @@ type DataTableFacetedFilterProps<TData, TValue> = {
     value: string
     icon?: React.ComponentType<{ className?: string }>
   }[]
+  onFilterChange?: () => void
+  columnFilters?: Array<{ id: string; value: unknown }>
+  singleSelect?: boolean // 是否单选模式
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
   options,
+  onFilterChange,
+  columnFilters,
+  singleSelect = false,
 }: DataTableFacetedFilterProps<TData, TValue>) {
-  // Safely get faceted values with error handling
   let facets: Map<string | number, number> = new Map()
   try {
     if (column && typeof column.getFacetedUniqueValues === 'function') {
@@ -49,26 +54,29 @@ export function DataTableFacetedFilter<TData, TValue>({
     console.warn('Error getting faceted unique values:', error)
   }
 
-  const rawFilterValue = column?.getFilterValue()
-  const initialSelected = Array.isArray(rawFilterValue)
-    ? (rawFilterValue as string[])
-    : rawFilterValue
-      ? [String(rawFilterValue)]
-      : []
+  const selectedValues = React.useMemo(() => {
+    const columnValue = column?.getFilterValue()
+    if (columnValue !== undefined && columnValue !== null) {
+      const value = Array.isArray(columnValue)
+        ? columnValue.map((v) => String(v))
+        : [String(columnValue)]
+      return new Set(value)
+    }
 
-  const [selectedArray, setSelectedArray] = React.useState<string[]>(initialSelected)
+    if (columnFilters && column) {
+      const filter = columnFilters.find((f) => f.id === column.id)
+      if (filter) {
+        const value = Array.isArray(filter.value)
+          ? filter.value.map((v) => String(v))
+          : filter.value
+            ? [String(filter.value)]
+            : []
+        return new Set(value)
+      }
+    }
 
-  // 同步外部（例如 URL）变化到本地选中状态
-  React.useEffect(() => {
-    const next = Array.isArray(rawFilterValue)
-      ? (rawFilterValue as string[])
-      : rawFilterValue
-        ? [String(rawFilterValue)]
-        : []
-    setSelectedArray(next)
-  }, [rawFilterValue])
-
-  const selectedValues = new Set(selectedArray)
+    return new Set<string>()
+  }, [columnFilters, column, title])
 
   return (
     <Popover>
@@ -123,17 +131,27 @@ export function DataTableFacetedFilter<TData, TValue>({
                   <CommandItem
                     key={option.value}
                     onSelect={() => {
-                      const nextSelected = new Set(selectedValues)
-                      if (isSelected) {
-                        nextSelected.delete(option.value)
+                      if (singleSelect) {
+                        // 单选模式：如果点击的是已选中的项，清除选择；否则只选择当前项
+                        if (isSelected) {
+                          column?.setFilterValue(undefined)
+                        } else {
+                          column?.setFilterValue([option.value])
+                        }
                       } else {
-                        nextSelected.add(option.value)
+                        // 多选模式：原有的逻辑
+                        const nextSelected = new Set(selectedValues)
+                        if (isSelected) {
+                          nextSelected.delete(option.value)
+                        } else {
+                          nextSelected.add(option.value)
+                        }
+                        const filterValues = Array.from(nextSelected)
+                        column?.setFilterValue(
+                          filterValues.length > 0 ? filterValues : undefined
+                        )
                       }
-                      const filterValues = Array.from(nextSelected)
-                      setSelectedArray(filterValues)
-                      column?.setFilterValue(
-                        filterValues.length ? filterValues : undefined
-                      )
+                      onFilterChange?.()
                     }}
                   >
                     <div
@@ -164,7 +182,10 @@ export function DataTableFacetedFilter<TData, TValue>({
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
-                    onSelect={() => column?.setFilterValue(undefined)}
+                    onSelect={() => {
+                      column?.setFilterValue(undefined)
+                      onFilterChange?.()
+                    }}
                     className='justify-center text-center'
                   >
                     Clear filters

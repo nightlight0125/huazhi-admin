@@ -1,18 +1,27 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { format } from 'date-fns'
 import { getRouteApi } from '@tanstack/react-router'
 import {
-  type SortingState,
-  type VisibilityState,
   flexRender,
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  type SortingState,
+  type VisibilityState,
 } from '@tanstack/react-table'
 import { HelpCircle } from 'lucide-react'
+import { type DateRange } from 'react-day-picker'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  deleteOrder,
+  queryOrder,
+  requestPayment,
+  updateSalOutOrder,
+} from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,23 +33,36 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTableToolbar } from '@/components/data-table'
+import {
+  type AddressData,
+} from '@/components/edit-address-dialog'
+import {
+  OrderPayDialog,
+  type OrderPayable,
+} from '@/components/order-pay-dialog'
 import { sampleOrderStatuses } from '../data/data'
 import { type SampleOrder } from '../data/schema'
 import { SampleOrdersActionsMenu } from './sample-orders-actions-menu'
 import { SampleOrdersBulkActions } from './sample-orders-bulk-actions'
 import { createSampleOrdersColumns } from './sample-orders-columns'
-import { OrderPayDialog, type OrderPayable } from '@/components/order-pay-dialog'
 import { SampleOrdersTableFooter } from './sample-orders-table-footer'
-import { EditAddressDialog, type AddressData } from '@/components/edit-address-dialog'
+import { OrdersEditAddressDialog } from '@/features/orders/components/orders-edit-address-dialog'
 
 const route = getRouteApi('/_authenticated/sample-orders/')
 
 type DataTableProps = {
-  data: SampleOrder[]
-  onTableReady?: (table: ReturnType<typeof useReactTable<SampleOrder>>) => void
+  data?: SampleOrder[]
 }
 
-export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
+export function SampleOrdersTable({ data: _data }: DataTableProps) {
+  const { auth } = useAuthStore()
+  const [data, setData] = useState<SampleOrder[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
+  // 用于跟踪上一次请求的参数，避免重复请求
+  const lastRequestParamsRef = useRef<string>('')
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -48,7 +70,7 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     productName: false,
     logistics: false,
   })
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState('')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [selectedOrderForPayment, setSelectedOrderForPayment] =
     useState<OrderPayable | null>(null)
@@ -59,8 +81,8 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     open: false,
     order: null,
   })
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
-  // Synced with URL states
   const {
     globalFilter,
     onGlobalFilterChange,
@@ -77,19 +99,123 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
-  // Filter data based on active tab
-  const filteredData = data.filter((order) => {
-    if (activeTab === 'all') return true
-    return order.status === activeTab
-  })
+  const fetchOrders = useCallback(async () => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      setIsLoading(false)
+      setData([])
+      setTotalCount(0)
+      return
+    }
+
+    const pageIndex = pagination.pageIndex ?? 0
+    const pageSize = pagination.pageSize ?? 10
+
+    const shopOrderStatus =
+      activeTab && activeTab !== '' ? String(activeTab) : undefined
+
+    // 格式化日期范围
+    const formattedDateRange =
+      dateRange?.from && dateRange?.to
+        ? {
+            startDate: format(dateRange.from, 'yyyy-MM-dd 00:00:00'),
+            endDate: format(dateRange.to, 'yyyy-MM-dd 23:59:59'),
+          }
+        : undefined
+
+    // 生成请求参数的唯一标识
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopOrderStatus || ''}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}`
+
+    // 如果请求参数相同，跳过重复请求
+    if (lastRequestParamsRef.current === requestKey) {
+      return
+    }
+
+    // 更新请求参数标识
+    lastRequestParamsRef.current = requestKey
+
+    setIsLoading(true)
+
+    try {
+      const response = await queryOrder({
+        customerId: String(customerId),
+        type: 'hzkj_orders_BT_Sample',
+        str: globalFilter || '',
+        pageIndex,
+        pageSize,
+        shopOrderStatus,
+        startDate: formattedDateRange?.startDate,
+        endDate: formattedDateRange?.endDate,
+      })
+
+      setData(response.orders as any)
+      setTotalCount(response.total)
+    } catch (error) {
+      console.error('获取样品订单列表失败:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load sample orders. Please try again.'
+      )
+      setData([])
+      setTotalCount(0)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [
+    auth.user?.customerId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    globalFilter,
+    refreshKey,
+    activeTab,
+    dateRange,
+  ])
+
+  useEffect(() => {
+    // 如果日期范围不完整，不执行请求
+    if (dateRange && !(dateRange.from && dateRange.to)) {
+      return
+    }
+
+    // 使用 setTimeout 防抖，延迟执行请求，避免在状态快速变化时触发多次请求
+    const timeoutId = setTimeout(() => {
+      void fetchOrders()
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+    }
+  }, [fetchOrders, dateRange])
+
+  // 移除客户端过滤，因为现在由后端根据 activeTab 过滤
 
   const handlePay = (orderId: string) => {
-    const order = data.find((o) => o.id === orderId)
+    const order = data.find((o) => o.id === orderId) as any
     if (order) {
       // Convert SampleOrder to OrderPayable
       setSelectedOrderForPayment({
         id: order.id,
-        getTotalAmount: () => order.cost.total,
+        getTotalAmount: () => {
+          // 优先使用后端返回的 hzkj_order_amount 字段
+          if (order.hzkj_order_amount !== undefined) {
+            const amount = order.hzkj_order_amount
+            return typeof amount === 'string'
+              ? parseFloat(amount) || 0
+              : typeof amount === 'number'
+                ? amount
+                : 0
+          }
+
+          // 如果没有 hzkj_order_amount，使用 cost.total
+          if (order.cost?.total !== undefined) {
+            return typeof order.cost.total === 'number'
+              ? order.cost.total
+              : parseFloat(String(order.cost.total)) || 0
+          }
+
+          return 0
+        },
       })
       setPayDialogOpen(true)
     }
@@ -105,13 +231,60 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     }
   }
 
-  const handleConfirmEditAddress = (addressData: AddressData) => {
-    console.log(
-      'Updated address for order:',
-      editAddressDialog.order?.id,
-      addressData
-    )
-    setEditAddressDialog({ open: false, order: null })
+  const handleConfirmEditAddress = async (addressData: AddressData) => {
+    const order = editAddressDialog.order as any
+    const customerId = auth.user?.customerId
+
+    if (!order || !customerId) {
+      toast.error('Order or customer information is missing')
+      setEditAddressDialog({ open: false, order: null })
+      return
+    }
+
+    // 对于样品订单，目前后端没有提供行级 lingItems，detail 先传空数组
+    const detail: any[] = []
+
+    const firstName =
+      (addressData as any).firstName ??
+      addressData.customerName.split(' ')[0] ??
+      ''
+    const lastName =
+      (addressData as any).lastName ??
+      addressData.customerName.split(' ').slice(1).join(' ') ??
+      ''
+
+    try {
+      await updateSalOutOrder({
+        orderId: order.id,
+        customerId: String(customerId),
+        firstName,
+        lastName,
+        phone: addressData.phoneNumber,
+        countryId: (addressData as any).countryId ?? '',
+        admindivisionId: (addressData as any).admindivisionId,
+        city: addressData.city,
+        address1: addressData.address,
+        address2: addressData.address2,
+        postCode: addressData.postalCode,
+        taxId: (addressData as any).taxId || '',
+        customChannelId: '',
+        email: addressData.email || '',
+        wareHouse:
+          (addressData as any).warehouseId ?? addressData.shippingOrigin,
+        detail,
+      })
+
+      toast.success('Sample order address updated successfully')
+      setEditAddressDialog({ open: false, order: null })
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('Failed to update sample order address:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update sample order address. Please try again.'
+      )
+    }
   }
 
   const handleAddPackage = (orderId: string) => {
@@ -119,9 +292,65 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     // TODO: Implement add package logic
   }
 
-  const handleDelete = (orderId: string) => {
-    console.log('Delete order:', orderId)
-    // TODO: Implement delete logic
+  const handleDelete = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await deleteOrder({
+        customerId: String(customerId),
+        orderId: String(orderId),
+      })
+      toast.success('Order deleted successfully')
+      // 刷新订单列表
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('删除订单失败:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete order. Please try again.'
+      )
+    }
+  }
+
+  const handleBatchPayment = async (orderIds: string[]) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    if (orderIds.length === 0) {
+      toast.error('Please select at least one order')
+      return
+    }
+
+    try {
+      await requestPayment({
+        customerId: String(customerId),
+        orderIds,
+        type: 1, // 1 表示样品订单
+      })
+
+      toast.success(
+        `Payment request submitted successfully for ${orderIds.length} order(s)`
+      )
+      // 刷新订单列表
+      setRefreshKey((prev) => prev + 1)
+      // 清空选择
+      setRowSelection({})
+    } catch (error) {
+      console.error('Failed to request batch payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request batch payment. Please try again.'
+      )
+    }
   }
 
   const columns = useMemo(
@@ -132,11 +361,11 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    []
+    [auth.user?.customerId, handleDelete]
   )
 
   const table = useReactTable({
-    data: filteredData,
+    data: data,
     columns,
     state: {
       sorting,
@@ -159,7 +388,8 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true, // 启用服务端分页
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -173,17 +403,24 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  // Notify parent component when table is ready
-  useEffect(() => {
-    if (onTableReady) {
-      onTableReady(table)
-    }
-  }, [table, onTableReady])
-
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='Enter Order Number,SKU,Product Name'
+        dateRange={{
+          enabled: true,
+          columnId: 'createdAt',
+          placeholder: 'Select Date Range',
+          onDateRangeChange: (range) => {
+            // 只更新状态，让 useEffect 来处理接口调用
+            // 这样可以避免不必要的重新渲染，保持其他 UI 状态不变
+            setDateRange(range)
+          },
+        }}
+      />
       <div className='mb-2 flex items-center justify-end'>
-        <SampleOrdersActionsMenu />
+        <SampleOrdersActionsMenu table={table} />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
         <TabsList className='grid w-full grid-cols-6'>
@@ -199,12 +436,34 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
-          {/* Total Amount and Batch Payment - positioned at top left */}
           {(() => {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             const selectedCount = selectedRows.length
             const totalAmount = selectedRows.reduce((sum, row) => {
-              return sum + (row.original.cost.total || 0)
+              const order = row.original as any
+
+              // 优先使用后端返回的 hzkj_order_amount 字段
+              if (order.hzkj_order_amount !== undefined) {
+                const amount = order.hzkj_order_amount
+                const total =
+                  typeof amount === 'string'
+                    ? parseFloat(amount) || 0
+                    : typeof amount === 'number'
+                      ? amount
+                      : 0
+                return sum + total
+              }
+
+              // 如果没有 hzkj_order_amount，使用 cost.total
+              if (order.cost?.total !== undefined) {
+                const total =
+                  typeof order.cost.total === 'number'
+                    ? order.cost.total
+                    : parseFloat(String(order.cost.total)) || 0
+                return sum + total
+              }
+
+              return sum
             }, 0)
 
             return (
@@ -224,11 +483,10 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      // TODO: Implement batch payment dialog
-                      console.log(
-                        'Batch payment for orders:',
-                        selectedRows.map((row) => row.original.id)
+                      const orderIds = selectedRows.map(
+                        (row) => row.original.id
                       )
+                      void handleBatchPayment(orderIds)
                     }
                   }}
                   disabled={selectedCount === 0}
@@ -264,7 +522,20 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className='h-24 text-center'
+                    >
+                      <div className='flex flex-col items-center justify-center gap-2'>
+                        <p className='text-muted-foreground text-sm'>
+                          在加载中
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => {
                     return (
                       <TableRow
@@ -296,7 +567,7 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
             </Table>
           </div>
 
-          <SampleOrdersTableFooter table={table} />
+          <SampleOrdersTableFooter table={table} totalRows={totalCount} />
         </TabsContent>
       </Tabs>
 
@@ -306,22 +577,21 @@ export function SampleOrdersTable({ data, onTableReady }: DataTableProps) {
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
         order={selectedOrderForPayment}
+        orderType={1} // 1 表示样品订单
+        onPaymentSuccess={() => {
+          // 支付成功后刷新订单列表
+          setRefreshKey((prev) => prev + 1)
+        }}
       />
 
-      <EditAddressDialog
+      <OrdersEditAddressDialog
         open={editAddressDialog.open}
         onOpenChange={(open) =>
           setEditAddressDialog({ ...editAddressDialog, open })
         }
-        initialData={
-          editAddressDialog.order
-            ? {
-                customerName: editAddressDialog.order.address.name,
-                address: editAddressDialog.order.address.address,
-                country: editAddressDialog.order.address.country,
-              }
-            : undefined
-        }
+        // 对于样品订单，底层数据同样来自 queryOrder/transformApiOrderToOrder，
+        // 因此可以复用普通订单的 OrdersEditAddressDialog 映射逻辑
+        order={editAddressDialog.order as any}
         onConfirm={handleConfirmEditAddress}
       />
     </div>

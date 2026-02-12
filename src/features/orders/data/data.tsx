@@ -1,90 +1,71 @@
-import {
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  DollarSign,
-  Package,
-  ShoppingCart,
-  Truck,
-  XCircle,
-} from 'lucide-react'
+import { AlertCircle, CheckCircle, Clock, Package, Truck } from 'lucide-react'
 import { allCountries } from '@/lib/countries'
 
 // 订单状态选项
 export const orderStatuses = [
   {
     label: 'AlI',
-    value: 'all' as const,
-    icon: Package,
+    value: '' as const,
   },
   {
-    label: 'Unconnected',
-    value: 'pending_quote' as const,
-    icon: Clock,
+    label: 'Pending',
+    value: 'pending' as const,
   },
   {
-    label: 'Awaiting Payment',
-    value: 'pending_payment' as const,
-    icon: DollarSign,
+    label: 'Authorized',
+    value: 'authorized' as const,
   },
   {
-    label: 'paid',
+    label: 'Partially Paid',
+    value: 'partially_paid' as const,
+  },
+  {
+    label: 'Paid',
     value: 'paid' as const,
-    icon: CheckCircle,
   },
   {
-    label: 'processing',
-    value: 'processing' as const,
-    icon: ShoppingCart,
+    label: 'Refunded',
+    value: 'refunded' as const,
   },
   {
-    label: 'shipped',
-    value: 'shipped' as const,
-    icon: Truck,
+    label: 'Partially Refunded',
+    value: 'partially_refunded' as const,
   },
   {
-    label: 'cancelled',
-    value: 'cancelled' as const,
-    icon: XCircle,
+    label: 'Voided',
+    value: 'voided' as const,
+  },
+  {
+    label: 'Expired',
+    value: 'expired' as const,
   },
 ]
 
 // 平台订单状态选项
 export const platformOrderStatuses = [
   {
-    label: '待处理',
-    value: 'pending' as const,
-    icon: Clock,
+    label: 'Cancelled',
+    value: '0' as const,
   },
   {
-    label: '已确认',
-    value: 'confirmed' as const,
-    icon: CheckCircle,
+    label: 'Not Linked to Local SKU',
+    value: 'no' as const,
   },
   {
-    label: '处理中',
-    value: 'processing' as const,
-    icon: ShoppingCart,
+    label: 'Pending Payment',
+    value: '1' as const,
   },
   {
-    label: '已发货',
-    value: 'shipped' as const,
-    icon: Truck,
+    label: 'Paid',
+    value: '2' as const,
   },
   {
-    label: '已送达',
-    value: 'delivered' as const,
-    icon: CheckCircle,
+    label: 'Processing',
+    value: '3' as const,
   },
   {
-    label: '已取消',
-    value: 'cancelled' as const,
-    icon: XCircle,
-  },
-  {
-    label: '已退款',
-    value: 'refunded' as const,
-    icon: DollarSign,
+    label: 'Shipped',
+    value: '4' as const,
   },
 ]
 

@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { Coins, CreditCard } from 'lucide-react'
+import { Coins, CreditCard, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { requestPayment } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,40 +23,90 @@ interface OrderPayDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   order: OrderPayable | null
-  onConfirm?: (orderId: string, paymentMethod: PaymentMethod, amount: number) => void
+  orderType?: number // 订单类型：1=样品订单，2=库存订单，默认为2
+  onConfirm?: (
+    orderId: string,
+    paymentMethod: PaymentMethod,
+    amount: number
+  ) => void
+  onPaymentSuccess?: () => void // 支付成功后的回调，用于刷新数据
 }
 
 export function OrderPayDialog({
   open,
   onOpenChange,
   order,
+  orderType = 2, // 默认为库存订单
   onConfirm,
+  onPaymentSuccess,
 }: OrderPayDialogProps) {
+  const { auth } = useAuthStore()
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>('balance')
+  const [isLoading, setIsLoading] = useState(false)
 
   if (!order) return null
 
-  // 模拟数据
-  const balance = 382.52
-  const bonus = 0
+  // 模拟数据与金额计算（增加安全检查，防止 totalAmount 为 undefined 或非数字）
   const credits = 0
-  const totalAmount = order.getTotalAmount()
+
+  const rawTotalAmount = order.getTotalAmount()
+  const totalAmount =
+    typeof rawTotalAmount === 'number' && !Number.isNaN(rawTotalAmount)
+      ? rawTotalAmount
+      : 0
+
   const balancePayment = totalAmount
   const numberOfOrders = 1
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    // 如果有自定义的 onConfirm 回调，先调用它
     if (onConfirm) {
       onConfirm(order.id, selectedPaymentMethod, totalAmount)
-    } else {
-      console.log('Payment confirmed:', {
-        orderId: order.id,
-        paymentMethod: selectedPaymentMethod,
-        amount: totalAmount,
-      })
+      onOpenChange(false)
+      return
     }
-    // TODO: Implement payment logic
-    onOpenChange(false)
+
+    // 调用支付接口
+    setIsLoading(true)
+    try {
+      const response = await requestPayment({
+        customerId: String(customerId),
+        orderIds: [order.id],
+        type: orderType, // 1=样品订单，2=库存订单
+      })
+
+      // 检查返回的 data 是否是支付链接（URL）
+      const paymentUrl =
+        typeof response.data === 'string' ? response.data : undefined
+
+      if (paymentUrl && paymentUrl.startsWith('http')) {
+        // 在新页面打开支付链接
+        window.open(paymentUrl, '_blank', 'noopener,noreferrer')
+        toast.success('Redirecting to payment page...')
+      } else {
+        toast.success('Payment request submitted successfully')
+      }
+
+      onOpenChange(false)
+      // 调用成功回调，刷新数据
+      onPaymentSuccess?.()
+    } catch (error) {
+      console.error('Failed to request payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request payment. Please try again.'
+      )
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -146,13 +199,13 @@ export function OrderPayDialog({
               </span>
             </div>
             <div className='flex items-center justify-between'>
-              <span className='text-sm'>Balance(${balance.toFixed(2)}):</span>
+              <span className='text-sm'>Balance:</span>
               <span className='text-sm font-semibold text-orange-600'>
                 Pay ${balancePayment.toFixed(2)}
               </span>
             </div>
             <div className='flex items-center justify-between'>
-              <span className='text-sm'>Bonus(${bonus.toFixed(2)}):</span>
+              <span className='text-sm'>Bonus:</span>
               <span className='text-sm font-semibold text-orange-600'>
                 Pay —
               </span>
@@ -176,9 +229,17 @@ export function OrderPayDialog({
             </Button>
             <Button
               onClick={handleConfirm}
+              disabled={isLoading}
               className='bg-blue-500 hover:bg-blue-600'
             >
-              Confirm Payment
+              {isLoading ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Processing...
+                </>
+              ) : (
+                'Confirm Payment'
+              )}
             </Button>
           </div>
         </div>
@@ -186,4 +247,3 @@ export function OrderPayDialog({
     </Dialog>
   )
 }
-

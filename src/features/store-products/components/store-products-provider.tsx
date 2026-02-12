@@ -9,6 +9,8 @@ type StoreProductsContextType = {
   setOpen: (str: StoreProductsDialogType | null) => void
   currentRow: StoreProduct | null
   setCurrentRow: React.Dispatch<React.SetStateAction<StoreProduct | null>>
+  searchKeyword: string
+  setSearchKeyword: React.Dispatch<React.SetStateAction<string>>
 }
 
 const StoreProductsContext =
@@ -21,10 +23,11 @@ export function StoreProductsProvider({
 }) {
   const [open, setOpen] = useDialogState<StoreProductsDialogType>(null)
   const [currentRow, setCurrentRow] = useState<StoreProduct | null>(null)
+  const [searchKeyword, setSearchKeyword] = useState<string>('')
 
   return (
     <StoreProductsContext.Provider
-      value={{ open, setOpen, currentRow, setCurrentRow }}
+      value={{ open, setOpen, currentRow, setCurrentRow, searchKeyword, setSearchKeyword }}
     >
       {children}
     </StoreProductsContext.Provider>

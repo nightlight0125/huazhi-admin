@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Copy } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryCustomerTrace } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -9,23 +12,57 @@ import { Main } from '@/components/layout/main'
 import { CommissionRecordsTable } from './components/commission-records-table'
 import { RecommendedListTable } from './components/recommended-list-table'
 import { WithdrawRecordsTable } from './components/withdraw-records-table'
-import {
-  commissionRecords,
-  recommendedListRecords,
-  withdrawRecords,
-} from './data/data'
+import { commissionRecords } from './data/data'
 
 export function AffiliatePlan() {
-  const [referralLink] = useState(
+  const { auth } = useAuthStore()
+  const [referralLink, setReferralLink] = useState(
     'https://app.dropsure.com/RetailerLogin/Register/MjAyMDY%3d'
   )
+  const [isLoadingLink, setIsLoadingLink] = useState(false)
+  const [activeTab, setActiveTab] = useState('referral-links')
+
+  // 当切换到 Referral Links tab 时，获取注册链接
+  useEffect(() => {
+    const fetchRegistrationLink = async () => {
+      const userId = auth.user?.customerId || auth.user?.id
+      if (!userId || activeTab !== 'referral-links') {
+        return
+      }
+
+      setIsLoadingLink(true)
+      try {
+        const result = await queryCustomerTrace(String(userId), 1, 10)
+
+        // 从返回的 rows 数组中获取第一个元素的 hzkj_registration_link 字段
+        if (result.rows && result.rows.length > 0) {
+          const registrationLink = result.rows[0]?.hzkj_registration_link
+          if (registrationLink && typeof registrationLink === 'string') {
+            setReferralLink(registrationLink)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch registration link:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load registration link. Please try again.'
+        )
+      } finally {
+        setIsLoadingLink(false)
+      }
+    }
+
+    void fetchRegistrationLink()
+  }, [activeTab, auth.user?.customerId, auth.user?.id])
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(referralLink)
-      // TODO: 可以在这里加一个 toast 提示
+      toast.success('Link copied to clipboard')
     } catch (e) {
       console.error('Copy failed', e)
+      toast.error('Failed to copy link')
     }
   }
 
@@ -45,7 +82,7 @@ export function AffiliatePlan() {
       </Header>
 
       <Main fluid>
-        <Tabs defaultValue='referral-links' className='w-full'>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
           <TabsList className='mb-4 h-10'>
             <TabsTrigger
               value='referral-links'
@@ -53,18 +90,18 @@ export function AffiliatePlan() {
             >
               Referral Links
             </TabsTrigger>
-            <TabsTrigger
+            {/* <TabsTrigger
               value='commission-records'
               className='data-[state=active]:text-primary px-4 text-sm'
             >
               Commission Records
-            </TabsTrigger>
-            <TabsTrigger
+            </TabsTrigger> */}
+            {/* <TabsTrigger
               value='withdraw-records'
               className='data-[state=active]:text-primary px-4 text-sm'
             >
               Withdraw Records
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger
               value='recommended-list'
               className='data-[state=active]:text-primary px-4 text-sm'
@@ -79,14 +116,16 @@ export function AffiliatePlan() {
               <h2 className='text-lg font-medium'>Recommended link</h2>
               <div className='bg-background flex h-10 overflow-hidden rounded-md border text-sm shadow-sm'>
                 <Input
-                  value={referralLink}
+                  value={isLoadingLink ? 'Loading...' : referralLink}
                   readOnly
+                  disabled={isLoadingLink}
                   className='flex-1 rounded-none border-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0 md:text-sm'
                 />
                 <Button
                   type='button'
                   onClick={handleCopy}
-                  className='bg-primary hover:bg-primary/90 rounded-none px-4 text-xs font-semibold'
+                  disabled={isLoadingLink}
+                  className='bg-primary hover:bg-primary/90 rounded-none px-4 text-xs font-semibold disabled:opacity-50'
                 >
                   <Copy className='mr-1 h-3 w-3' />
                   Copy
@@ -152,11 +191,11 @@ export function AffiliatePlan() {
           </TabsContent>
 
           <TabsContent value='withdraw-records'>
-            <WithdrawRecordsTable data={withdrawRecords} />
+            <WithdrawRecordsTable />
           </TabsContent>
 
           <TabsContent value='recommended-list'>
-            <RecommendedListTable data={recommendedListRecords} />
+            <RecommendedListTable />
           </TabsContent>
         </Tabs>
       </Main>

@@ -1,5 +1,20 @@
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { getReminder, type ReminderItem } from '@/lib/api/base'
+import {
+  orderCountStatistics,
+  type OrderCountStatisticsData,
+} from '@/lib/api/orders'
+import { queryCustomerUser, type CustomerUserItem } from '@/lib/api/users'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
@@ -7,36 +22,127 @@ import { Main } from '@/components/layout/main'
 import { HotSellingProducts } from './components/hot-selling-products'
 import { Overview } from './components/overview'
 
-const notifications = [
-  {
-    title: 'National Day & Mid-Autumn Festival Holiday Schedule',
-    date: '2025-09-26',
-  },
-  {
-    title: 'Announcement: Important Update Regarding PayPal Payment Method',
-    date: '2025-09-04',
-  },
-  {
-    title: 'Notice of the United States Shipping Price Update',
-    date: '2025-05-14',
-  },
-  {
-    title: 'Notice of United States Shipping Update',
-    date: '2025-04-25',
-  },
-  {
-    title: 'Payment Method Update Notification',
-    date: '2025-03-19',
-  },
-  {
-    title: 'Latest U.S. Tax Policy Notice',
-    date: '2025-02-08',
-  },
-]
-
 export function Dashboard() {
-  const user = useAuthStore((state) => state.auth.user)
-  console.log('======user12345678', user)
+  const authUser = useAuthStore((state) => state.auth.user)
+  const [customerUser, setCustomerUser] = useState<CustomerUserItem | null>(
+    null
+  )
+  const [orderStats, setOrderStats] = useState<OrderCountStatisticsData>({
+    newCount: 0,
+    paidCount: 0,
+    paymentCount: 0,
+    rmaCount: 0,
+  })
+  const [reminders, setReminders] = useState<ReminderItem[]>([])
+  const [selectedReminder, setSelectedReminder] = useState<ReminderItem | null>(
+    null
+  )
+  const [showReminderDialog, setShowReminderDialog] = useState(false)
+
+  // 获取客户用户信息
+  useEffect(() => {
+    const fetchCustomerUser = async () => {
+      const userId = authUser?.id
+      if (!userId) {
+        return
+      }
+
+      try {
+        const userData = await queryCustomerUser(userId, 1, 10)
+        setCustomerUser(userData)
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load customer user. Please try again.'
+        )
+        setCustomerUser(null)
+      }
+    }
+
+    void fetchCustomerUser()
+  }, [authUser?.id])
+
+  // 获取订单数量统计
+  useEffect(() => {
+    const fetchOrderStats = async () => {
+      const customerId = authUser?.customerId || authUser?.id
+      if (!customerId) {
+        return
+      }
+
+      try {
+        const stats = await orderCountStatistics(String(customerId))
+        setOrderStats(stats)
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load order count statistics. Please try again.'
+        )
+        setOrderStats({
+          newCount: 0,
+          paidCount: 0,
+          paymentCount: 0,
+          rmaCount: 0,
+        })
+      }
+    }
+
+    void fetchOrderStats()
+  }, [authUser?.customerId, authUser?.id])
+
+  // 获取提醒列表
+  useEffect(() => {
+    const fetchReminders = async () => {
+      try {
+        const reminderList = await getReminder(1, 10)
+        setReminders(reminderList)
+      } catch (error) {
+        console.error('Failed to fetch reminders:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load reminders. Please try again.'
+        )
+        setReminders([])
+      }
+    }
+
+    void fetchReminders()
+  }, [])
+
+  // 处理点击 Read More
+  const handleReadMore = (reminder: ReminderItem) => {
+    setSelectedReminder(reminder)
+    setShowReminderDialog(true)
+  }
+
+  // 格式化日期
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-'
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    } catch {
+      return dateString
+    }
+  }
+
+  const user = {
+    username:
+      customerUser?.hzkj_biz_user_username ||
+      customerUser?.hzkj_biz_user_name ||
+      '-',
+    phone: customerUser?.hzkj_biz_user_phone || '-',
+    email: customerUser?.hzkj_biz_user_email || '-',
+    picture: customerUser?.hzkj_biz_user_picturefield || '',
+  }
+
   return (
     <>
       <Header>
@@ -74,10 +180,9 @@ export function Dashboard() {
                       </svg>
                     </CardHeader>
                     <CardContent>
-                      <div className='text-2xl font-bold'>$45,231.89</div>
-                      <p className='text-muted-foreground text-xs'>
-                        +20.1% from last month
-                      </p>
+                      <div className='text-2xl font-bold'>
+                        {orderStats.newCount}
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
@@ -93,7 +198,7 @@ export function Dashboard() {
                         strokeLinecap='round'
                         strokeLinejoin='round'
                         strokeWidth='2'
-                        className='text-muted-foreground h-4 w-4'
+                        className='text-muted-foreground h-3 w-3'
                       >
                         <path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' />
                         <circle cx='9' cy='7' r='4' />
@@ -101,10 +206,9 @@ export function Dashboard() {
                       </svg>
                     </CardHeader>
                     <CardContent>
-                      <div className='text-2xl font-bold'>+2350</div>
-                      <p className='text-muted-foreground text-xs'>
-                        +180.1% from last month
-                      </p>
+                      <div className='text-2xl font-bold'>
+                        {orderStats.paymentCount}
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
@@ -127,10 +231,9 @@ export function Dashboard() {
                       </svg>
                     </CardHeader>
                     <CardContent>
-                      <div className='text-2xl font-bold'>+12,234</div>
-                      <p className='text-muted-foreground text-xs'>
-                        +19% from last month
-                      </p>
+                      <div className='text-2xl font-bold'>
+                        {orderStats.paidCount}
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
@@ -152,10 +255,9 @@ export function Dashboard() {
                       </svg>
                     </CardHeader>
                     <CardContent>
-                      <div className='text-2xl font-bold'>+573</div>
-                      <p className='text-muted-foreground text-xs'>
-                        +201 since last hour
-                      </p>
+                      <div className='text-2xl font-bold'>
+                        {orderStats.rmaCount}
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -165,7 +267,6 @@ export function Dashboard() {
                 <HotSellingProducts />
               </div>
               <div className='w-full space-y-3 lg:w-[320px] lg:flex-shrink-0 xl:w-[340px] 2xl:w-[360px]'>
-                {/* Account Balance */}
                 <div>
                   <h2 className='mb-2 text-base font-bold'>Account Balance</h2>
                   <Card>
@@ -198,11 +299,19 @@ export function Dashboard() {
                     <CardContent className='flex items-center justify-between py-3'>
                       <div className='flex items-center gap-3'>
                         <div className='flex flex-col items-center gap-1'>
-                          <div className='bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full text-xl font-bold'>
-                            {user?.username?.charAt(0)}
-                          </div>
+                          {user.picture ? (
+                            <img
+                              src={user.picture}
+                              alt={user.username}
+                              className='h-12 w-12 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div className='bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full text-xl font-bold'>
+                              {user.username?.charAt(0)?.toUpperCase() || 'U'}
+                            </div>
+                          )}
                           <p className='text-sm font-semibold'>
-                            {user?.username}
+                            {user.username || ''}
                           </p>
                         </div>
                         <div className='flex flex-col gap-0.5'>
@@ -293,30 +402,45 @@ export function Dashboard() {
                   <h2 className='mb-2 text-base font-bold'>Notifications</h2>
                   <Card>
                     <CardContent className='py-3'>
-                      <div className='space-y-0 divide-y'>
-                        {notifications.map((notification, index) => (
-                          <div
-                            key={index}
-                            className={`flex items-center justify-between py-3 ${
-                              index === 0 ? 'first:pt-0' : ''
-                            } ${index === notifications.length - 1 ? 'last:pb-0' : ''}`}
-                          >
-                            <div className='flex-1'>
-                              <p className='text-sm font-medium'>
-                                {notification.title}
-                              </p>
-                            </div>
-                            <div className='flex items-center gap-4'>
-                              <div className='text-primary text-sm hover:underline'>
-                                Read More
+                      {reminders.length === 0 ? (
+                        <div className='text-muted-foreground py-4 text-center text-sm'>
+                          No notifications available
+                        </div>
+                      ) : (
+                        <div className='space-y-0 divide-y'>
+                          {reminders.map((reminder, index) => (
+                            <div
+                              key={index}
+                              className={`flex items-center justify-between py-3 ${
+                                index === 0 ? 'first:pt-0' : ''
+                              } ${
+                                index === reminders.length - 1
+                                  ? 'last:pb-0'
+                                  : ''
+                              }`}
+                            >
+                              <div className='flex-1'>
+                                <p className='text-sm font-medium'>
+                                  {reminder.hzkj_textfield || '-'}
+                                </p>
                               </div>
-                              <span className='text-xs'>
-                                {notification.date}
-                              </span>
+                              <div className='flex items-center gap-4'>
+                                <button
+                                  onClick={() => handleReadMore(reminder)}
+                                  className='text-primary cursor-pointer text-sm hover:underline'
+                                >
+                                  Read More
+                                </button>
+                                <span className='text-xs'>
+                                  {formatDate(
+                                    reminder.hzkj_effective_time_startdate
+                                  )}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -325,6 +449,67 @@ export function Dashboard() {
           </TabsContent>
         </Tabs>
       </Main>
+
+      {/* Reminder Detail Dialog */}
+      <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
+        <DialogContent className='max-h-[80vh] max-w-2xl overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedReminder?.hzkj_textfield || 'Notification Details'}
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className='space-y-4 pt-4'>
+                {selectedReminder && (
+                  <>
+                    <div>
+                      <p className='mb-1 text-sm font-semibold'>Bill No:</p>
+                      <p className='text-muted-foreground text-sm'>
+                        {selectedReminder.billno || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className='mb-1 text-sm font-semibold'>Text Field:</p>
+                      <p className='text-muted-foreground text-sm'>
+                        {selectedReminder.hzkj_textfield || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className='mb-1 text-sm font-semibold'>
+                        Effective Start Date:
+                      </p>
+                      <p className='text-muted-foreground text-sm'>
+                        {formatDate(
+                          selectedReminder.hzkj_effective_time_startdate
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className='mb-1 text-sm font-semibold'>
+                        Effective End Date:
+                      </p>
+                      <p className='text-muted-foreground text-sm'>
+                        {formatDate(
+                          selectedReminder.hzkj_effective_time_enddate
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className='mb-1 text-sm font-semibold'>Content:</p>
+                      <div
+                        className='text-muted-foreground prose prose-sm max-w-none text-sm'
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            selectedReminder.hzkj_richtextfield || '<p>-</p>',
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

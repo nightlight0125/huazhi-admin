@@ -39,10 +39,23 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
     setFormData({ mergedOrderNumber: '', customer: '', note: '' })
   }
 
+  // 安全数值转换，防止 undefined / NaN 导致 toFixed 报错
+  const toSafeNumber = (value: unknown): number =>
+    typeof value === 'number' && !Number.isNaN(value) ? value : 0
+
   // 计算合并后的总成本
-  const totalCost = selectedOrders.reduce((sum, order) => sum + order.totalCost, 0)
-  const totalShippingCost = selectedOrders.reduce((sum, order) => sum + order.shippingCost, 0)
-  const totalOtherCosts = selectedOrders.reduce((sum, order) => sum + order.otherCosts, 0)
+  const totalCost = selectedOrders.reduce(
+    (sum, order) => sum + toSafeNumber(order.totalCost),
+    0
+  )
+  const totalShippingCost = selectedOrders.reduce(
+    (sum, order) => sum + toSafeNumber(order.shippingCost),
+    0
+  )
+  const totalOtherCosts = selectedOrders.reduce(
+    (sum, order) => sum + toSafeNumber(order.otherCosts),
+    0
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,7 +79,7 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
                     <span className='text-sm'>{order.customer}</span>
                   </div>
                   <span className='text-sm font-medium'>
-                    ${order.totalCost.toFixed(2)}
+                    ${toSafeNumber(order.totalCost).toFixed(2)}
                   </span>
                 </div>
               ))}

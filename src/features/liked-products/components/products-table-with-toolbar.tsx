@@ -1,4 +1,13 @@
-import { useEffect, useState } from 'react'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Table as UITable,
+} from '@/components/ui/table'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   flexRender,
   getCoreRowModel,
@@ -13,16 +22,7 @@ import {
   type Table,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Table as UITable,
-} from '@/components/ui/table'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { useCallback, useEffect, useState } from 'react'
 import { LikedProductsBulkActions } from './liked-products-bulk-actions'
 
 type ProductsTableWithToolbarProps<TData> = {
@@ -31,6 +31,9 @@ type ProductsTableWithToolbarProps<TData> = {
   search: any
   navigate: any
   globalFilterFn?: (row: any, _columnId: string, filterValue: string) => boolean
+  totalCount?: number // 服务端分页的总数
+  onSearch?: (searchValue: string) => void // 搜索回调函数
+  isLoading?: boolean // 列表加载状态
 }
 
 export function ProductsTableWithToolbar<TData>({
@@ -39,6 +42,9 @@ export function ProductsTableWithToolbar<TData>({
   search,
   navigate,
   globalFilterFn,
+  totalCount,
+  onSearch,
+  isLoading = false,
 }: ProductsTableWithToolbarProps<TData>) {
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -62,6 +68,12 @@ export function ProductsTableWithToolbar<TData>({
     columnFilters: [],
   })
 
+  // 如果是服务端分页，计算总页数
+  const pageCount =
+    totalCount !== undefined
+      ? Math.ceil(totalCount / pagination.pageSize)
+      : undefined
+
   const table = useReactTable({
     data,
     columns,
@@ -74,6 +86,8 @@ export function ProductsTableWithToolbar<TData>({
       pagination,
     },
     enableRowSelection: true,
+    manualPagination: totalCount !== undefined, // 如果提供了 totalCount，启用服务端分页
+    pageCount, // 设置总页数
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -87,25 +101,49 @@ export function ProductsTableWithToolbar<TData>({
       }),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel:
+      totalCount === undefined ? getPaginationRowModel() : undefined, // 服务端分页时不使用客户端分页模型
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     onPaginationChange,
-    onGlobalFilterChange,
+    // 当没有提供 onSearch 时，设置 onGlobalFilterChange 用于同步状态和 URL
+    // 当提供了 onSearch 时，不设置 onGlobalFilterChange，避免重复触发
+    onGlobalFilterChange: onSearch ? undefined : onGlobalFilterChange,
     onColumnFiltersChange,
   })
 
-  const pageCount = table.getPageCount()
+  // 处理搜索回调 - 使用 useCallback 避免重复创建
+  const handleSearch = useCallback(
+    (searchValue: string) => {
+      if (onSearch) {
+        // 如果提供了 onSearch 回调，调用它
+        onSearch(searchValue)
+      } else {
+        // 否则使用默认行为：直接调用 onGlobalFilterChange 更新 URL 参数
+        // 表格的 onGlobalFilterChange 已经被设置，会同步状态
+        if (onGlobalFilterChange) {
+          onGlobalFilterChange(searchValue)
+        }
+      }
+    },
+    [onSearch, onGlobalFilterChange]
+  )
+
+  const finalPageCount = pageCount ?? table.getPageCount()
   useEffect(() => {
-    ensurePageInRange(pageCount)
-  }, [pageCount, ensurePageInRange])
+    if (finalPageCount !== undefined) {
+      ensurePageInRange(finalPageCount)
+    }
+  }, [finalPageCount, ensurePageInRange])
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <DataTableToolbar
         table={table as Table<TData>}
         searchPlaceholder='Product Name，SPU'
+        showSearchButton={true}
+        onSearch={handleSearch}
       />
       <div className='overflow-hidden rounded-md border'>
         <UITable>
@@ -132,7 +170,20 @@ export function ProductsTableWithToolbar<TData>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading && data.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  <div className='flex items-center justify-center'>
+                    <p className='text-muted-foreground text-sm'>
+                      Loading...
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const productId = (row.original as any).id
                 return (

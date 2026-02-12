@@ -4,7 +4,9 @@ import { DataTableColumnHeader } from '@/components/data-table'
 import { type LikedProduct } from '../data/schema'
 import { LikedProductsRowActions } from './liked-products-row-actions'
 
-export const createLikedProductsColumns = (): ColumnDef<LikedProduct>[] => {
+export const createLikedProductsColumns = (
+  onDeleteSuccess?: () => void
+): ColumnDef<LikedProduct>[] => {
   const columns: ColumnDef<LikedProduct>[] = [
     {
       id: 'select',
@@ -47,7 +49,7 @@ export const createLikedProductsColumns = (): ColumnDef<LikedProduct>[] => {
             <div className='min-w-0 flex-1'>
               <div className='flex items-start gap-1'>
                 <p className='line-clamp-2 text-xs leading-tight'>
-                  {product.description}
+                  {product.name}
                 </p>
               </div>
             </div>
@@ -74,11 +76,7 @@ export const createLikedProductsColumns = (): ColumnDef<LikedProduct>[] => {
       ),
       cell: ({ row }) => {
         const product = row.original
-        return (
-          <div className='text-xs'>
-            {product.priceMin.toFixed(2)}
-          </div>
-        )
+        return <div className='text-xs'>{product.priceMin.toFixed(2)}</div>
       },
       enableSorting: false,
     },
@@ -110,7 +108,9 @@ export const createLikedProductsColumns = (): ColumnDef<LikedProduct>[] => {
   // 添加 actions 列
   columns.push({
     id: 'actions',
-    cell: ({ row }) => <LikedProductsRowActions row={row} />,
+    cell: ({ row }) => (
+      <LikedProductsRowActions row={row} onDeleteSuccess={onDeleteSuccess} />
+    ),
   })
 
   return columns

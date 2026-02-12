@@ -7,10 +7,12 @@ import { type SampleOrder } from '../data/schema'
 
 type SampleOrdersTableFooterProps = {
   table: Table<SampleOrder>
+  totalRows?: number // 服务端分页的总数
 }
 
 export function SampleOrdersTableFooter({
   table,
+  totalRows = 0,
 }: SampleOrdersTableFooterProps) {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
@@ -19,6 +21,8 @@ export function SampleOrdersTableFooter({
   const selectedCount = selectedRows.length
   const isAllPageSelected = table.getIsAllPageRowsSelected()
   const isSomePageSelected = table.getIsSomePageRowsSelected()
+  const paginationState = table.getState().pagination
+  const pageSize = paginationState.pageSize
 
   const handlePageSelect = (checked: boolean) => {
     if (checked) {
@@ -80,7 +84,13 @@ export function SampleOrdersTableFooter({
         </div>
       </div>
 
-      {/* Center: Pagination */}
+      {/* Center: Pagination and row count */}
+      <div className='flex items-center gap-4'>
+        <div className='text-sm text-muted-foreground'>
+          Showing {totalRows === 0 ? 0 : paginationState.pageIndex * pageSize + 1} to{' '}
+          {Math.min((paginationState.pageIndex + 1) * pageSize, totalRows)} of{' '}
+          {totalRows} orders
+        </div>
       <div className='flex items-center gap-2'>
         <Button
           variant='outline'
@@ -119,6 +129,7 @@ export function SampleOrdersTableFooter({
         >
           <ChevronRight className='h-4 w-4' />
         </Button>
+      </div>
       </div>
 
     </div>

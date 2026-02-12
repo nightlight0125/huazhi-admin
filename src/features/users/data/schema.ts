@@ -19,6 +19,9 @@ const userSchema = z.object({
   role: userRoleSchema,
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
+  surname: z.string(),
+  roleId: z.string(),
+  
 })
 export type User = z.infer<typeof userSchema>
 

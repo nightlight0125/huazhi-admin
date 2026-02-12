@@ -55,6 +55,14 @@ export const sampleOrderSchema = z.object({
   remark: z.string(),              // 备注
   status: sampleOrderStatusSchema, // 订单状态
   productList: z.array(sampleOrderProductSchema), // 产品列表
+  // API 原始字段（用于兼容）
+  billno: z.string().optional(), // 订单号（原始字段）
+  createtime: z.string().optional(), // 创建时间（原始字段）
+  hzkj_order_amount: z.number().optional(), // 订单金额
+  // 客户名称（原始字段），结构较为动态，这里使用 any 保持兼容
+  hzkj_customer_name: z.any().optional(),
+  hzkj_country_code: z.string().optional().nullable(), // 国家代码
+  trackingNumber: z.string().optional(), // 跟踪号
 })
 
 export type SampleOrder = z.infer<typeof sampleOrderSchema>

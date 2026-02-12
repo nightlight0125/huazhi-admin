@@ -43,7 +43,6 @@ import { Route as AuthenticatedRolesIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedRecommendProductsIndexRouteImport } from './routes/_authenticated/recommend-products/index'
 import { Route as AuthenticatedQuotesIndexRouteImport } from './routes/_authenticated/quotes/index'
 import { Route as AuthenticatedPublishedProductsIndexRouteImport } from './routes/_authenticated/published-products/index'
-import { Route as AuthenticatedProductsIndexRouteImport } from './routes/_authenticated/products/index'
 import { Route as AuthenticatedProductConnectionsIndexRouteImport } from './routes/_authenticated/product-connections/index'
 import { Route as AuthenticatedPodDesignIndexRouteImport } from './routes/_authenticated/pod-design/index'
 import { Route as AuthenticatedPackagingProductsIndexRouteImport } from './routes/_authenticated/packaging-products/index'
@@ -253,12 +252,6 @@ const AuthenticatedPublishedProductsIndexRoute =
     path: '/published-products/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedProductsIndexRoute =
-  AuthenticatedProductsIndexRouteImport.update({
-    id: '/products/',
-    path: '/products/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedProductConnectionsIndexRoute =
   AuthenticatedProductConnectionsIndexRouteImport.update({
     id: '/product-connections/',
@@ -454,7 +447,6 @@ export interface FileRoutesByFullPath {
   '/packaging-products': typeof AuthenticatedPackagingProductsIndexRoute
   '/pod-design': typeof AuthenticatedPodDesignIndexRoute
   '/product-connections': typeof AuthenticatedProductConnectionsIndexRoute
-  '/products': typeof AuthenticatedProductsIndexRoute
   '/published-products': typeof AuthenticatedPublishedProductsIndexRoute
   '/quotes': typeof AuthenticatedQuotesIndexRoute
   '/recommend-products': typeof AuthenticatedRecommendProductsIndexRoute
@@ -513,7 +505,6 @@ export interface FileRoutesByTo {
   '/packaging-products': typeof AuthenticatedPackagingProductsIndexRoute
   '/pod-design': typeof AuthenticatedPodDesignIndexRoute
   '/product-connections': typeof AuthenticatedProductConnectionsIndexRoute
-  '/products': typeof AuthenticatedProductsIndexRoute
   '/published-products': typeof AuthenticatedPublishedProductsIndexRoute
   '/quotes': typeof AuthenticatedQuotesIndexRoute
   '/recommend-products': typeof AuthenticatedRecommendProductsIndexRoute
@@ -577,7 +568,6 @@ export interface FileRoutesById {
   '/_authenticated/packaging-products/': typeof AuthenticatedPackagingProductsIndexRoute
   '/_authenticated/pod-design/': typeof AuthenticatedPodDesignIndexRoute
   '/_authenticated/product-connections/': typeof AuthenticatedProductConnectionsIndexRoute
-  '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
   '/_authenticated/published-products/': typeof AuthenticatedPublishedProductsIndexRoute
   '/_authenticated/quotes/': typeof AuthenticatedQuotesIndexRoute
   '/_authenticated/recommend-products/': typeof AuthenticatedRecommendProductsIndexRoute
@@ -639,7 +629,6 @@ export interface FileRouteTypes {
     | '/packaging-products'
     | '/pod-design'
     | '/product-connections'
-    | '/products'
     | '/published-products'
     | '/quotes'
     | '/recommend-products'
@@ -698,7 +687,6 @@ export interface FileRouteTypes {
     | '/packaging-products'
     | '/pod-design'
     | '/product-connections'
-    | '/products'
     | '/published-products'
     | '/quotes'
     | '/recommend-products'
@@ -761,7 +749,6 @@ export interface FileRouteTypes {
     | '/_authenticated/packaging-products/'
     | '/_authenticated/pod-design/'
     | '/_authenticated/product-connections/'
-    | '/_authenticated/products/'
     | '/_authenticated/published-products/'
     | '/_authenticated/quotes/'
     | '/_authenticated/recommend-products/'
@@ -1035,13 +1022,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPublishedProductsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/products/': {
-      id: '/_authenticated/products/'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof AuthenticatedProductsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/product-connections/': {
       id: '/_authenticated/product-connections/'
       path: '/product-connections'
@@ -1292,7 +1272,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPackagingProductsIndexRoute: typeof AuthenticatedPackagingProductsIndexRoute
   AuthenticatedPodDesignIndexRoute: typeof AuthenticatedPodDesignIndexRoute
   AuthenticatedProductConnectionsIndexRoute: typeof AuthenticatedProductConnectionsIndexRoute
-  AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
   AuthenticatedPublishedProductsIndexRoute: typeof AuthenticatedPublishedProductsIndexRoute
   AuthenticatedQuotesIndexRoute: typeof AuthenticatedQuotesIndexRoute
   AuthenticatedRecommendProductsIndexRoute: typeof AuthenticatedRecommendProductsIndexRoute
@@ -1337,7 +1316,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPodDesignIndexRoute: AuthenticatedPodDesignIndexRoute,
   AuthenticatedProductConnectionsIndexRoute:
     AuthenticatedProductConnectionsIndexRoute,
-  AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
   AuthenticatedPublishedProductsIndexRoute:
     AuthenticatedPublishedProductsIndexRoute,
   AuthenticatedQuotesIndexRoute: AuthenticatedQuotesIndexRoute,

@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Heart, ShoppingCart, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DataGridTable } from '@/components/data-table'
-import { locations, priceRanges, suppliers } from '../data/data'
+import { locations, priceRanges } from '../data/data'
 import { type Product } from '../data/schema'
 import { productsColumns as columns } from './products-columns'
 
@@ -103,11 +103,6 @@ export function ProductsGridTable({
           columnId: 'shippingLocation',
           title: 'Ship from anywhere',
           options: locations,
-        },
-        {
-          columnId: 'supplier',
-          title: 'All suppliers',
-          options: suppliers,
         },
       ]
     }

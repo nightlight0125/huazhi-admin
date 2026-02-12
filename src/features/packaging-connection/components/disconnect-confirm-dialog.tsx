@@ -14,12 +14,16 @@ interface DisconnectConfirmDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
+  title?: string
+  description?: string
 }
 
 export function DisconnectConfirmDialog({
   open,
   onOpenChange,
   onConfirm,
+  title = 'Disconnect',
+  description = 'Are you sure you want to disconnect?',
 }: DisconnectConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -27,11 +31,9 @@ export function DisconnectConfirmDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className='flex items-center gap-2'>
             <AlertTriangle className='h-5 w-5 text-orange-500' />
-            Disconnect
+            {title}
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to disconnect?
-          </AlertDialogDescription>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

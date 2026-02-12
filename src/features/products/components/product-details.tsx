@@ -1,31 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnFiltersState,
-  type RowSelectionState,
-  type SortingState,
-} from '@tanstack/react-table'
-import {
-  ArrowLeft,
-  ChevronDown,
-  Copy,
-  Heart,
-  Palette,
-  ShoppingCart,
-  Store,
-  Tag,
-  Truck,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import countries from 'world-countries'
-import { useAuthStore } from '@/stores/auth-store'
-import type { ShopInfo } from '@/stores/shop-store'
-import { getUserShop } from '@/lib/api/shop'
-import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -64,20 +38,157 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { type BrandItem } from '@/features/brands/data/schema'
-import { likedProductsData } from '@/features/liked-products/data/data'
 import { packagingProducts } from '@/features/packaging-products/data/data'
-import { type PackagingProduct } from '@/features/packaging-products/data/schema'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
 import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
-import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
 import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
-import { products } from '../data/data'
+import {
+  calcuFreight,
+  getStatesList,
+  queryCountry,
+  type CountryItem,
+  type FreightOption,
+  type StateItem,
+} from '@/lib/api/logistics'
+import {
+  collectProduct,
+  getProduct,
+  selectSpecGetSku,
+  type ApiProductItem,
+  type SelectSpecGetSkuResponseItem,
+} from '@/lib/api/products'
+import { getUserShop } from '@/lib/api/shop'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
+import type { ShopInfo } from '@/stores/shop-store'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import {
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnFiltersState,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/react-table'
+import {
+  ArrowLeft,
+  ChevronDown,
+  Copy,
+  Heart,
+  Loader2,
+  Palette,
+  ShoppingCart,
+  Store,
+  Tag,
+  Truck,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import countries from 'world-countries'
 import { type Product } from '../data/schema'
+import {
+  ConfirmOrderView,
+  type ConfirmOrderPayload,
+} from './confirm-order-view'
 import { ProductPurchaseDialog } from './product-purchase-dialog'
-import { ConfirmOrderView, type ConfirmOrderPayload } from './confirm-order-view'
+
+type CountryOption = {
+  value: string
+  label: string
+  flagClass: string
+  id?: string // 国家ID
+}
+
+
+// 将国家/地区数据转换为 CountryOption 格式
+function mapCountriesToCountryOptions(countriesData: CountryItem[]): CountryOption[] {
+  return countriesData.map((country) => {
+    // 优先使用 twocountrycode，如果没有则使用 hzkj_code
+    const countryCode = country.twocountrycode || country.hzkj_code
+    
+    // 在 world-countries 库中查找对应的国家信息
+    const countryInfo = countryCode
+      ? countries.find(
+          (c) => c.cca2.toUpperCase() === countryCode.toUpperCase()
+        )
+      : null
+
+    // 生成国旗图标类名
+    const code = countryInfo?.cca2.toLowerCase() || countryCode?.toLowerCase() || ''
+    const flagClass = code ? `fi fi-${code}` : ''
+
+    return {
+      value: countryCode || country.hzkj_code || country.id || '',
+      label: country.hzkj_name || country.name || '',
+      flagClass,
+      id: country.id,
+    }
+  })
+}
+
+// 处理选择国家并计算运费
+async function handleCountrySelectAndCalculateFreight(
+  productId: string,
+  country: { value: string; id?: string },
+  statesData: StateItem[],
+  setShippingMethodOptions: (
+    options: Array<{
+      id: string
+      title: string
+      cost: string
+      deliveryTime: string
+    }>
+  ) => void,
+  setSelectedDestinationId: (id: string) => void,
+  setIsLoadingFreight: (loading: boolean) => void
+) {
+  if (!productId || !country.value) {
+    return
+  }
+
+  setIsLoadingFreight(true)
+  try {
+    // 获取国家ID
+    const countryId =
+      country.id ||
+      statesData.find(
+        (s) => s.hzkj_code?.toUpperCase() === country.value.toUpperCase()
+      )?.id
+    if (!countryId) {
+      toast.error('Failed to get country ID. Please try again.')
+      return
+    }
+
+    const freightOptions = await calcuFreight({
+      spuId: productId,
+      destinationId: countryId,
+    })
+
+    const formattedOptions = freightOptions.map((option: FreightOption) => ({
+      id: option.logsId || String(Math.random()),
+      title: option.logsNumber || '',
+      cost: `$${option.freight?.toFixed(2) || '0.00'}`,
+      deliveryTime: option.time || '',
+    }))
+
+    setShippingMethodOptions(formattedOptions)
+    setSelectedDestinationId(countryId)
+  } catch (error) {
+    console.error('Failed to calculate freight:', error)
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : 'Failed to calculate freight. Please try again.'
+    )
+    // 发生错误时设置为空数组
+    setShippingMethodOptions([])
+  } finally {
+    setIsLoadingFreight(false)
+  }
+}
 
 export function ProductDetails() {
   const { productId } = useParams({
@@ -88,7 +199,6 @@ export function ProductDetails() {
   const from = search.from as string | undefined
   const isFromPackagingProducts =
     from?.startsWith('packaging-products') ?? false
-  const isFromLikedProducts = from === 'liked-products'
   const isFromWinningProducts = from === 'winning-products'
   const isFromAllProducts = from === 'all-products'
   const shouldShowCollectionButton = isFromWinningProducts || isFromAllProducts
@@ -104,45 +214,155 @@ export function ProductDetails() {
     isFromPackagingProducts && packagingTab === 'my-packaging'
   )
 
-  // 查找产品数据 - 先查找普通产品，再查找包装产品
-  let regularProduct = products.find((p) => p.id === productId)
-  const packagingProduct = packagingProducts.find((p) => p.id === productId)
+  // 状态声明
+  const [apiProduct, setApiProduct] = useState<ApiProductItem | null>(null)
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false)
+  const [richTextContent, setRichTextContent] = useState<string>('')
 
-  // 如果从 liked-products 跳转过来，尝试通过 SPU 匹配产品
-  if (isFromLikedProducts && !regularProduct) {
-    const likedProduct = likedProductsData.find((p) => p.id === productId)
-    if (likedProduct) {
-      // 通过 SPU 匹配 products 中的产品
-      regularProduct = products.find((p) => p.sku === likedProduct.spu)
+  // 从 API 获取产品详情
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!productId) return
+
+      setIsLoadingProduct(true)
+      try {
+        const productData = await getProduct(productId)
+        setApiProduct(productData)
+        // 提取富文本内容
+        if (productData) {
+          const richtext = (productData as Record<string, unknown>)
+            .hzkj_richtextfield
+          setRichTextContent(typeof richtext === 'string' ? richtext : '')
+        } else {
+          setRichTextContent('')
+        }
+      } catch (error) {
+        console.error('Failed to fetch product:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load product. Please try again.'
+        )
+        setApiProduct(null)
+        setRichTextContent('')
+      } finally {
+        setIsLoadingProduct(false)
+      }
     }
+
+    void fetchProduct()
+  }, [productId])
+
+  // 辅助函数：从可能的多语言对象中提取名称
+  const extractName = (name: unknown): string => {
+    if (typeof name === 'string') {
+      return name
+    }
+    if (name && typeof name === 'object') {
+      // 如果是对象，尝试获取 zh_CN 或 GLang 或第一个字符串值
+      const nameObj = name as Record<string, unknown>
+      return (
+        (nameObj.zh_CN as string) ||
+        (nameObj.GLang as string) ||
+        (nameObj.en as string) ||
+        (Object.values(nameObj).find((v) => typeof v === 'string') as string) ||
+        ''
+      )
+    }
+    return ''
   }
+
+  // 将 API 返回的产品数据转换为组件需要的格式（不使用本地数据）
+  const convertApiProductToProduct = (
+    apiProduct: ApiProductItem | null
+  ): Product | null => {
+    if (!apiProduct) return null
+
+    // 提取名称（处理可能是对象的情况）
+    const productName = extractName(apiProduct.hzkj_enname)
+    // 处理图片 URL（确保不是空字符串）
+    const productImage =
+      apiProduct.picture && apiProduct.picture.trim() !== ''
+        ? apiProduct.picture
+        : 'https://via.placeholder.com/400?text=No+Image'
+
+    // 直接使用 API 返回的数据创建产品对象
+    const picUrl = apiProduct.hzkj_picurl_tag
+    const purPrice = apiProduct.hzkj_pur_price
+
+    return {
+      id: apiProduct.id,
+      name: productName,
+      image:
+        (typeof picUrl === 'string' ? picUrl : productImage) ||
+        'https://via.placeholder.com/400?text=No+Image',
+      shippingLocation: 'china', // 默认值
+      price: (typeof purPrice === 'number' ? purPrice : apiProduct.price) ?? 0, // 如果 price 不存在，默认为 0
+      sku: apiProduct.number || apiProduct.id,
+      category: 'electronics', // 默认值
+      sales: 0,
+      isPublic: true,
+      isRecommended: false,
+      isFavorite: false,
+      isMyStore: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...(apiProduct.hzkj_sku_spec_e && {
+        hzkj_sku_spec_e: apiProduct.hzkj_sku_spec_e,
+      }),
+    } as Product & { hzkj_sku_spec_e?: unknown }
+  }
+
+  const apiProductConverted = convertApiProductToProduct(apiProduct)
+  let regularProduct = apiProductConverted
+  const packagingProduct = packagingProducts.find((p) => p.id === productId)
 
   const product = regularProduct || packagingProduct
 
-  // 类型辅助：获取产品的共同属性
-  const productData = product as Product | PackagingProduct
+  const productData = product
+    ? {
+        ...product,
+        name:
+          typeof product.name === 'string'
+            ? product.name
+            : extractName(product.name),
+        image:
+          product.image && product.image.trim() !== ''
+            ? product.image
+            : 'https://via.placeholder.com/400?text=No+Image',
+      }
+    : null
 
-  type CountryOption = {
-    value: string
-    label: string
-    flagClass: string
-  }
+  const [countryOptions, setCountryOptions] = useState<CountryOption[]>([])
+  const [statesData, setStatesData] = useState<StateItem[]>([])
 
-  const countryOptions: CountryOption[] = countries.map((country) => {
-    const code = country.cca2.toLowerCase()
-    const flagClass = `fi fi-${code}`
-
-    return {
-      value: country.cca2,
-      label: country.name.common,
-      flagClass,
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        const countriesData = await queryCountry(1, 1000)
+        const countryOptionsData = mapCountriesToCountryOptions(countriesData)
+        setCountryOptions(countryOptionsData)
+        const states = await getStatesList(1, 1000)
+        console.log('states:', states)
+        setStatesData(states)
+      } catch (error) {
+        setCountryOptions([])
+      }
     }
-  })
+
+    void loadCountries()
+  }, [])
 
   const [selectedQuantity, setSelectedQuantity] = useState(1)
-  const [selectedTo, setSelectedTo] = useState('US')
-  const [selectedColor, setSelectedColor] = useState('')
-  const [selectedSize, setSelectedSize] = useState('')
+  const [selectedTo, setSelectedTo] = useState<string>('')
+  const [selectedSpecs, setSelectedSpecs] = useState<
+    Record<string, string>
+  >({})
+  const [selectedSku, setSelectedSku] = useState<string>('')
+  const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null)
+  const [selectedSkuPrice, setSelectedSkuPrice] = useState<number | null>(null)
+  const [selectedSkuEnname, setSelectedSkuEnname] = useState<unknown>(null)
+  const [isLoadingSkuBySpecs, setIsLoadingSkuBySpecs] = useState(false)
   const [selectedThumbnail, setSelectedThumbnail] = useState(0)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const [selectedStore, setSelectedStore] = useState('')
@@ -151,6 +371,8 @@ export function ProductDetails() {
   >([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const { auth } = useAuthStore()
+  const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false)
+  const [isCollecting, setIsCollecting] = useState(false)
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
     useState(false)
   const [selectedSellingPlatform, setSelectedSellingPlatform] =
@@ -165,44 +387,24 @@ export function ProductDetails() {
   ]
   const [isShipToSelectOpen, setIsShipToSelectOpen] = useState(false)
   const [selectedShippingMethod, setSelectedShippingMethod] =
-    useState('tdpacket-sensitive')
+    useState<string>('')
   const [isShippingMethodOpen, setIsShippingMethodOpen] = useState(false)
   const [isShippingOptionsDialogOpen, setIsShippingOptionsDialogOpen] =
     useState(false)
+  const [selectedDestinationId, setSelectedDestinationId] = useState<
+    string | null
+  >(null)
+  const [isLoadingFreight, setIsLoadingFreight] = useState(false)
 
-  // 物流方式选项数据
-  const shippingMethodOptions = [
-    {
-      id: 'tdpacket-sensitive',
-      title: 'TDPacket Sensitive',
-      cost: '$30.12',
-      deliveryTime: '12-18 Day(s)',
-    },
-    {
-      id: 'tdpacket-electro',
-      title: 'TDPacket Electro',
-      cost: '$31.12',
-      deliveryTime: '8-15 Day(s)',
-    },
-    {
-      id: 'yun-electro-econo',
-      title: 'YUN-Electro-Econo',
-      cost: '$38.27',
-      deliveryTime: '8-15 Day(s)',
-    },
-    {
-      id: 'tdpacket-pure-battery',
-      title: 'TDPacket Pure battery',
-      cost: '$40.05',
-      deliveryTime: '15-20 Day(s)',
-    },
-    {
-      id: 'yun-fast-electro',
-      title: 'YUN-Fast-Electro',
-      cost: '$46.01',
-      deliveryTime: '5-8 Day(s)',
-    },
-  ]
+  // 物流方式选项数据（从API获取，初始为空数组）
+  const [shippingMethodOptions, setShippingMethodOptions] = useState<
+    Array<{
+      id: string
+      title: string
+      cost: string
+      deliveryTime: string
+    }>
+  >([])
 
   const selectedShippingMethodData = shippingMethodOptions.find(
     (method) => method.id === selectedShippingMethod
@@ -218,14 +420,13 @@ export function ProductDetails() {
     useState<ConfirmOrderPayload | null>(null)
 
   const selectedCountry = countryOptions.find((c) => c.value === selectedTo)
+
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
   const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false)
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
     string[]
   >([])
-  const [storeListingTagsPopoverOpen, setStoreListingTagsPopoverOpen] =
-    useState(false)
   const [storeListingRowSelection, setStoreListingRowSelection] =
     useState<RowSelectionState>({})
   const [storeListingSorting, setStoreListingSorting] = useState<SortingState>(
@@ -234,31 +435,149 @@ export function ProductDetails() {
   const [storeListingColumnFilters, setStoreListingColumnFilters] =
     useState<ColumnFiltersState>([])
 
-  // 颜色选项
-  const colorOptions = ['White', 'Pink', 'Purple', 'Dark Green', 'Black']
-  // 尺寸选项
-  const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL']
-
   // 复制SPU功能
   const handleCopySPU = () => {
     if (productData) {
       navigator.clipboard.writeText(productData.sku)
-      // 可以添加toast提示
     }
   }
 
-  // 处理 Buy Sample 按钮点击：打开 Add to Cart 弹框（模式为 sample）
+  // 检查是否所有规格都已选择
+  const areAllSpecsSelected = () => {
+    if (!apiProduct) return true 
+
+    const skuSpecs = Array.isArray(
+      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
+    )
+      ? ((apiProduct as Record<string, unknown>)
+          .hzkj_sku_spec_e as Array<{
+          hzkj_sku_spec_id?: string
+          [key: string]: unknown
+        }>)
+      : []
+
+    // 如果没有规格，认为已选择
+    if (skuSpecs.length === 0) return true
+
+    // 检查是否所有规格都已选择
+    return skuSpecs.every(
+      (spec) =>
+        spec.hzkj_sku_spec_id &&
+        selectedSpecs[spec.hzkj_sku_spec_id] !== undefined &&
+        selectedSpecs[spec.hzkj_sku_spec_id] !== ''
+    )
+  }
+
+  // 当规格选择变化时，调用 API 获取 SKU
+  useEffect(() => {
+    const fetchSkuBySpecs = async () => {
+      if (!apiProduct || !productId) {
+        setSelectedSku('')
+        return
+      }
+
+      // 收集所有已选中的规格值 ID（不限制数量，支持任意数量的属性）
+      const specIds = Object.values(selectedSpecs).filter(
+        (id): id is string => typeof id === 'string' && id !== ''
+      )
+
+        if (specIds.length === 0) {
+          setSelectedSku('')
+          setSelectedSkuPrice(null)
+          setSelectedSkuEnname(null)
+          return
+        }
+
+        setIsLoadingSkuBySpecs(true)
+        try {
+          const response = await selectSpecGetSku({
+            productId: String(productId),
+            specIds,
+          })
+          if (Array.isArray(response.data) && response.data.length > 0) {
+            const skuData = response.data[0]
+            const skuNumber = skuData?.number || ''
+            const skuPrice = typeof skuData?.price === 'number' ? skuData.price : null
+            const skuEnname = skuData?.enname || null
+            const skuId = skuData?.id ?? null
+            setSelectedSku(skuNumber)
+            setSelectedSkuPrice(skuPrice)
+            setSelectedSkuEnname(skuEnname)
+            setSelectedSkuId(skuId)
+          } else {
+            setSelectedSku('')
+            setSelectedSkuPrice(null)
+            setSelectedSkuEnname(null)
+            setSelectedSkuId(null)
+          }
+        } catch (error) {
+          setSelectedSku('')
+          setSelectedSkuPrice(null)
+          setSelectedSkuEnname(null)
+          setSelectedSkuId(null)
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Failed to load SKU. Please try again.'
+          )
+        } finally {
+          setIsLoadingSkuBySpecs(false)
+        }
+    }
+
+    void fetchSkuBySpecs()
+  }, [apiProduct, productId, selectedSpecs])
+
   const handleBuySampleButtonClick = () => {
+    if (!areAllSpecsSelected()) {
+      toast.error('Please select attribute values')
+      return
+    }
+
     setSelectedBuyType('sample')
     setPurchaseMode('sample')
     setIsPurchaseDialogOpen(true)
+    console.log('isPurchaseDialogOpen set to true')
   }
 
-  // 处理 Buy Stock 按钮点击：打开 Add to Cart 弹框（模式为 stock）
   const handleBuyStockButtonClick = () => {
+    console.log('handleBuyStockButtonClick called')
+
+    // 检查是否所有规格都已选择
+    if (!areAllSpecsSelected()) {
+      toast.error('Please select attribute values')
+      return
+    }
+
     setSelectedBuyType('stock')
     setPurchaseMode('stock')
     setIsPurchaseDialogOpen(true)
+    console.log('isPurchaseDialogOpen set to true')
+  }
+
+  // 处理收藏产品
+  const handleCollect = async () => {
+    if (!productId) {
+      toast.error('Product ID is missing')
+      return
+    }
+
+    const customerId = auth.user?.customerId
+    setIsCollecting(true)
+    try {
+      await collectProduct(String(productId), String(customerId))
+      toast.success('Product collected successfully')
+      setIsCollectDialogOpen(false)
+    } catch (error) {
+      console.error('Failed to collect product:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to collect product. Please try again.'
+      )
+    } finally {
+      setIsCollecting(false)
+    }
   }
 
   // 处理确认订单回调
@@ -274,20 +593,6 @@ export function ProductDetails() {
     setConfirmOrderPayload(null)
   }
 
-  if (!product) {
-    return (
-      <div className='flex h-96 items-center justify-center'>
-        <div className='text-center'>
-          <h2 className='mb-2 text-2xl font-bold'>产品未找到</h2>
-          <p className='text-muted-foreground mb-4'>请检查产品ID是否正确</p>
-          <Button onClick={() => navigate({ to: '/products' })}>
-            返回产品列表
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   // 当发布弹框打开时，获取店铺列表
   useEffect(() => {
     const fetchStores = async () => {
@@ -295,28 +600,20 @@ export function ProductDetails() {
 
       const userId = auth.user?.id
       if (!userId) {
-        toast.error('User not authenticated. Please login again.')
+        setIsLoadingStores(false)
+        setStores([])
         return
       }
 
       setIsLoadingStores(true)
       try {
         const response = await getUserShop(userId)
-        console.log('获取店铺 API 完整响应:', response)
-        console.log('response.data:', response.data)
-
-        // 根据实际 API 响应结构处理数据
         let shopsData: ShopInfo[] = []
         if (response.errorCode === '0' && response.data) {
-          // response.data 是 unknown 类型，需要类型断言
           const data = response.data as { data?: unknown }
-          console.log('response.data.data:', data.data)
-
-          // 如果 response.data.data 是数组，直接使用
           if (Array.isArray(data.data)) {
             shopsData = data.data as ShopInfo[]
           }
-          // 如果 response.data.data 是对象且有 list 属性
           else if (
             typeof data.data === 'object' &&
             data.data !== null &&
@@ -325,7 +622,6 @@ export function ProductDetails() {
             const list = (data.data as { list?: unknown[] }).list
             shopsData = Array.isArray(list) ? (list as ShopInfo[]) : []
           }
-          // 如果 response.data.data 是单个对象，包装成数组
           else if (typeof data.data === 'object' && data.data !== null) {
             shopsData = [data.data as ShopInfo]
           }
@@ -333,7 +629,6 @@ export function ProductDetails() {
 
         console.log('最终解析的店铺列表:', shopsData)
 
-        // 将店铺数据转换为下拉框需要的格式
         const storeOptions = shopsData
           .filter((shop) => shop.id) // 过滤掉没有 id 的店铺
           .map((shop) => ({
@@ -359,11 +654,230 @@ export function ProductDetails() {
     fetchStores()
   }, [isPublishDialogOpen, auth.user?.id])
 
-  const totalPrice = productData.price * selectedQuantity
+  // 获取规格信息用于生成列
+  const specInfo = useMemo(() => {
+    if (!apiProduct) return []
+    const skuSpecs = Array.isArray(
+      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
+    )
+      ? ((apiProduct as Record<string, unknown>)
+          .hzkj_sku_spec_e as Array<{
+          hzkj_sku_spec_id?: string
+          hzkj_sku_spec_enname?: string
+          hzkj_sku_spec_name?: string
+          hzkj_sku_spec_number?: string
+          [key: string]: unknown
+        }>)
+      : []
 
-  // 为 StoreListingTabs 准备 Variant Pricing 表格
-  const variantPricingColumns = useMemo(() => createVariantPricingColumns(), [])
-  const variantPricingData = useMemo(() => mockVariantPricingData, [])
+    return skuSpecs
+      .map((spec) => ({
+        specId: spec.hzkj_sku_spec_id || '',
+        specName: spec.hzkj_sku_spec_enname || spec.hzkj_sku_spec_name || '',
+        specNumber: spec.hzkj_sku_spec_number || '',
+      }))
+      .filter((spec) => spec.specId && spec.specName)
+  }, [apiProduct])
+
+  const variantPricingColumns = useMemo(
+    () => createVariantPricingColumns(specInfo),
+    [specInfo]
+  )
+
+  // 从产品数据生成 variant pricing 数据
+  const [variantPricingData, setVariantPricingData] = useState<VariantPricing[]>([])
+  const [isLoadingVariantPricing, setIsLoadingVariantPricing] = useState(false)
+
+  // 生成所有规格组合（笛卡尔积）
+  const generateAllSpecCombinations = (): Array<Record<string, string>> => {
+    if (!apiProduct || specInfo.length === 0) return []
+
+    const skuSpecs = Array.isArray(
+      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
+    )
+      ? ((apiProduct as Record<string, unknown>)
+          .hzkj_sku_spec_e as Array<{
+          hzkj_sku_spec_id?: string
+          hzkj_sku_spec_enname?: string
+          hzkj_sku_specvalue_e?: Array<{
+            hzkj_sku_specvalue_id?: string
+            hzkj_sku_specvalue_enname?: string
+            [key: string]: unknown
+          }>
+          [key: string]: unknown
+        }>)
+      : []
+
+    // 收集所有规格值
+    const specValuesList: Array<Array<{ specId: string; valueId: string; valueName: string }>> = []
+    skuSpecs.forEach((spec) => {
+      if (spec.hzkj_sku_spec_id && Array.isArray(spec.hzkj_sku_specvalue_e)) {
+        const values = spec.hzkj_sku_specvalue_e
+          .map((value) => ({
+            specId: spec.hzkj_sku_spec_id!,
+            valueId: value.hzkj_sku_specvalue_id || '',
+            valueName: value.hzkj_sku_specvalue_enname || '',
+          }))
+          .filter((v) => v.valueId)
+        if (values.length > 0) {
+          specValuesList.push(values)
+        }
+      }
+    })
+
+    // 生成笛卡尔积
+    const combinations: Array<Record<string, string>> = []
+    const generateCombinations = (
+      current: Record<string, string>,
+      index: number
+    ) => {
+      if (index === specValuesList.length) {
+        combinations.push({ ...current })
+        return
+      }
+
+      specValuesList[index].forEach((item) => {
+        generateCombinations(
+          {
+            ...current,
+            [item.specId]: item.valueId,
+            [`${item.specId}_name`]: item.valueName,
+          },
+          index + 1
+        )
+      })
+    }
+
+    generateCombinations({}, 0)
+    return combinations
+  }
+
+  useEffect(() => {
+    const fetchVariantPricingData = async () => {
+      if (!apiProduct || !productId) {
+        setVariantPricingData([])
+        return
+      }
+
+      setIsLoadingVariantPricing(true)
+      try {
+        // 获取产品图片
+        const productImage =
+          (apiProduct as Record<string, unknown>)?.picture ||
+          (apiProduct as Record<string, unknown>)?.hzkj_picurl_tag ||
+          ''
+
+        // 获取产品价格（作为默认值）
+        const productPrice: number =
+          typeof (apiProduct as Record<string, unknown>)?.hzkj_pur_price ===
+          'number'
+            ? ((apiProduct as Record<string, unknown>).hzkj_pur_price as number)
+            : typeof (apiProduct as Record<string, unknown>)?.price === 'number'
+              ? ((apiProduct as Record<string, unknown>).price as number)
+              : 0
+
+        // 生成所有规格组合
+        const specCombinations = generateAllSpecCombinations()
+
+        if (specCombinations.length === 0) {
+          setVariantPricingData([])
+          setIsLoadingVariantPricing(false)
+          return
+        }
+
+        // 为每个组合调用 selectSpecGetSku 获取 SKU
+        const variantDataPromises = specCombinations.map(async (combination) => {
+          // 提取规格值 ID
+          const specIds = Object.keys(combination)
+            .filter((key) => !key.endsWith('_name'))
+            .map((key) => combination[key])
+            .filter((id) => id)
+
+          if (specIds.length === 0) {
+            return null
+          }
+
+          try {
+            const response = await selectSpecGetSku({
+              productId: String(productId),
+              specIds,
+            })
+
+            if (
+              Array.isArray(response.data) &&
+              response.data.length > 0
+            ) {
+              const skuData = response.data[0] as SelectSpecGetSkuResponseItem
+              const skuNumber = skuData?.number || ''
+              // 处理价格，优先使用 price，其次使用 souprice，最后使用产品默认价格
+              let skuPrice: number = productPrice
+              const rawPrice = (skuData as any).price
+              const rawSouprice = (skuData as any).souprice
+              if (rawPrice !== undefined && typeof rawPrice === 'number') {
+                skuPrice = rawPrice
+              } else if (rawSouprice !== undefined && typeof rawSouprice === 'number') {
+                skuPrice = rawSouprice
+              }
+
+              // Shipping Fee 默认 0
+              const shippingCost = 0
+              const totalPrice: number = skuPrice + shippingCost
+
+              // 构建规格值映射
+              const specValues: Record<string, string> = {}
+              specInfo.forEach((spec) => {
+                const valueName = combination[`${spec.specId}_name`] || ''
+                specValues[`spec_${spec.specId}`] = valueName
+              })
+
+              // 使用产品图片
+              const skuImage =
+                typeof skuData?.pic === 'string' && skuData.pic.trim()
+                  ? skuData.pic
+                  : typeof productImage === 'string'
+                    ? productImage.split(';')[0] || productImage
+                    : ''
+
+              return {
+                id: skuData?.id || String(Math.random()),
+                skuId: skuData?.id,
+                sku: skuNumber,
+                image: skuImage,
+                cjPrice: skuPrice,
+                shippingFee: '$0.00',
+                totalDropshippingPrice: `$${totalPrice.toFixed(2)}`,
+                yourPrice: undefined,
+                ...specValues,
+              } as VariantPricing
+            }
+          } catch (error) {
+            console.error('Failed to get SKU for spec combination:', error)
+            return null
+          }
+
+          return null
+        })
+
+        const variantDataResults = await Promise.all(variantDataPromises)
+        const variantData = variantDataResults.filter(
+          (item): item is VariantPricing => item !== null
+        )
+
+        setVariantPricingData(variantData)
+      } catch (error) {
+        console.error('Failed to fetch variant pricing data:', error)
+        setVariantPricingData([])
+      } finally {
+        setIsLoadingVariantPricing(false)
+      }
+    }
+
+    void fetchVariantPricingData()
+  }, [
+    apiProduct,
+    productId,
+    specInfo,
+  ])
   const variantPricingTable = useReactTable<VariantPricing>({
     data: variantPricingData,
     columns: variantPricingColumns,
@@ -381,23 +895,24 @@ export function ProductDetails() {
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // 处理点击发布到店铺按钮：直接打开发布弹框（不再强制选择颜色和尺寸）
   const handlePublishToStoreClick = () => {
-    // setIsPublishDialogOpen(true)
     setIsStoreListingOpen(true)
   }
 
-  // 处理发布到店铺：关闭弹框并显示 StoreListingTabs 组件
   const handlePublishToStore = () => {
     if (!selectedStore) {
       alert('请选择一个店铺')
       return
     }
 
+    if (!productData) {
+      toast.error('Product data is not available')
+      return
+    }
+
     const store = stores.find((s) => s.value === selectedStore)
     console.log(`发布产品 ${productData.name} 到店铺: ${store?.name}`)
 
-    // 这里可以添加实际的发布逻辑
     setIsPublishDialogOpen(false)
     setIsStoreListingOpen(true)
   }
@@ -405,11 +920,9 @@ export function ProductDetails() {
   // 处理品牌定制
   const handleBrandConnect = (
     productId: string,
-    brandType: keyof import('@/features/product-connections/data/schema').BrandConnection,
+    _brandType: keyof import('@/features/product-connections/data/schema').BrandConnection,
     brandItem: BrandItem
   ) => {
-    console.log('连接品牌:', productId, brandType, brandItem)
-    // 这里可以添加实际的连接逻辑
     alert(`产品 ${productId} 已连接品牌项目: ${brandItem.name}`)
   }
 
@@ -417,14 +930,10 @@ export function ProductDetails() {
     productId: string,
     brandType: keyof import('@/features/product-connections/data/schema').BrandConnection
   ) => {
-    console.log('断开品牌连接:', productId, brandType)
-    // 这里可以添加实际的断开连接逻辑
     alert(`产品 ${productId} 已断开品牌连接: ${brandType}`)
   }
 
   const handleBrandView = (brandItem: BrandItem) => {
-    console.log('查看品牌项目:', brandItem)
-    // 这里可以添加查看品牌项目的逻辑
     alert(`查看品牌项目: ${brandItem.name}`)
   }
 
@@ -438,13 +947,60 @@ export function ProductDetails() {
     )
   }
 
+  // 早期返回必须在所有 Hooks 之后
+  if (isLoadingProduct) {
+    return (
+      <div className='flex h-96 items-center justify-center'>
+        <div className='text-center'>
+          <p className='text-muted-foreground'>Loading product...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!product) {
+    return (
+      <div className='flex h-96 items-center justify-center'>
+        <div className='text-center'>
+          <h2 className='mb-2 text-2xl font-bold'>product not found</h2>
+          <p className='text-muted-foreground mb-4'>
+            Please check the product ID is correct
+          </p>
+          <Button onClick={() => navigate({ to: '/all-products' })}>
+            Back to product list
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // 确保 productData 存在且名称是字符串
+  if (!productData) {
+    return (
+      <div className='flex h-96 items-center justify-center'>
+        <div className='text-center'>
+          <h2 className='mb-2 text-2xl font-bold'>
+            product data not available
+          </h2>
+          <p className='text-muted-foreground mb-4'>Please try again later</p>
+          <Button onClick={() => navigate({ to: '/all-products' })}>
+            Back to product list
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const totalPrice = (selectedSkuPrice ?? productData?.price ?? 0) * selectedQuantity
+
+
   return (
     <div className='container mx-auto px-4 py-6'>
       {/* 返回按钮 */}
       <div className='mb-6'>
         <Button
           variant='ghost'
-          onClick={() => navigate({ to: '/products' })}
+          onClick={() => navigate({ to: '/all-products' })}
           className='flex items-center gap-2'
         >
           <ArrowLeft className='h-4 w-4' />
@@ -453,20 +1009,23 @@ export function ProductDetails() {
       </div>
 
       <div className='grid grid-cols-1 gap-8 lg:grid-cols-4'>
-        {/* 左侧：产品图片和详情 */}
         <div className='lg:col-span-3'>
           <div>
             <CardContent className='p-0'>
               <div className='grid h-full grid-cols-1 md:grid-cols-2'>
-                {/* 左侧：产品图片 */}
                 <div className='flex flex-col'>
-                  {/* 主图片 */}
                   <div className='aspect-square overflow-hidden rounded-t-lg md:rounded-t-none md:rounded-l-lg'>
-                    <img
-                      src={productData.image}
-                      alt={productData.name}
-                      className='h-full w-full object-cover'
-                    />
+                    {productData.image ? (
+                      <img
+                        src={productData.image}
+                        alt={productData.name || 'Product'}
+                        className='h-full w-full object-cover'
+                      />
+                    ) : (
+                      <div className='flex h-full w-full items-center justify-center bg-gray-100 text-gray-400'>
+                        No Image
+                      </div>
+                    )}
                   </div>
 
                   {/* 缩略图轮播 */}
@@ -486,11 +1045,17 @@ export function ProductDetails() {
                           }`}
                           onClick={() => setSelectedThumbnail(index)}
                         >
-                          <img
-                            src={img}
-                            alt={`${productData.name} ${index + 1}`}
-                            className='h-full w-full object-cover'
-                          />
+                          {img && img.trim() !== '' ? (
+                            <img
+                              src={img}
+                              alt={`${productData.name || 'Product'} ${index + 1}`}
+                              className='h-full w-full object-cover'
+                            />
+                          ) : (
+                            <div className='flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-400'>
+                              No Image
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -500,7 +1065,6 @@ export function ProductDetails() {
                 {/* 右侧：产品详情 */}
                 <div className='border-l p-6'>
                   <div className='space-y-6'>
-                    {/* 产品标题和SPU */}
                     <div>
                       <h2 className='mb-3 text-2xl font-bold'>
                         {productData.name}
@@ -509,6 +1073,8 @@ export function ProductDetails() {
                         <span className='text-muted-foreground'>
                           SPU: {productData.sku}
                         </span>
+                        
+
                         <button
                           onClick={handleCopySPU}
                           className='text-muted-foreground hover:text-foreground transition-colors'
@@ -517,59 +1083,87 @@ export function ProductDetails() {
                           <Copy className='h-4 w-4' />
                         </button>
                       </div>
+                      <div>
+                        {isLoadingSkuBySpecs ? (
+                          <div className='text-sm text-muted-foreground'>
+                            Loading SKU...
+                          </div>
+                        ) : selectedSku ? (
+                          <div className='text-sm text-muted-foreground'>
+                            select SKU: {selectedSku}
+                          </div>
+                        ) : apiProduct &&
+                          Array.isArray(
+                            (apiProduct as Record<string, unknown>)
+                              ?.hzkj_sku_spec_e
+                          ) &&
+                          Object.values(selectedSpecs).length > 0 ? (
+                          <div className='text-sm text-muted-foreground'>
+                            Please select all attributes
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
 
                     {/* 价格和MOQ */}
                     <div className='flex items-center gap-4'>
-                      <div className='text-3xl font-bold text-orange-500'>
-                        ${productData.price.toFixed(2)}
-                      </div>
-                      <div className='rounded border border-gray-300 bg-gray-50 px-3 py-1 text-sm'>
-                        MOQ: 1
-                      </div>
+                    <div className='text-3xl font-bold text-orange-500 dark:text-orange-300'>
+                        ${(selectedSkuPrice ?? productData?.price ?? 0).toFixed(2)}
+                    </div>
+                    <div className='rounded border border-gray-300 bg-gray-50 px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'>
+                      MOQ: 1
+                    </div>
                     </div>
 
-                    {/* 颜色选项 */}
-                    <div>
-                      <Label className='mb-2 block text-sm font-medium'>
-                        Color
-                      </Label>
-                      <div className='flex flex-wrap gap-2'>
-                        {colorOptions.map((color) => (
-                          <Button
-                            key={color}
-                            variant={
-                              selectedColor === color ? 'default' : 'outline'
-                            }
-                            size='sm'
-                            onClick={() => setSelectedColor(color)}
-                          >
-                            {color}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 尺寸选项 */}
-                    <div>
-                      <Label className='mb-2 block text-sm font-medium'>
-                        Size
-                      </Label>
-                      <div className='flex flex-wrap gap-2'>
-                        {sizeOptions.map((size) => (
-                          <Button
-                            key={size}
-                            variant={
-                              selectedSize === size ? 'default' : 'outline'
-                            }
-                            size='sm'
-                            onClick={() => setSelectedSize(size)}
-                          >
-                            {size}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
+                    {apiProduct &&
+                      Array.isArray(
+                        (apiProduct as Record<string, unknown>)
+                          ?.hzkj_sku_spec_e
+                      ) &&
+                      (
+                        (apiProduct as Record<string, unknown>)
+                          .hzkj_sku_spec_e as Array<{
+                          hzkj_sku_spec_id?: string
+                          hzkj_sku_spec_enname?: string
+                          hzkj_sku_specvalue_e?: Array<{
+                            hzkj_sku_specvalue_id?: string
+                            hzkj_sku_specvalue_enname?: string
+                            [key: string]: unknown
+                          }>
+                          [key: string]: unknown
+                        }>
+                      ).map((spec) => (
+                        <div key={spec.hzkj_sku_spec_id || ''}>
+                          <Label className='mb-2 block text-sm font-medium'>
+                            {spec.hzkj_sku_spec_enname || ''}
+                          </Label>
+                          <div className='flex flex-wrap gap-2'>
+                            {Array.isArray(spec.hzkj_sku_specvalue_e) &&
+                              spec.hzkj_sku_specvalue_e.map((value) => (
+                                <Button
+                                  key={value.hzkj_sku_specvalue_id || ''}
+                                  variant={
+                                    selectedSpecs[
+                                      spec.hzkj_sku_spec_id || ''
+                                    ] === value.hzkj_sku_specvalue_id
+                                      ? 'default'
+                                      : 'outline'
+                                  }
+                                  size='sm'
+                                  onClick={() =>
+                                    setSelectedSpecs((prev) => ({
+                                      ...prev,
+                                      [spec.hzkj_sku_spec_id || '']:
+                                        value.hzkj_sku_specvalue_id || '',
+                                    }))
+                                  }
+                                >
+                                  {value.hzkj_sku_specvalue_enname || ''}
+                                </Button>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
 
                     {/* 数量选择器 */}
                     <div>
@@ -612,11 +1206,46 @@ export function ProductDetails() {
                             +
                           </Button>
                         </div>
-                        <span className='text-sm text-gray-600'>158g</span>
+                        {(() => {
+                          const weight = apiProduct
+                            ? (apiProduct as Record<string, unknown>)
+                                .hzkj_pack_weight
+                            : null
+
+                          if (!weight) {
+                            return (
+                              <span className='text-sm text-gray-600'>
+                                158g
+                              </span>
+                            )
+                          }
+
+                          const singleWeight =
+                            typeof weight === 'number'
+                              ? weight
+                              : parseFloat(
+                                  String(weight).replace(/[^0-9.]/g, '')
+                                ) || 0
+
+                          if (!singleWeight) {
+                            return (
+                              <span className='text-sm text-gray-600'>
+                                158g
+                              </span>
+                            )
+                          }
+
+                          const totalWeight = singleWeight * selectedQuantity
+
+                          return (
+                            <span className='text-sm text-gray-600'>
+                              {totalWeight}g
+                            </span>
+                          )
+                        })()}
                       </div>
                     </div>
 
-                    {/* 销售平台、发货地和物流方式 - 仅在非 Packaging Products 场景下展示 */}
                     {!isFromPackagingProducts && (
                       <>
                         <div className='flex items-start gap-1.5 border-y py-3'>
@@ -704,7 +1333,14 @@ export function ProductDetails() {
                                     </span>
                                     <ChevronDown className='h-2.5 w-2.5 shrink-0' />
                                   </div>
-                                  {selectedCountry ? (
+                                  {isLoadingFreight ? (
+                                    <div className='flex items-center gap-1.5'>
+                                      <Loader2 className='h-3 w-3 animate-spin text-gray-500' />
+                                      <span className='text-xs font-bold text-gray-500'>
+                                        Loading...
+                                      </span>
+                                    </div>
+                                  ) : selectedCountry ? (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <div className='flex max-w-[100px] min-w-0 items-center gap-1.5'>
@@ -745,9 +1381,21 @@ export function ProductDetails() {
                                       <CommandItem
                                         key={country.value}
                                         value={country.label}
-                                        onSelect={() => {
+                                        onSelect={async () => {
                                           setSelectedTo(country.value)
                                           setIsShipToSelectOpen(false)
+
+                                          // 调用运费计算API
+                                          if (productId) {
+                                            await handleCountrySelectAndCalculateFreight(
+                                              productId,
+                                              country,
+                                              statesData,
+                                              setShippingMethodOptions,
+                                              setSelectedDestinationId,
+                                              setIsLoadingFreight
+                                            )
+                                          }
                                         }}
                                       >
                                         <div className='flex items-center gap-2'>
@@ -771,14 +1419,32 @@ export function ProductDetails() {
                           <div className='h-8 w-px shrink-0 bg-gray-200' />
 
                           <Popover
-                            open={isShippingMethodOpen}
-                            onOpenChange={setIsShippingMethodOpen}
+                            open={
+                              isShippingMethodOpen &&
+                              !!(selectedDestinationId && selectedTo)
+                            }
+                            onOpenChange={(open) => {
+                              // 只有在选择了国家的情况下才允许打开
+                              if (
+                                open &&
+                                (!selectedDestinationId || !selectedTo)
+                              ) {
+                                toast.error('Please select a country first')
+                                return
+                              }
+                              setIsShippingMethodOpen(open)
+                            }}
                           >
                             <PopoverTrigger asChild>
                               <div
                                 className='flex flex-1 cursor-pointer items-center gap-1.5'
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  // 检查是否选择了国家
+                                  if (!selectedDestinationId || !selectedTo) {
+                                    toast.error('Please select a country first')
+                                    return
+                                  }
                                   setIsShippingMethodOpen(true)
                                 }}
                               >
@@ -820,7 +1486,8 @@ export function ProductDetails() {
                                   }}
                                 >
                                   {/* 表头 */}
-                                  <div className='mb-2 grid grid-cols-[1fr_auto_auto] gap-4 border-b pb-2 text-sm font-medium text-gray-700'>
+                                  <div className='mb-2 grid grid-cols-[24px_1fr_120px_100px] gap-4 border-b pb-2 text-sm font-medium text-gray-700'>
+                                    <div />
                                     <div>Shipping Method</div>
                                     <div className='text-center'>
                                       Total Shipping Cost
@@ -829,18 +1496,24 @@ export function ProductDetails() {
                                       Delivery Time
                                     </div>
                                   </div>
-                                  {/* 选项列表 */}
-                                  <div className='space-y-0'>
-                                    {shippingMethodOptions.map((method) => (
-                                      <label
-                                        key={method.id}
-                                        className='flex cursor-pointer items-center gap-4 border-b py-3 last:border-b-0 hover:bg-gray-50'
-                                      >
-                                        <RadioGroupItem
-                                          value={method.id}
-                                          className='ml-1'
-                                        />
-                                        <div className='grid flex-1 grid-cols-[1fr_auto_auto] gap-4 text-sm'>
+                                  {isLoadingFreight ? (
+                                    <div className='flex items-center justify-center py-8'>
+                                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                      <span className='text-sm text-gray-500'>
+                                        Loading shipping methods...
+                                      </span>
+                                    </div>
+                                  ) : shippingMethodOptions.length > 0 ? (
+                                    <div className='space-y-0'>
+                                      {shippingMethodOptions.map((method) => (
+                                        <label
+                                          key={method.id}
+                                          className='grid cursor-pointer grid-cols-[24px_1fr_120px_100px] items-center gap-4 border-b py-3 text-sm last:border-b-0 hover:bg-gray-50'
+                                        >
+                                          <RadioGroupItem
+                                            value={method.id}
+                                            className='ml-1'
+                                          />
                                           <div className='font-medium'>
                                             {method.title}
                                           </div>
@@ -850,10 +1523,14 @@ export function ProductDetails() {
                                           <div className='text-right'>
                                             {method.deliveryTime}
                                           </div>
-                                        </div>
-                                      </label>
-                                    ))}
-                                  </div>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className='py-8 text-center'>
+                                      No shipping methods available
+                                    </div>
+                                  )}
                                 </RadioGroup>
                               </div>
                             </PopoverContent>
@@ -871,13 +1548,18 @@ export function ProductDetails() {
                             <span className='text-muted-foreground'>
                               Estimated Shipping Time:{' '}
                             </span>
-                            <span>8-15 days</span>
+                            <span>
+                              {selectedShippingMethodData?.deliveryTime ||
+                                '---'}
+                            </span>
                           </div>
                           <div className='text-sm'>
                             <span className='text-muted-foreground'>
                               Shipping Fee:{' '}
                             </span>
-                            <span className='font-semibold'>$6.99</span>
+                            <span className='font-semibold'>
+                              {selectedShippingMethodData?.cost || '---'}
+                            </span>
                           </div>
                         </div>
                       </>
@@ -901,7 +1583,9 @@ export function ProductDetails() {
                 {/* 变体信息 */}
                 <div className='flex items-center justify-between text-sm'>
                   <span className='text-muted-foreground'>Variation Name</span>
-                  <span>{selectedColor || 'Black30*40cm'}</span>
+                  <span>
+                    {selectedSkuEnname ? extractName(selectedSkuEnname) || '--' : '--'}
+                  </span>
                 </div>
 
                 {/* 价格信息 */}
@@ -909,14 +1593,16 @@ export function ProductDetails() {
                   <div className='flex items-center justify-between'>
                     <span className='text-muted-foreground'>Product Price</span>
                     <span className='font-medium'>
-                      ${productData.price.toFixed(2)}
+                      ${(selectedSkuPrice ?? productData?.price ?? 0).toFixed(2)}
                     </span>
                   </div>
                   <div className='flex items-center justify-between'>
                     <span className='text-muted-foreground'>
                       Shipping Price
                     </span>
-                    <span className='font-medium'>$0</span>
+                    <span className='font-medium'>
+                      {selectedShippingMethodData?.cost || '---'}
+                    </span>
                   </div>
                   <Separator />
                   <div className='flex items-center justify-between text-lg font-bold'>
@@ -937,7 +1623,6 @@ export function ProductDetails() {
                         size='lg'
                         onClick={handlePublishToStoreClick}
                       >
-                        {/* 添加这个div来统一布局 */}
                         <div className='flex w-full items-center justify-start'>
                           <Store className='mr-2 h-4 w-4' />
                           <span>Publish To Store</span>
@@ -1025,7 +1710,12 @@ export function ProductDetails() {
                         selectedBuyType === 'sample' && 'bg-muted'
                       )}
                       size='lg'
-                      onClick={handleBuySampleButtonClick}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        console.log('Buy Sample button clicked')
+                        handleBuySampleButtonClick()
+                      }}
                     >
                       <div className='flex w-full items-center justify-start'>
                         <ShoppingCart className='mr-2 h-4 w-4' />
@@ -1041,7 +1731,12 @@ export function ProductDetails() {
                         selectedBuyType === 'stock' && 'bg-muted'
                       )}
                       size='lg'
-                      onClick={handleBuyStockButtonClick}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        console.log('Buy Stock button clicked')
+                        handleBuyStockButtonClick()
+                      }}
                     >
                       <div className='flex w-full items-center justify-start'>
                         <Tag className='mr-2 h-4 w-4' />
@@ -1051,25 +1746,85 @@ export function ProductDetails() {
                   ) : null}
 
                   {shouldShowMyPackagingButton && (
-                    <Button variant='outline' className='w-full' size='lg'>
-                      <div className='flex w-full items-center justify-start'>
-                        <Heart className='mr-2 h-4 w-4' />
-                        <span>
-                          {shouldShowCollectionButton
-                            ? 'Collection'
-                            : 'My Packaging'}
-                        </span>
-                      </div>
-                    </Button>
+                    <>
+                      <Button
+                        variant='outline'
+                        className='w-full'
+                        size='lg'
+                        onClick={() => setIsCollectDialogOpen(true)}
+                        disabled={isCollecting}
+                      >
+                        <div className='flex w-full items-center justify-start'>
+                          {isCollecting ? (
+                            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          ) : (
+                            <Heart className='mr-2 h-4 w-4' />
+                          )}
+                          <span>
+                            {shouldShowCollectionButton
+                              ? 'Collection'
+                              : 'My Packaging'}
+                          </span>
+                        </div>
+                      </Button>
+                      <ConfirmDialog
+                        open={isCollectDialogOpen}
+                        onOpenChange={(open) => {
+                          if (!isCollecting) {
+                            setIsCollectDialogOpen(open)
+                          }
+                        }}
+                        title='sure to collect this product?'
+                        desc='Are you sure you want to collect this product?'
+                        handleConfirm={handleCollect}
+                        isLoading={isCollecting}
+                        confirmText={
+                          isCollecting ? (
+                            <>
+                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                              handling...
+                            </>
+                          ) : (
+                            'confirm'
+                          )
+                        }
+                      />
+                    </>
                   )}
 
-                  {isFromPackagingProducts && (
+                {isFromPackagingProducts && (
                     <Button
                       variant='outline'
                       className='w-full'
                       size='lg'
                       onClick={() => {
-                        navigate({ to: `/products/${productData.id}/design` })
+                        // 设计前需要选择且只能选择一个属性（父级规格 ID 作为 skuId）
+                        const selectedEntries = Object.entries(selectedSpecs).filter(
+                          ([, v]) => v && v !== ''
+                        )
+
+                        if (selectedEntries.length === 0) {
+                          toast.error('Please select one attribute before design')
+                          return
+                        }
+
+                        if (selectedEntries.length > 1) {
+                          toast.error('You can only select one attribute for design')
+                          return
+                        }
+
+                        if (!selectedSkuId) {
+                          toast.error('SKU is not loaded yet, please try again in a moment')
+                          return
+                        }
+
+                        const skuId = selectedSkuId
+
+                        navigate({
+                          to: '/products/$productId/design',
+                          params: { productId: productData.id },
+                          search: { from: 'packaging-products', skuId },
+                        })
                       }}
                     >
                       <div className='flex w-full items-center justify-start'>
@@ -1079,14 +1834,6 @@ export function ProductDetails() {
                     </Button>
                   )}
                 </div>
-
-                {/* 喜欢按钮 */}
-                {/* <div className='pt-4'>
-                <Button variant='ghost' className='w-full'>
-                  <Heart className='mr-2 h-4 w-4' />
-                  喜欢这个产品
-                </Button>
-              </div> */}
               </CardContent>
             </Card>
           </div>
@@ -1100,27 +1847,24 @@ export function ProductDetails() {
           >
             <div className='flex h-full text-sm'>
               {/* 左侧：Listing 类型菜单（与 StoreManagement 保持一致） */}
-              <div className='bg-muted/30 w-48 border-r px-3 py-4'>
-                <div className='mb-2 text-sm font-semibold'>Manual Listing</div>
-                <button className='bg-primary/10 text-primary hover:bg-primary/15 mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm font-medium transition-colors'>
-                  Custom Editing
-                </button>
-                <div className='text-muted-foreground mt-4 mb-2 text-sm font-semibold'>
-                  Template Listing
-                </div>
-                <button className='text-muted-foreground hover:bg-muted/50 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors'>
-                  Add New Template
-                </button>
-              </div>
 
               {/* 右侧：Tabs + 表单内容 */}
               <StoreListingTabs
-                tagsPopoverOpen={storeListingTagsPopoverOpen}
-                setTagsPopoverOpen={setStoreListingTagsPopoverOpen}
                 selectedTags={storeListingSelectedTags}
                 setSelectedTags={setStoreListingSelectedTags}
                 variantPricingTable={variantPricingTable}
                 columns={variantPricingColumns}
+                productTitle={productData?.name || ''}
+                productId={productId}
+                apiProduct={apiProduct}
+                specInfo={specInfo}
+                selectedSellingPlatform={selectedSellingPlatform}
+                selectedTo={selectedTo}
+                selectedShippingMethod={selectedShippingMethod}
+                selectedDestinationId={selectedDestinationId}
+                shippingMethodOptions={shippingMethodOptions}
+                isLoadingVariantPricing={isLoadingVariantPricing}
+                richTextContent={richTextContent}
               />
             </div>
 
@@ -1146,17 +1890,26 @@ export function ProductDetails() {
         </CardHeader>
         <CardContent>
           <div className='prose max-w-none'>
-            <p className='text-muted-foreground leading-relaxed'>
-              多层设计：配备三个梯子和多个平台层，让小型动物可以奔跑、攀爬和玩耍，这个小型动物笼子是一个仓鼠游乐场豪宅。
-              五层设置提供了充足的空间，让您的宠物可以自由活动，同时保持清洁和有序的环境。
-            </p>
-            <p className='text-muted-foreground mt-4 leading-relaxed'>
-              高品质材料：采用天然木材制作，安全无毒，为您的宠物提供健康的生活环境。
-              易于清洁的设计让日常维护变得简单，可拆卸的组件便于深度清洁。
-            </p>
-            <p className='text-muted-foreground mt-4 leading-relaxed'>
-              多功能存储：底部配有储物架，可以存放宠物用品和食物，让您的生活空间更加整洁有序。
-            </p>
+            {richTextContent ? (
+              <div
+                className='text-muted-foreground leading-relaxed'
+                dangerouslySetInnerHTML={{ __html: richTextContent }}
+              />
+            ) : (
+              <>
+                <p className='text-muted-foreground leading-relaxed'>
+                  多层设计：配备三个梯子和多个平台层，让小型动物可以奔跑、攀爬和玩耍，这个小型动物笼子是一个仓鼠游乐场豪宅。
+                  五层设置提供了充足的空间，让您的宠物可以自由活动，同时保持清洁和有序的环境。
+                </p>
+                <p className='text-muted-foreground mt-4 leading-relaxed'>
+                  高品质材料：采用天然木材制作，安全无毒，为您的宠物提供健康的生活环境。
+                  易于清洁的设计让日常维护变得简单，可拆卸的组件便于深度清洁。
+                </p>
+                <p className='text-muted-foreground mt-4 leading-relaxed'>
+                  多功能存储：底部配有储物架，可以存放宠物用品和食物，让您的生活空间更加整洁有序。
+                </p>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1169,11 +1922,11 @@ export function ProductDetails() {
           id: productData.id,
           productImage: productData.image,
           productName: productData.name,
-          price: productData.price,
+          price: productData?.price ?? 0,
           shippingFrom: 'beijing',
           shippingMethod: 'ds-economy-uk',
           shippingCost: 3.07,
-          totalAmount: productData.price + 3.07,
+          totalAmount: (productData?.price ?? 0) + 3.07,
           brandConnections: {
             logo: { connected: false },
             card: { connected: false },
@@ -1296,6 +2049,8 @@ export function ProductDetails() {
         productId={productId}
         mode={purchaseMode}
         onConfirmOrder={handleConfirmOrder}
+        apiProduct={apiProduct}
+        initialSelectedSpecs={selectedSpecs}
       />
     </div>
   )

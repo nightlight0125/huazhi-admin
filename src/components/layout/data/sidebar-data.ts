@@ -1,6 +1,5 @@
 import {
   AudioWaveform,
-  ChartColumnBig,
   ClipboardList,
   ClipboardMinus,
   GalleryVerticalEnd,
@@ -128,11 +127,11 @@ export const sidebarData: SidebarData = {
             },
           ],
         },
-        {
-          title: 'My Inventory',
-          url: '/my-inventory',
-          icon: ChartColumnBig,
-        },
+        // {
+        //   title: 'My Inventory',
+        //   url: '/my-inventory',
+        //   icon: ChartColumnBig,
+        // },
         {
           title: 'Support Tickets',
           url: '/support-tickets',
@@ -148,7 +147,7 @@ export const sidebarData: SidebarData = {
           url: '/wallet',
           icon: Wallet,
         },
-       
+
         {
           title: 'Settings',
           icon: Settings,
@@ -173,7 +172,7 @@ export const sidebarData: SidebarData = {
             //   title: 'Appearance',
             //   url: '/settings/appearance',
             // },
-           
+
             {
               title: 'Notifications',
               url: '/settings/notifications',
@@ -186,6 +185,6 @@ export const sidebarData: SidebarData = {
         }
       ],
     },
-   
+
   ],
 }

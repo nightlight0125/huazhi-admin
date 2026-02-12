@@ -1,6 +1,3 @@
-import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,6 +21,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
+import { buyProduct } from '@/lib/api/products'
+import { getAddress, type AddressItem } from '@/lib/api/users'
+import { useAuthStore } from '@/stores/auth-store'
+import { useNavigate } from '@tanstack/react-router'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 export interface ConfirmOrderItem {
   id: string
@@ -54,19 +59,18 @@ interface ConfirmOrderViewProps {
 
 export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const navigate = useNavigate()
+  const { auth } = useAuthStore()
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<
     string | undefined
   >()
   const [selectedCoupon, setSelectedCoupon] = useState<string | undefined>()
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [shippingAddress, setShippingAddress] = useState<AddressItem | null>(null)
 
-  const shippingMethodOptions = [
-    { value: 'tdpacket-sensitive', label: 'TDPacket Sensitive' },
-    { value: 'tdpacket-electro', label: 'TDPacket Electro' },
-    { value: 'yun-electro-econo', label: 'YUN-Electro-Econo' },
-    { value: 'tdpacket-pure-battery', label: 'TDPacket Pure battery' },
-    { value: 'yun-fast-electro', label: 'YUN-Fast-Electro' },
-  ]
+  // 使用 hook 获取物流渠道数据
+  const { channels: shippingMethodOptions, isLoading: isLoadingChannels } = useLogisticsChannels()
+
+  console.log(orderData, 'shippingMethodOptions')
 
   const couponOptions = [
     { value: 'none', label: 'No coupon' },
@@ -78,11 +82,76 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     navigate({ to: '/settings' })
   }
 
-  const handlePay = () => {
-    // TODO: 实现支付逻辑
-    console.log('Pay clicked', orderData)
-    // 支付成功后可以关闭确认订单视图或跳转到订单列表
+  const handlePay = async () => {
+    const customerId = auth.user?.customerId
+
+    if (!customerId) {
+      toast.error('Customer ID not found. Please login again.')
+      return
+    }
+
+    if (!shippingAddress) {
+      toast.error('Please add a shipping address before paying')
+      return
+    }
+
+    if (!selectedShippingMethod) {
+      toast.error('Please select a shipping method')
+      return
+    }
+
+    try {
+      const response = await buyProduct({
+        customerId: String(customerId),
+        customChannelId: selectedShippingMethod,
+        // 地址信息映射
+        firstName: shippingAddress.hzkj_customer_first_name ?? '',
+        lastName: shippingAddress.hzkj_customer_last_name ?? '',
+        phone: shippingAddress.hzkj_phone ?? '',
+        countryId: String(shippingAddress.hzkj_country2_id ?? ''),
+        admindivisionId: String(shippingAddress.hzkj_admindivision2_id ?? ''),
+        city: shippingAddress.hzkj_city ?? '',
+        address1: shippingAddress.hzkj_textfield ?? '',
+        address2: shippingAddress.hzkj_address2 ?? '',
+        postCode: shippingAddress.hzkj_textfield1 ?? '',
+        taxId: shippingAddress.hzkj_tax_id1 ?? '',
+        note: shippingAddress.hzkj_textfield3 ?? '',
+        detail: orderData.items.map((item) => ({
+          skuId: item.id,
+          quantity: item.quantity,
+          flag: 0,
+        })),
+      })
+      if (response.status) {
+        toast.success('Order placed successfully')
+        navigate({ to: '/orders' })
+      } else {
+        toast.error(response.message)
+      }
+    } catch (error) {
+      console.error('Failed to place order:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to place order. Please try again.'
+      )
+    }
   }
+
+  // 获取地址信息 - 组件加载时调用
+  useEffect(() => {
+    const fetchAddress = async () => {
+      const userId = auth.user?.id 
+      try {
+        const address = await getAddress(String(userId))
+        setShippingAddress(address)
+      } catch (error) {
+        console.error('Failed to load address:', error)
+      }
+    }
+
+    void fetchAddress()
+  }, [])
 
   const totalAmount = orderData.discountedTotalPrice || orderData.totalPrice
   // 计算产品总价（所有商品费用之和）
@@ -113,10 +182,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
 
       <div className='text-muted-foreground mb-4 text-sm'></div>
       <div className='space-y-6'>
-        {/* Delivery information 区域 */}
         <div className='rounded-lg border p-6'>
           <h3 className='mb-4 text-lg font-semibold'>Delivery information</h3>
-          {!orderData.hasShippingAddress ? (
+          {!shippingAddress?.hzkj_textfield ? (
             <div className='flex flex-col items-center justify-center py-8'>
               <p className='text-muted-foreground mb-4 text-sm'>No address</p>
               <Button
@@ -131,7 +199,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
               <div className='text-sm'>
                 <span className='font-medium'>Shipping Address:</span>{' '}
                 <span className='text-muted-foreground'>
-                  广东省广州市天河区
+                  {shippingAddress?.hzkj_textfield || 'No address available'}
                 </span>
               </div>
             </div>
@@ -148,18 +216,23 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                 <SelectValue placeholder='Please select' />
               </SelectTrigger>
               <SelectContent>
-                {shippingMethodOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                {isLoadingChannels ? (
+                  <SelectItem value="loading" disabled>
+                    Loading...
                   </SelectItem>
-                ))}
+                ) : shippingMethodOptions.length > 0 ? (
+                  shippingMethodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-options" disabled>
+                    No shipping methods available
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
-            {selectedShippingMethod && (
-              <span className='text-sm text-red-600'>
-                Estimated Delivery Time: - Day(s)
-              </span>
-            )}
           </div>
         </div>
 

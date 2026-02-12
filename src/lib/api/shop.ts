@@ -22,7 +22,7 @@ export async function getUserShop(
     '/v2/hzkj/base/shop/getUserShop',
     {
       params: {
-        id: userId,
+        hzkjAccountId: userId,
       },
     }
   )
@@ -37,6 +37,79 @@ export async function getUserShop(
   }
 
   return response.data
+}
+
+// 店铺列表项
+export interface ShopListItem {
+  id: string
+  name: string
+  platform: string
+  createtime?: string
+  bindtime?: string
+  enable?: string
+  [key: string]: unknown
+}
+
+// 获取用户店铺列表请求参数
+export interface GetUserShopListRequest {
+  hzkjAccountId: string
+  queryParam?: string
+  pageNo?: number
+  pageSize?: number
+}
+
+// 获取用户店铺列表响应
+export interface GetUserShopListResponse {
+  data?: {
+    total?: number
+    list?: ShopListItem[]
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 获取用户店铺列表 API（新接口）
+export async function getUserShopList(
+  params: GetUserShopListRequest
+): Promise<{ list: ShopListItem[]; total: number }> {
+  const {
+    hzkjAccountId,
+    queryParam = 'w',
+    pageNo = 0,
+    pageSize = 10,
+  } = params
+
+  const response = await apiClient.get<GetUserShopListResponse>(
+    '/v2/hzkj/hzkj_member/shop/getUserShop',
+    {
+      params: {
+        hzkjAccountId,
+        queryParam,
+        pageNo: String(pageNo),
+        pageSize: String(pageSize),
+      },
+    }
+  )
+
+  console.log('获取用户店铺列表响应:', response.data)
+
+  // 检查响应状态
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to get user shop list. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const list = response.data.data?.list || []
+  const total = response.data.data?.total || 0
+
+  return {
+    list: Array.isArray(list) ? list : [],
+    total: typeof total === 'number' ? total : 0,
+  }
 }
 
 // Shopify OAuth 请求参数
@@ -136,6 +209,47 @@ export async function shopifyCallback(
   if (!response.data.status) {
     const errorMessage =
       response.data.message || 'Failed to complete OAuth. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 解绑店铺请求参数
+export interface UnbindShopRequest {
+  accountId: string
+  shopId: string
+  flag: number // 1 表示解绑
+}
+
+// 解绑店铺响应
+export interface UnbindShopResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status: boolean
+  [key: string]: unknown
+}
+
+// 解绑店铺 API
+export async function unbindShop(
+  params: UnbindShopRequest
+): Promise<UnbindShopResponse> {
+  const response = await apiClient.post<UnbindShopResponse>(
+    '/v2/hzkj/hzkj_member_sky/member/updateAccountBindShop',
+    {
+      accountId: params.accountId,
+      shopId: params.shopId,
+      flag: params.flag,
+    }
+  )
+
+  console.log('解绑店铺响应:', response.data)
+
+  // 检查响应状态
+  if (!response.data.status) {
+    const errorMessage =
+      response.data.message || 'Failed to unbind shop. Please try again.'
     throw new Error(errorMessage)
   }
 

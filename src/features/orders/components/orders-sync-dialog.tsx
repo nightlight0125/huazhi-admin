@@ -1,5 +1,9 @@
-import { useState } from 'react'
-import { Calendar, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { syncShopOrders } from '@/lib/api/orders'
+import { getUserShopOptions, type ShopOption } from '@/lib/utils/shop-utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -11,14 +15,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { stores } from '../data/data'
 
 interface OrdersSyncDialogProps {
   open: boolean
@@ -29,73 +25,118 @@ export function OrdersSyncDialog({
   open,
   onOpenChange,
 }: OrdersSyncDialogProps) {
+  const { auth } = useAuthStore()
+  const [stores, setStores] = useState<ShopOption[]>([])
+  const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [selectedStores, setSelectedStores] = useState<string[]>([])
-  const [syncDays, setSyncDays] = useState<string>('7')
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncAllStores, setSyncAllStores] = useState(false)
 
-  // 天数选项
-  const dayOptions = [
-    { label: '最近1天', value: '1' },
-    { label: '最近3天', value: '3' },
-    { label: '最近7天', value: '7' },
-    { label: '最近15天', value: '15' },
-    { label: '最近30天', value: '30' },
-    { label: '最近90天', value: '90' },
-  ]
+  // 获取店铺列表
+  useEffect(() => {
+    const fetchStores = async () => {
+      const userId = auth.user?.id
+      if (!userId) {
+        setStores([])
+        return
+      }
+
+      setIsLoadingStores(true)
+      try {
+        const options = await getUserShopOptions(String(userId))
+        setStores(options)
+      } catch (error) {
+        console.error('获取店铺列表失败:', error)
+        setStores([])
+      } finally {
+        setIsLoadingStores(false)
+      }
+    }
+
+    if (open) {
+      void fetchStores()
+    }
+  }, [auth.user?.id, open])
+
+  // 处理全选/取消全选
+  const handleSyncAllToggle = (checked: boolean) => {
+    setSyncAllStores(checked)
+    if (checked) {
+      // 全选时，将所有店铺添加到选中列表
+      setSelectedStores(stores.map((store) => store.value))
+    } else {
+      // 取消全选时，清空选中列表
+      setSelectedStores([])
+    }
+  }
 
   // 处理店铺选择
   const handleStoreToggle = (storeValue: string) => {
     if (selectedStores.includes(storeValue)) {
-      setSelectedStores(selectedStores.filter((store) => store !== storeValue))
+      const newSelected = selectedStores.filter((store) => store !== storeValue)
+      setSelectedStores(newSelected)
+      // 如果取消选择后，选中的店铺数量少于总店铺数，取消全选状态
+      if (syncAllStores && newSelected.length < stores.length) {
+        setSyncAllStores(false)
+      }
     } else {
-      setSelectedStores([...selectedStores, storeValue])
-    }
-  }
-
-  // 处理全选店铺
-  const handleSelectAllStores = (checked: boolean) => {
-    setSyncAllStores(checked)
-    if (checked) {
-      setSelectedStores(stores.map((store) => store.value))
-    } else {
-      setSelectedStores([])
+      const newSelected = [...selectedStores, storeValue]
+      setSelectedStores(newSelected)
+      // 如果所有店铺都被选中，自动勾选全选
+      if (newSelected.length === stores.length) {
+        setSyncAllStores(true)
+      }
     }
   }
 
   // 处理同步
   const handleSync = async () => {
-    if (!syncAllStores && selectedStores.length === 0) {
-      alert('请至少选择一个店铺')
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    if (selectedStores.length === 0) {
+      toast.error('Please select at least one store')
       return
     }
 
     setIsSyncing(true)
 
     try {
-      // 模拟同步过程
-      const storesToSync = syncAllStores
-        ? '所有店铺'
-        : selectedStores.join(', ')
-      console.log('开始同步订单:', {
-        stores: storesToSync,
-        days: syncDays,
-        allStores: syncAllStores,
+      // 使用选中的店铺ID列表
+      const shopIds = selectedStores
+
+      if (shopIds.length === 0) {
+        toast.error('No stores selected')
+        return
+      }
+
+      // 调用同步接口
+      await syncShopOrders({
+        customerId: String(customerId),
+        shopIds: shopIds,
       })
 
-      // 模拟API调用
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const storesToSync = stores
+        .filter((store) => selectedStores.includes(store.value))
+        .map((store) => store.label)
+        .join(', ')
 
-      alert(`同步完成！\n店铺: ${storesToSync}\n天数: ${syncDays}天`)
+      toast.success(`Sync completed successfully!\nStores: ${storesToSync}`)
       onOpenChange(false)
 
       // 重置状态
       setSelectedStores([])
-      setSyncDays('7')
       setSyncAllStores(false)
     } catch (error) {
       console.error('同步失败:', error)
-      alert('同步失败，请重试')
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to sync orders. Please try again.'
+      )
     } finally {
       setIsSyncing(false)
     }
@@ -107,7 +148,6 @@ export function OrdersSyncDialog({
       onOpenChange(false)
       // 重置状态
       setSelectedStores([])
-      setSyncDays('7')
       setSyncAllStores(false)
     }
   }
@@ -128,22 +168,31 @@ export function OrdersSyncDialog({
         <div className='space-y-6 py-4'>
           {/* 店铺选择 */}
           <div className='space-y-3'>
+            {/* 全部店铺开关 */}
             <div className='flex items-center space-x-2'>
               <Checkbox
                 id='sync-all-stores'
                 checked={syncAllStores}
-                onCheckedChange={handleSelectAllStores}
+                onCheckedChange={handleSyncAllToggle}
               />
-              <Label htmlFor='sync-all-stores' className='font-medium'>
+              <Label htmlFor='sync-all-stores' className='text-sm font-medium'>
                 Sync all stores
               </Label>
             </div>
 
-            {!syncAllStores && (
-              <div className='space-y-2'>
-                <Label className='text-sm font-medium'>Select stores</Label>
-                <div className='grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded-md border p-2'>
-                  {stores.map((store) => (
+            <div className='space-y-2'>
+              <Label className='text-sm font-medium'>Select stores</Label>
+              <div className='grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded-md border p-2'>
+                {isLoadingStores ? (
+                  <div className='text-muted-foreground col-span-2 flex items-center justify-center py-4 text-sm'>
+                    Loading stores...
+                  </div>
+                ) : stores.length === 0 ? (
+                  <div className='text-muted-foreground col-span-2 flex items-center justify-center py-4 text-sm'>
+                    No stores available
+                  </div>
+                ) : (
+                  stores.map((store) => (
                     <div
                       key={store.value}
                       className='flex items-center space-x-2'
@@ -160,61 +209,8 @@ export function OrdersSyncDialog({
                         {store.label}
                       </Label>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 天数选择 */}
-          <div className='space-y-2'>
-            <Label
-              htmlFor='sync-days'
-              className='flex items-center gap-2 text-sm font-medium'
-            >
-              <Calendar className='h-4 w-4' />
-              Sync days
-            </Label>
-            <Select value={syncDays} onValueChange={setSyncDays}>
-              <SelectTrigger>
-                <SelectValue placeholder='Sync days' />
-              </SelectTrigger>
-              <SelectContent>
-                {dayOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 同步信息 */}
-          <div className='bg-muted/50 space-y-2 rounded-lg p-3'>
-            <div className='text-sm font-medium'>Sync information</div>
-            <div className='text-muted-foreground space-y-1 text-sm'>
-              <div>
-                Stores:{' '}
-                {syncAllStores
-                  ? 'All stores'
-                  : selectedStores.length > 0
-                    ? selectedStores
-                        .map(
-                          (store) =>
-                            stores.find((s) => s.value === store)?.label
-                        )
-                        .join(', ')
-                    : 'Not selected'}
-              </div>
-              <div>
-                Days:{' '}
-                {dayOptions.find((option) => option.value === syncDays)?.label}
-              </div>
-              <div>
-                Expected sync:{' '}
-                {syncAllStores || selectedStores.length > 0
-                  ? 'In progress...'
-                  : 'Please select stores'}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -226,9 +222,7 @@ export function OrdersSyncDialog({
           </Button>
           <Button
             onClick={handleSync}
-            disabled={
-              isSyncing || (!syncAllStores && selectedStores.length === 0)
-            }
+            disabled={isSyncing || selectedStores.length === 0}
             className='min-w-[100px]'
           >
             {isSyncing ? (

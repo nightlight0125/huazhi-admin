@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { type Table } from '@tanstack/react-table'
 import { Calendar as CalendarIcon, Search } from 'lucide-react'
@@ -35,7 +35,8 @@ type DataTableToolbarProps<TData> = {
   searchKey?: string
   showSearch?: boolean
   showSearchButton?: boolean
-  onSearch?: () => void
+  onSearch?: (searchValue: string) => void // 搜索回调函数，接收搜索值
+  onFilterChange?: () => void // 过滤器变化时的回调
   filters?: {
     columnId: string
     title: string
@@ -47,6 +48,7 @@ type DataTableToolbarProps<TData> = {
     categories?: CategoryItem[]
     useCategoryTree?: boolean
     afterDateRange?: boolean // 如果为 true，则显示在日历后面
+    singleSelect?: boolean // 是否单选模式
   }[]
   dateRange?: {
     enabled?: boolean
@@ -73,6 +75,7 @@ export function DataTableToolbar<TData>({
   showSearch = true,
   showSearchButton = true,
   onSearch,
+  onFilterChange,
   filters = [],
   dateRange,
   bulkRevise,
@@ -83,6 +86,27 @@ export function DataTableToolbar<TData>({
   )
   const [bulkReviseType, setBulkReviseType] = useState<string>('price-change')
   const [bulkReviseValue, setBulkReviseValue] = useState<string>('')
+  // 本地搜索输入值，不会立即触发过滤
+  const [searchInputValue, setSearchInputValue] = useState<string>('')
+
+  // Avoid accessing non-existent columns (will trigger tanstack table warnings)
+  const searchColumn = searchKey ? table.getColumn(searchKey) : undefined
+
+  // 同步搜索输入值（从表格状态读取）
+  // 如果提供了 onSearch 回调，则不从表格状态同步，保持用户输入的值
+  useEffect(() => {
+    // 如果提供了 onSearch，说明搜索是手动触发的，不应该从表格状态同步
+    if (onSearch) {
+      return
+    }
+    if (searchKey && searchColumn) {
+      const value = (searchColumn.getFilterValue() as string) ?? ''
+      setSearchInputValue(value)
+    } else {
+      const value = table.getState().globalFilter ?? ''
+      setSearchInputValue(value)
+    }
+  }, [table.getState().globalFilter, searchKey, searchColumn, onSearch])
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRangeValue(range)
@@ -99,11 +123,17 @@ export function DataTableToolbar<TData>({
   }
 
   const handleSearch = () => {
+    const currentSearchValue = searchInputValue
     if (onSearch) {
-      onSearch()
+      // 如果提供了 onSearch 回调，调用它并传递搜索值
+      onSearch(currentSearchValue)
     } else {
-      // 默认行为：触发表格重新过滤
-      // 由于搜索是实时的，这里可以触发一个重新渲染
+      // 默认行为：更新表格的 globalFilter
+      if (searchKey && searchColumn) {
+        searchColumn.setFilterValue(currentSearchValue)
+      } else {
+        table.setGlobalFilter(currentSearchValue)
+      }
       table.resetRowSelection()
     }
   }
@@ -115,23 +145,17 @@ export function DataTableToolbar<TData>({
     }
   }
 
-  // Avoid accessing non-existent columns (will trigger tanstack table warnings)
-  const searchColumn = searchKey ? table.getColumn(searchKey) : undefined
-
   return (
     <div className='flex flex-wrap items-start gap-2'>
-      {/* 左侧：筛选（下拉、多选等） + 日期范围 */}
       <div className='flex flex-wrap items-center gap-2'>
-        {/* 在日历前面的筛选 */}
+        {customFilterSlot}
         {filters
           .filter((filter) => !filter.afterDateRange)
           .map((filter) => {
             const column = table.getColumn(filter.columnId)
             if (!column || !column.columnDef) return null
 
-            // Ensure column is ready for faceted filtering
             try {
-              // Test if getFacetedUniqueValues is available and works
               if (typeof column.getFacetedUniqueValues === 'function') {
                 column.getFacetedUniqueValues()
               }
@@ -160,11 +184,13 @@ export function DataTableToolbar<TData>({
                 column={column}
                 title={filter.title}
                 options={filter.options || []}
+                onFilterChange={onFilterChange}
+                columnFilters={table.getState().columnFilters}
+                singleSelect={filter.singleSelect}
               />
             )
           })}
 
-        {/* Date Range Picker */}
         {dateRange?.enabled && (
           <Popover>
             <PopoverTrigger asChild>
@@ -203,16 +229,13 @@ export function DataTableToolbar<TData>({
           </Popover>
         )}
 
-        {/* 在日历后面的筛选 */}
         {filters
           .filter((filter) => filter.afterDateRange)
           .map((filter) => {
             const column = table.getColumn(filter.columnId)
             if (!column || !column.columnDef) return null
 
-            // Ensure column is ready for faceted filtering
             try {
-              // Test if getFacetedUniqueValues is available and works
               if (typeof column.getFacetedUniqueValues === 'function') {
                 column.getFacetedUniqueValues()
               }
@@ -246,32 +269,36 @@ export function DataTableToolbar<TData>({
           })}
       </div>
 
-      {/* 右侧：搜索 + 自定义筛选 + 批量修改 + Reset + Search 按钮，整体右对齐 */}
       <div className='flex flex-1 flex-wrap items-center justify-end gap-2'>
-        {/* Search boxes (搜索框) */}
         {showSearch && (
           <>
             {searchKey && searchColumn ? (
               <Input
                 placeholder={searchPlaceholder}
-                value={(searchColumn.getFilterValue() as string) ?? ''}
-                onChange={(event) =>
-                  searchColumn.setFilterValue(event.target.value)
-                }
+                value={searchInputValue}
+                onChange={(event) => setSearchInputValue(event.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch()
+                  }
+                }}
                 className='h-8 w-[150px] lg:w-[250px]'
               />
             ) : (
               <Input
                 placeholder={searchPlaceholder}
-                value={table.getState().globalFilter ?? ''}
-                onChange={(event) => table.setGlobalFilter(event.target.value)}
+                value={searchInputValue}
+                onChange={(event) => setSearchInputValue(event.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch()
+                  }
+                }}
                 className='h-8 w-[150px] lg:w-[250px]'
               />
             )}
           </>
         )}
-        {/* 自定义筛选插槽 + 批量修改 */}
-        {customFilterSlot}
         {bulkRevise?.enabled && (
           <div className='flex items-center'>
             <Select value={bulkReviseType} onValueChange={setBulkReviseType}>
@@ -303,7 +330,6 @@ export function DataTableToolbar<TData>({
           </div>
         )}
 
-        {/* Search 按钮，与输入框一起右对齐 */}
         {showSearchButton && (
           <Button
             onClick={handleSearch}

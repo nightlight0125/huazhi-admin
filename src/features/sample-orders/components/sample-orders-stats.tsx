@@ -1,29 +1,63 @@
+import { useEffect, useState } from 'react'
+import { useAuthStore } from '@/stores/auth-store'
+import { orderStatistics } from '@/lib/api/orders'
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { type SampleOrder } from '../data/schema'
 
 interface SampleOrdersStatsProps {
-  orders: SampleOrder[]
+  orders?: unknown[] // 保留 orders prop 以保持兼容性，但不再使用
 }
 
-export function SampleOrdersStats({ orders }: SampleOrdersStatsProps) {
-  // 计算统计数据
-  const totalOrders = orders.length
+export function SampleOrdersStats({ orders: _orders }: SampleOrdersStatsProps) {
+  const { auth } = useAuthStore()
+  const [stats, setStats] = useState<{
+    totalAmount: number
+    awaitPayCount: number
+    awaitPayAmount: number
+  }>({
+    totalAmount: 0,
+    awaitPayCount: 0,
+    awaitPayAmount: 0,
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
-  // 计算待支付金额
-  const pendingPayment = orders
-    .filter(
-      (order) =>
-        order.status === 'pending' || order.status === 'pay_in_progress'
-    )
-    .reduce((sum, order) => sum + order.cost.total, 0)
+  useEffect(() => {
+    const fetchStats = async () => {
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        setIsLoading(false)
+        return
+      }
 
-  // 模拟账号余额（实际项目中应该从用户数据获取）
-  const accountBalance = 0.0
+      setIsLoading(true)
+      try {
+        const data = await orderStatistics({
+          customerId: String(customerId),
+          type: 'hzkj_orders_BT_Sample',
+        })
+
+        setStats({
+          totalAmount:
+            typeof data?.totalAmount === 'number' ? data.totalAmount : 0,
+          awaitPayCount:
+            typeof data?.awaitPayCount === 'number' ? data.awaitPayCount : 0,
+          awaitPayAmount:
+            typeof data?.awaitPayAmount === 'number' ? data.awaitPayAmount : 0,
+        })
+      } catch (error) {
+        console.error('Failed to fetch sample order statistics:', error)
+        // 保持默认值
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void fetchStats()
+  }, [auth.user?.customerId])
 
   return (
     <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card -mx-4 grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:grid-cols-3 lg:px-6'>
@@ -31,11 +65,17 @@ export function SampleOrdersStats({ orders }: SampleOrdersStatsProps) {
         <CardHeader>
           <CardDescription>Account balance</CardDescription>
           <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-            $
-            {accountBalance.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {isLoading ? (
+              <span className='text-muted-foreground'>Loading...</span>
+            ) : (
+              <>
+                $
+                {stats.totalAmount.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </>
+            )}
           </CardTitle>
         </CardHeader>
       </Card>
@@ -44,7 +84,11 @@ export function SampleOrdersStats({ orders }: SampleOrdersStatsProps) {
         <CardHeader>
           <CardDescription>Awaiting Orders</CardDescription>
           <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-            {totalOrders.toLocaleString()}
+            {isLoading ? (
+              <span className='text-muted-foreground'>Loading...</span>
+            ) : (
+              stats.awaitPayCount.toLocaleString()
+            )}
           </CardTitle>
         </CardHeader>
       </Card>
@@ -53,11 +97,17 @@ export function SampleOrdersStats({ orders }: SampleOrdersStatsProps) {
         <CardHeader>
           <CardDescription>Awaiting Payment</CardDescription>
           <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-            $
-            {pendingPayment.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {isLoading ? (
+              <span className='text-muted-foreground'>Loading...</span>
+            ) : (
+              <>
+                $
+                {stats.awaitPayAmount.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </>
+            )}
           </CardTitle>
         </CardHeader>
       </Card>

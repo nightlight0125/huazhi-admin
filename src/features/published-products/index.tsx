@@ -4,7 +4,6 @@ import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { PublishedProductsTable } from './components/published-products-table'
-import { publishedProducts } from './data/data'
 
 type PublishedStatus = 'published' | 'publishing' | 'failed'
 
@@ -39,21 +38,10 @@ export function PublishedProducts() {
           </TabsList>
 
           <TabsContent value='published' className='mt-4'>
-            <PublishedProductsTable
-              data={publishedProducts}
-              status='published'
-            />
+            <PublishedProductsTable status='published' />
           </TabsContent>
-
-          <TabsContent value='publishing' className='mt-4'>
-            <PublishedProductsTable
-              data={publishedProducts}
-              status='publishing'
-            />
-          </TabsContent>
-
           <TabsContent value='failed' className='mt-4'>
-            <PublishedProductsTable data={publishedProducts} status='failed' />
+            <PublishedProductsTable status='failed' />
           </TabsContent>
         </Tabs>
       </Main>

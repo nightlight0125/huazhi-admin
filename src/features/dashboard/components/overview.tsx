@@ -1,4 +1,5 @@
-import { Download } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Download, Loader2 } from 'lucide-react'
 import {
   CartesianGrid,
   Line,
@@ -8,54 +9,78 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { graphicStatistics } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 
-const data = [
-  {
-    date: '2025-10-20',
-    orderQuantity: 0,
-    orderAmount: 0,
-    paidAmount: 0,
-  },
-  {
-    date: '2025-10-21',
-    orderQuantity: 0,
-    orderAmount: 0,
-    paidAmount: 0,
-  },
-  {
-    date: '2025-10-22',
-    orderQuantity: 0,
-    orderAmount: 0,
-    paidAmount: 0,
-  },
-  {
-    date: '2025-10-23',
-    orderQuantity: 0,
-    orderAmount: 0,
-    paidAmount: 0,
-  },
-  {
-    date: '2025-10-24',
-    orderQuantity: 0,
-    orderAmount: 0,
-    paidAmount: 0,
-  },
-  {
-    date: '2025-10-25',
-    orderQuantity: 0,
-    orderAmount: 0,
-    paidAmount: 0,
-  },
-  {
-    date: '2025-10-26',
-    orderQuantity: 0,
-    orderAmount: 0,
-    paidAmount: 0,
-  },
-]
+interface ChartDataItem {
+  date: string
+  orderQuantity: number
+  orderAmount: number
+  paidAmount: number
+}
 
 export function Overview() {
+  const { auth } = useAuthStore()
+  const [data, setData] = useState<ChartDataItem[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  // 获取统计数据
+  useEffect(() => {
+    const fetchData = async () => {
+      const customerId = auth.user?.customerId
+      setIsLoading(true)
+      try {
+        const statistics = await graphicStatistics(String(customerId))
+        console.log('=======121')
+
+        const chartData: ChartDataItem[] = Object.entries(statistics)
+          .map(([date, item]) => {
+            const statItem = item as {
+              orderCount?: number
+              orderAmount?: number
+              paidAmount?: number
+            }
+            return {
+              date,
+              orderQuantity: statItem.orderAmount || 0,
+              orderAmount: statItem.orderCount || 0,
+              paidAmount: statItem.paidAmount || 0,
+            }
+          })
+          .sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          )
+
+        setData(chartData)
+      } catch (error) {
+        console.error('Failed to fetch graphic statistics:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load graphic statistics. Please try again.'
+        )
+        setData([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void fetchData()
+  }, [])
+
+  // 计算 Y 轴的最大值（用于自适应）
+  const maxValue = useMemo(() => {
+    if (data.length === 0) return 1
+    const maxOrderQuantity = Math.max(...data.map((d) => d.orderQuantity))
+    const maxOrderAmount = Math.max(...data.map((d) => d.orderAmount))
+    const maxPaidAmount = Math.max(...data.map((d) => d.paidAmount))
+    const max = Math.max(maxOrderQuantity, maxOrderAmount, maxPaidAmount)
+    // 向上取整到最近的10的倍数，并添加10%的边距
+    return Math.ceil((max * 1.1) / 10) * 10 || 10
+  }, [data])
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return `${date.getMonth() + 1}-${date.getDate()}`
@@ -82,70 +107,86 @@ export function Overview() {
           <Download className='h-4 w-4' />
         </Button>
       </div>
-      <ResponsiveContainer width='100%' height={350}>
-        <LineChart
-          data={data}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray='3 3' stroke='#e5e7eb' />
-          <XAxis
-            dataKey='date'
-            stroke='#888888'
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={formatDate}
-          />
-          <YAxis
-            stroke='#888888'
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            domain={[0, 1]}
-            ticks={[0, 0.2, 0.4, 0.6, 0.8, 1.0]}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '6px',
-            }}
-            labelFormatter={(value) => value}
-            formatter={(value: number, name: string) => [
-              value,
-              name === 'orderQuantity'
-                ? 'Order Quantity'
-                : name === 'orderAmount'
-                  ? 'Order Amount'
-                  : 'Paid Amount',
-            ]}
-          />
-          <Line
-            type='monotone'
-            dataKey='orderQuantity'
-            stroke='#22c55e'
-            strokeWidth={2}
-            dot={{ fill: '#22c55e', r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type='monotone'
-            dataKey='orderAmount'
-            stroke='#3b82f6'
-            strokeWidth={2}
-            dot={{ fill: '#3b82f6', r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type='monotone'
-            dataKey='paidAmount'
-            stroke='#f97316'
-            strokeWidth={2}
-            dot={{ fill: '#f97316', r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {isLoading ? (
+        <div className='flex h-[350px] items-center justify-center'>
+          <Loader2 className='h-6 w-6 animate-spin text-gray-400' />
+        </div>
+      ) : data.length === 0 ? (
+        <div className='flex h-[350px] items-center justify-center text-sm text-gray-500'>
+          No data available
+        </div>
+      ) : (
+        <ResponsiveContainer width='100%' height={350}>
+          <LineChart
+            data={data}
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray='3 3' stroke='#e5e7eb' />
+            <XAxis
+              dataKey='date'
+              stroke='#888888'
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={formatDate}
+            />
+            <YAxis
+              stroke='#888888'
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              domain={[0, maxValue]}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '6px',
+              }}
+              labelFormatter={(value) => {
+                const date = new Date(value)
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+              }}
+              formatter={(value: number, name: string) => [
+                name === 'orderQuantity'
+                  ? value
+                  : name === 'orderAmount'
+                    ? `$${value.toFixed(2)}`
+                    : `$${value.toFixed(2)}`,
+                name === 'orderQuantity'
+                  ? 'Order Quantity'
+                  : name === 'orderAmount'
+                    ? 'Order Amount'
+                    : 'Paid Amount',
+              ]}
+            />
+            <Line
+              type='monotone'
+              dataKey='orderQuantity'
+              stroke='#22c55e'
+              strokeWidth={2}
+              dot={{ fill: '#22c55e', r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+            <Line
+              type='monotone'
+              dataKey='orderAmount'
+              stroke='#3b82f6'
+              strokeWidth={2}
+              dot={{ fill: '#3b82f6', r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+            <Line
+              type='monotone'
+              dataKey='paidAmount'
+              stroke='#f97316'
+              strokeWidth={2}
+              dot={{ fill: '#f97316', r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   )
 }

@@ -1,19 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getRouteApi } from '@tanstack/react-router'
+import { DataTableToolbar } from '@/components/data-table'
 import {
-  type SortingState,
-  type VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
-import { HelpCircle } from 'lucide-react'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
+  OrderPayDialog,
+  type OrderPayable,
+} from '@/components/order-pay-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -24,34 +13,53 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { deleteStockOrder, queryOrder, requestPayment } from '@/lib/api/orders'
+import { useAuthStore } from '@/stores/auth-store'
+import { getRouteApi } from '@tanstack/react-router'
+import {
+  type SortingState,
+  type VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import { HelpCircle } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { stockOrderStatuses } from '../data/data'
 import { type StockOrder } from '../data/schema'
 import { StockOrdersActionsMenu } from './stock-orders-actions-menu'
 import { StockOrdersBulkActions } from './stock-orders-bulk-actions'
 import { createStockOrdersColumns } from './stock-orders-columns'
-import { OrderPayDialog, type OrderPayable } from '@/components/order-pay-dialog'
 import { StockOrdersTableFooter } from './stock-orders-table-footer'
 
 const route = getRouteApi('/_authenticated/stock-orders/')
 
 type DataTableProps = {
-  data: StockOrder[]
-  onTableReady?: (table: ReturnType<typeof useReactTable<StockOrder>>) => void
+  data?: StockOrder[] // 改为可选，因为现在从 API 获取
 }
 
-export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
-  // Local UI-only states
+export function StockOrdersTable({ data: _data }: DataTableProps) {
+  const { auth } = useAuthStore()
+  const [data, setData] = useState<StockOrder[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const lastRequestParamsRef = useRef<string>('')
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     productName: false,
   })
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState('')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
-  const [selectedOrderForPayment, setSelectedOrderForPayment] =
-    useState<OrderPayable | null>(null)
+  const [selectedOrderForPayment] = useState<OrderPayable | null>(null)
 
-  // Synced with URL states
   const {
     globalFilter,
     onGlobalFilterChange,
@@ -68,37 +76,178 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
-  // Filter data based on active tab
-  const filteredData = data.filter((order) => {
-    if (activeTab === 'all') return true
-    return order.status === activeTab
-  })
+  const fetchOrders = useCallback(async () => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      setIsLoading(false)
+      setData([])
+      setTotalCount(0)
+      return
+    }
 
-  const handlePay = (orderId: string) => {
-    const order = data.find((o) => o.id === orderId)
-    if (order) {
-      // Convert StockOrder to OrderPayable
-      setSelectedOrderForPayment({
-        id: order.id,
-        getTotalAmount: () => order.cost.total,
+    const pageIndex = pagination.pageIndex ?? 0
+    const pageSize = pagination.pageSize ?? 10
+
+    // 使用 activeTab 的值作为 shopOrderStatus 传给后端
+    // 如果 activeTab 是空字符串（对应 'All' 标签），则不传 shopOrderStatus
+    const shopOrderStatus =
+      activeTab && activeTab !== '' ? String(activeTab) : undefined
+
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopOrderStatus || ''}-${refreshKey}`
+
+    if (lastRequestParamsRef.current === requestKey) {
+      return
+    }
+
+    lastRequestParamsRef.current = requestKey
+
+    setIsLoading(true)
+
+    try {
+      const response = await queryOrder({
+        customerId: String(customerId),
+        type: 'stock',
+        str: globalFilter || '',
+        pageIndex,
+        pageSize,
+        shopOrderStatus,
       })
-      setPayDialogOpen(true)
+
+      console.log(response.orders, 'response')
+
+      setData(response.orders as any)
+      setTotalCount(response.total)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load stock orders. Please try again.'
+      )
+      setData([])
+      setTotalCount(0)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [
+    auth.user?.customerId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    globalFilter,
+    refreshKey,
+    activeTab,
+  ])
+
+  useEffect(() => {
+    // 使用 setTimeout 防抖，延迟执行请求，避免在状态快速变化时触发多次请求
+    const timeoutId = setTimeout(() => {
+      void fetchOrders()
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+    }
+  }, [fetchOrders])
+
+  const handlePay = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      const response = await requestPayment({
+        customerId: String(customerId),
+        orderIds: [orderId],
+        type: 2, // 2 表示库存订单
+      })
+
+      // 获取返回的链接
+      const checkoutUrl = response.data as string
+      
+      if (checkoutUrl && typeof checkoutUrl === 'string') {
+        // 在新窗口中打开支付链接
+        window.open(checkoutUrl, '_blank')
+        toast.success('Opening payment page...')
+      } else {
+        toast.error('Payment URL not found in response')
+      }
+    } catch (error) {
+      console.error('Failed to request payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request payment. Please try again.'
+      )
     }
   }
 
   const handleEditAddress = (orderId: string) => {
     console.log('Edit address for order:', orderId)
-    // TODO: Implement edit address logic
   }
 
   const handleAddPackage = (orderId: string) => {
     console.log('Add package for order:', orderId)
-    // TODO: Implement add package logic
   }
 
-  const handleDelete = (orderId: string) => {
-    console.log('Delete order:', orderId)
-    // TODO: Implement delete logic
+  const handleDelete = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await deleteStockOrder({
+        customerId: String(customerId),
+        orderId: String(orderId),
+      })
+      toast.success('Order deleted successfully')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('删除库存订单失败:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete order. Please try again.'
+      )
+    }
+  }
+
+  const handleBatchPayment = async (orderIds: string[]) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    if (orderIds.length === 0) {
+      toast.error('Please select at least one order')
+      return
+    }
+
+    try {
+      await requestPayment({
+        customerId: String(customerId),
+        orderIds,
+        type: 2, // 2 表示库存订单
+      })
+
+      toast.success(
+        `Payment request submitted successfully for ${orderIds.length} order(s)`
+      )
+      // 刷新订单列表
+      setRefreshKey((prev) => prev + 1)
+      // 清空选择
+      setRowSelection({})
+    } catch (error) {
+      console.error('Failed to request batch payment:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to request batch payment. Please try again.'
+      )
+    }
   }
 
   const columns = useMemo(
@@ -109,11 +258,11 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    []
+    [auth.user?.customerId, handleDelete]
   )
 
   const table = useReactTable({
-    data: filteredData,
+    data: data,
     columns,
     state: {
       sorting,
@@ -136,7 +285,8 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true, // 启用服务端分页
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -150,15 +300,20 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  // Notify parent component when table is ready
-  useEffect(() => {
-    if (onTableReady) {
-      onTableReady(table)
-    }
-  }, [table, onTableReady])
+  if (isLoading) {
+    return (
+      <div className='flex h-96 items-center justify-center'>
+        <p className='text-muted-foreground text-sm'>Loading stock orders...</p>
+      </div>
+    )
+  }
 
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder='Enter Order Number,SKU,Product Name'
+      />
       <div className='mb-2 flex items-center justify-end'>
         <StockOrdersActionsMenu />
       </div>
@@ -176,12 +331,34 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
-          {/* Total Amount and Batch Payment - positioned at top left */}
           {(() => {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             const selectedCount = selectedRows.length
             const totalAmount = selectedRows.reduce((sum, row) => {
-              return sum + (row.original.cost.total || 0)
+              const order = row.original as any
+
+              // 优先使用后端返回的 hzkj_order_amount 字段
+              if (order.hzkj_order_amount !== undefined) {
+                const amount = order.hzkj_order_amount
+                const total =
+                  typeof amount === 'string'
+                    ? parseFloat(amount) || 0
+                    : typeof amount === 'number'
+                      ? amount
+                      : 0
+                return sum + total
+              }
+
+              // 如果没有 hzkj_order_amount，使用 cost.total
+              if (order.cost?.total !== undefined) {
+                const total =
+                  typeof order.cost.total === 'number'
+                    ? order.cost.total
+                    : parseFloat(String(order.cost.total)) || 0
+                return sum + total
+              }
+
+              return sum
             }, 0)
 
             return (
@@ -201,11 +378,10 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      // TODO: Implement batch payment dialog
-                      console.log(
-                        'Batch payment for orders:',
-                        selectedRows.map((row) => row.original.id)
+                      const orderIds = selectedRows.map(
+                        (row) => row.original.id
                       )
+                      void handleBatchPayment(orderIds)
                     }
                   }}
                   disabled={selectedCount === 0}
@@ -271,7 +447,7 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
             </Table>
           </div>
 
-          <StockOrdersTableFooter table={table} />
+          <StockOrdersTableFooter table={table} totalRows={totalCount} />
         </TabsContent>
       </Tabs>
 
@@ -281,6 +457,10 @@ export function StockOrdersTable({ data, onTableReady }: DataTableProps) {
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
         order={selectedOrderForPayment}
+        onPaymentSuccess={() => {
+          // 支付成功后刷新订单列表
+          setRefreshKey((prev) => prev + 1)
+        }}
       />
     </div>
   )

@@ -1,6 +1,3 @@
-import { useState } from 'react'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
 import {
@@ -17,6 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { Minus, Plus } from 'lucide-react'
+import { useState } from 'react'
 import { products } from '../data/data'
 
 export function ProductPurchase() {
@@ -49,6 +49,8 @@ export function ProductPurchase() {
 
   // 查找产品数据
   const product = products.find((p) => p.id === productId)
+
+  console.log(product, 'product====================')
 
   if (!product) {
     return null
@@ -196,6 +198,7 @@ export function ProductPurchase() {
                   <h3 className='text-xs font-semibold'>Selected Variants</h3>
                   <div className='space-y-2'>
                     {selectedVariants.map((variant) => {
+                      console.log(variant, 'variant==========99999999999==========')
                       const displayName = `${variant.lightSource
                         .charAt(0)
                         .toUpperCase()}${variant.lightSource.slice(

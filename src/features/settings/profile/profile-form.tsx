@@ -1,11 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Search } from 'lucide-react'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { getProfileInfo, updatePassword, updateProfile } from '@/lib/api/users'
+import {
+  getProfileInfo,
+  queryAdmininteTimezone,
+  updatePassword,
+  updateProfile,
+  type TimezoneItem,
+} from '@/lib/api/users'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,6 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { SelectDropdown } from '@/components/select-dropdown'
 
 // 国家代码列表 - 暂时未使用，保留以备将来使用
 // const countryCodes = [
@@ -70,6 +77,10 @@ const passwordFormSchema = z
     path: ['confirmPassword'],
     message: 'The two passwords do not match.',
   })
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    path: ['newPassword'],
+    message: 'New password must be different from current password.',
+  })
 
 type PasswordFormValues = z.infer<typeof passwordFormSchema>
 
@@ -90,7 +101,11 @@ const defaultValues: Partial<ProfileFormValues> = {
 
 export function ProfileForm() {
   const { auth } = useAuthStore()
+  const navigate = useNavigate()
+  const location = useLocation()
   const profileIdRef = useRef<string | number | undefined>(undefined)
+  const [timezones, setTimezones] = useState<TimezoneItem[]>([])
+  const [isLoadingTimezones, setIsLoadingTimezones] = useState(false)
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -108,16 +123,37 @@ export function ProfileForm() {
     mode: 'onChange',
   })
 
+  // 加载时区列表
+  useEffect(() => {
+    const fetchTimezones = async () => {
+      setIsLoadingTimezones(true)
+      try {
+        const timezoneList = await queryAdmininteTimezone(1, 100)
+        setTimezones(timezoneList)
+      } catch (error) {
+        console.error('Failed to load timezones:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load timezones. Please try again.'
+        )
+      } finally {
+        setIsLoadingTimezones(false)
+      }
+    }
+
+    void fetchTimezones()
+  }, [])
+
   // 加载 Profile 信息并映射到表单
   useEffect(() => {
     const loadProfile = async () => {
       try {
         const userId = auth.user?.id
         if (!userId) {
-          toast.error('User not authenticated. Please login again.')
+          console.warn('User ID is not available')
           return
         }
-
         const response = await getProfileInfo(userId)
         const rows = response.data?.rows
         const profile =
@@ -131,16 +167,27 @@ export function ProfileForm() {
           (profile?.hzkj_customer_first_name3 as string | undefined) || ''
         const lastName =
           (profile?.hzkj_customer_last_name3 as string | undefined) || ''
-        const email = (profile?.hzkj_emailfield3 as string | undefined) || ''
-        const timezone =
-          (profile?.hzkj_remark1 as string | undefined) ||
-          defaultValues.timezone
+        // Email 优先使用 profile 中的 hzkj_emailfield3，其次使用 auth.user 中的 email
+        const emailFromProfile =
+          (profile?.hzkj_emailfield3 as string | undefined) || ''
+        const emailFromUser = (auth.user?.email as string | undefined) || ''
+        const email = emailFromProfile || emailFromUser || ''
+        // 时区使用 hzkj_timezone_id 字段
+        const timezone = (profile?.hzkj_timezone_id as string | undefined) || ''
 
         // 手机号优先使用 user 中的 hzkj_whatsapp1，其次使用 profile 中的
         const whatsappFromUser =
           (auth.user?.hzkj_whatsapp1 as string | undefined) || ''
         const whatsappFromProfile =
           (profile?.hzkj_whatsapp1 as string | undefined) || ''
+
+        console.log('Profile data:', {
+          profile,
+          hzkj_emailfield3: profile?.hzkj_emailfield3,
+          emailFromProfile,
+          emailFromUser,
+          finalEmail: email,
+        })
 
         form.reset({
           ...defaultValues,
@@ -186,12 +233,11 @@ export function ProfileForm() {
           onSubmit={form.handleSubmit(async (values) => {
             try {
               const userId = auth.user?.id
-              if (!userId) {
-                toast.error('User not authenticated. Please login again.')
+              const rowId = profileIdRef.current ?? userId
+              if (!rowId) {
+                toast.error('User ID is required')
                 return
               }
-
-              const rowId = profileIdRef.current ?? userId
 
               await updateProfile([
                 {
@@ -200,7 +246,7 @@ export function ProfileForm() {
                   hzkj_customer_last_name3: values.lastName,
                   hzkj_emailfield3: values.email,
                   hzkj_whatsapp1: values.whatsappNumber || '',
-                  hzkj_remark1: values.timezone || '',
+                  hzkj_timezone_id: values.timezone || '',
                 },
               ])
 
@@ -236,7 +282,6 @@ export function ProfileForm() {
             </div>
           </div>
 
-          {/* Row 2: User ID & Email (read-only) */}
           <div className='grid grid-cols-2 gap-4'>
             <div className='space-y-1'>
               <FormLabel>User ID</FormLabel>
@@ -245,10 +290,19 @@ export function ProfileForm() {
               </div>
             </div>
             <div className='space-y-1'>
-              <FormLabel>Email</FormLabel>
-              <div className='bg-muted text-muted-foreground rounded-md border px-3 py-2 text-sm'>
-                {emailValue || '-'}
-              </div>
+              <FormField
+                control={form.control}
+                name='email'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder='Please enter Email' {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </div>
 
@@ -288,16 +342,17 @@ export function ProfileForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>时区</FormLabel>
-                <FormControl>
-                  <div className='relative'>
-                    <Input
-                      placeholder='(GMT+08:00) 北京, 重庆...'
-                      className='pr-8'
-                      {...field}
-                    />
-                    <Search className='text-muted-foreground absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2' />
-                  </div>
-                </FormControl>
+                <SelectDropdown
+                  defaultValue={field.value}
+                  onValueChange={field.onChange}
+                  placeholder='请选择时区'
+                  items={timezones.map((tz) => ({
+                    label: tz.name,
+                    value: tz.id,
+                  }))}
+                  isPending={isLoadingTimezones}
+                  isControlled
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -331,22 +386,26 @@ export function ProfileForm() {
         <form
           onSubmit={passwordForm.handleSubmit(async (values) => {
             try {
-              const rawUserId = auth.user?.id
-              if (!rawUserId) {
-                toast.error('User not authenticated. Please login again.')
+              const accountId = auth.user?.id
+              if (!accountId) {
+                toast.error('Account ID is required')
                 return
               }
 
-              const numericUserId = Number(rawUserId)
-              if (Number.isNaN(numericUserId)) {
-                toast.error('User ID is invalid, please contact support.')
-                return
-              }
+              await updatePassword(accountId, values.newPassword)
 
-              await updatePassword(numericUserId, values.newPassword)
+              toast.success(
+                'Password updated successfully. Please sign in again.'
+              )
 
-              toast.success('Password updated successfully.')
-              passwordForm.reset()
+              // 重置认证信息并跳转到登录页
+              auth.reset()
+              const currentPath = location.href
+              navigate({
+                to: '/sign-in',
+                search: { redirect: currentPath },
+                replace: true,
+              })
             } catch (error) {
               console.error('Failed to update password:', error)
               toast.error(
