@@ -37,7 +37,7 @@ export function LikedProductsRowActions({
       <Button
         variant='outline'
         size='sm'
-        className='h-7 border-red-200 px-2 text-xs text-red-500'
+        className='h-7 border-gray-200 px-2 text-xs text-gray-500'
         disabled={isDeleting}
         onClick={async (e) => {
           e.stopPropagation()

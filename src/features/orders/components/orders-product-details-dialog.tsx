@@ -10,6 +10,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink, Package } from 'lucide-react'
 import { type Order } from '../data/schema'
+import { toDisplayString } from '../utils'
 
 interface OrdersProductDetailsDialogProps {
   open: boolean
@@ -37,7 +38,7 @@ export function OrdersProductDetailsDialog({ open, onOpenChange, order }: Orders
             </div>
             <div>
               <div className='text-sm text-muted-foreground'>客户</div>
-              <div className='font-medium'>{order.customerName}</div>
+              <div className='font-medium'>{toDisplayString(order.customerName) || '—'}</div>
             </div>
             <div>
               <div className='text-sm text-muted-foreground'>总金额</div>

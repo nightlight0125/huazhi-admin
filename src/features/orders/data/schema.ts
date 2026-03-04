@@ -67,6 +67,8 @@ export const orderProductSchema = z.object({
   hzkj_local_sku: z.string().optional(), // 本地SKU
   hzkj_amount: z.string().optional().nullable(), // 金额
   hzkj_qty: z.string().optional().nullable(), // 数量
+  hzkj_local_sku_id: z.string().optional(), // 本地SKU ID（用于API调用）
+  entryId: z.string().optional(), // 明细ID（用于API调用）
 })
 
 // 订单数据结构

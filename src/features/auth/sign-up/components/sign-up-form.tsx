@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { AuthError, getToken, memberSignUp } from '@/lib/api/auth'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
   FormControl,
@@ -29,6 +30,10 @@ const formSchema = z.object({
     .min(1, 'Please enter your phone number')
     .regex(/^1[3-9]\d{9}$/, 'Please enter a valid phone number'),
   password: z.string().min(1, 'Please enter your password'),
+  acceptedTerms: z.boolean().refine((val) => val === true, {
+    message:
+      'Please confirm that you have read and agree to the User Registration Agreement and Privacy Policy',
+  }),
 })
 
 export function SignUpForm({
@@ -46,6 +51,7 @@ export function SignUpForm({
       name: '',
       phone: '',
       password: '',
+      acceptedTerms: false,
     },
   })
 
@@ -188,6 +194,45 @@ export function SignUpForm({
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name='acceptedTerms'
+          render={({ field }) => (
+            <FormItem className='space-y-1'>
+              <div className='flex items-center gap-2'>
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel className='text-muted-foreground !mt-0 text-xs font-normal'>
+                  I have read{' '}
+                  <a
+                    href='https://www.dropsure.com/privacy-policy/#Terms'
+                    className='text-primary underline underline-offset-4'
+                    target='_blank'
+                    rel='noreferrer'
+                  >
+                    User Registration Agreement
+                  </a>{' '}
+                  and{' '}
+                  <a
+                    href='https://www.dropsure.com/privacy-policy/'
+                    className='text-primary underline underline-offset-4'
+                    target='_blank'
+                    rel='noreferrer'
+                  >
+                    Privacy Policy
+                  </a>
+                </FormLabel>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button type='submit' className='mt-2' disabled={isLoading}>
           {isLoading ? 'Creating...' : 'Create Account'}
         </Button>

@@ -65,7 +65,8 @@ export function RecommendProducts() {
 
           return {
             id: item.id,
-            name: item.name || item.enname || '',
+            name: item.name || (typeof item.enname === 'string' ? item.enname : '') || '',
+            enname: item.enname ?? item.hzkj_enname ?? undefined,
             image: item.picture || '',
             spu: item.number || '', // SPU 使用 number 字段
             priceMin: item.price || 0,

@@ -1,22 +1,4 @@
-import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
-import { DataTablePagination } from '@/components/data-table'
-import { FilterToolbar } from '@/components/filter-toolbar'
-import { ImageSearchInput } from '@/components/image-search-input'
-import { PriceRangePopover } from '@/components/price-range-popover'
-import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
-import { type Product } from '@/features/products/data/schema'
-import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
-import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
-import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
-import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import {
-  collectProduct,
-  type GoodClassItem,
-  queryGoodClassList,
-} from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import {
   type ColumnDef,
@@ -32,8 +14,26 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  collectProduct,
+  type GoodClassItem,
+  queryGoodClassList,
+} from '@/lib/api/products'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
+import { DataTablePagination } from '@/components/data-table'
+import { FilterToolbar } from '@/components/filter-toolbar'
+import { ImageSearchInput } from '@/components/image-search-input'
+import { PriceRangePopover } from '@/components/price-range-popover'
+import { type Product } from '@/features/products/data/schema'
+import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
+import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
+import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
+import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
 
 // Category item type
 type CategoryItem = {
@@ -170,7 +170,7 @@ export function ProductsGrid({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   // 本地搜索输入值
   const [searchInputValue, setSearchInputValue] = useState<string>('')
-  
+
   // Store Listing Tabs 相关状态
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
@@ -504,7 +504,7 @@ export function ProductsGrid({
                     {/* Product Info */}
                     <div className='space-y-1.5 p-2.5'>
                       {/* Product Title */}
-                      <h3 className='line-clamp-2 h-10 text-sm leading-tight font-semibold'>
+                      <h3 className='line-clamp-2 text-sm leading-tight font-semibold'>
                         {product.name}
                       </h3>
 

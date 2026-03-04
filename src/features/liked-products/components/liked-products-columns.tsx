@@ -39,17 +39,27 @@ export const createLikedProductsColumns = (
       ),
       cell: ({ row }) => {
         const product = row.original
+        const raw = product.enname
+        let displayName = product.name
+        if (raw != null) {
+          if (typeof raw === 'string') displayName = raw
+          else if (typeof raw === 'object' && raw !== null) {
+            const obj = raw as Record<string, unknown>
+            displayName =
+              (obj.GLang as string) || (obj.zh_CN as string) || product.name
+          }
+        }
         return (
           <div className='flex items-start gap-2'>
             <img
               src={product.image}
-              alt={product.name}
+              alt={displayName}
               className='h-12 w-12 shrink-0 rounded object-cover'
             />
             <div className='min-w-0 flex-1'>
               <div className='flex items-start gap-1'>
                 <p className='line-clamp-2 text-xs leading-tight'>
-                  {product.name}
+                  {displayName}
                 </p>
               </div>
             </div>
@@ -105,7 +115,6 @@ export const createLikedProductsColumns = (
     },
   ]
 
-  // 添加 actions 列
   columns.push({
     id: 'actions',
     cell: ({ row }) => (

@@ -1,8 +1,31 @@
-import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
-import { DataTablePagination } from '@/components/data-table'
-import { FilterToolbar } from '@/components/filter-toolbar'
-import { ImageSearchInput } from '@/components/image-search-input'
-import { PriceRangePopover } from '@/components/price-range-popover'
+import { useEffect, useMemo, useState } from 'react'
+import { CheckIcon } from '@radix-ui/react-icons'
+import { getRouteApi, useNavigate } from '@tanstack/react-router'
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type RowSelectionState,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
+} from '@tanstack/react-table'
+import { ChevronDown, Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
+import { toast } from 'sonner'
+import countries from 'world-countries'
+import { useAuthStore } from '@/stores/auth-store'
+import { type CountryItem, queryCountry } from '@/lib/api/logistics'
+import {
+  collectProduct,
+  type GoodClassItem,
+  queryGoodClassList,
+} from '@/lib/api/products'
+import { cn } from '@/lib/utils'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -16,36 +39,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { type Product } from '@/features/products/data/schema'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { type CountryItem, queryCountry } from '@/lib/api/logistics'
-import {
-  collectProduct,
-  type GoodClassItem,
-  queryGoodClassList,
-} from '@/lib/api/products'
-import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/stores/auth-store'
-import { CheckIcon } from '@radix-ui/react-icons'
-import { getRouteApi, useNavigate } from '@tanstack/react-router'
-import {
-  type ColumnDef,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getSortedRowModel,
-  type SortingState,
-  useReactTable,
-  type VisibilityState,
-  type RowSelectionState,
-  type ColumnFiltersState,
-} from '@tanstack/react-table'
-import { ChevronDown, Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { toast } from 'sonner'
-import countries from 'world-countries'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
+import { DataTablePagination } from '@/components/data-table'
+import { FilterToolbar } from '@/components/filter-toolbar'
+import { ImageSearchInput } from '@/components/image-search-input'
+import { PriceRangePopover } from '@/components/price-range-popover'
+import { type Product } from '@/features/products/data/schema'
 import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
 import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
@@ -190,7 +190,7 @@ export function AllProductsGrid({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   // 本地搜索输入值
   const [searchInputValue, setSearchInputValue] = useState<string>('')
-  
+
   // Store Listing Tabs 相关状态
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
@@ -493,20 +493,30 @@ export function AllProductsGrid({
                             {isSelected && <CheckIcon className='h-4 w-4' />}
                           </div>
                           <div className='flex items-center gap-2'>
-                            {option.twocountrycode && (() => {
-                              const countryInfo = countries.find(
-                                (c) => c.cca2.toUpperCase() === option.twocountrycode?.toUpperCase()
-                              )
-                              const code = countryInfo?.cca2.toLowerCase() || option.twocountrycode?.toLowerCase() || ''
-                              const flagClass = code ? `fi fi-${code}` : ''
-                              return flagClass ? (
-                                <span
-                                  className={cn(flagClass, 'mr-1')}
-                                  aria-hidden='true'
-                                />
-                              ) : null
-                            })()}
-                            <span>{option.name || option.hzkj_name || option.description}</span>
+                            {option.twocountrycode &&
+                              (() => {
+                                const countryInfo = countries.find(
+                                  (c) =>
+                                    c.cca2.toUpperCase() ===
+                                    option.twocountrycode?.toUpperCase()
+                                )
+                                const code =
+                                  countryInfo?.cca2.toLowerCase() ||
+                                  option.twocountrycode?.toLowerCase() ||
+                                  ''
+                                const flagClass = code ? `fi fi-${code}` : ''
+                                return flagClass ? (
+                                  <span
+                                    className={cn(flagClass, 'mr-1')}
+                                    aria-hidden='true'
+                                  />
+                                ) : null
+                              })()}
+                            <span>
+                              {option.name ||
+                                option.hzkj_name ||
+                                option.description}
+                            </span>
                           </div>
                         </CommandItem>
                       )
@@ -574,7 +584,7 @@ export function AllProductsGrid({
                     SPU:{product.sku}
                   </p>
 
-                  <div className='text-base font-bold'>
+                  <div className='text-base font-bold text-orange-500'>
                     ${product.price.toFixed(2)}
                   </div>
 

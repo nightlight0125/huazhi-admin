@@ -64,7 +64,7 @@ export function AllProducts() {
             // 将 API 产品数据转换为 Product schema 格式
             return {
               id: apiProduct.id,
-              name: apiProduct.name || apiProduct.enname || '',
+              name: apiProduct.enname || apiProduct.name || '',
               image: apiProduct.picture || '',
               shippingLocation: shippingLocations[0], // 默认值，API 没有提供
               price: apiProduct.price || 0,

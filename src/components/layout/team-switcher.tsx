@@ -1,12 +1,7 @@
 import * as React from 'react'
-import { ChevronsUpDown, Plus } from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
 import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -52,8 +47,8 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
               size='lg'
               className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center'
             >
-              <div className='flex aspect-square size-9 shrink-0 items-center justify-center'>
-                {renderLogo(activeTeam.logo, '')}
+              <div className='flex size-25 shrink-0 items-center justify-center'>
+                {renderLogo(activeTeam.logo, 'h-10 w-auto')}
               </div>
               <div className='grid flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden'>
                 <span className='truncate font-semibold'>
@@ -64,36 +59,6 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
               <ChevronsUpDown className='ms-auto shrink-0 group-data-[collapsible=icon]:hidden' />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
-            align='start'
-            side={isMobile ? 'bottom' : 'right'}
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className='text-muted-foreground text-xs'>
-              Teams
-            </DropdownMenuLabel>
-            {teams.map((team, index) => (
-              <DropdownMenuItem
-                key={team.name}
-                onClick={() => setActiveTeam(team)}
-                className='gap-2 p-2'
-              >
-                <div className='flex aspect-square size-7 items-center justify-center'>
-                  {renderLogo(team.logo, '')}
-                </div>
-                {team.name}
-                <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className='gap-2 p-2'>
-              <div className='bg-background flex size-6 items-center justify-center rounded-md border'>
-                <Plus className='size-4' />
-              </div>
-              <div className='text-muted-foreground font-medium'>Add team</div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>

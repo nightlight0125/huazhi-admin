@@ -174,8 +174,9 @@ export function useFetchCollectionProducts(
           const likedProducts: LikedProduct[] = apiProducts.map((item: any) => ({
             id: item.id || String(item.id) || '',
             name: item.name || '',
+            enname: item.enname ?? item.hzkj_enname ?? undefined,
             image: item.picture || '',
-            description: item.enname || '',
+            description: item.description || (typeof item.enname === 'string' ? item.enname : '') || '',
             spu: item.number || '',
             priceMin: item.price || 0,
             priceMax: item.price || 0,

@@ -428,8 +428,12 @@ export async function getProduct(
 
 // 收藏产品请求参数
 export interface CollectProductRequest {
-  goodsId: string
-  customerId: string
+  data: Array<{
+    hzkj_collect_entry: Array<{
+      hzkj_collect_goods_id: string
+    }>
+    hzkj_customer_id: string
+  }>
 }
 
 // 收藏产品响应
@@ -446,8 +450,16 @@ export async function collectProduct(
   customerId: string
 ): Promise<CollectProductResponse> {
   const requestData: CollectProductRequest = {
-    goodsId,
-    customerId,
+    data: [
+      {
+        hzkj_collect_entry: [
+          {
+            hzkj_collect_goods_id: goodsId,
+          },
+        ],
+        hzkj_customer_id: customerId,
+      },
+    ],
   }
 
   const response = await apiClient.post<CollectProductResponse>(
@@ -1145,6 +1157,57 @@ export async function unlinkProduct(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to unlink product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 推送产品到 Shopify 请求参数
+export interface PushProductToShopifyNewRequest {
+  pushProductVO: {
+    shopId: string
+    customerId: string
+    productId?: string
+    title: string
+    tags: string[]
+    pictures: string[]
+    description: string
+    variants: Array<{
+      picture: string
+      sku: string
+      price: number
+      variantValues: Array<{
+        groupName: string
+        name: string
+      }>
+    }>
+  }
+}
+
+// 推送产品到 Shopify 响应
+export interface PushProductToShopifyNewResponse {
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  data?: unknown
+  [key: string]: unknown
+}
+
+// 推送产品到 Shopify API
+export async function pushProductToShopifyNew(
+  params: PushProductToShopifyNewRequest
+): Promise<PushProductToShopifyNewResponse> {
+  const response = await apiClient.post<PushProductToShopifyNewResponse>(
+    '/v2/hzkj/hzkj_commodity/products/pushProductToShopifyNew',
+    params
+  )
+
+  console.log('推送产品到 Shopify 响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to push product to Shopify. Please try again.'
     throw new Error(errorMessage)
   }
 

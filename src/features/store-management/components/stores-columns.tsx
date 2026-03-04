@@ -1,14 +1,14 @@
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTableColumnHeader } from '@/components/data-table'
+import { useState } from 'react'
+import { type ColumnDef, type Row } from '@tanstack/react-table'
+import { Loader2, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { unbindShop } from '@/lib/api/shop'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { unbindShop } from '@/lib/api/shop'
-import { useAuthStore } from '@/stores/auth-store'
-import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { Loader2, Trash2 } from 'lucide-react'
-import { useState } from 'react'
-import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTableColumnHeader } from '@/components/data-table'
 import { type Store } from '../data/schema'
 
 type StoresColumnsOptions = {
@@ -63,7 +63,6 @@ export const createStoresColumns = (
   },
   {
     accessorKey: 'platform',
-    size: 140,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store Type' />
     ),
@@ -105,36 +104,35 @@ export const createStoresColumns = (
       }
     },
   },
-  {
-    accessorKey: 'createtime',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Create Time' />
-    ),
-    cell: ({ row }) => {
-      const createtime = row.getValue('createtime') as string | undefined
-      if (!createtime) {
-        return <div className='text-muted-foreground text-sm'>-</div>
-      }
+  // {
+  //   accessorKey: 'createtime',
+  //   header: ({ column }) => (
+  //     <DataTableColumnHeader column={column} title='Create Time' />
+  //   ),
+  //   cell: ({ row }) => {
+  //     const createtime = row.getValue('createtime') as string | undefined
+  //     if (!createtime) {
+  //       return <div className='text-muted-foreground text-sm'>-</div>
+  //     }
 
-      // 格式化时间显示
-      try {
-        const date = new Date(createtime)
-        const dateStr = date.toLocaleDateString()
-        const timeStr = date.toLocaleTimeString()
-        return (
-          <div className='flex flex-col text-sm'>
-            <span>{dateStr}</span>
-            <span className='text-muted-foreground'>{timeStr}</span>
-          </div>
-        )
-      } catch {
-        return <div className='text-sm'>{createtime}</div>
-      }
-    },
-  },
+  //     // 格式化时间显示
+  //     try {
+  //       const date = new Date(createtime)
+  //       const dateStr = date.toLocaleDateString()
+  //       const timeStr = date.toLocaleTimeString()
+  //       return (
+  //         <div className='flex flex-col text-sm'>
+  //           <span>{dateStr}</span>
+  //           <span className='text-muted-foreground'>{timeStr}</span>
+  //         </div>
+  //       )
+  //     } catch {
+  //       return <div className='text-sm'>{createtime}</div>
+  //     }
+  //   },
+  // },
   {
     accessorKey: 'enable',
-    size: 130,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store Status' />
     ),
@@ -160,7 +158,7 @@ export const createStoresColumns = (
 
   {
     id: 'actions',
-    size: 60,
+    size: 120,
     header: () => <span className='sr-only'>Actions</span>,
     cell: ({ row }) => (
       <StoreDeleteCell row={row} onUnbindSuccess={options?.onUnbindSuccess} />
@@ -217,7 +215,7 @@ function StoreDeleteCell({ row, onUnbindSuccess }: StoreDeleteCellProps) {
       <Button
         variant='outline'
         size='sm'
-        className='h-7 border-red-200 px-2 text-xs text-red-500'
+        className='h-7 border-gray-200 px-2 text-xs text-gray-500'
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)

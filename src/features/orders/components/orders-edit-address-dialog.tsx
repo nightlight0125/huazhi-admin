@@ -42,11 +42,20 @@ function getCustomerNameFromOrder(order: Order): string {
       raw.GLang ||
       raw.zh_CN ||
       raw.zh_TW ||
-      order.customerName ||
       ''
-    )
+    ) || getCustomerNameFromOrderCustomerName((order as any).customerName)
   }
-  return order.customerName || ''
+  return getCustomerNameFromOrderCustomerName((order as any).customerName)
+}
+
+function getCustomerNameFromOrderCustomerName(value: unknown): string {
+  if (value == null) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'object' && value !== null) {
+    const obj = value as Record<string, unknown>
+    return (obj.GLang as string) || (obj.zh_CN as string) || (obj.zh_TW as string) || ''
+  }
+  return String(value)
 }
 
 export function OrdersEditAddressDialog({

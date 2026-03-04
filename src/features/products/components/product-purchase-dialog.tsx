@@ -1,3 +1,12 @@
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { Minus, Plus } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { addStock } from '@/lib/api/orders'
+import type { ApiProductItem } from '@/lib/api/products'
+import { selectSpecGetSku } from '@/lib/api/products'
+import { useWarehouses } from '@/hooks/use-warehouses'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
 import {
@@ -14,13 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useWarehouses } from '@/hooks/use-warehouses'
-import type { ApiProductItem } from '@/lib/api/products'
-import { selectSpecGetSku } from '@/lib/api/products'
-import { useNavigate } from '@tanstack/react-router'
-import { Minus, Plus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import type {
   ConfirmOrderItem,
   ConfirmOrderPayload,
@@ -46,17 +48,14 @@ export function ProductPurchaseDialog({
   initialSelectedSpecs = {},
 }: ProductPurchaseDialogProps) {
   const navigate = useNavigate()
-
+  const { auth } = useAuthStore()
 
   const processedVariantIdsRef = useRef<Set<string>>(new Set())
 
-  const [selectedSpecs, setSelectedSpecs] = useState<
-    Record<string, string>
-  >(initialSelectedSpecs)
+  const [selectedSpecs, setSelectedSpecs] =
+    useState<Record<string, string>>(initialSelectedSpecs)
 
-  const [selectedVariants, setSelectedVariants] = useState<
-    any[]
-  >([])
+  const [selectedVariants, setSelectedVariants] = useState<any[]>([])
 
   const extractName = (name: unknown): string => {
     if (typeof name === 'string') {
@@ -76,28 +75,33 @@ export function ProductPurchaseDialog({
   }
 
   const totalPrice = (
-    selectedVariants.reduce(
-      (sum, v) => {
-        const variantPrice = v.price ?? (typeof apiProduct?.hzkj_pur_price === 'number' ? apiProduct.hzkj_pur_price : 0)
-        return sum + (v.quantity || 1) * (typeof variantPrice === 'number' ? variantPrice : 0)
-      },
-      0
-    ) || 0
+    selectedVariants.reduce((sum, v) => {
+      if (v.loading) return sum
+      const variantPrice =
+        v.price ??
+        (typeof apiProduct?.hzkj_pur_price === 'number'
+          ? apiProduct.hzkj_pur_price
+          : 0)
+      return (
+        sum +
+        (v.quantity ?? 1) *
+          (typeof variantPrice === 'number' ? variantPrice : 0)
+      )
+    }, 0) || 0
   ).toFixed(2)
 
   // 获取规格数据
   const skuSpecs =
     apiProduct &&
-    Array.isArray(
-      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
-    )
-      ? ((apiProduct as Record<string, unknown>)
-          .hzkj_sku_spec_e as Array<{
+    Array.isArray((apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e)
+      ? ((apiProduct as Record<string, unknown>).hzkj_sku_spec_e as Array<{
           hzkj_sku_spec_id?: string
           hzkj_sku_spec_name?: string
+          hzkj_sku_spec_enname?: string
           hzkj_sku_specvalue_e?: Array<{
             hzkj_sku_specvalue_id?: string
             hzkj_sku_specvalue_name?: string
+            hzkj_sku_specvalue_enname?: string
             [key: string]: unknown
           }>
           [key: string]: unknown
@@ -108,7 +112,8 @@ export function ProductPurchaseDialog({
   const [selectedWarehouse, setSelectedWarehouse] = useState<
     string | undefined
   >()
-  const { warehouses: warehouseOptions, isLoading: isLoadingWarehouses } = useWarehouses()
+  const { warehouses: warehouseOptions, isLoading: isLoadingWarehouses } =
+    useWarehouses()
 
   const hasShippingAddress = false
 
@@ -144,8 +149,9 @@ export function ProductPurchaseDialog({
       }
 
       // 提取规格值ID列表（specIds）
-      const specIds = Object.values(selectedSpecs)
-        .filter((id): id is string => typeof id === 'string' && id !== '')
+      const specIds = Object.values(selectedSpecs).filter(
+        (id): id is string => typeof id === 'string' && id !== ''
+      )
 
       if (specIds.length === 0) {
         setSelectedVariants([])
@@ -163,29 +169,18 @@ export function ProductPurchaseDialog({
       // 设置加载状态
       setSelectedVariants([{ loading: true }])
 
-      const test = {
-        "productId":"2395215103260637184",
-        "specIds":[
-          "2366744046996603904",
-          "2395147055661068288"
-        ]
-      }
-
       try {
         // 调用 API 获取 SKU 数据
         const response = await selectSpecGetSku({
-          // productId,
-          // specIds,
-          ...test,
+          productId,
+          specIds,
         })
         const skuData = response.data
-        console.log(skuData, 'skuData==========11111111111==========')
-        // API 返回的数据是数组，需要遍历处理
         if (Array.isArray(skuData) && skuData.length > 0) {
           const variants = skuData.map((item) => ({
             ...item,
             specValues: selectedSpecs,
-            quantity: item.quantity || 1,
+            quantity: item.quantity ?? 1,
           }))
           console.log('Setting selectedVariants:', variants)
           setSelectedVariants(variants)
@@ -222,21 +217,65 @@ export function ProductPurchaseDialog({
       }
     }
     fetchSkuData()
-  }, [open, productId, selectedSpecs, skuSpecs]) 
+  }, [open, productId, selectedSpecs, skuSpecs])
 
-  const handleBuyNow = () => {
-    if (mode === 'stock') {
-      if (!selectedWarehouse) {
-        return
-      }
-      navigate({ to: '/stock-orders' })
-    }
-
-    // 构建确认订单数据
+  const handleBuyNow = async () => {
     if (!selectedVariants || selectedVariants.length === 0) {
       toast.error('Please select a variant')
       return
     }
+
+    // 过滤掉 loading 占位项，只保留有效变体
+    const validVariants = selectedVariants.filter(
+      (v: any) => v && !v.loading && v.id
+    )
+    if (validVariants.length === 0) {
+      toast.error('Please select a variant')
+      return
+    }
+
+    if (mode === 'stock') {
+      if (!selectedWarehouse) {
+        toast.error('Please select warehouse')
+        return
+      }
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        toast.error('Customer ID not found. Please sign in again.')
+        return
+      }
+      try {
+        const stockItems = validVariants
+          .map((v: any) => ({
+            skuId: String(v.id),
+            qty: Math.max(0, Number(v.quantity) ?? 0),
+          }))
+          .filter((item) => item.qty > 0)
+        if (stockItems.length === 0) {
+          toast.error('Please set quantity at least 1 for one variant')
+          return
+        }
+        await addStock({
+          stockType: '1',
+          stockItems,
+          warehouseId: selectedWarehouse,
+          customerId: String(customerId),
+        })
+        toast.success('Stock added successfully')
+        onOpenChange(false)
+        navigate({ to: '/stock-orders' })
+        return
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to add stock. Please try again.'
+        )
+        return
+      }
+    }
+
+    // 构建确认订单数据（sample 模式或走确认订单流程）
 
     const orderItems: ConfirmOrderItem[] = selectedVariants.map((variant) => {
       // 根据选中的规格值构建显示名称
@@ -249,22 +288,60 @@ export function ProductPurchaseDialog({
             (v) => v.hzkj_sku_specvalue_id === selectedValueId
           )
           if (value) {
-            specNames.push(value.hzkj_sku_specvalue_name || '')
+            specNames.push(
+              value.hzkj_sku_specvalue_enname ||
+                value.hzkj_sku_specvalue_name ||
+                ''
+            )
           }
         }
       }
       const displayName = specNames.join(' - ') || 'Default'
 
+      // 产品主标题：优先用后端 hzkj_enname 的 GLang 或 zh_CN
+      const en = (apiProduct as Record<string, unknown>)?.hzkj_enname
+      let productTitle = extractName(apiProduct?.name) || 'Product'
+      if (en != null && typeof en === 'string') productTitle = en
+      else if (en != null && typeof en === 'object') {
+        const obj = en as Record<string, unknown>
+        productTitle =
+          (obj.GLang as string) || (obj.zh_CN as string) || productTitle
+      }
+
       return {
         id: variant.id,
-        image: (typeof variant.pic === 'string' ? variant.pic : '') || (typeof variant.image === 'string' ? variant.image : '') || (typeof apiProduct?.hzkj_picurl_tag === 'string' ? apiProduct.hzkj_picurl_tag : ''),
-        name: `${extractName(apiProduct?.name) || 'Product'} - ${displayName}`,
-        sku: variant.sku || variant.number || variant.id || `${apiProduct?.number || productId}`,
-        price: typeof variant.price === 'number' ? variant.price : (typeof apiProduct?.hzkj_pur_price === 'number' ? apiProduct.hzkj_pur_price : 0),
-        discountedPrice: typeof variant.price === 'number' ? variant.price : (typeof apiProduct?.hzkj_pur_price === 'number' ? apiProduct.hzkj_pur_price : 0),
+        image:
+          (typeof variant.pic === 'string' ? variant.pic : '') ||
+          (typeof variant.image === 'string' ? variant.image : '') ||
+          (typeof apiProduct?.hzkj_picurl_tag === 'string'
+            ? apiProduct.hzkj_picurl_tag
+            : ''),
+        name: `${productTitle} - ${displayName}`,
+        sku:
+          variant.sku ||
+          variant.number ||
+          variant.id ||
+          `${apiProduct?.number || productId}`,
+        price:
+          typeof variant.price === 'number'
+            ? variant.price
+            : typeof apiProduct?.hzkj_pur_price === 'number'
+              ? apiProduct.hzkj_pur_price
+              : 0,
+        discountedPrice:
+          typeof variant.price === 'number'
+            ? variant.price
+            : typeof apiProduct?.hzkj_pur_price === 'number'
+              ? apiProduct.hzkj_pur_price
+              : 0,
         weight: 45,
-        quantity: variant.quantity || 1,
-        fee: ((typeof variant.price === 'number' ? variant.price : (typeof apiProduct?.hzkj_pur_price === 'number' ? apiProduct.hzkj_pur_price : 0)) * (variant.quantity || 1)),
+        quantity: variant.quantity ?? 1,
+        fee:
+          (typeof variant.price === 'number'
+            ? variant.price
+            : typeof apiProduct?.hzkj_pur_price === 'number'
+              ? apiProduct.hzkj_pur_price
+              : 0) * (variant.quantity ?? 1),
       }
     })
 
@@ -307,7 +384,8 @@ export function ProductPurchaseDialog({
             <div className='grid grid-cols-1 gap-4 md:grid-cols-12'>
               <div className='w-full max-w-[240px] md:col-span-3'>
                 <div className='aspect-square overflow-hidden rounded-lg border bg-gray-100'>
-                  {typeof apiProduct?.hzkj_picurl_tag === 'string' && apiProduct.hzkj_picurl_tag ? (
+                  {typeof apiProduct?.hzkj_picurl_tag === 'string' &&
+                  apiProduct.hzkj_picurl_tag ? (
                     <img
                       src={apiProduct.hzkj_picurl_tag}
                       alt={extractName(apiProduct?.name) || 'Product'}
@@ -323,15 +401,34 @@ export function ProductPurchaseDialog({
 
               {/* 右侧：产品标题、价格、SPU */}
               <div className='flex flex-col justify-center space-y-2 md:col-span-9'>
-                <h2 className='text-xl font-semibold'>{extractName(apiProduct?.name) || 'Product'}</h2>
+                <h2 className='text-xl font-semibold'>
+                  {(() => {
+                    const en = (apiProduct as Record<string, unknown>)
+                      ?.hzkj_enname
+                    if (en != null && typeof en === 'string') return en
+                    if (en != null && typeof en === 'object') {
+                      const obj = en as Record<string, unknown>
+                      return (
+                        (obj.GLang as string) || (obj.zh_CN as string) || ''
+                      )
+                    }
+                    return extractName(apiProduct?.name) || 'Product'
+                  })()}
+                </h2>
                 <div className='text-muted-foreground text-sm'>
                   Product Price:{' '}
                   <span className='text-primary text-2xl font-bold'>
-                    ${typeof apiProduct?.hzkj_pur_price === 'number' ? apiProduct.hzkj_pur_price.toFixed(2) : '0.00'}
+                    $
+                    {typeof apiProduct?.hzkj_pur_price === 'number'
+                      ? apiProduct.hzkj_pur_price.toFixed(2)
+                      : '0.00'}
                   </span>
                 </div>
                 <div className='text-muted-foreground text-sm'>
-                  SPU: <span className='font-medium'>{apiProduct?.number || productId}</span>
+                  SPU:{' '}
+                  <span className='font-medium'>
+                    {apiProduct?.number || productId}
+                  </span>
                 </div>
               </div>
             </div>
@@ -341,7 +438,7 @@ export function ProductPurchaseDialog({
                 {skuSpecs.map((spec) => (
                   <div key={spec.hzkj_sku_spec_id || ''} className='mb-6'>
                     <h3 className='mb-2 text-xs font-semibold'>
-                      {spec.hzkj_sku_spec_name || ''}
+                      {spec.hzkj_sku_spec_enname || ''}
                     </h3>
                     <div className='space-y-2'>
                       {Array.isArray(spec.hzkj_sku_specvalue_e) &&
@@ -363,7 +460,7 @@ export function ProductPurchaseDialog({
                                 : 'border-border bg-background hover:bg-accent'
                             }`}
                           >
-                            {value.hzkj_sku_specvalue_name || ''}
+                            {value.hzkj_sku_specvalue_enname || ''}
                           </button>
                         ))}
                     </div>
@@ -377,109 +474,122 @@ export function ProductPurchaseDialog({
                   <h3 className='text-xs font-semibold'>Selected Variants</h3>
                   <div className='space-y-2'>
                     {selectedVariants.length === 0 ? (
-                      <div className='text-muted-foreground text-center text-sm py-4'>
+                      <div className='text-muted-foreground py-4 text-center text-sm'>
                         No variant selected
                       </div>
-                    ) : selectedVariants.map((variant: any) => {
-                      if (variant.loading) {
+                    ) : (
+                      selectedVariants.map((variant: any) => {
+                        if (variant.loading) {
+                          return (
+                            <div
+                              key='loading'
+                              className='flex items-center justify-center rounded-lg border p-3'
+                            >
+                              <div className='text-muted-foreground text-sm'>
+                                Loading...
+                              </div>
+                            </div>
+                          )
+                        }
                         return (
                           <div
-                            key="loading"
-                            className='flex items-center justify-center rounded-lg border p-3'
+                            key={variant.id}
+                            className='flex items-center gap-3 rounded-lg border p-3'
                           >
-                            <div className='text-muted-foreground text-sm'>Loading...</div>
+                            {variant.pic ? (
+                              <img
+                                src={variant.pic}
+                                className='h-12 w-12 rounded object-cover'
+                              />
+                            ) : (
+                              <div className='flex h-12 w-12 items-center justify-center rounded bg-gray-100 text-[10px] text-gray-400'>
+                                No Img
+                              </div>
+                            )}
+                            <div className='flex-1'>
+                              <div className='mb-0.5 text-sm font-medium'>
+                                {variant.enname?.GLang || ''}
+                              </div>
+                              <div className='text-muted-foreground mb-1 text-[11px]'>
+                                SKU: {variant.id}
+                              </div>
+                              <div className='text-primary text-sm font-semibold'>
+                                $
+                                {typeof variant.price === 'number'
+                                  ? variant.price.toFixed(2)
+                                  : '0.00'}
+                              </div>
+                            </div>
+                            <div className='flex items-center gap-2'>
+                              <Button
+                                variant='outline'
+                                size='icon'
+                                className='h-7 w-7'
+                                onClick={() => {
+                                  setSelectedVariants((prev: any[]) => {
+                                    if (!Array.isArray(prev)) return prev
+                                    return prev.map((v) =>
+                                      v.id === variant.id
+                                        ? {
+                                            ...v,
+                                            quantity: Math.max(
+                                              0,
+                                              (v.quantity ?? 1) - 1
+                                            ),
+                                          }
+                                        : v
+                                    )
+                                  })
+                                }}
+                                disabled={(variant.quantity ?? 1) <= 0}
+                              >
+                                <Minus className='h-4 w-4' />
+                              </Button>
+                              <Input
+                                type='number'
+                                value={variant.quantity ?? 1}
+                                onChange={(e) => {
+                                  const newQuantity = Math.max(
+                                    0,
+                                    parseInt(e.target.value, 10) || 0
+                                  )
+                                  setSelectedVariants((prev: any[]) => {
+                                    if (!Array.isArray(prev)) return prev
+                                    return prev.map((v) =>
+                                      v.id === variant.id
+                                        ? { ...v, quantity: newQuantity }
+                                        : v
+                                    )
+                                  })
+                                }}
+                                className='h-7 w-14 text-center text-xs'
+                                min={0}
+                              />
+                              <Button
+                                variant='outline'
+                                size='icon'
+                                className='h-7 w-7'
+                                onClick={() => {
+                                  setSelectedVariants((prev: any[]) => {
+                                    if (!Array.isArray(prev)) return prev
+                                    return prev.map((v) =>
+                                      v.id === variant.id
+                                        ? {
+                                            ...v,
+                                            quantity: (v.quantity ?? 1) + 1,
+                                          }
+                                        : v
+                                    )
+                                  })
+                                }}
+                              >
+                                <Plus className='h-4 w-4' />
+                              </Button>
+                            </div>
                           </div>
                         )
-                      }
-                      return (
-                        <div
-                          key={variant.id}
-                          className='flex items-center gap-3 rounded-lg border p-3'
-                        >
-                          {variant.pic ? (
-                            <img
-                              src={variant.pic}
-                              className='h-12 w-12 rounded object-cover'
-                            />
-                          ) : (
-                            <div className='flex h-12 w-12 items-center justify-center rounded bg-gray-100 text-[10px] text-gray-400'>
-                              No Img
-                            </div>
-                          )}
-                          <div className='flex-1'>
-                            <div className='mb-0.5 text-sm font-medium'>
-                              {variant.name?.GLang || ''}
-                            </div>
-                            <div className='text-muted-foreground mb-1 text-[11px]'>
-                              SKU: {variant.id}
-                            </div>
-                            <div className='text-primary text-sm font-semibold'>
-                              ${typeof variant.price === 'number' ? variant.price.toFixed(2) : '0.00'}
-                            </div>
-                          </div>
-                          <div className='flex items-center gap-2'>
-                            <Button
-                              variant='outline'
-                              size='icon'
-                              className='h-7 w-7'
-                              onClick={() => {
-                                setSelectedVariants((prev: any[]) => {
-                                  if (!Array.isArray(prev)) return prev
-                                  return prev.map((v) =>
-                                    v.id === variant.id
-                                      ? {
-                                          ...v,
-                                          quantity: Math.max(0, (v.quantity || 1) - 1),
-                                        }
-                                      : v
-                                  )
-                                })
-                              }}
-                              disabled={(variant.quantity || 1) <= 0}
-                            >
-                              <Minus className='h-4 w-4' />
-                            </Button>
-                            <Input
-                              type='number'
-                              value={variant.quantity || 1}
-                              onChange={(e) => {
-                                const newQuantity = Math.max(
-                                  0,
-                                  parseInt(e.target.value) || 0
-                                )
-                                setSelectedVariants((prev: any[]) => {
-                                  if (!Array.isArray(prev)) return prev
-                                  return prev.map((v) =>
-                                    v.id === variant.id
-                                      ? { ...v, quantity: newQuantity }
-                                      : v
-                                  )
-                                })
-                              }}
-                              className='h-7 w-14 text-center text-xs'
-                              min={0}
-                            />
-                            <Button
-                              variant='outline'
-                              size='icon'
-                              className='h-7 w-7'
-                              onClick={() => {
-                                setSelectedVariants((prev: any[]) => {
-                                  if (!Array.isArray(prev)) return prev
-                                  return prev.map((v) =>
-                                    v.id === variant.id
-                                      ? { ...v, quantity: (v.quantity || 1) + 1 }
-                                      : v
-                                  )
-                                })
-                              }}
-                            >
-                              <Plus className='h-4 w-4' />
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    })}
+                      })
+                    )}
                   </div>
                 </div>
 
@@ -495,22 +605,8 @@ export function ProductPurchaseDialog({
           </CardContent>
         </div>
 
-        {/* 底部操作按钮区域，贴近弹框底部（不再包含 Total） */}
         <div className='mt-4 flex flex-col gap-3 border-t pt-3 md:flex-row md:items-center md:justify-between'>
           <div className='space-y-1 text-sm md:mr-auto'>
-            {/* {mode === 'sample' &&
-              (hasShippingAddress ? (
-                <div>Shipping Address: 广东省广州市天河区</div>
-              ) : (
-                <button
-                  type='button'
-                  className='text-primary text-left text-sm underline underline-offset-2'
-                  onClick={() => navigate({ to: '/settings' })}
-                >
-                  Please go to Settings to set your shipping address
-                </button>
-              ))} */}
-
             {mode === 'stock' && (
               <div className='flex items-center gap-2'>
                 <span>Shipping Warehouse:</span>
@@ -520,7 +616,13 @@ export function ProductPurchaseDialog({
                   disabled={isLoadingWarehouses}
                 >
                   <SelectTrigger className='h-8 w-[200px] text-xs'>
-                    <SelectValue placeholder={isLoadingWarehouses ? 'Loading...' : 'Please select warehouse'} />
+                    <SelectValue
+                      placeholder={
+                        isLoadingWarehouses
+                          ? 'Loading...'
+                          : 'Please select warehouse'
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {warehouseOptions.length > 0 ? (
@@ -531,7 +633,9 @@ export function ProductPurchaseDialog({
                       ))
                     ) : (
                       <SelectItem value='' disabled>
-                        {isLoadingWarehouses ? 'Loading...' : 'No warehouse available'}
+                        {isLoadingWarehouses
+                          ? 'Loading...'
+                          : 'No warehouse available'}
                       </SelectItem>
                     )}
                   </SelectContent>

@@ -26,10 +26,17 @@ export function OrdersEditCustomerNameDialog({
 }: OrdersEditCustomerNameDialogProps) {
   const [name, setName] = useState('')
 
-  // Initialize form with order data
+  // Initialize form with order data (customerName may be locale object { zh_CN, zh_TW, GLang })
   useEffect(() => {
     if (order && open) {
-      setName(order.customerName || '')
+      const raw = (order as any).customerName
+      const str =
+        typeof raw === 'string'
+          ? raw
+          : raw && typeof raw === 'object'
+            ? (raw.GLang || raw.zh_CN || raw.zh_TW) || ''
+            : ''
+      setName(str)
     }
   }, [order, open])
 
@@ -44,7 +51,14 @@ export function OrdersEditCustomerNameDialog({
 
   const handleCancel = () => {
     if (order) {
-      setName(order.customerName || '')
+      const raw = (order as any).customerName
+      const str =
+        typeof raw === 'string'
+          ? raw
+          : raw && typeof raw === 'object'
+            ? (raw.GLang || raw.zh_CN || raw.zh_TW) || ''
+            : ''
+      setName(str)
     }
     onOpenChange(false)
   }

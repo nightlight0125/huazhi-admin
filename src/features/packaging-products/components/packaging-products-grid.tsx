@@ -298,7 +298,7 @@ export function PackagingProductsGrid({
           const convertedProducts: PackagingProduct[] = apiProducts.map(
             (apiProduct: any) => ({
               id: apiProduct.id,
-              name: apiProduct.name || apiProduct.enname || '',
+              name: apiProduct.enname || apiProduct.name || '',
               image: apiProduct.picture || '',
               sku: apiProduct.number || apiProduct.id,
               category: 'paper-boxes',
@@ -396,7 +396,7 @@ export function PackagingProductsGrid({
             // 将 API 产品数据转换为 PackagingProduct schema 格式
             return {
               id: apiProduct.id,
-              name: apiProduct.name || apiProduct.enname || '',
+              name: apiProduct.enname || apiProduct.name || '',
               image: apiProduct.picture || '',
               sku: apiProduct.number || apiProduct.id,
               category: 'paper-boxes', // 默认值，API 没有提供具体分类

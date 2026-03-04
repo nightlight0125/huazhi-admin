@@ -14,6 +14,8 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    'openApiSign':'anZYZFdrTFpkUGx5VWNaSmlkbHZIb3pjSEV6LVJOd3dKRVcxV3ZaZjRQYz06MjI5OTI4NDg2NzgxNDM1Njk5Mg==',
+    'x-acgw-identity':'djF8MTk5NmMzOWQxNjQwNDI5ZDYwMDF8NDkxMjA1NzM1MzU2OXxIFC2gwtq5SNZj0TBnFgtAYCiBPHoLXU9qlDtcNTEANXw=',
   },
 })
 
@@ -30,8 +32,20 @@ apiClient.interceptors.request.use(
 
     const isLoginRequest = config.url?.includes('/v2/hzkj/base/member/login')
     const isSignUpRequest = config.url?.includes('/v2/hzkj/base/member/add')
+    const isForgotPasswordRequest =
+      config.url?.includes('/hzkj_member/member/getResetPassWordCode') ||
+      config.url?.includes('/hzkj_member/member/sendCode') ||
+      config.url?.includes('/hzkj_member/member/resetPassword')
 
-    if (isLoginRequest || isSignUpRequest) {
+    const isPaymentCallbackRequest =
+      config.url?.includes('order/paymentCallback')
+
+    if (
+      isLoginRequest ||
+      isSignUpRequest ||
+      isForgotPasswordRequest ||
+      isPaymentCallbackRequest
+    ) {
       if (token && config.headers) {
         config.headers.access_token = `${token}`
         config.headers['x-acgw-identity'] = `djF8MTk5NmMzOWQxNjQwNDI5ZDYwMDF8NDkxMjA1NzM1MzU2OXxIFC2gwtq5SNZj0TBnFgtAYCiBPHoLXU9qlDtcNTEANXw=`

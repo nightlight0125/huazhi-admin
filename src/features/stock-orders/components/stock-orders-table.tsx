@@ -1,21 +1,4 @@
-import { DataTableToolbar } from '@/components/data-table'
-import {
-  OrderPayDialog,
-  type OrderPayable,
-} from '@/components/order-pay-dialog'
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { deleteStockOrder, queryOrder, requestPayment } from '@/lib/api/orders'
-import { useAuthStore } from '@/stores/auth-store'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -29,8 +12,25 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { HelpCircle } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { deleteStockOrder, queryOrder, requestPayment } from '@/lib/api/orders'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTableToolbar } from '@/components/data-table'
+import {
+  OrderPayDialog,
+  type OrderPayable,
+} from '@/components/order-pay-dialog'
 import { stockOrderStatuses } from '../data/data'
 import { type StockOrder } from '../data/schema'
 import { StockOrdersActionsMenu } from './stock-orders-actions-menu'
@@ -88,8 +88,6 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     const pageIndex = pagination.pageIndex ?? 0
     const pageSize = pagination.pageSize ?? 10
 
-    // 使用 activeTab 的值作为 shopOrderStatus 传给后端
-    // 如果 activeTab 是空字符串（对应 'All' 标签），则不传 shopOrderStatus
     const shopOrderStatus =
       activeTab && activeTab !== '' ? String(activeTab) : undefined
 
@@ -112,8 +110,6 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
         pageSize,
         shopOrderStatus,
       })
-
-      console.log(response.orders, 'response')
 
       setData(response.orders as any)
       setTotalCount(response.total)
@@ -138,7 +134,6 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
   ])
 
   useEffect(() => {
-    // 使用 setTimeout 防抖，延迟执行请求，避免在状态快速变化时触发多次请求
     const timeoutId = setTimeout(() => {
       void fetchOrders()
     }, 0)
@@ -164,9 +159,8 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
 
       // 获取返回的链接
       const checkoutUrl = response.data as string
-      
+
       if (checkoutUrl && typeof checkoutUrl === 'string') {
-        // 在新窗口中打开支付链接
         window.open(checkoutUrl, '_blank')
         toast.success('Opening payment page...')
       } else {
@@ -439,7 +433,7 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
                       colSpan={columns.length}
                       className='h-24 text-center'
                     >
-                      暂无数据
+                      No data
                     </TableCell>
                   </TableRow>
                 )}

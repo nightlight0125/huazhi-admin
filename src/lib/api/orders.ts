@@ -764,6 +764,54 @@ export async function requestPayment(
   return response.data
 }
 
+// 支付完成/失败后回调（携带 session_id）
+export interface PaymentCallbackResponse {
+  status?: boolean
+  message?: string
+  [key: string]: unknown
+}
+
+export async function paymentCallback(sessionId: string): Promise<PaymentCallbackResponse> {
+  const response = await apiClient.post<PaymentCallbackResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/paymentCallback',
+    {},
+    { params: { session_id: sessionId } }
+  )
+  if (response.data?.status === false) {
+    throw new Error(response.data.message || 'Payment callback failed.')
+  }
+  return response.data ?? {}
+}
+
+// 入库（加库存）请求参数
+export interface AddStockRequest {
+  stockType: string // 默认 "1"
+  stockItems: Array<{ skuId: string; qty: number }>
+  warehouseId: string
+  customerId: string
+}
+
+export interface AddStockResponse {
+  status?: boolean
+  message?: string
+  [key: string]: unknown
+}
+
+export async function addStock(
+  request: AddStockRequest
+): Promise<AddStockResponse> {
+  const response = await apiClient.post<AddStockResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/addStock',
+    request
+  )
+  if (response.data?.status === false) {
+    throw new Error(
+      response.data.message || 'Failed to add stock. Please try again.'
+    )
+  }
+  return response.data ?? {}
+}
+
 // 查询售后订单请求参数
 export interface QueryAfterSaleOrdersRequest {
   data: {

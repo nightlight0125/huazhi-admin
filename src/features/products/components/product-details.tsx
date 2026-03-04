@@ -41,7 +41,7 @@ import {
 import { type BrandItem } from '@/features/brands/data/schema'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
-import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
+import { StoreListingTabs, type StoreListingTabsHandle } from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
 import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
 import {
@@ -85,7 +85,7 @@ import {
   Tag,
   Truck,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import countries from 'world-countries'
 import { type Product } from '../data/schema'
@@ -218,6 +218,8 @@ export function ProductDetails() {
   const [apiProduct, setApiProduct] = useState<ApiProductItem | null>(null)
   const [isLoadingProduct, setIsLoadingProduct] = useState(false)
   const [richTextContent, setRichTextContent] = useState<string>('')
+  const [productDetailRefreshKey, setProductDetailRefreshKey] = useState(0)
+  const [isPushingToStore, setIsPushingToStore] = useState(false)
 
   // 从 API 获取产品详情
   useEffect(() => {
@@ -251,7 +253,7 @@ export function ProductDetails() {
     }
 
     void fetchProduct()
-  }, [productId])
+  }, [productId, productDetailRefreshKey])
 
   // 辅助函数：从可能的多语言对象中提取名称
   const extractName = (name: unknown): string => {
@@ -371,6 +373,7 @@ export function ProductDetails() {
   >([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const { auth } = useAuthStore()
+  const storeListingTabsRef = useRef<StoreListingTabsHandle>(null)
   const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false)
   const [isCollecting, setIsCollecting] = useState(false)
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
@@ -1850,6 +1853,7 @@ export function ProductDetails() {
 
               {/* 右侧：Tabs + 表单内容 */}
               <StoreListingTabs
+                ref={storeListingTabsRef}
                 selectedTags={storeListingSelectedTags}
                 setSelectedTags={setStoreListingSelectedTags}
                 variantPricingTable={variantPricingTable}
@@ -1865,6 +1869,11 @@ export function ProductDetails() {
                 shippingMethodOptions={shippingMethodOptions}
                 isLoadingVariantPricing={isLoadingVariantPricing}
                 richTextContent={richTextContent}
+                shopId={selectedStore}
+                onConfirm={() => {
+                  setIsStoreListingOpen(false)
+                  setProductDetailRefreshKey((prev) => prev + 1)
+                }}
               />
             </div>
 
@@ -1877,7 +1886,30 @@ export function ProductDetails() {
               >
                 Cancel
               </Button>
-              <Button className='min-w-[120px]'>Confirm</Button>
+              <Button
+                className='min-w-[120px]'
+                disabled={isPushingToStore}
+                onClick={async () => {
+                  if (!storeListingTabsRef.current) return
+                  setIsPushingToStore(true)
+                  try {
+                    await storeListingTabsRef.current.handleConfirm()
+                  } catch (error) {
+                    console.error('Failed to push product:', error)
+                  } finally {
+                    setIsPushingToStore(false)
+                  }
+                }}
+              >
+                {isPushingToStore ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Publishing...
+                  </>
+                ) : (
+                  'Confirm'
+                )}
+              </Button>
             </div>
           </SheetContent>
         </Sheet>

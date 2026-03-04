@@ -61,11 +61,29 @@ export function WinningProducts() {
 
         // 后端返回的数据在 data.products 中
         const apiProducts = response.data?.products || []
-        const products: Product[] = apiProducts.map((item: any) => {
+        const products: Product[] = apiProducts.map((item: any, index: number) => {
+          // 后端可能存在 enname / enName 等不同写法，统一兼容
+          const englishName =
+            item.enname || item.enName || item.en_name || ''
+
+          const name =
+            englishName ||
+            item.name ||
+            item.number ||
+            ''
+
+          // 便于调试：首条商品在控制台打印一次
+          if (index === 0) {
+            console.log('WinningProducts item sample:', {
+              raw: item,
+              mappedName: name,
+            })
+          }
+
           // 映射 API 数据到 Product 类型
           return {
             id: item.id || '',
-            name: item.name || item.enname || '',
+            name,
             image: item.picture || '',
             shippingLocation: shippingLocations[0], // 默认值
             price: item.price || 0,
