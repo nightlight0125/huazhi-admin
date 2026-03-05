@@ -1,3 +1,7 @@
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { shopifyCallback, shopifyOAuth } from '@/lib/api/shop'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -6,10 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { shopifyCallback, shopifyOAuth } from '@/lib/api/shop'
-import { useAuthStore } from '@/stores/auth-store'
-import { useCallback, useEffect, useState } from 'react'
-import { toast } from 'sonner'
 
 interface ConnectStoreDialogProps {
   open: boolean
@@ -72,7 +72,8 @@ export function ConnectStoreDialog({
     setIsLoading(true)
 
     try {
-      const shop = 'wlsstore4.myshopify.com'
+      // const shop = 'wlsstore4.myshopify.com'
+      const shop = 'https://test6-2671.myshopify.com'
       const state = user.id
 
       // 1. 获取 OAuth URL
@@ -98,7 +99,7 @@ export function ConnectStoreDialog({
             clearInterval(checkAuthWindow)
             setIsLoading(false)
             // 如果窗口关闭但没有收到回调，可能是用户取消了授权
-            toast.info('OAuth process cancelled or completed')
+            // toast.info('OAuth process cancelled or completed')
             return
           }
 
@@ -114,7 +115,7 @@ export function ConnectStoreDialog({
 
             console.log('codeFromUrl:', codeFromUrl)
             console.log('shopFromUrl:', shopFromUrl)
-            console.log('stateFromUrl:', stateFromUrl)  
+            console.log('stateFromUrl:', stateFromUrl)
 
             if (codeFromUrl && shopFromUrl && stateFromUrl === state) {
               clearInterval(checkAuthWindow)

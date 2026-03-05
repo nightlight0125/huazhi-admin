@@ -105,6 +105,52 @@ export async function getRecommendProductsList(
   return response.data
 }
 
+// 获取收藏产品列表请求参数
+export interface GetCollectProductsListRequest {
+  customerId: string
+  pageSize: number
+  pageNo: number
+  nameOrCode?: string
+  startDate?: string
+  endDate?: string
+}
+
+// 获取收藏产品列表响应
+export interface GetCollectProductsListResponse {
+  data?: {
+    pageNo: number
+    pageSize: number
+    totalCount: number
+    data?: ApiProductItem[]
+    products?: ApiProductItem[]
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 获取收藏产品列表 API
+export async function getCollectProductsList(
+  params: GetCollectProductsListRequest
+): Promise<GetCollectProductsListResponse> {
+  const response = await apiClient.post<GetCollectProductsListResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getCollectProductsList',
+    params
+  )
+
+  console.log('获取收藏产品列表响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to get collection products list. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 删除推荐产品请求参数
 export interface DelRecommendProductsRequest {
   customerId: string
@@ -428,12 +474,8 @@ export async function getProduct(
 
 // 收藏产品请求参数
 export interface CollectProductRequest {
-  data: Array<{
-    hzkj_collect_entry: Array<{
-      hzkj_collect_goods_id: string
-    }>
-    hzkj_customer_id: string
-  }>
+  productId: string
+  customerId: string
 }
 
 // 收藏产品响应
@@ -450,20 +492,12 @@ export async function collectProduct(
   customerId: string
 ): Promise<CollectProductResponse> {
   const requestData: CollectProductRequest = {
-    data: [
-      {
-        hzkj_collect_entry: [
-          {
-            hzkj_collect_goods_id: goodsId,
-          },
-        ],
-        hzkj_customer_id: customerId,
-      },
-    ],
+    productId: goodsId,
+    customerId: customerId,
   }
 
   const response = await apiClient.post<CollectProductResponse>(
-    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/collectProduct',
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/collectProducts',
     requestData
   )
 

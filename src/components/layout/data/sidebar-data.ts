@@ -1,3 +1,4 @@
+import { Logo } from '@/assets/logo'
 import {
   AudioWaveform,
   ClipboardList,
@@ -13,7 +14,6 @@ import {
   Wallet
 } from 'lucide-react'
 import { type SidebarData } from '../types'
-import { Logo } from '@/assets/logo'
 
 export const sidebarData: SidebarData = {
   user: {
@@ -23,9 +23,9 @@ export const sidebarData: SidebarData = {
   },
   teams: [
     {
-      name: '华智 FOP',
+      name: '',
       logo: Logo,
-      plan: '企业版',
+      plan: '',
     },
     {
       name: 'Acme Inc',

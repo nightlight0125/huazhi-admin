@@ -234,7 +234,7 @@ export function ShippingPlanDialog({
                         onValueChange={field.onChange}
                         placeholder='Select SPU'
                         items={productsData.map((product) => ({
-                          label: product.enname || '',
+                          label: product.number || '',
                           value: product.id || '',
                         }))}
                         className='w-full'

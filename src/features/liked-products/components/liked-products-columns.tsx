@@ -1,5 +1,10 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type LikedProduct } from '../data/schema'
 import { LikedProductsRowActions } from './liked-products-row-actions'
@@ -49,6 +54,8 @@ export const createLikedProductsColumns = (
               (obj.GLang as string) || (obj.zh_CN as string) || product.name
           }
         }
+        const hasOverflow = displayName.length > 0
+
         return (
           <div className='flex items-start gap-2'>
             <img
@@ -57,11 +64,20 @@ export const createLikedProductsColumns = (
               className='h-12 w-12 shrink-0 rounded object-cover'
             />
             <div className='min-w-0 flex-1'>
-              <div className='flex items-start gap-1'>
-                <p className='line-clamp-2 text-xs leading-tight'>
-                  {displayName}
-                </p>
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className='max-w-[400px]'>
+                    <p className='truncate text-xs leading-tight'>
+                      {displayName}
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                {hasOverflow && (
+                  <TooltipContent side='top' className='max-w-sm break-words'>
+                    {displayName}
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </div>
           </div>
         )

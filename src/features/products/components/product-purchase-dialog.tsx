@@ -84,7 +84,7 @@ export function ProductPurchaseDialog({
           : 0)
       return (
         sum +
-        (v.quantity ?? 1) *
+        (v.quantity ?? 0) *
           (typeof variantPrice === 'number' ? variantPrice : 0)
       )
     }, 0) || 0
@@ -180,7 +180,7 @@ export function ProductPurchaseDialog({
           const variants = skuData.map((item) => ({
             ...item,
             specValues: selectedSpecs,
-            quantity: item.quantity ?? 1,
+            quantity: item.quantity ?? 0,
           }))
           console.log('Setting selectedVariants:', variants)
           setSelectedVariants(variants)
@@ -234,6 +234,16 @@ export function ProductPurchaseDialog({
       return
     }
 
+    // 至少有一个变体数量大于 0 才能继续
+    const hasPositiveQuantity = validVariants.some((v: any) => {
+      const qty = Number(v.quantity) || 0
+      return qty > 0
+    })
+    if (!hasPositiveQuantity) {
+      toast.error('Please set quantity greater than 0 for at least one variant')
+      return
+    }
+
     if (mode === 'stock') {
       if (!selectedWarehouse) {
         toast.error('Please select warehouse')
@@ -248,13 +258,9 @@ export function ProductPurchaseDialog({
         const stockItems = validVariants
           .map((v: any) => ({
             skuId: String(v.id),
-            qty: Math.max(0, Number(v.quantity) ?? 0),
+            qty: Math.max(0, Number(v.quantity) || 0),
           }))
           .filter((item) => item.qty > 0)
-        if (stockItems.length === 0) {
-          toast.error('Please set quantity at least 1 for one variant')
-          return
-        }
         await addStock({
           stockType: '1',
           stockItems,
@@ -277,7 +283,7 @@ export function ProductPurchaseDialog({
 
     // 构建确认订单数据（sample 模式或走确认订单流程）
 
-    const orderItems: ConfirmOrderItem[] = selectedVariants.map((variant) => {
+    const orderItems: ConfirmOrderItem[] = validVariants.map((variant: any) => {
       // 根据选中的规格值构建显示名称
       const specNames: string[] = []
       const specValues = variant.specValues || selectedSpecs
@@ -335,13 +341,13 @@ export function ProductPurchaseDialog({
               ? apiProduct.hzkj_pur_price
               : 0,
         weight: 45,
-        quantity: variant.quantity ?? 1,
+        quantity: variant.quantity ?? 0,
         fee:
           (typeof variant.price === 'number'
             ? variant.price
             : typeof apiProduct?.hzkj_pur_price === 'number'
               ? apiProduct.hzkj_pur_price
-              : 0) * (variant.quantity ?? 1),
+              : 0) * (variant.quantity ?? 0),
       }
     })
 
@@ -534,20 +540,20 @@ export function ProductPurchaseDialog({
                                             ...v,
                                             quantity: Math.max(
                                               0,
-                                              (v.quantity ?? 1) - 1
+                                              (v.quantity ?? 0) - 1
                                             ),
                                           }
                                         : v
                                     )
                                   })
                                 }}
-                                disabled={(variant.quantity ?? 1) <= 0}
+                                disabled={(variant.quantity ?? 0) <= 0}
                               >
                                 <Minus className='h-4 w-4' />
                               </Button>
                               <Input
                                 type='number'
-                                value={variant.quantity ?? 1}
+                                value={variant.quantity ?? 0}
                                 onChange={(e) => {
                                   const newQuantity = Math.max(
                                     0,
@@ -576,7 +582,7 @@ export function ProductPurchaseDialog({
                                       v.id === variant.id
                                         ? {
                                             ...v,
-                                            quantity: (v.quantity ?? 1) + 1,
+                                            quantity: (v.quantity ?? 0) + 1,
                                           }
                                         : v
                                     )

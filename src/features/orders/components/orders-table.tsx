@@ -398,8 +398,16 @@ export function OrdersTable({
         ? String(storeFilter.value[0])
         : undefined
 
+    // 「Store Order Status」筛选栏 -> shopOrderStatus 字段
+    const platformOrderStatusFilter = columnFilters.find(
+      (f) => f.id === 'platformOrderStatus'
+    )
     const shopOrderStatus =
-      activeTab && activeTab !== '' ? String(activeTab) : undefined
+      platformOrderStatusFilter &&
+      Array.isArray(platformOrderStatusFilter.value) &&
+      platformOrderStatusFilter.value.length > 0
+        ? String(platformOrderStatusFilter.value[0])
+        : undefined
 
     const countryFilter = columnFilters.find((f) => f.id === 'country')
     const countryIds =
@@ -409,20 +417,13 @@ export function OrdersTable({
         ? countryFilter.value.map((id) => String(id))
         : undefined
 
-    // 获取平台订单状态过滤值（支持多选）
-    const platformOrderStatusFilter = columnFilters.find(
-      (f) => f.id === 'platformOrderStatus'
-    )
+    // 根据 Tab（支付状态）设置订单状态（字符串），用于后端过滤
     const orderStatus =
-      platformOrderStatusFilter &&
-      Array.isArray(platformOrderStatusFilter.value) &&
-      platformOrderStatusFilter.value.length > 0
-        ? platformOrderStatusFilter.value.map((status) => String(status))
-        : undefined
+      activeTab && activeTab !== '' ? String(activeTab) : undefined
 
-    // 将国家ID数组和订单状态数组转换为字符串用于请求key（用于去重）
+    // 将国家ID数组转换为字符串用于请求 key（用于去重）
     const countryIdsKey = countryIds ? countryIds.sort().join(',') : ''
-    const orderStatusKey = orderStatus ? orderStatus.sort().join(',') : ''
+    const orderStatusKey = orderStatus ?? ''
     const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryIdsKey}-${orderStatusKey}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${activeTab}`
 
     if (lastRequestParamsRef.current === requestKey) {
@@ -935,14 +936,7 @@ export function OrdersTable({
             columnId: 'platformOrderStatus',
             title: 'Store Order Status',
             options: platformOrderStatusOptions,
-            // 移除 singleSelect: true，支持多选
           },
-          // {
-          //   columnId: 'status',
-          //   title: 'Order Status',
-          //   options: orderStatusOptions,
-          //   singleSelect: true,
-          // },
           {
             columnId: 'country',
             title: 'Country',

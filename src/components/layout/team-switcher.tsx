@@ -20,8 +20,8 @@ type TeamSwitcherProps = {
 }
 
 export function TeamSwitcher({ teams }: TeamSwitcherProps) {
-  const { isMobile } = useSidebar()
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
+  useSidebar() // sidebar context for menu behavior
+  const [activeTeam] = React.useState(teams[0])
 
   const renderLogo = (logo: React.ElementType | string, className: string) => {
     if (typeof logo === 'string') {
@@ -47,8 +47,8 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
               size='lg'
               className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center'
             >
-              <div className='flex size-25 shrink-0 items-center justify-center'>
-                {renderLogo(activeTeam.logo, 'h-10 w-auto')}
+              <div className='flex h-10 w-45 shrink-0 items-center justify-center md:h-10 md:w-45'>
+                {renderLogo(activeTeam.logo, 'h-full w-auto')}
               </div>
               <div className='grid flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden'>
                 <span className='truncate font-semibold'>

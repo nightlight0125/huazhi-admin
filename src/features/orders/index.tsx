@@ -1,12 +1,12 @@
+import { useEffect, useState } from 'react'
+import { type Table } from '@tanstack/react-table'
+import countries from 'world-countries'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryCountry, type CountryItem } from '@/lib/api/logistics'
+import { getUserShopOptions, type ShopOption } from '@/lib/utils/shop-utils'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { queryCountry, type CountryItem } from '@/lib/api/logistics'
-import { getUserShopOptions, type ShopOption } from '@/lib/utils/shop-utils'
-import { useAuthStore } from '@/stores/auth-store'
-import { type Table } from '@tanstack/react-table'
-import { useEffect, useState } from 'react'
-import countries from 'world-countries'
 import { OrdersDialogs } from './components/orders-dialogs'
 import { OrdersPrimaryButtons } from './components/orders-primary-buttons'
 import { OrdersProvider } from './components/orders-provider'
@@ -66,7 +66,7 @@ export function Orders() {
           .map((country: CountryItem) => {
             // 优先使用 twocountrycode，如果没有则使用 hzkj_code
             const countryCode = country.twocountrycode || country.hzkj_code
-            
+
             // 在 world-countries 库中查找对应的国家信息
             const countryInfo = countryCode
               ? countries.find(
@@ -75,11 +75,15 @@ export function Orders() {
               : null
 
             // 生成国家代码（用于图标）
-            const code = countryInfo?.cca2.toLowerCase() || countryCode?.toLowerCase() || ''
-            
+            const code =
+              countryInfo?.cca2.toLowerCase() ||
+              countryCode?.toLowerCase() ||
+              ''
+
             return {
               value: country.id!, // 只使用国家ID作为value（如 "1000001"），已过滤确保存在
-              label: country.hzkj_name || country.name || country.description || '',
+              label:
+                country.hzkj_name || country.name || country.description || '',
               icon: code ? createFlagIcon(code) : undefined,
             }
           })
@@ -120,12 +124,6 @@ export function Orders() {
               label: s.label,
               value: s.value,
             }))}
-            // orderStatusOptions={orderStatuses
-            //   .filter((s) => s.value !== 'all')
-            //   .map((s) => ({
-            //     label: s.label,
-            //     value: s.value,
-            //   }))}
             countryOptions={countryOptions}
           />
         </div>

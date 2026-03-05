@@ -111,7 +111,8 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     const pageIndex = pagination.pageIndex ?? 0
     const pageSize = pagination.pageSize ?? 10
 
-    const shopOrderStatus =
+    // Tab 切换通过 orderStatus 字段过滤
+    const orderStatus =
       activeTab && activeTab !== '' ? String(activeTab) : undefined
 
     // 格式化日期范围
@@ -124,7 +125,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         : undefined
 
     // 生成请求参数的唯一标识
-    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopOrderStatus || ''}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}`
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${orderStatus || ''}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}`
 
     // 如果请求参数相同，跳过重复请求
     if (lastRequestParamsRef.current === requestKey) {
@@ -143,7 +144,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         str: globalFilter || '',
         pageIndex,
         pageSize,
-        shopOrderStatus,
+        orderStatus,
         startDate: formattedDateRange?.startDate,
         endDate: formattedDateRange?.endDate,
       })

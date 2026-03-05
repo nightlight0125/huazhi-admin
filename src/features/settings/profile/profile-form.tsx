@@ -231,7 +231,7 @@ export function ProfileForm() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(async (values) => {
-            try {
+              try {
               const userId = auth.user?.id
               const rowId = profileIdRef.current ?? userId
               if (!rowId) {
@@ -239,16 +239,21 @@ export function ProfileForm() {
                 return
               }
 
-              await updateProfile([
-                {
-                  id: rowId,
-                  hzkj_customer_first_name3: values.firstName,
-                  hzkj_customer_last_name3: values.lastName,
-                  hzkj_emailfield3: values.email,
-                  hzkj_whatsapp1: values.whatsappNumber || '',
-                  hzkj_timezone_id: values.timezone || '',
-                },
-              ])
+              const payload: any = {
+                id: rowId,
+                hzkj_customer_first_name3: values.firstName,
+                hzkj_customer_last_name3: values.lastName,
+                hzkj_emailfield3: values.email,
+                hzkj_whatsapp1: values.whatsappNumber || '',
+              }
+
+              // 如果没有选择时区，传 null 而不是空字符串，避免后端报错
+              payload.hzkj_timezone_id =
+                values.timezone && values.timezone.trim() !== ''
+                  ? values.timezone
+                  : null
+
+              await updateProfile([payload])
 
               // 同步更新 auth 中的手机号
               if (values.whatsappNumber) {
@@ -343,8 +348,8 @@ export function ProfileForm() {
               <FormItem>
                 <FormLabel>时区</FormLabel>
                 <SelectDropdown
-                  defaultValue={field.value}
-                  onValueChange={field.onChange}
+                  defaultValue={field.value || undefined}
+                  onValueChange={(val) => field.onChange(val || '')}
                   placeholder='请选择时区'
                   items={timezones.map((tz) => ({
                     label: tz.name,

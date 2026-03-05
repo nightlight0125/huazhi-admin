@@ -5,7 +5,7 @@ import { createLikedProductsColumns } from '@/features/liked-products/components
 import { ProductsTableWithToolbar } from '@/features/liked-products/components/products-table-with-toolbar'
 import type { LikedProduct } from '@/features/liked-products/data/schema'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { getRecommendProductsList } from '@/lib/api/products'
+import { getCollectProductsList } from '@/lib/api/products'
 import { useAuthStore } from '@/stores/auth-store'
 import { getRouteApi } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -157,7 +157,7 @@ export function useFetchCollectionProducts(
 
         setIsLoading(true)
         try {
-          const response = await getRecommendProductsList({
+          const response = await getCollectProductsList({
             customerId: String(customerId),
             pageSize,
             pageNo,

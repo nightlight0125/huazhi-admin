@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getToken, memberLogin } from '@/lib/api/auth'
@@ -144,6 +143,25 @@ export function UserAuthForm({
       } catch (error) {
         console.error('Failed to fetch roles after login:', error)
         // 不阻止登录流程，角色列表可以在需要时再加载
+      }
+
+      // 持久化登录邮箱和密码，用于 401 时自动登录（仅在用户勾选 Remember me 时）
+      try {
+        if (typeof window !== 'undefined') {
+          if (data.rememberMe) {
+            window.localStorage.setItem(
+              'saved_login_credentials',
+              JSON.stringify({
+                email: data.email,
+                password: data.password,
+              })
+            )
+          } else {
+            window.localStorage.removeItem('saved_login_credentials')
+          }
+        }
+      } catch {
+        // 静默处理本地存储异常
       }
 
       toast.dismiss(loadingToast)
