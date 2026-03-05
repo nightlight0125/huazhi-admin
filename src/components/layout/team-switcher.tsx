@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { ChevronsUpDown } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -56,7 +55,6 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
                 </span>
                 <span className='truncate text-xs'>{activeTeam.plan}</span>
               </div>
-              <ChevronsUpDown className='ms-auto shrink-0 group-data-[collapsible=icon]:hidden' />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
         </DropdownMenu>

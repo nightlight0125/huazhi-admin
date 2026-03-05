@@ -1008,6 +1008,8 @@ export async function queryCuShopPackageList(
 export interface BuyProductRequest {
   customerId: string
   customChannelId: string
+  // 支付完成后返回的地址（回调 URL）
+  returnUrl?: string
   // 收货地址相关信息
   firstName: string
   lastName: string

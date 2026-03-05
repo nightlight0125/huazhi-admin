@@ -101,10 +101,15 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       return
     }
 
+    const returnUrl = window.location.href
+    console.log(returnUrl, 'returnUrl')
+
     try {
       const response = await buyProduct({
         customerId: String(customerId),
         customChannelId: selectedShippingMethod,
+        // 支付完成后回调地址（当前页面）
+        returnUrl,
         // 地址信息映射
         firstName: shippingAddress.hzkj_customer_first_name ?? '',
         lastName: shippingAddress.hzkj_customer_last_name ?? '',
@@ -123,11 +128,22 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           flag: 0,
         })),
       })
-      if (response.status) {
-        toast.success('Order placed successfully')
-        navigate({ to: '/orders' })
-      } else {
+
+      const paymentUrl =
+        typeof response.data === 'string'
+          ? response.data
+          : response.data && typeof (response.data as any).url === 'string'
+            ? ((response.data as any).url as string)
+            : ''
+
+      if (paymentUrl) {
+        toast.success('Redirecting to payment page...')
+        // 在当前窗口中跳转到支付页面
+        window.location.href = paymentUrl
+      } else if (response.message) {
         toast.error(response.message)
+      } else {
+        toast.error('Failed to create payment session. Please try again.')
       }
     } catch (error) {
       console.error('Failed to place order:', error)

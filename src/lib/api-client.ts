@@ -89,21 +89,62 @@ apiClient.interceptors.request.use(
 )
 
 apiClient.interceptors.response.use(
-  (response) => {
-    // 检查响应数据中是否包含401错误码
+  async (response) => {
+    // 针对「返回 200 但 body 中携带 401」的情况做自动登录和重试
     const responseData = response.data as any
-    if (
+    const config = response.config as
+      | (InternalAxiosRequestConfig & { _logical401Retried?: boolean })
+      | undefined
+
+    const hasLogical401 =
       responseData &&
       typeof responseData === 'object' &&
       (responseData.errorCode === '401' ||
         (responseData.errorCode === 401 && responseData.status === false))
-    ) {
-      // 后端返回了401错误码，构造一个错误交给错误处理逻辑
+
+    if (hasLogical401) {
+      // 避免无限重试：每个请求只自动重登并重试一次
+      if (config && !config._logical401Retried) {
+        config._logical401Retried = true
+        try {
+          const reloginSuccess = await tryAutoLogin()
+          if (reloginSuccess) {
+            const { auth } = useAuthStore.getState()
+            const token = auth.accessToken
+            if (token && config.headers) {
+              config.headers.access_token = `${token}`
+              config.headers['x-acgw-identity'] =
+                'djF8MTk5NmMzOWQxNjQwNDI5ZDYwMDF8NDkxMjA1NzM1MzU2OXxIFC2gwtq5SNZj0TBnFgtAYCiBPHoLXU9qlDtcNTEANXw='
+            }
+            // 使用同一配置重试原始请求
+            return apiClient(config)
+          }
+        } catch (err) {
+          console.error('Auto login failed on logical 401:', err)
+        }
+      }
+
+      // 自动登录不可用或失败时，执行登出并跳转登录页
+      const authStore = useAuthStore.getState()
+      authStore.auth.reset()
+
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname
+        if (
+          !currentPath.includes('/sign-in') &&
+          !currentPath.includes('/sign-up')
+        ) {
+          const redirectPath =
+            window.location.pathname + window.location.search
+          window.location.href = `/sign-in?redirect=${encodeURIComponent(
+            redirectPath
+          )}`
+        }
+      }
+
       const error = new Error(
         responseData.message || 'AccessToken认证不通过，token已过期'
-      ) as any
-      ;(error as any).response = response
-      ;(error as any).isAuthError = true
+      )
       return Promise.reject(error)
     }
 

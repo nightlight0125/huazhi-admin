@@ -191,11 +191,11 @@ export const createStockOrdersColumns = (options?: {
       header: 'Price',
       cell: ({ row }) => {
         const order = row.original as any
-        const price = order.hzkj_shop_price
-          ? typeof order.hzkj_shop_price === 'string'
-            ? parseFloat(order.hzkj_shop_price) || 0
-            : typeof order.hzkj_shop_price === 'number'
-              ? order.hzkj_shop_price
+        const price = order.hzkj_amount
+          ? typeof order.hzkj_amount === 'string'
+            ? parseFloat(order.hzkj_amount) || 0
+            : typeof order.hzkj_amount === 'number'
+              ? order.hzkj_amount
               : 0
           : 0
 

@@ -542,18 +542,6 @@ export function ProductsGrid({
                           variant='outline'
                           size='sm'
                           className='h-7 flex-1 px-1'
-                          title='Add to Cart'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            console.log('Add to cart:', product.id)
-                          }}
-                        >
-                          <ShoppingCart className='h-3.5 w-3.5' />
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='h-7 flex-1 px-1'
                           title='Add to Store'
                           onClick={(e) => {
                             e.stopPropagation()

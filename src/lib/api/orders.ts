@@ -737,6 +737,8 @@ export interface RequestPaymentRequest {
   customerId: string
   orderIds: string[]
   type: number // 2 表示库存订单
+  // 支付完成后返回的地址（回调 URL，可选）
+  returnUrl?: string
 }
 
 export interface RequestPaymentResponse {
@@ -750,15 +752,36 @@ export interface RequestPaymentResponse {
 export async function requestPayment(
   request: RequestPaymentRequest
 ): Promise<RequestPaymentResponse> {
+  // 在浏览器环境下，附加当前页面作为回调地址
+  const payload: RequestPaymentRequest = {
+    ...request,
+    ...(typeof window !== 'undefined'
+      ? { returnUrl: window.location.href }
+      : {}),
+  }
+
   const response = await apiClient.post<RequestPaymentResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/requestPayment',
-    request
+    payload
   )
 
   if (!response.data.status) {
     const errorMessage =
       response.data.message || 'Failed to request payment. Please try again.'
     throw new Error(errorMessage)
+  }
+
+  // 如果后端返回支付链接，则在当前窗口中跳转到支付页面
+  const paymentUrl =
+    typeof response.data.data === 'string'
+      ? (response.data.data as string)
+      : response.data.data &&
+          typeof (response.data.data as any).url === 'string'
+        ? ((response.data.data as any).url as string)
+        : ''
+
+  if (paymentUrl && typeof window !== 'undefined') {
+    window.location.href = paymentUrl
   }
 
   return response.data

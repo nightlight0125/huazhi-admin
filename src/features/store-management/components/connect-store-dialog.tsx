@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 interface ConnectStoreDialogProps {
   open: boolean
@@ -25,6 +26,7 @@ export function ConnectStoreDialog({
   onNext,
 }: ConnectStoreDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [shopDomain, setShopDomain] = useState('')
   const user = useAuthStore((state) => state.auth.user)
 
   // 处理 OAuth 回调
@@ -69,11 +71,15 @@ export function ConnectStoreDialog({
       return
     }
 
+    if (!shopDomain.trim()) {
+      toast.error('Please enter your Shopify store domain.')
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      // const shop = 'wlsstore4.myshopify.com'
-      const shop = 'https://test6-2671.myshopify.com'
+      const shop = shopDomain.trim()
       const state = user.id
 
       // 1. 获取 OAuth URL
@@ -200,11 +206,29 @@ export function ConnectStoreDialog({
           <DialogTitle>Connect Store</DialogTitle>
         </DialogHeader>
 
-        <div className='py-4'>
+        <div className=''>
           <p className='text-muted-foreground text-sm'>
             Connect with {platformName} store
           </p>
         </div>
+
+        {platformName === 'Shopify' && (
+          <div className='space-y-2 pb-4'>
+            <label className='text-sm font-medium' htmlFor='shop-domain'>
+              Store domain
+            </label>
+            <Input
+              id='shop-domain'
+              placeholder='your-store.myshopify.com'
+              value={shopDomain}
+              onChange={(e) => setShopDomain(e.target.value)}
+              disabled={isLoading}
+            />
+            <p className='text-muted-foreground text-xs'>
+              Enter the full domain of the store you want to connect.
+            </p>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant='outline' onClick={handleCancel} disabled={isLoading}>

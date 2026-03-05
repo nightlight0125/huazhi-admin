@@ -35,7 +35,8 @@ export function WinningProducts() {
   const { pagination, globalFilter } = useTableUrlState({
     search,
     navigate: navigate as any,
-    pagination: { defaultPage: 1, defaultPageSize: 8 },
+    // 默认每页 10 行
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
