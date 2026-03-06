@@ -17,12 +17,7 @@ import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { type FreightOption, calcuOrderFreight } from '@/lib/api/logistics'
-import {
-  deleteOrder,
-  queryOrder,
-  requestPayment,
-  updateSalOutOrder,
-} from '@/lib/api/orders'
+import { deleteOrder, queryOrder, updateSalOutOrder } from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -782,42 +777,6 @@ export function OrdersTable({
     }
   }
 
-  const handleBatchPayment = async (orderIds: string[]) => {
-    const customerId = auth.user?.customerId
-    if (!customerId) {
-      toast.error('Customer ID not found')
-      return
-    }
-
-    if (orderIds.length === 0) {
-      toast.error('Please select at least one order')
-      return
-    }
-
-    try {
-      await requestPayment({
-        customerId: String(customerId),
-        orderIds,
-        type: 0, // 0 表示普通订单
-      })
-
-      toast.success(
-        `Payment request submitted successfully for ${orderIds.length} order(s)`
-      )
-      // 刷新订单列表
-      setRefreshKey((prev) => prev + 1)
-      // 清空选择
-      setRowSelection({})
-    } catch (error) {
-      console.error('Failed to request batch payment:', error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to request batch payment. Please try again.'
-      )
-    }
-  }
-
   const columns = useMemo(
     () =>
       createOrdersColumns({
@@ -983,10 +942,10 @@ export function OrdersTable({
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      const orderIds = selectedRows.map(
-                        (row) => row.original.id
-                      )
-                      void handleBatchPayment(orderIds)
+                      const firstOrderId = selectedRows[0]?.original.id
+                      if (firstOrderId) {
+                        handlePay(firstOrderId)
+                      }
                     }
                   }}
                   disabled={selectedCount === 0}
@@ -1166,8 +1125,9 @@ export function OrdersTable({
         order={selectedOrderForPayment}
         orderType={0} // 普通订单：type = 0
         onPaymentSuccess={() => {
-          // 支付成功后刷新订单列表
+          // 支付成功后刷新订单列表并清空勾选
           setRefreshKey((prev) => prev + 1)
+          setRowSelection({})
         }}
       />
     </div>

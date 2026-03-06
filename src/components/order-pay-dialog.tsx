@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from '@tanstack/react-router'
 import { Coins, CreditCard, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { requestPayment } from '@/lib/api/orders'
+import {
+  getCustomerBalance,
+  requestPayment,
+  walletPayment,
+} from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -41,13 +46,46 @@ export function OrderPayDialog({
   onPaymentSuccess,
 }: OrderPayDialogProps) {
   const { auth } = useAuthStore()
+  const location = useLocation()
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>('balance')
   const [isLoading, setIsLoading] = useState(false)
+  const [balance, setBalance] = useState<number>(0)
+  const [availableBalance, setAvailableBalance] = useState<number>(0)
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false)
+
+  // 弹框打开时请求客户余额（必须在所有条件 return 之前调用，保证 hooks 数量一致）
+  useEffect(() => {
+    if (!open || !auth.user?.customerId) return
+    let cancelled = false
+    setIsLoadingBalance(true)
+    getCustomerBalance({ customerId: String(auth.user.customerId) })
+      .then((res) => {
+        if (cancelled) return
+        const data = res.data
+        const toNum = (v: unknown) => {
+          const n = typeof v === 'number' ? v : parseFloat(String(v ?? 0))
+          return Number.isNaN(n) ? 0 : n
+        }
+        setBalance(toNum(data?.balance))
+        setAvailableBalance(toNum(data?.avaliableBalance))
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBalance(0)
+          setAvailableBalance(0)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingBalance(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, auth.user?.customerId])
 
   if (!order) return null
 
-  // 模拟数据与金额计算（增加安全检查，防止 totalAmount 为 undefined 或非数字）
   const credits = 0
 
   const rawTotalAmount = order.getTotalAmount()
@@ -56,8 +94,15 @@ export function OrderPayDialog({
       ? rawTotalAmount
       : 0
 
-  const balancePayment = totalAmount
   const numberOfOrders = 1
+
+  // 根据当前菜单路由决定支付 type：/orders -> 0 销售，/sample-orders -> 1 样品，/stock-orders -> 2 备货
+  const pathname = location.pathname ?? ''
+  const paymentType = pathname.includes('sample-orders')
+    ? 1
+    : pathname.includes('stock-orders')
+      ? 2
+      : 0
 
   const handleConfirm = async () => {
     const customerId = auth.user?.customerId
@@ -73,29 +118,31 @@ export function OrderPayDialog({
       return
     }
 
-    // 调用支付接口
     setIsLoading(true)
     try {
-      const response = await requestPayment({
-        customerId: String(customerId),
-        orderIds: [order.id],
-        type: orderType, // 1=样品订单，2=库存订单
-      })
-
-      // 检查返回的 data 是否是支付链接（URL）
-      const paymentUrl =
-        typeof response.data === 'string' ? response.data : undefined
-
-      if (paymentUrl && paymentUrl.startsWith('http')) {
-        // 在新页面打开支付链接
-        window.open(paymentUrl, '_blank', 'noopener,noreferrer')
-        toast.success('Redirecting to payment page...')
+      if (selectedPaymentMethod === 'balance') {
+        await walletPayment({
+          customerId: String(customerId),
+          orderIds: [order.id],
+          type: paymentType,
+        })
+        toast.success('Wallet payment submitted successfully')
       } else {
-        toast.success('Payment request submitted successfully')
+        const response = await requestPayment({
+          customerId: String(customerId),
+          orderIds: [order.id],
+          type: orderType,
+        })
+        const paymentUrl =
+          typeof response.data === 'string' ? response.data : undefined
+        if (paymentUrl && paymentUrl.startsWith('http')) {
+          window.open(paymentUrl, '_blank', 'noopener,noreferrer')
+          toast.success('Redirecting to payment page...')
+        } else {
+          toast.success('Payment request submitted successfully')
+        }
       }
-
       onOpenChange(false)
-      // 调用成功回调，刷新数据
       onPaymentSuccess?.()
     } catch (error) {
       console.error('Failed to request payment:', error)
@@ -141,24 +188,14 @@ export function OrderPayDialog({
               <button
                 type='button'
                 onClick={() => setSelectedPaymentMethod('credit_card')}
-                disabled
-                className={`relative flex cursor-not-allowed flex-col items-center justify-center rounded-lg border-2 p-4 opacity-60 transition-all ${
+                className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
                   selectedPaymentMethod === 'credit_card'
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                    : 'border-gray-200 bg-gray-50 dark:bg-gray-800'
+                    : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
                 }`}
               >
-                <CreditCard className='mb-2 h-6 w-6 text-gray-400' />
-                <span className='text-sm font-medium text-gray-500'>
-                  Credit card
-                </span>
-                <span className='mt-1 text-xs text-gray-400'>
-                  Instant processing
-                </span>
-                <div className='mt-2 flex gap-1'>
-                  <div className='h-4 w-6 rounded bg-blue-600'></div>
-                  <div className='h-4 w-6 rounded bg-red-600'></div>
-                </div>
+                <CreditCard className='mb-2 h-6 w-6' />
+                <span className='text-sm font-medium'>Credit card</span>
               </button>
 
               {/* Airwallex */}
@@ -195,19 +232,21 @@ export function OrderPayDialog({
             <div className='flex items-center justify-between'>
               <span className='text-sm'>Total Amount :</span>
               <span className='text-sm font-semibold text-orange-600'>
-                Pay ${totalAmount.toFixed(2)}
+                {isLoadingBalance
+                  ? '...'
+                  : `Pay $${availableBalance.toFixed(2)}`}
               </span>
             </div>
             <div className='flex items-center justify-between'>
               <span className='text-sm'>Balance:</span>
               <span className='text-sm font-semibold text-orange-600'>
-                Pay ${balancePayment.toFixed(2)}
+                {isLoadingBalance ? '...' : `$${balance.toFixed(2)}`}
               </span>
             </div>
             <div className='flex items-center justify-between'>
               <span className='text-sm'>Bonus:</span>
               <span className='text-sm font-semibold text-orange-600'>
-                Pay —
+                ${totalAmount.toFixed(2)}
               </span>
             </div>
             <div className='flex items-center justify-between'>

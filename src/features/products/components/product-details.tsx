@@ -199,9 +199,7 @@ export function ProductDetails() {
   const from = search.from as string | undefined
   const isFromPackagingProducts =
     from?.startsWith('packaging-products') ?? false
-  const isFromWinningProducts = from === 'winning-products'
-  const isFromAllProducts = from === 'all-products'
-  const shouldShowCollectionButton = isFromWinningProducts || isFromAllProducts
+  const shouldShowCollectionButton = !(from?.includes('packaging-products') ?? false)
   const packagingTab =
     from === 'packaging-products-my'
       ? 'my-packaging'
@@ -376,8 +374,18 @@ export function ProductDetails() {
   const storeListingTabsRef = useRef<StoreListingTabsHandle>(null)
   const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false)
   const [isCollecting, setIsCollecting] = useState(false)
+  const [isCollected, setIsCollected] = useState(false)
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
     useState(false)
+
+  useEffect(() => {
+    if (apiProduct) {
+      const raw = (apiProduct as any).isCollect
+      setIsCollected(!!raw)
+    } else {
+      setIsCollected(false)
+    }
+  }, [apiProduct])
   const [selectedSellingPlatform, setSelectedSellingPlatform] =
     useState('shopify')
   const [isShipFromSelectOpen, setIsShipFromSelectOpen] = useState(false)
@@ -570,6 +578,7 @@ export function ProductDetails() {
     try {
       await collectProduct(String(productId), String(customerId))
       toast.success('Product collected successfully')
+      setIsCollected(true)
       setIsCollectDialogOpen(false)
     } catch (error) {
       console.error('Failed to collect product:', error)
@@ -1761,7 +1770,12 @@ export function ProductDetails() {
                           {isCollecting ? (
                             <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                           ) : (
-                            <Heart className='mr-2 h-4 w-4' />
+                            <Heart
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                isCollected && 'fill-current text-red-500'
+                              )}
+                            />
                           )}
                           <span>
                             {shouldShowCollectionButton

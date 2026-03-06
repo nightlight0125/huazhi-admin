@@ -14,7 +14,7 @@ import {
 import { HelpCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { deleteStockOrder, queryOrder, requestPayment } from '@/lib/api/orders'
+import { deleteStockOrder, queryOrder } from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -58,7 +58,8 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
   })
   const [activeTab, setActiveTab] = useState('')
   const [payDialogOpen, setPayDialogOpen] = useState(false)
-  const [selectedOrderForPayment] = useState<OrderPayable | null>(null)
+  const [selectedOrderForPayment, setSelectedOrderForPayment] =
+    useState<OrderPayable | null>(null)
 
   const {
     globalFilter,
@@ -143,36 +144,37 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     }
   }, [fetchOrders])
 
-  const handlePay = async (orderId: string) => {
-    const customerId = auth.user?.customerId
-    if (!customerId) {
-      toast.error('Customer ID not found')
-      return
-    }
-
-    try {
-      const response = await requestPayment({
-        customerId: String(customerId),
-        orderIds: [orderId],
-        type: 2, // 2 表示库存订单
+  const handlePay = (orderId: string) => {
+    const order = data.find((o) => o.id === orderId) as any
+    if (order) {
+      setSelectedOrderForPayment({
+        id: order.id,
+        getTotalAmount: () => {
+          if (order.hzkj_order_amount !== undefined) {
+            const amount = order.hzkj_order_amount
+            return typeof amount === 'string'
+              ? parseFloat(amount) || 0
+              : typeof amount === 'number'
+                ? amount
+                : 0
+          }
+          if (order.hzkj_amount !== undefined) {
+            const amount = order.hzkj_amount
+            return typeof amount === 'string'
+              ? parseFloat(amount) || 0
+              : typeof amount === 'number'
+                ? amount
+                : 0
+          }
+          if (order.cost?.total !== undefined) {
+            return typeof order.cost.total === 'number'
+              ? order.cost.total
+              : parseFloat(String(order.cost.total)) || 0
+          }
+          return 0
+        },
       })
-
-      // 获取返回的链接
-      const checkoutUrl = response.data as string
-
-      if (checkoutUrl && typeof checkoutUrl === 'string') {
-        window.open(checkoutUrl, '_blank')
-        toast.success('Opening payment page...')
-      } else {
-        toast.error('Payment URL not found in response')
-      }
-    } catch (error) {
-      console.error('Failed to request payment:', error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to request payment. Please try again.'
-      )
+      setPayDialogOpen(true)
     }
   }
 
@@ -204,42 +206,6 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
         error instanceof Error
           ? error.message
           : 'Failed to delete order. Please try again.'
-      )
-    }
-  }
-
-  const handleBatchPayment = async (orderIds: string[]) => {
-    const customerId = auth.user?.customerId
-    if (!customerId) {
-      toast.error('Customer ID not found')
-      return
-    }
-
-    if (orderIds.length === 0) {
-      toast.error('Please select at least one order')
-      return
-    }
-
-    try {
-      await requestPayment({
-        customerId: String(customerId),
-        orderIds,
-        type: 2, // 2 表示库存订单
-      })
-
-      toast.success(
-        `Payment request submitted successfully for ${orderIds.length} order(s)`
-      )
-      // 刷新订单列表
-      setRefreshKey((prev) => prev + 1)
-      // 清空选择
-      setRowSelection({})
-    } catch (error) {
-      console.error('Failed to request batch payment:', error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to request batch payment. Please try again.'
       )
     }
   }
@@ -372,10 +338,10 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      const orderIds = selectedRows.map(
-                        (row) => row.original.id
-                      )
-                      void handleBatchPayment(orderIds)
+                      const firstOrderId = selectedRows[0]?.original.id
+                      if (firstOrderId) {
+                        handlePay(firstOrderId)
+                      }
                     }
                   }}
                   disabled={selectedCount === 0}
@@ -451,9 +417,10 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
         open={payDialogOpen}
         onOpenChange={setPayDialogOpen}
         order={selectedOrderForPayment}
+        orderType={2}
         onPaymentSuccess={() => {
-          // 支付成功后刷新订单列表
           setRefreshKey((prev) => prev + 1)
+          setRowSelection({})
         }}
       />
     </div>

@@ -45,7 +45,7 @@ export function CollectionProducts() {
   }
 
   const columns = useMemo(
-    () => createLikedProductsColumns(handleRefresh),
+    () => createLikedProductsColumns({ onDeleteSuccess: handleRefresh, useDelCollectApi: true }),
     [handleRefresh]
   )
 

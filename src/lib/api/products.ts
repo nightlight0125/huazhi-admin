@@ -2,6 +2,7 @@ import { apiClient } from '../api-client'
 
 // 获取产品列表请求参数
 export interface GetProductsListRequest {
+  customerId: string
   pageSize: number
   pageNo: number
   productName?: string
@@ -179,6 +180,24 @@ export async function delRecommendProducts(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to delete recommend products. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 删除收藏产品（Collection products 菜单用）
+export async function delCollectProducts(
+  params: DelRecommendProductsRequest
+): Promise<DelRecommendProductsResponse> {
+  const response = await apiClient.post<DelRecommendProductsResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/delCollectProducts',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to delete collected products. Please try again.'
     throw new Error(errorMessage)
   }
 

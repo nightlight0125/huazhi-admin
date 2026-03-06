@@ -25,6 +25,8 @@ import { PasswordInput } from '@/components/password-input'
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email'),
+  // 图片验证码（右侧图片上的验证码）
+  imageCode: z.string().optional(),
   code: z.string().optional(),
   password: z.string().optional(),
 })
@@ -43,6 +45,7 @@ export function ForgotPasswordForm({
   const [step, setStep] = useState<Step>('request')
   const [sentEmail, setSentEmail] = useState<string | null>(null)
   const [verifiedCode, setVerifiedCode] = useState<string | null>(null)
+  const [captchaUrl, setCaptchaUrl] = useState<string>('')
 
   useEffect(() => {
     onStepChange?.(step)
@@ -50,10 +53,29 @@ export function ForgotPasswordForm({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { email: '', code: '', password: '' },
+    defaultValues: { email: '', imageCode: '', code: '', password: '' },
   })
 
+  const handleRefreshCaptcha = () => {
+    const emailValue = form.getValues('email')
+    if (!emailValue) {
+      toast.error('Please enter your email address first.')
+      return
+    }
+    // 通过附加时间戳避免浏览器缓存
+    const url = `/captcha?email=${encodeURIComponent(emailValue)}&t=${Date.now()}`
+    setCaptchaUrl(url)
+  }
+
   async function handleRequestCode(data: z.infer<typeof formSchema>) {
+    if (!data.imageCode?.trim()) {
+      form.setError('imageCode', {
+        type: 'manual',
+        message: 'Please enter the verification code on the right.',
+      })
+      return
+    }
+
     const loadingToast = toast.loading('Sending verification code...')
     try {
       await getResetPassWordCode(data.email)
@@ -165,13 +187,49 @@ export function ForgotPasswordForm({
               name='email'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Email address</FormLabel>
                   <FormControl>
                     <Input
                       placeholder='name@example.com'
                       type='email'
                       {...field}
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='imageCode'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Please enter the verification code on the right</FormLabel>
+                  <FormControl>
+                    <div className='flex items-center gap-2'>
+                      <Input
+                        placeholder='Verification code'
+                        {...field}
+                      />
+                      <button
+                        type='button'
+                        className='flex h-10 w-24 items-center justify-center overflow-hidden rounded border bg-white'
+                        onClick={handleRefreshCaptcha}
+                      >
+                        {captchaUrl ? (
+                          <img
+                            src={captchaUrl}
+                            alt='Verification code'
+                            className='h-full w-full object-cover'
+                          />
+                        ) : (
+                          <span className='px-1 text-[11px] leading-tight text-muted-foreground'>
+                            Click to get code
+                          </span>
+                        )}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

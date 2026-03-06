@@ -236,7 +236,7 @@ export function ProductsGrid({
   } = useTableUrlState({
     search,
     navigate: navigate as any,
-    pagination: { defaultPage: 1, defaultPageSize: 8 },
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
@@ -347,7 +347,7 @@ export function ProductsGrid({
   }, [data, selectedCategories, selectedPriceRange, categoryTree])
 
   // Client-side pagination (when totalCount is not provided)
-  const pageSize = pagination.pageSize || 8
+  const pageSize = pagination.pageSize || 10
   const pageIndex = (pagination.pageIndex || 0) + 1
   const startIndex = (pageIndex - 1) * pageSize
   const endIndex = startIndex + pageSize
@@ -457,7 +457,7 @@ export function ProductsGrid({
 
       {/* Grid Layout */}
       <div className='relative'>
-        <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
+        <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5'>
           {isLoading ? (
             <div className='col-span-full flex h-96 items-center justify-center'>
               <div className='flex items-center gap-2'>
@@ -470,7 +470,7 @@ export function ProductsGrid({
             table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const product = row.original
-                const isFavorite = selectedItems.has(product.id)
+                const isFavorite = product.isFavorite || selectedItems.has(product.id)
 
                 return (
                   <div
@@ -563,7 +563,7 @@ export function ProductsGrid({
           ) : // Client-side pagination: use paginated filtered data
           paginatedData.length > 0 ? (
             paginatedData.map((product) => {
-              const isFavorite = selectedItems.has(product.id)
+              const isFavorite = product.isFavorite || selectedItems.has(product.id)
 
               return (
                 <div

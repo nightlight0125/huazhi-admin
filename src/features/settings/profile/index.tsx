@@ -1,8 +1,27 @@
+import { useEffect, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AddressForm } from './address-form'
 import { ProfileForm } from './profile-form'
 
 export function SettingsProfile() {
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = requestAnimationFrame(() => {
+      setLoading(false)
+    })
+    return () => cancelAnimationFrame(timer)
+  }, [])
+
+  if (loading) {
+    return (
+      <div className='flex min-h-[200px] w-full items-center justify-center'>
+        <Loader2 className='text-muted-foreground h-8 w-8 animate-spin' />
+      </div>
+    )
+  }
+
   return (
     <div>
       <Tabs defaultValue='profile' className='w-full'>

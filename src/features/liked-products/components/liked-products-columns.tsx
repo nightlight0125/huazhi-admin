@@ -9,9 +9,20 @@ import { DataTableColumnHeader } from '@/components/data-table'
 import { type LikedProduct } from '../data/schema'
 import { LikedProductsRowActions } from './liked-products-row-actions'
 
-export const createLikedProductsColumns = (
+export type CreateLikedProductsColumnsOptions = {
   onDeleteSuccess?: () => void
+  /** 为 true 时删除走 delCollectProducts（/collection-products） */
+  useDelCollectApi?: boolean
+}
+
+export const createLikedProductsColumns = (
+  onDeleteSuccessOrOptions?: (() => void) | CreateLikedProductsColumnsOptions
 ): ColumnDef<LikedProduct>[] => {
+  const options: CreateLikedProductsColumnsOptions =
+    typeof onDeleteSuccessOrOptions === 'function'
+      ? { onDeleteSuccess: onDeleteSuccessOrOptions }
+      : { ...onDeleteSuccessOrOptions }
+  const { onDeleteSuccess, useDelCollectApi } = options
   const columns: ColumnDef<LikedProduct>[] = [
     {
       id: 'select',
@@ -134,7 +145,11 @@ export const createLikedProductsColumns = (
   columns.push({
     id: 'actions',
     cell: ({ row }) => (
-      <LikedProductsRowActions row={row} onDeleteSuccess={onDeleteSuccess} />
+      <LikedProductsRowActions
+        row={row}
+        onDeleteSuccess={onDeleteSuccess}
+        useDelCollectApi={useDelCollectApi}
+      />
     ),
   })
 

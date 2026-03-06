@@ -14,7 +14,7 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { ChevronDown, Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
+import { ChevronDown, Heart, Loader2, Store } from 'lucide-react'
 import { toast } from 'sonner'
 import countries from 'world-countries'
 import { useAuthStore } from '@/stores/auth-store'
@@ -531,7 +531,7 @@ export function AllProductsGrid({
       />
 
       {/* Product Grid */}
-      <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
+      <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5'>
         {isLoading ? (
           <div className='col-span-full flex h-96 items-center justify-center'>
             <div className='flex items-center gap-2'>
@@ -542,7 +542,7 @@ export function AllProductsGrid({
         ) : table.getRowModel().rows?.length ? (
           table.getRowModel().rows.map((row) => {
             const product = row.original
-            const isFavorite = selectedItems.has(product.id)
+            const isFavorite = product.isFavorite || selectedItems.has(product.id)
 
             return (
               <div
@@ -607,17 +607,6 @@ export function AllProductsGrid({
                       <Heart
                         className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`}
                       />
-                    </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      className='h-7 flex-1 px-1'
-                      title='Add to Cart'
-                      onClick={(e) => {
-                        e.stopPropagation()
-                      }}
-                    >
-                      <ShoppingCart className='h-3.5 w-3.5' />
                     </Button>
                     <Button
                       variant='outline'

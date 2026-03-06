@@ -29,7 +29,8 @@ type LogisticsTableProps = {
   search: Record<string, unknown>
   navigate: NavigateFn
   totalCount: number
-  onRefresh?: () => void
+  // 可选刷新回调（目前用于编辑地址后从服务端重新拉取数据）
+  onRefresh?: (forceRefresh?: boolean) => void
 }
 
 export function LogisticsTable({
@@ -42,6 +43,8 @@ export function LogisticsTable({
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  // 本地维护一份可编辑的数据副本，用于删除后的局部刷新
+  const [tableData, setTableData] = useState<Logistics[]>(data)
   const [editingRow, setEditingRow] = useState<Logistics | null>(null)
 
   const {
@@ -67,15 +70,26 @@ export function LogisticsTable({
     ],
   })
 
-  const columns = createLogisticsColumns((row) => {
-    setEditingRow(row)
-  }, onRefresh)
+  // 当父组件的数据变更时，同步更新本地副本
+  useEffect(() => {
+    setTableData(data)
+  }, [data])
+
+  const columns = createLogisticsColumns(
+    (row) => {
+      setEditingRow(row)
+    },
+    (deletedRow) => {
+      // 仅在当前页本地删除该行，避免整页刷新
+      setTableData((prev) => prev.filter((item) => item.id !== deletedRow.id))
+    }
+  )
 
   // 计算总页数
   const pageCount = Math.ceil(totalCount / pagination.pageSize)
 
   const table = useReactTable({
-    data,
+    data: tableData,
     columns,
     state: {
       sorting,
@@ -158,7 +172,7 @@ export function LogisticsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {data.length === 0 ? (
+            {tableData.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
@@ -207,8 +221,8 @@ export function LogisticsTable({
           }
         }}
         onSubmit={() => {
-          // notify parent to refresh if provided
-          onRefresh?.()
+          // 通知父组件刷新列表，并强制刷新以忽略去重逻辑
+          onRefresh?.(true)
         }}
       />
     </div>

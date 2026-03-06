@@ -89,6 +89,7 @@ export function ShippingPlanDialog({
         setIsLoadingStates(true)
         try {
           const productsResponse = await getProductsList({
+            customerId: String(auth.user?.customerId || ''),
             pageNo: 1,
             pageSize: 1000,
           })

@@ -14,7 +14,8 @@ import { type Logistics } from '../data/schema'
 
 export const createLogisticsColumns = (
   onEditShippingTo?: (row: Logistics) => void,
-  onDeleteSuccess?: () => void
+  // 删除成功后的回调，携带被删除的行数据，方便局部更新
+  onDeleteSuccess?: (logistics: Logistics) => void
 ): ColumnDef<Logistics>[] => {
   return [
     {
@@ -138,7 +139,8 @@ export const createLogisticsColumns = (
 
 type DeleteProps = {
   logistics: Logistics
-  onSuccess?: () => void
+  // 删除成功后的回调，携带被删除的行数据
+  onSuccess?: (logistics: Logistics) => void
 }
 
 function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
@@ -167,8 +169,8 @@ function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
       toast.dismiss(loadingToast)
       toast.success('Deleted successfully')
       setOpen(false)
-      // trigger refresh in parent if provided
-      onSuccess?.()
+      // trigger refresh in parent if provided，局部更新列表
+      onSuccess?.(logistics)
     } catch (error) {
       toast.dismiss(loadingToast)
       const msg = error instanceof Error ? error.message : 'Delete failed'

@@ -103,11 +103,33 @@ apiClient.interceptors.response.use(
         (responseData.errorCode === 401 && responseData.status === false))
 
     if (hasLogical401) {
+      const isLoginOrGetToken =
+        config?.url?.includes('/v2/hzkj/base/member/login') ||
+        config?.url?.includes('/oauth2/getToken')
+      if (isLoginOrGetToken) {
+        // 401 来自 login 或 getToken 时不再重试，直接登出，避免死循环
+        const authStore = useAuthStore.getState()
+        authStore.auth.reset()
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+            const redirectPath = window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          }
+        }
+        return Promise.reject(
+          new Error(responseData?.message || 'AccessToken认证不通过，token已过期')
+        )
+      }
       // 避免无限重试：每个请求只自动重登并重试一次
       if (config && !config._logical401Retried) {
         config._logical401Retried = true
         try {
-          const reloginSuccess = await tryAutoLogin()
+          // 先尝试仅用 oauth2/getToken 刷新 token（与登录时一致），避免重复调 login 导致死循环
+          let reloginSuccess = await tryRefreshToken()
+          if (!reloginSuccess) {
+            reloginSuccess = await tryAutoLogin()
+          }
           if (reloginSuccess) {
             const { auth } = useAuthStore.getState()
             const token = auth.accessToken
@@ -166,10 +188,28 @@ apiClient.interceptors.response.use(
           (responseData.status === false &&
             responseData.errorCode === '401'))
 
+      const isLoginOrGetTokenReq =
+        originalRequest?.url?.includes('/v2/hzkj/base/member/login') ||
+        originalRequest?.url?.includes('/oauth2/getToken')
+      if (has401Code && isLoginOrGetTokenReq) {
+        const authStore = useAuthStore.getState()
+        authStore.auth.reset()
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+            const redirectPath = window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          }
+        }
+        return Promise.reject(error)
+      }
       if (has401Code && originalRequest && !originalRequest._retry) {
         originalRequest._retry = true
         try {
-          const reloginSuccess = await tryAutoLogin()
+          let reloginSuccess = await tryRefreshToken()
+          if (!reloginSuccess) {
+            reloginSuccess = await tryAutoLogin()
+          }
           if (reloginSuccess) {
             const { auth } = useAuthStore.getState()
             const token = auth.accessToken
@@ -215,10 +255,28 @@ apiClient.interceptors.response.use(
       (error as Error)?.message?.includes('Token expired')
 
     if (isAuthError) {
+      const isLoginOrGetTokenReq =
+        originalRequest?.url?.includes('/v2/hzkj/base/member/login') ||
+        originalRequest?.url?.includes('/oauth2/getToken')
+      if (isLoginOrGetTokenReq) {
+        const authStore = useAuthStore.getState()
+        authStore.auth.reset()
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+            const redirectPath = window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          }
+        }
+        return Promise.reject(error)
+      }
       if (originalRequest && !originalRequest._retry) {
         originalRequest._retry = true
         try {
-          const reloginSuccess = await tryAutoLogin()
+          let reloginSuccess = await tryRefreshToken()
+          if (!reloginSuccess) {
+            reloginSuccess = await tryAutoLogin()
+          }
           if (reloginSuccess) {
             const { auth } = useAuthStore.getState()
             const token = auth.accessToken
@@ -256,7 +314,22 @@ apiClient.interceptors.response.use(
   }
 )
 
-// 尝试使用本地保存的邮箱和密码自动登录
+// 仅通过 oauth2/getToken 刷新 accessToken，与登录时步骤一致，避免重复调 login 导致死循环
+async function tryRefreshToken(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+  try {
+    const { getToken } = await import('@/lib/api/auth')
+    const { auth } = useAuthStore.getState()
+    const token = await getToken()
+    if (!token || token.trim() === '') return false
+    auth.setAccessToken(token)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// 尝试使用本地保存的邮箱和密码自动登录（先 getToken 再 memberLogin，与正常登录流程一致）
 async function tryAutoLogin(): Promise<boolean> {
   if (typeof window === 'undefined') return false
 
@@ -276,12 +349,9 @@ async function tryAutoLogin(): Promise<boolean> {
     const { getToken, memberLogin } = await import('@/lib/api/auth')
     const { auth } = useAuthStore.getState()
 
-    // 获取 / 刷新 token
-    let token = auth.accessToken
-    if (!token || token.trim() === '') {
-      token = await getToken()
-      auth.setAccessToken(token)
-    }
+    // 与正常登录一致：先请求 oauth2/getToken 再 memberLogin
+    const token = await getToken()
+    auth.setAccessToken(token)
 
     const loginResponse: any = await memberLogin(
       parsed.email,
