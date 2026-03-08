@@ -1,17 +1,4 @@
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { getProduct, saveCustomization, type ApiProductItem } from '@/lib/api/products'
-import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/stores/auth-store'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { Canvas, Group, Image, Textbox } from 'fabric'
 import {
@@ -33,8 +20,25 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  getProduct,
+  saveCustomization,
+  type ApiProductItem,
+} from '@/lib/api/products'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 type ActiveTab = 'logo' | 'text' | 'notes'
 
@@ -106,9 +110,13 @@ export function ProductDesign() {
     // 手动构建包含背景图片的 JSON
     const canvasJson = canvas.toJSON()
     // 获取产品图片，优先使用 hzkj_picurl_tag，如果没有则使用其他图片字段
-    const productImage = 
-      (typeof product.hzkj_picurl_tag === 'string' ? product.hzkj_picurl_tag : '') ||
-      (typeof product.hzkj_picturefield === 'string' ? product.hzkj_picturefield : '') ||
+    const productImage =
+      (typeof product.hzkj_picurl_tag === 'string'
+        ? product.hzkj_picurl_tag
+        : '') ||
+      (typeof product.hzkj_picturefield === 'string'
+        ? product.hzkj_picturefield
+        : '') ||
       ''
     // 添加背景图片信息到 JSON
     const jsonWithBackground = {
@@ -147,12 +155,16 @@ export function ProductDesign() {
     // 加载产品图片作为背景
     // 使用 fetch 获取图片并转换为 base64，避免跨域问题
     // 获取产品图片，优先使用 hzkj_picurl_tag，如果没有则使用其他图片字段
-    const productImage = 
-      (typeof product.hzkj_picurl_tag === 'string' ? product.hzkj_picurl_tag : '') ||
-      (typeof product.hzkj_picturefield === 'string' ? product.hzkj_picturefield : '') ||
+    const productImage =
+      (typeof product.hzkj_picurl_tag === 'string'
+        ? product.hzkj_picurl_tag
+        : '') ||
+      (typeof product.hzkj_picturefield === 'string'
+        ? product.hzkj_picturefield
+        : '') ||
       ''
     if (!productImage) return
-    
+
     const loadBackgroundImage = async () => {
       try {
         // 尝试通过 fetch 获取图片（支持 CORS）
@@ -481,9 +493,13 @@ export function ProductDesign() {
     (scaleX?: number, scaleY?: number) => {
       if (!fabricCanvasRef.current || !product) return Promise.resolve()
       // 获取产品图片，优先使用 hzkj_picurl_tag，如果没有则使用其他图片字段
-      const productImage = 
-        (typeof product.hzkj_picurl_tag === 'string' ? product.hzkj_picurl_tag : '') ||
-        (typeof product.hzkj_picturefield === 'string' ? product.hzkj_picturefield : '') ||
+      const productImage =
+        (typeof product.hzkj_picurl_tag === 'string'
+          ? product.hzkj_picurl_tag
+          : '') ||
+        (typeof product.hzkj_picturefield === 'string'
+          ? product.hzkj_picturefield
+          : '') ||
         ''
       if (!productImage) return Promise.resolve()
       return Image.fromURL(productImage)
@@ -817,11 +833,12 @@ export function ProductDesign() {
     try {
       const canvas = fabricCanvasRef.current
       // 获取产品名称
-      const productName = 
+      const productName =
         (typeof product.name === 'string' ? product.name : '') ||
-        (typeof product.name === 'object' && product.name !== null 
-          ? (product.name as { GLang?: string; zh_CN?: string }).GLang || 
-            (product.name as { GLang?: string; zh_CN?: string }).zh_CN || ''
+        (typeof product.name === 'object' && product.name !== null
+          ? (product.name as { GLang?: string; zh_CN?: string }).GLang ||
+            (product.name as { GLang?: string; zh_CN?: string }).zh_CN ||
+            ''
           : '') ||
         'design'
 
@@ -879,8 +896,7 @@ export function ProductDesign() {
       })
 
       toast.success('Design saved successfully')
-      
-      // 跳转到 packaging-products 页面的 My Packaging tab
+
       navigate({
         to: '/packaging-products',
         search: {
@@ -1111,7 +1127,7 @@ export function ProductDesign() {
                 {isUploadingImage ? (
                   <div className='flex flex-col items-center justify-center space-y-3 py-4'>
                     <Loader2 className='text-primary h-8 w-8 animate-spin' />
-                    <p className='text-primary font-medium text-sm'>
+                    <p className='text-primary text-sm font-medium'>
                       Uploading image...
                     </p>
                     <p className='text-muted-foreground text-xs'>

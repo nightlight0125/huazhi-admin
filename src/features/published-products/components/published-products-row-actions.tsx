@@ -58,7 +58,7 @@ export function PublishedProductsRowActions({
       <Button
         variant='outline'
         size='sm'
-        className='h-7 border-red-200 px-2 text-xs text-red-500'
+        className='h-7 border-gray-200 px-2 text-xs text-gray-500'
         onClick={handleDeleteClick}
       >
         <Trash2 className='mr-1 h-3.5 w-3.5' />

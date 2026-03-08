@@ -1,22 +1,5 @@
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTableToolbar } from '@/components/data-table'
-import {
-  OrderPayDialog,
-  type OrderPayable,
-} from '@/components/order-pay-dialog'
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { deleteOrder, queryOrder, requestPayment, updateSalOutOrder } from '@/lib/api/orders'
-import { useAuthStore } from '@/stores/auth-store'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { format } from 'date-fns'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type SortingState,
@@ -29,14 +12,38 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { format } from 'date-fns'
 import { HelpCircle, Loader2 } from 'lucide-react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { type FreightOption, calcuOrderFreight } from '@/lib/api/logistics'
+import { deleteOrder, queryOrder, updateSalOutOrder } from '@/lib/api/orders'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTableToolbar } from '@/components/data-table'
+import {
+  OrderPayDialog,
+  type OrderPayable,
+} from '@/components/order-pay-dialog'
 import { orderStatuses } from '../data/data'
 import { type Order, type OrderProduct } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
+import { OrderAvailableShippingMethodsDialog } from './order-available-shipping-methods-dialog'
 import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
 import { OrdersEditCustomerNameDialog } from './orders-edit-customer-name-dialog'
@@ -59,19 +66,20 @@ type DataTableProps = {
   countryOptions?: FilterOption[]
 }
 
-
 function ProductDetailRow({
   product,
   onModifyProduct,
   orderId,
   orderNumber,
   onDelete,
+  orderStatus,
 }: {
   product: OrderProduct
   onModifyProduct?: () => void
   orderId: string
   orderNumber?: string
   onDelete?: (orderId: string) => void | Promise<void>
+  orderStatus?: string
 }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -94,10 +102,21 @@ function ProductDetailRow({
     }
   }
 
+  const isModifyDisabled = orderStatus === 'no'
   const fieldLabels = ['Shopify', 'SKU', 'Price', 'Quantity']
   const leftButtons = ['Store', 'HZ']
-  const rightButtons = [
-    { label: 'Modify Product', onClick: onModifyProduct || (() => {}) },
+  const rightButtons: Array<{
+    label: string
+    onClick: () => void
+    disabled?: boolean
+    tooltip?: string
+  }> = [
+    {
+      label: 'Modify Product',
+      onClick: onModifyProduct || (() => {}),
+      disabled: isModifyDisabled,
+      tooltip: isModifyDisabled ? 'No local matching SKU' : undefined,
+    },
     { label: 'Delete', onClick: handleDeleteClick },
   ]
 
@@ -117,112 +136,122 @@ function ProductDetailRow({
 
   return (
     <React.Fragment>
-    <TableRow className='bg-muted/30'>
-      <TableCell colSpan={100} className='px-3 py-2'>
-        <div className='flex items-start justify-between gap-2'>
-          <div className='flex items-start gap-2'>
-            <div>
-              <img
-                src={product?.hzkj_picture || ''}
-                alt={product?.hzkj_variant_name || ''}
-                className='h-12 w-12 rounded object-cover'
-              />
-            </div>
-            <div className='flex flex-col gap-2'>
-              {leftButtons.map((buttonLabel, buttonIndex) => (
-                <div key={buttonLabel} className='flex items-center gap-2'>
-                  {fieldLabels.map((label, index) => (
-                    <React.Fragment key={`${buttonLabel}-${label}`}>
-                      {index === 1 && (
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='h-5 w-16 text-[11px]'
+      <TableRow className='bg-muted/30'>
+        <TableCell colSpan={100} className='px-3 py-2'>
+          <div className='flex items-start justify-between gap-2'>
+            <div className='flex items-start gap-2'>
+              <div>
+                <img
+                  src={product?.hzkj_picture || ''}
+                  alt={product?.hzkj_variant_name || ''}
+                  className='h-12 w-12 rounded object-cover'
+                />
+              </div>
+              <div className='flex flex-col gap-2'>
+                {leftButtons.map((buttonLabel, buttonIndex) => (
+                  <div key={buttonLabel} className='flex items-center gap-2'>
+                    {fieldLabels.map((label, index) => (
+                      <React.Fragment key={`${buttonLabel}-${label}`}>
+                        {index === 1 && (
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            className='h-5 w-16 text-[11px]'
+                          >
+                            {buttonLabel}
+                          </Button>
+                        )}
+                        <div
+                          style={{ width: '220px', wordBreak: 'break-all' }}
+                          className='text-[12px]'
                         >
-                          {buttonLabel}
-                        </Button>
-                      )}
-                      <div
-                        style={{ width: '220px', wordBreak: 'break-all' }}
-                        className='text-[12px]'
-                      >
-                        {index === 0
-                          ? buttonIndex === 0
-                            ? `Shopify:${product?.hzkj_variant_name || ''}`
-                            : `Variant: ${(product as any)?.hzkj_sku_values || ''}`
-                          : index === 1
+                          {index === 0
                             ? buttonIndex === 0
-                              ? `SKU:${product?.hzkj_shop_sku || '---'}`
-                              : `SKU:${product?.hzkj_local_sku || '---'}`
-                            : index === 2
+                              ? `Shopify:${product?.hzkj_variant_name || ''}`
+                              : `Variant: ${(product as any)?.hzkj_sku_values || ''}`
+                            : index === 1
                               ? buttonIndex === 0
-                                ? `Price:${formatValue(product?.hzkj_shop_price)}`
-                                : `Price:${formatValue(product?.hzkj_amount)}`
-                              : index === 3
+                                ? `SKU:${product?.hzkj_shop_sku || '---'}`
+                                : `SKU:${product?.hzkj_local_sku || '---'}`
+                              : index === 2
                                 ? buttonIndex === 0
-                                  ? `Quantity:${formatValue(product?.hzkj_src_qty)}`
-                                  : `Quantity:${formatValue(product?.hzkj_qty)}`
-                                : `${label}:---`}
-                      </div>
-                    </React.Fragment>
-                  ))}
-                </div>
-              ))}
+                                  ? `Price:${formatValue(product?.hzkj_shop_price)}`
+                                  : `Price:${formatValue(product?.hzkj_amount)}`
+                                : index === 3
+                                  ? buttonIndex === 0
+                                    ? `Quantity:${formatValue(product?.hzkj_src_qty)}`
+                                    : `Quantity:${formatValue(product?.hzkj_qty)}`
+                                  : `${label}:---`}
+                        </div>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className='flex flex-col gap-1'>
+              {rightButtons.map((button) => {
+                const btn = (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-5 text-[11px]'
+                    onClick={button.disabled ? undefined : button.onClick}
+                    disabled={button.disabled}
+                  >
+                    {button.label}
+                  </Button>
+                )
+                return button.tooltip && button.disabled ? (
+                  <Tooltip key={button.label}>
+                    <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                    <TooltipContent>{button.tooltip}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <React.Fragment key={button.label}>{btn}</React.Fragment>
+                )
+              })}
             </div>
           </div>
-          <div className='flex flex-col gap-1'>
-            {rightButtons.map((button) => (
-              <Button
-                key={button.label}
-                variant='outline'
-                size='sm'
-                className='h-5 text-[11px]'
-                onClick={button.onClick}
-              >
-                {button.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </TableCell>
-    </TableRow>
-    <ConfirmDialog
-      open={deleteDialogOpen}
-      onOpenChange={(newOpen) => {
-        if (!isDeleting) {
-          setDeleteDialogOpen(newOpen)
-        }
-      }}
-      handleConfirm={handleConfirmDelete}
-      destructive
-      isLoading={isDeleting}
-      title={<span className='text-destructive'>Delete Order</span>}
-      desc={
-        <>
-          <p className='mb-2'>
-            Are you sure you want to delete this order?
-            <br />
-            This action cannot be undone.
-          </p>
-          {orderNumber && (
-            <p className='text-muted-foreground text-sm'>
-              Order Number: <strong>{orderNumber}</strong>
-            </p>
-          )}
-        </>
-      }
-      confirmText={
-        isDeleting ? (
+        </TableCell>
+      </TableRow>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(newOpen) => {
+          if (!isDeleting) {
+            setDeleteDialogOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmDelete}
+        destructive
+        isLoading={isDeleting}
+        title={<span className='text-destructive'>Delete Order</span>}
+        desc={
           <>
-            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-            Deleting...
+            <p className='mb-2'>
+              Are you sure you want to delete this order?
+              <br />
+              This action cannot be undone.
+            </p>
+            {orderNumber && (
+              <p className='text-muted-foreground text-sm'>
+                Order Number: <strong>{orderNumber}</strong>
+              </p>
+            )}
           </>
-        ) : (
-          'Delete'
-        )
-      }
-    />
-  </React.Fragment>
+        }
+        confirmText={
+          isDeleting ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Deleting...
+            </>
+          ) : (
+            'Delete'
+          )
+        }
+      />
+    </React.Fragment>
   )
 }
 
@@ -256,10 +285,12 @@ export function OrdersTable({
     open: boolean
     products: OrderProduct[]
     orderId: string
+    order?: any
   }>({
     open: false,
     products: [],
     orderId: '',
+    order: undefined,
   })
   const [editAddressDialog, setEditAddressDialog] = useState<{
     open: boolean
@@ -275,6 +306,13 @@ export function OrdersTable({
     open: false,
     order: null,
   })
+  const [shippingMethodDialog, setShippingMethodDialog] = useState<{
+    open: boolean
+    order: Order | null
+  }>({ open: false, order: null })
+  const [shippingOptions, setShippingOptions] = useState<FreightOption[]>([])
+  const [isLoadingShippingOptions, setIsLoadingShippingOptions] =
+    useState(false)
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [selectedOrderForPayment, setSelectedOrderForPayment] =
     useState<OrderPayable | null>(null)
@@ -355,8 +393,16 @@ export function OrdersTable({
         ? String(storeFilter.value[0])
         : undefined
 
+    // 「Store Order Status」筛选栏 -> shopOrderStatus 字段
+    const platformOrderStatusFilter = columnFilters.find(
+      (f) => f.id === 'platformOrderStatus'
+    )
     const shopOrderStatus =
-      activeTab && activeTab !== '' ? String(activeTab) : undefined
+      platformOrderStatusFilter &&
+      Array.isArray(platformOrderStatusFilter.value) &&
+      platformOrderStatusFilter.value.length > 0
+        ? String(platformOrderStatusFilter.value[0])
+        : undefined
 
     const countryFilter = columnFilters.find((f) => f.id === 'country')
     const countryIds =
@@ -366,18 +412,13 @@ export function OrdersTable({
         ? countryFilter.value.map((id) => String(id))
         : undefined
 
-    // 获取平台订单状态过滤值（支持多选）
-    const platformOrderStatusFilter = columnFilters.find((f) => f.id === 'platformOrderStatus')
+    // 根据 Tab（支付状态）设置订单状态（字符串），用于后端过滤
     const orderStatus =
-      platformOrderStatusFilter &&
-      Array.isArray(platformOrderStatusFilter.value) &&
-      platformOrderStatusFilter.value.length > 0
-        ? platformOrderStatusFilter.value.map((status) => String(status))
-        : undefined
+      activeTab && activeTab !== '' ? String(activeTab) : undefined
 
-    // 将国家ID数组和订单状态数组转换为字符串用于请求key（用于去重）
+    // 将国家ID数组转换为字符串用于请求 key（用于去重）
     const countryIdsKey = countryIds ? countryIds.sort().join(',') : ''
-    const orderStatusKey = orderStatus ? orderStatus.sort().join(',') : ''
+    const orderStatusKey = orderStatus ?? ''
     const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryIdsKey}-${orderStatusKey}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${activeTab}`
 
     if (lastRequestParamsRef.current === requestKey) {
@@ -391,19 +432,17 @@ export function OrdersTable({
     try {
       const response = await queryOrder({
         customerId: String(customerId),
-        type: 'hzkj_orders_BT',
+        type: 'hzkj_orders_BT_Sample',
         str: globalFilter || '',
         pageIndex,
         pageSize,
         shopId,
         shopOrderStatus,
         countryId: countryIds,
-        orderStatus, 
+        orderStatus,
         startDate: formattedDateRange?.startDate,
         endDate: formattedDateRange?.endDate,
       })
-
-      console.log('queryOrder response ------111111111:', response)
 
       setData(response.orders as any)
       setTotalCount(response.total)
@@ -457,7 +496,12 @@ export function OrdersTable({
   }
 
   const handleConfirmModify = (_updatedProducts: OrderProduct[]) => {
-    setModifyProductDialog({ open: false, products: [], orderId: '' })
+    setModifyProductDialog({
+      open: false,
+      products: [],
+      orderId: '',
+      order: undefined,
+    })
   }
 
   const handleEditAddress = (orderId: string) => {
@@ -467,6 +511,135 @@ export function OrdersTable({
         open: true,
         order,
       })
+    }
+  }
+
+  const handleSelectShippingMethod = (order: Order) => {
+    setShippingMethodDialog({ open: true, order })
+  }
+
+  // 打开物流弹框时拉取可用物流方式
+  useEffect(() => {
+    if (!shippingMethodDialog.open || !shippingMethodDialog.order) {
+      setShippingOptions([])
+      return
+    }
+    const order = shippingMethodDialog.order
+
+    let cancelled = false
+    setIsLoadingShippingOptions(true)
+    setShippingOptions([])
+
+    calcuOrderFreight({ orderId: order.id })
+      .then((list) => {
+        if (cancelled) return
+        setShippingOptions(Array.isArray(list) ? list : [])
+      })
+      .catch(() => {
+        if (!cancelled) setShippingOptions([])
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingShippingOptions(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [shippingMethodDialog.open, shippingMethodDialog.order])
+
+  const handleShippingMethodSelect = async (
+    _orderId: string,
+    method: FreightOption
+  ) => {
+    const order = shippingMethodDialog.order
+    const customerId = auth.user?.customerId
+
+    if (!order || !customerId) {
+      toast.error('Order or customer information is missing')
+      setShippingMethodDialog({ open: false, order: null })
+      return
+    }
+
+    const rawOrder = order as any
+
+    const detail =
+      (rawOrder.lingItems || [])
+        .map((item: any) => ({
+          entryId: String(item.entryId || ''),
+          skuId: String(
+            item.hzkj_local_sku_id ||
+              item.hzkj_local_sku_id2 ||
+              item.hzkj_local_sku ||
+              ''
+          ),
+          quantity: Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0,
+          flag: 0,
+        }))
+        .filter((d: any) => d.entryId && d.skuId) || []
+
+    const firstName =
+      rawOrder.firstName ||
+      (rawOrder.customerName &&
+        typeof rawOrder.customerName === 'string' &&
+        rawOrder.customerName.split(' ')[0]) ||
+      (rawOrder.hzkj_customer_name &&
+        typeof rawOrder.hzkj_customer_name === 'object' &&
+        rawOrder.hzkj_customer_name.zh_CN) ||
+      ''
+    const lastName =
+      rawOrder.lastName ||
+      (rawOrder.customerName &&
+        typeof rawOrder.customerName === 'string' &&
+        rawOrder.customerName.split(' ').slice(1).join(' ')) ||
+      ''
+
+    try {
+      await updateSalOutOrder({
+        orderId: rawOrder.id || order.id,
+        customerId: String(customerId),
+        firstName,
+        lastName,
+        phone:
+          rawOrder.phone ||
+          rawOrder.hzkj_telephone ||
+          rawOrder.phoneNumber ||
+          '',
+        countryId: rawOrder.countryId || rawOrder.hzkj_country_id || '',
+        admindivisionId: rawOrder.admindivisionId,
+        city: rawOrder.city || rawOrder.hzkj_address?.split(',')[0] || '',
+        address1:
+          rawOrder.address1 ||
+          rawOrder.address ||
+          rawOrder.hzkj_address ||
+          rawOrder.hzkj_bill_address ||
+          '',
+        address2: rawOrder.address2 || rawOrder.hzkj_sam_address || '',
+        postCode:
+          rawOrder.postCode ||
+          rawOrder.postalCode ||
+          rawOrder.hzkj_post_code ||
+          '',
+        taxId: rawOrder.taxId || '',
+        customChannelId: String(method.logsId),
+        email: rawOrder.email || rawOrder.hzkj_email || '',
+        wareHouse:
+          rawOrder.wareHouse ||
+          rawOrder.warehouseId ||
+          rawOrder.shippingOrigin ||
+          '',
+        detail,
+      })
+
+      toast.success(`Shipping method set to ${method.logsNumber}`)
+      setShippingMethodDialog({ open: false, order: null })
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('Failed to update shipping method:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update shipping method.'
+      )
     }
   }
 
@@ -494,7 +667,7 @@ export function OrdersTable({
 
     if (!order || !customerId) {
       toast.error('Order or customer information is missing')
-    setEditAddressDialog({ open: false, order: null })
+      setEditAddressDialog({ open: false, order: null })
       return
     }
 
@@ -502,22 +675,22 @@ export function OrdersTable({
 
     // 构造明细列表 detail
     const detail =
-      (rawOrder.lingItems || []).map((item: any) => ({
-        entryId: String(item.entryId || ''),
-        skuId: String(
-          item.hzkj_local_sku_id ||
-          item.hzkj_local_sku_id2 ||
-          item.hzkj_local_sku ||
-          ''
-        ),
-        quantity: Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0,
-        flag: 0,
-      })).filter((d: any) => d.entryId && d.skuId) || []
+      (rawOrder.lingItems || [])
+        .map((item: any) => ({
+          entryId: String(item.entryId || ''),
+          skuId: String(
+            item.hzkj_local_sku_id ||
+              item.hzkj_local_sku_id2 ||
+              item.hzkj_local_sku ||
+              ''
+          ),
+          quantity: Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0,
+          flag: 0,
+        }))
+        .filter((d: any) => d.entryId && d.skuId) || []
 
     const firstName =
-      addressData.firstName ??
-      addressData.customerName.split(' ')[0] ??
-      ''
+      addressData.firstName ?? addressData.customerName.split(' ')[0] ?? ''
     const lastName =
       addressData.lastName ??
       addressData.customerName.split(' ').slice(1).join(' ') ??
@@ -536,7 +709,7 @@ export function OrdersTable({
         address1: addressData.address,
         address2: addressData.address2,
         postCode: addressData.postalCode,
-      taxId: addressData.taxId || '',
+        taxId: addressData.taxId || '',
         customChannelId: '',
         email: addressData.email || '',
         wareHouse: addressData.warehouseId ?? addressData.shippingOrigin,
@@ -604,42 +777,6 @@ export function OrdersTable({
     }
   }
 
-  const handleBatchPayment = async (orderIds: string[]) => {
-    const customerId = auth.user?.customerId
-    if (!customerId) {
-      toast.error('Customer ID not found')
-      return
-    }
-
-    if (orderIds.length === 0) {
-      toast.error('Please select at least one order')
-      return
-    }
-
-    try {
-      await requestPayment({
-        customerId: String(customerId),
-        orderIds,
-        type: 0, // 0 表示普通订单
-      })
-
-      toast.success(
-        `Payment request submitted successfully for ${orderIds.length} order(s)`
-      )
-      // 刷新订单列表
-      setRefreshKey((prev) => prev + 1)
-      // 清空选择
-      setRowSelection({})
-    } catch (error) {
-      console.error('Failed to request batch payment:', error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to request batch payment. Please try again.'
-      )
-    }
-  }
-
   const columns = useMemo(
     () =>
       createOrdersColumns({
@@ -652,12 +789,14 @@ export function OrdersTable({
               open: true,
               products: order.productList,
               orderId,
+              order,
             })
           } else {
             setModifyProductDialog({
               open: true,
               products: [],
               orderId,
+              order,
             })
           }
         },
@@ -665,8 +804,15 @@ export function OrdersTable({
         onEditCustomerName: handleEditCustomerName,
         onPay: handlePay,
         onDelete: handleDelete,
+        onSelectShippingMethod: handleSelectShippingMethod,
       }),
-    [expandedRows, data, auth.user?.customerId, handleDelete]
+    [
+      expandedRows,
+      data,
+      auth.user?.customerId,
+      handleDelete,
+      handleSelectShippingMethod,
+    ]
   )
 
   const table = useReactTable({
@@ -749,14 +895,7 @@ export function OrdersTable({
             columnId: 'platformOrderStatus',
             title: 'Store Order Status',
             options: platformOrderStatusOptions,
-            // 移除 singleSelect: true，支持多选
           },
-          // {
-          //   columnId: 'status',
-          //   title: 'Order Status',
-          //   options: orderStatusOptions,
-          //   singleSelect: true,
-          // },
           {
             columnId: 'country',
             title: 'Country',
@@ -803,10 +942,10 @@ export function OrdersTable({
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      const orderIds = selectedRows.map(
-                        (row) => row.original.id
-                      )
-                      void handleBatchPayment(orderIds)
+                      const firstOrderId = selectedRows[0]?.original.id
+                      if (firstOrderId) {
+                        handlePay(firstOrderId)
+                      }
                     }
                   }}
                   disabled={selectedCount === 0}
@@ -889,12 +1028,14 @@ export function OrdersTable({
                                   product={product}
                                   orderId={order.id}
                                   orderNumber={order.orderNumber}
+                                  orderStatus={order.hzkj_orderstatus}
                                   onDelete={handleDelete}
                                   onModifyProduct={() => {
                                     setModifyProductDialog({
                                       open: true,
                                       products: order.lingItems || [],
                                       orderId: order.id,
+                                      order,
                                     })
                                   }}
                                 />
@@ -911,7 +1052,7 @@ export function OrdersTable({
                       colSpan={columns.length}
                       className='h-24 text-center'
                     >
-                      暂无数据
+                      No data
                     </TableCell>
                   </TableRow>
                 )}
@@ -930,13 +1071,23 @@ export function OrdersTable({
         open={modifyProductDialog.open}
         onOpenChange={(open) => {
           if (!open) {
-            setModifyProductDialog({ open: false, products: [], orderId: '' })
+            setModifyProductDialog({
+              open: false,
+              products: [],
+              orderId: '',
+              order: undefined,
+            })
           } else {
             setModifyProductDialog({ ...modifyProductDialog, open })
           }
         }}
         products={modifyProductDialog.products}
         onConfirm={handleConfirmModify}
+        orderId={modifyProductDialog.orderId}
+        order={modifyProductDialog.order}
+        onSuccess={() => {
+          setRefreshKey((prev) => prev + 1)
+        }}
       />
 
       <OrdersEditAddressDialog
@@ -946,6 +1097,17 @@ export function OrdersTable({
         }
         order={editAddressDialog.order}
         onConfirm={handleConfirmEditAddress}
+      />
+
+      <OrderAvailableShippingMethodsDialog
+        open={shippingMethodDialog.open}
+        onOpenChange={(open) =>
+          setShippingMethodDialog({ ...shippingMethodDialog, open })
+        }
+        order={shippingMethodDialog.order}
+        shippingOptions={shippingOptions}
+        isLoading={isLoadingShippingOptions}
+        onSelect={handleShippingMethodSelect}
       />
 
       <OrdersEditCustomerNameDialog
@@ -963,8 +1125,9 @@ export function OrdersTable({
         order={selectedOrderForPayment}
         orderType={0} // 普通订单：type = 0
         onPaymentSuccess={() => {
-          // 支付成功后刷新订单列表
+          // 支付成功后刷新订单列表并清空勾选
           setRefreshKey((prev) => prev + 1)
+          setRowSelection({})
         }}
       />
     </div>

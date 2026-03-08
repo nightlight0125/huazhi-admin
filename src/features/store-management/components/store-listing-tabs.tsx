@@ -9,6 +9,10 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import {
   Popover,
@@ -46,6 +50,8 @@ import {
   type StateItem,
 } from '@/lib/api/logistics'
 import {
+  getProduct,
+  pushProductToShopifyNew,
   type ApiProductItem
 } from '@/lib/api/products'
 import { cn } from '@/lib/utils'
@@ -56,7 +62,7 @@ import {
   type Table as TanstackTable,
 } from '@tanstack/react-table'
 import { ChevronDown, Loader2, Store, Truck, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import { toast } from 'sonner'
 import { VariantPricingBulkActions } from './variant-pricing-bulk-actions'
 import { type VariantPricing } from './variant-pricing-schema'
@@ -177,9 +183,17 @@ type StoreListingTabsProps = {
   isLoadingVariantPricing?: boolean
   // 富文本内容，用于初始化 Description 编辑器
   richTextContent?: string
+  // 店铺ID，用于推送产品
+  shopId?: string
+  // 确认回调
+  onConfirm?: () => void
 }
 
-export function StoreListingTabs({
+export interface StoreListingTabsHandle {
+  handleConfirm: () => Promise<void>
+}
+
+export const StoreListingTabs = forwardRef<StoreListingTabsHandle, StoreListingTabsProps>(({
   selectedTags,
   setSelectedTags,
   variantPricingTable,
@@ -195,7 +209,9 @@ export function StoreListingTabs({
   shippingMethodOptions: initialShippingMethodOptions = [],
   isLoadingVariantPricing = false,
   richTextContent = '',
-}: StoreListingTabsProps) {
+  shopId,
+  onConfirm,
+}, ref) => {
   // 为了兼容现有调用处，这里接收 columns 但当前不使用
   void columns
 
@@ -216,6 +232,16 @@ export function StoreListingTabs({
   const [bulkReviseValue, setBulkReviseValue] = useState('')
   const [updateTrigger, setUpdateTrigger] = useState(0)
   const { auth } = useAuthStore()
+
+  // 图片相关状态
+  const [productImages, setProductImages] = useState<string[]>([])
+  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set())
+  const [isLoadingImages, setIsLoadingImages] = useState(false)
+  const [enlargedImageIndex, setEnlargedImageIndex] = useState<number | null>(null)
+  
+  // Description 内容状态
+  const [descriptionContent, setDescriptionContent] = useState(richTextContent)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Shipping 相关状态
   const [countryOptions, setCountryOptions] = useState<CountryOption[]>([])
@@ -259,6 +285,45 @@ export function StoreListingTabs({
   useEffect(() => {
     setTitle(productTitle)
   }, [productTitle])
+
+  // 获取商品详情并处理图片
+  useEffect(() => {
+    const fetchProductImages = async () => {
+      if (!productId) {
+        setProductImages([])
+        setSelectedImages(new Set())
+        return
+      }
+
+      setIsLoadingImages(true)
+      try {
+        const productData = await getProduct(productId)
+        if (productData?.hzkj_picurl_tag) {
+          // 处理图片URL字符串，用分号分割
+          const imageUrls = String(productData.hzkj_picurl_tag)
+            .split(';')
+            .map((url) => url.trim())
+            .filter((url) => url.length > 0)
+          
+          setProductImages(imageUrls)
+          // 默认全部勾选
+          setSelectedImages(new Set(imageUrls.map((_, index) => index)))
+        } else {
+          setProductImages([])
+          setSelectedImages(new Set())
+        }
+      } catch (error) {
+        console.error('Failed to fetch product images:', error)
+        toast.error('Failed to load product images')
+        setProductImages([])
+        setSelectedImages(new Set())
+      } finally {
+        setIsLoadingImages(false)
+      }
+    }
+
+    void fetchProductImages()
+  }, [productId])
 
   // 加载国家列表
   useEffect(() => {
@@ -340,6 +405,104 @@ export function StoreListingTabs({
   }
 
   // 批量修改处理函数
+  // 暴露方法给外部调用
+  useImperativeHandle(ref, () => ({
+    handleConfirm: async () => {
+      await handleConfirmInternal()
+    },
+  }))
+
+  // 处理确认提交
+  const handleConfirmInternal = async () => {
+    const customerId = auth.user?.customerId
+    // 优先使用内部的 selectedStore，如果没有则使用传入的 shopId prop
+    const finalShopId = selectedStore || shopId
+    if (!customerId || !finalShopId) {
+      toast.error('Missing customer ID or shop ID. Please select a store.')
+      return
+    }
+
+    if (!title.trim()) {
+      toast.error('Please enter a product title')
+      return
+    }
+
+    // 获取选中的图片
+    const selectedPictures = Array.from(selectedImages)
+      .sort((a, b) => a - b)
+      .map((index) => productImages[index])
+      .filter((url) => url && url.trim().length > 0)
+
+    if (selectedPictures.length === 0) {
+      toast.error('Please select at least one image')
+      return
+    }
+
+    // 获取 variant pricing 数据
+    const variantData = variantPricingTable.getRowModel().rows.map((row) => {
+      const variant = row.original
+      
+      // 构建 variantValues - 从动态规格字段中提取
+      const variantValues: Array<{ groupName: string; name: string }> = []
+      
+      // 处理已知的规格字段
+      if (variant.color) {
+        variantValues.push({ groupName: '颜色', name: variant.color })
+      }
+      if (variant.size) {
+        variantValues.push({ groupName: '规格', name: variant.size })
+      }
+      
+      // 处理动态规格字段（spec_xxx 格式）
+      Object.keys(variant).forEach((key) => {
+        if (key.startsWith('spec_') && variant[key]) {
+          const specName = key.replace('spec_', '')
+          variantValues.push({ groupName: specName, name: String(variant[key]) })
+        }
+      })
+
+      return {
+        picture: variant.image || selectedPictures[0] || '', // 使用 variant 图片或第一张选中图片
+        sku: variant.sku || '',
+        price: parseFloat(variant.yourPrice || String(variant.cjPrice || 0)) || 0,
+        variantValues,
+      }
+    })
+
+    if (variantData.length === 0) {
+      toast.error('Please add at least one variant')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await pushProductToShopifyNew({
+        pushProductVO: {
+          shopId: finalShopId,
+          customerId: String(customerId),
+          productId: productId || '',
+          title: title.trim(),
+          tags: selectedTags,
+          pictures: selectedPictures,
+          description: descriptionContent || '',
+          variants: variantData,
+        },
+      })
+
+      toast.success('Product pushed to Shopify successfully')
+      onConfirm?.()
+    } catch (error) {
+      console.error('Failed to push product to Shopify:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to push product to Shopify. Please try again.'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleBulkRevise = () => {
     if (!bulkReviseValue.trim()) {
       toast.error('Please enter a value')
@@ -889,6 +1052,24 @@ export function StoreListingTabs({
                   >
                     Confirm
                   </Button>
+                  {/* 主要的确认按钮 - 用于推送产品到 Shopify */}
+                  {shopId && (
+                    <Button
+                      onClick={handleConfirmInternal}
+                      disabled={isSubmitting}
+                      className='ml-2 h-8 bg-orange-500 text-white hover:bg-orange-600'
+                      size='sm'
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          Pushing...
+                        </>
+                      ) : (
+                        'Push to Shopify'
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Table */}
@@ -989,34 +1170,81 @@ export function StoreListingTabs({
 
             <div className='space-y-2'>
               <div className='text-sm font-semibold'>Marketing Picture</div>
-              <div className='grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
-                {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
-                  <div
-                    key={idx}
-                    className='border-border bg-muted/30 relative aspect-[4/5] overflow-hidden rounded-lg border transition-shadow hover:shadow-md'
-                  >
-                    {/* 选中角标 */}
-                    <div className='bg-primary text-primary-foreground absolute top-1 left-1 flex h-5 w-5 items-center justify-center rounded-full shadow-sm'>
-                      ✓
-                    </div>
-                    {/* 放大图标占位 */}
-                    <div className='bg-background/80 text-foreground absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full shadow-sm backdrop-blur-sm'>
-                      ⤢
-                    </div>
-                    {/* 图片占位 */}
-                    <div className='from-muted to-muted/50 h-full w-full bg-gradient-to-br' />
-                    {/* Cover Image 标签，仅第一张显示 */}
-                    {idx === 0 && (
-                      <div className='bg-background/80 text-foreground absolute inset-x-0 bottom-0 px-2 py-1 text-sm font-medium backdrop-blur-sm'>
-                        Cover Image
+              {isLoadingImages ? (
+                <div className='flex items-center justify-center py-8'>
+                  <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+                </div>
+              ) : productImages.length === 0 ? (
+                <div className='text-muted-foreground py-4 text-center text-sm'>
+                  No images available
+                </div>
+              ) : (
+                <div className='grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+                  {productImages.map((imageUrl, idx) => {
+                    const isSelected = selectedImages.has(idx)
+                    return (
+                      <div
+                        key={idx}
+                        className='border-border bg-muted/30 relative aspect-[4/5] cursor-pointer overflow-hidden rounded-lg border transition-shadow hover:shadow-md'
+                        onClick={() => {
+                          setSelectedImages((prev) => {
+                            const newSet = new Set(prev)
+                            if (newSet.has(idx)) {
+                              newSet.delete(idx)
+                            } else {
+                              newSet.add(idx)
+                            }
+                            return newSet
+                          })
+                        }}
+                      >
+                        {/* 选中角标 */}
+                        {isSelected && (
+                          <div className='bg-primary text-primary-foreground absolute top-1 left-1 z-10 flex h-5 w-5 items-center justify-center rounded-full shadow-sm'>
+                            ✓
+                          </div>
+                        )}
+                        {/* 放大图标 */}
+                        <div
+                          className='bg-background/80 text-foreground absolute top-1 right-1 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full shadow-sm backdrop-blur-sm transition-colors hover:bg-background/90'
+                          onClick={(e) => {
+                            e.stopPropagation() // 阻止触发父元素的点击事件
+                            setEnlargedImageIndex(idx)
+                          }}
+                          title='Enlarge image'
+                        >
+                          ⤢
+                        </div>
+                        {/* 图片 */}
+                        <img
+                          src={imageUrl}
+                          alt={`Product image ${idx + 1}`}
+                          className='h-full w-full object-cover'
+                          onError={(e) => {
+                            // 如果图片加载失败，显示占位符
+                            ;(e.target as HTMLImageElement).style.display = 'none'
+                            const parent = (e.target as HTMLImageElement).parentElement
+                            if (parent) {
+                              const placeholder = document.createElement('div')
+                              placeholder.className = 'from-muted to-muted/50 h-full w-full bg-gradient-to-br'
+                              parent.appendChild(placeholder)
+                            }
+                          }}
+                        />
+                        {/* Cover Image 标签，仅第一张显示 */}
+                        {idx === 0 && (
+                          <div className='bg-background/80 text-foreground absolute inset-x-0 bottom-0 z-10 px-2 py-1 text-sm font-medium backdrop-blur-sm'>
+                            Cover Image
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
-            <div className='space-y-2'>
+            {/* <div className='space-y-2'>
               <div className='text-sm font-semibold'>Videos</div>
               <div>
                 <span className='font-semibold'>Available</span> Only Shopify,
@@ -1026,7 +1254,7 @@ export function StoreListingTabs({
               <div className='mt-3 flex flex-wrap gap-4'>
                 <div className='border-border bg-muted/30 h-32 w-56 overflow-hidden rounded-lg border' />
               </div>
-            </div>
+            </div> */}
           </div>
         </TabsContent>
         <TabsContent
@@ -1038,10 +1266,74 @@ export function StoreListingTabs({
             <RichTextEditor
               key={`description-editor-${productId || 'new'}`}
               initialContent={richTextContent}
+              onChange={setDescriptionContent}
             />
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* 放大图片 Dialog */}
+      <Dialog
+        open={enlargedImageIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEnlargedImageIndex(null)
+          }
+        }}
+      >
+        <DialogContent className='max-w-4xl p-0'>
+          {enlargedImageIndex !== null && productImages[enlargedImageIndex] && (
+            <div className='relative'>
+              <img
+                src={productImages[enlargedImageIndex]}
+                alt={`Product image ${enlargedImageIndex + 1}`}
+                className='h-auto w-full object-contain'
+                style={{ maxHeight: '80vh' }}
+                onError={(e) => {
+                  ;(e.target as HTMLImageElement).style.display = 'none'
+                }}
+              />
+              {/* 导航按钮 */}
+              {productImages.length > 1 && (
+                <>
+                  <Button
+                    variant='outline'
+                    size='icon'
+                    className='absolute left-4 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm'
+                    onClick={() => {
+                      setEnlargedImageIndex(
+                        enlargedImageIndex > 0
+                          ? enlargedImageIndex - 1
+                          : productImages.length - 1
+                      )
+                    }}
+                  >
+                    ←
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='icon'
+                    className='absolute right-4 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm'
+                    onClick={() => {
+                      setEnlargedImageIndex(
+                        enlargedImageIndex < productImages.length - 1
+                          ? enlargedImageIndex + 1
+                          : 0
+                      )
+                    }}
+                  >
+                    →
+                  </Button>
+                  {/* 图片索引指示器 */}
+                  <div className='absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm backdrop-blur-sm'>
+                    {enlargedImageIndex + 1} / {productImages.length}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
-}
+})

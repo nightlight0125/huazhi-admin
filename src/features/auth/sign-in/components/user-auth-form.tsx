@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getToken, memberLogin } from '@/lib/api/auth'
@@ -19,6 +18,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const formSchema = z.object({
   email: z.email({
@@ -28,6 +28,11 @@ const formSchema = z.object({
     .string()
     .min(1, 'Please enter your password')
     .min(1, 'Password is required'),
+  rememberMe: z
+    .boolean()
+    .refine((val) => val === true, {
+      message: 'Please confirm “Remember me” before signing in.',
+    }),
 })
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
@@ -48,6 +53,7 @@ export function UserAuthForm({
     defaultValues: {
       email: '2745592586@qq.com',
       password: '123456',
+      rememberMe: true,
     },
   })
 
@@ -139,16 +145,34 @@ export function UserAuthForm({
         // 不阻止登录流程，角色列表可以在需要时再加载
       }
 
+      // 持久化登录邮箱和密码，用于 401 时自动登录（仅在用户勾选 Remember me 时）
+      try {
+        if (typeof window !== 'undefined') {
+          if (data.rememberMe) {
+            window.localStorage.setItem(
+              'saved_login_credentials',
+              JSON.stringify({
+                email: data.email,
+                password: data.password,
+              })
+            )
+          } else {
+            window.localStorage.removeItem('saved_login_credentials')
+          }
+        }
+      } catch {
+        // 静默处理本地存储异常
+      }
+
       toast.dismiss(loadingToast)
       toast.success('Login successful!')
 
-      // 只有成功获取到 token 后才跳转到首页
-      // 跳转到 dashboard（_authenticated 的 index 路由）
+      // 只有成功获取到 token 后才跳转
+      // 有 redirect 则回到原页面，否则跳转到首页 /
       if (redirectTo) {
         navigate({ to: redirectTo as any, replace: true })
       } else {
-        // 使用类型断言，因为路由类型可能没有正确生成
-        navigate({ to: '/_authenticated/' as any, replace: true })
+        navigate({ to: '/', replace: true })
       }
     } catch (error) {
       toast.dismiss(loadingToast)
@@ -211,46 +235,55 @@ export function UserAuthForm({
           control={form.control}
           name='password'
           render={({ field }) => (
-            <FormItem className='relative'>
+            <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
                 <PasswordInput placeholder='********' {...field} />
               </FormControl>
               <FormMessage />
-              <Link
-                to='/forgot-password'
-                className='text-muted-foreground absolute end-0 -top-0.5 text-sm font-medium hover:opacity-75'
-              >
-                Forgot password?
-              </Link>
             </FormItem>
           )}
         />
-        <Button className='mt-2' disabled={isLoading}>
-          {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
-          Sign in
+
+        <FormField
+          control={form.control}
+          name='rememberMe'
+          render={({ field }) => (
+            <FormItem className='space-y-1'>
+              <div className='flex items-center gap-2'>
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel className='!mt-0 text-sm font-normal'>
+                  Remember me
+                </FormLabel>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button className='mt-2 w-full' disabled={isLoading}>
+          {isLoading ? 'Signing in...' : 'Sign in'}
         </Button>
 
-        <div className='relative my-2'>
-          <div className='absolute inset-0 flex items-center'>
-            <span className='w-full border-t' />
-          </div>
-          <div className='relative flex justify-center text-xs uppercase'>
-            <span className='bg-background text-muted-foreground px-2'>
-              Or continue with
-            </span>
-          </div>
-        </div>
-
-        <p className='text-muted-foreground text-center text-sm'>
-          Don't have an account?{' '}
+        <div className='mt-3 flex items-center justify-between text-sm'>
           <Link
             to='/sign-up'
-            className='hover:text-primary font-medium underline underline-offset-4'
+            className='text-muted-foreground underline underline-offset-4 hover:text-foreground'
           >
-            Sign up
+            Don't have an account?
           </Link>
-        </p>
+          <Link
+            to='/forgot-password'
+            className='text-muted-foreground underline underline-offset-4 hover:text-foreground'
+          >
+            Forgot Password?
+          </Link>
+        </div>
       </form>
     </Form>
   )

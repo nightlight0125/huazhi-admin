@@ -294,3 +294,93 @@ export async function checkLoginStatus(): Promise<GetUserStatusResponse> {
   }
 }
 
+// ---------- 忘记密码：获取重置验证码 ----------
+export interface GetResetPassWordCodeRequest {
+  email: string
+}
+
+export interface GetResetPassWordCodeResponse {
+  status?: boolean
+  message?: string
+  errorCode?: string
+  [key: string]: unknown
+}
+
+/** 获取重置密码验证码（接口会向邮箱发送验证码） */
+export async function getResetPassWordCode(
+  email: string
+): Promise<GetResetPassWordCodeResponse> {
+  const response = await apiClient.post<GetResetPassWordCodeResponse>(
+    '/v2/hzkj/hzkj_member/member/getResetPassWordCode',
+    { email }
+  )
+  if (response.data.status === false) {
+    throw new Error(
+      response.data.message || 'Failed to get verification code. Please try again.'
+    )
+  }
+  return response.data
+}
+
+// ---------- 忘记密码：发送验证码 ----------
+export interface SendCodeRequest {
+  email: string
+  code: string
+}
+
+export interface SendCodeResponse {
+  status?: boolean
+  message?: string
+  errorCode?: string
+  [key: string]: unknown
+}
+
+/** 发送验证码（如：重新发送或校验后发送） */
+export async function sendCode(
+  email: string,
+  code: string
+): Promise<SendCodeResponse> {
+  const response = await apiClient.post<SendCodeResponse>(
+    '/v2/hzkj/hzkj_member/member/sendCode',
+    { email, code }
+  )
+  if (response.data.status === false) {
+    throw new Error(
+      response.data.message || 'Failed to send verification code. Please try again.'
+    )
+  }
+  return response.data
+}
+
+// ---------- 忘记密码：重置密码 ----------
+export interface ResetPasswordRequest {
+  email: string
+  newPassword: string
+  resetPasswordCode: string
+}
+
+export interface ResetPasswordResponse {
+  status?: boolean
+  message?: string
+  errorCode?: string
+  [key: string]: unknown
+}
+
+/** 使用验证码重置密码 */
+export async function resetPassword(
+  email: string,
+  newPassword: string,
+  resetPasswordCode: string
+): Promise<ResetPasswordResponse> {
+  const response = await apiClient.post<ResetPasswordResponse>(
+    '/v2/hzkj/hzkj_member/member/resetPassword',
+    { email, newPassword, resetPasswordCode }
+  )
+  if (response.data.status === false) {
+    throw new Error(
+      response.data.message || 'Failed to reset password. Please try again.'
+    )
+  }
+  return response.data
+}
+

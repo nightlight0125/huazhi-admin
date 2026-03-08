@@ -1,3 +1,4 @@
+import { Logo } from '@/assets/logo'
 import {
   AudioWaveform,
   ClipboardList,
@@ -22,9 +23,9 @@ export const sidebarData: SidebarData = {
   },
   teams: [
     {
-      name: '华智 FOP',
-      logo: "https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/logo_1764749478049.png",
-      plan: '企业版',
+      name: '',
+      logo: Logo,
+      plan: '',
     },
     {
       name: 'Acme Inc',

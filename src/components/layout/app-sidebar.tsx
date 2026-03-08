@@ -2,17 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryMenu, type MenuPermissionItem } from '@/lib/api/users'
 import { useLayout } from '@/context/layout-provider'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-} from '@/components/ui/sidebar'
+import { Sidebar, SidebarContent, SidebarHeader, SidebarRail } from '@/components/ui/sidebar'
 // import { AppTitle } from './app-title'
 import { sidebarData } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
-import { NavUser } from './nav-user'
 import { TeamSwitcher } from './team-switcher'
 import {
   type NavCollapsible,
@@ -177,9 +170,6 @@ export function AppSidebar() {
           <NavGroup key={props.title} {...props} />
         ))}
       </SidebarContent>
-      <SidebarFooter className='pb-1'>
-        <NavUser user={sidebarData.user} />
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

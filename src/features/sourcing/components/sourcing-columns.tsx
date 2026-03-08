@@ -191,7 +191,7 @@ export const createSourcingColumns = (
 
           <div className='min-w-0 flex-1'>
             <div className='truncate text-[10px] leading-tight font-medium text-gray-900'>
-              {/* {sourcing.spuName || productName} */}不知道这个展示什么
+              {sourcing.spuName || productName}
             </div>
             <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
               SPU: {sourcing.spuName || spu}
@@ -304,7 +304,7 @@ export const createSourcingColumns = (
               }}
             />
             <Trash2
-              className='h-3.5 w-3.5 cursor-pointer text-red-500'
+              className='h-3.5 w-3.5 cursor-pointer text-gray-500'
               onClick={(e) => {
                 e.stopPropagation()
                 handlers?.onDelete?.(sourcing)

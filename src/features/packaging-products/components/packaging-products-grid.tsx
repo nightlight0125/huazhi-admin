@@ -18,6 +18,7 @@ import {
   type GoodClassItem,
   queryGoodClassList,
 } from '@/lib/api/products'
+import { useAuthStore } from '@/stores/auth-store'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
@@ -133,6 +134,7 @@ export function PackagingProductsGrid({
   tab = 'packaging-products',
 }: PackagingProductsGridProps) {
   const nav = useNavigate()
+  const { auth } = useAuthStore()
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -279,6 +281,7 @@ export function PackagingProductsGrid({
 
         try {
           const requestData = {
+            customerId: String(auth.user?.customerId || ''),
             pageSize: pagination.pageSize,
             pageNo: pagination.pageIndex + 1,
             productName:
@@ -298,7 +301,7 @@ export function PackagingProductsGrid({
           const convertedProducts: PackagingProduct[] = apiProducts.map(
             (apiProduct: any) => ({
               id: apiProduct.id,
-              name: apiProduct.name || apiProduct.enname || '',
+              name: apiProduct.enname || apiProduct.name || '',
               image: apiProduct.picture || '',
               sku: apiProduct.number || apiProduct.id,
               category: 'paper-boxes',
@@ -375,6 +378,7 @@ export function PackagingProductsGrid({
       try {
         // 构建请求参数（使用最新的分页值，确保分类变化时使用 pageIndex = 0）
         const requestData = {
+          customerId: String(auth.user?.customerId || ''),
           pageSize: pagination.pageSize,
           pageNo: pagination.pageIndex + 1,
           productName:
@@ -396,7 +400,7 @@ export function PackagingProductsGrid({
             // 将 API 产品数据转换为 PackagingProduct schema 格式
             return {
               id: apiProduct.id,
-              name: apiProduct.name || apiProduct.enname || '',
+              name: apiProduct.enname || apiProduct.name || '',
               image: apiProduct.picture || '',
               sku: apiProduct.number || apiProduct.id,
               category: 'paper-boxes', // 默认值，API 没有提供具体分类

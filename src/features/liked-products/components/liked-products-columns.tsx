@@ -1,12 +1,28 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type LikedProduct } from '../data/schema'
 import { LikedProductsRowActions } from './liked-products-row-actions'
 
-export const createLikedProductsColumns = (
+export type CreateLikedProductsColumnsOptions = {
   onDeleteSuccess?: () => void
+  /** 为 true 时删除走 delCollectProducts（/collection-products） */
+  useDelCollectApi?: boolean
+}
+
+export const createLikedProductsColumns = (
+  onDeleteSuccessOrOptions?: (() => void) | CreateLikedProductsColumnsOptions
 ): ColumnDef<LikedProduct>[] => {
+  const options: CreateLikedProductsColumnsOptions =
+    typeof onDeleteSuccessOrOptions === 'function'
+      ? { onDeleteSuccess: onDeleteSuccessOrOptions }
+      : { ...onDeleteSuccessOrOptions }
+  const { onDeleteSuccess, useDelCollectApi } = options
   const columns: ColumnDef<LikedProduct>[] = [
     {
       id: 'select',
@@ -39,19 +55,40 @@ export const createLikedProductsColumns = (
       ),
       cell: ({ row }) => {
         const product = row.original
+        const raw = product.enname
+        let displayName = product.name
+        if (raw != null) {
+          if (typeof raw === 'string') displayName = raw
+          else if (typeof raw === 'object' && raw !== null) {
+            const obj = raw as Record<string, unknown>
+            displayName =
+              (obj.GLang as string) || (obj.zh_CN as string) || product.name
+          }
+        }
+        const hasOverflow = displayName.length > 0
+
         return (
           <div className='flex items-start gap-2'>
             <img
               src={product.image}
-              alt={product.name}
+              alt={displayName}
               className='h-12 w-12 shrink-0 rounded object-cover'
             />
             <div className='min-w-0 flex-1'>
-              <div className='flex items-start gap-1'>
-                <p className='line-clamp-2 text-xs leading-tight'>
-                  {product.name}
-                </p>
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className='max-w-[400px]'>
+                    <p className='truncate text-xs leading-tight'>
+                      {displayName}
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                {hasOverflow && (
+                  <TooltipContent side='top' className='max-w-sm break-words'>
+                    {displayName}
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </div>
           </div>
         )
@@ -105,11 +142,14 @@ export const createLikedProductsColumns = (
     },
   ]
 
-  // 添加 actions 列
   columns.push({
     id: 'actions',
     cell: ({ row }) => (
-      <LikedProductsRowActions row={row} onDeleteSuccess={onDeleteSuccess} />
+      <LikedProductsRowActions
+        row={row}
+        onDeleteSuccess={onDeleteSuccess}
+        useDelCollectApi={useDelCollectApi}
+      />
     ),
   })
 

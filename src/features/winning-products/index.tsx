@@ -3,6 +3,7 @@ import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { getProductsList } from '@/lib/api/products'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { useAuthStore } from '@/stores/auth-store'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -19,6 +20,7 @@ const route = getRouteApi('/_authenticated/winning-products/')
 export function WinningProducts() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
+  const { auth } = useAuthStore()
   const [data, setData] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
@@ -35,7 +37,8 @@ export function WinningProducts() {
   const { pagination, globalFilter } = useTableUrlState({
     search,
     navigate: navigate as any,
-    pagination: { defaultPage: 1, defaultPageSize: 8 },
+    // 默认每页 10 行
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
@@ -48,6 +51,7 @@ export function WinningProducts() {
       setIsLoading(true)
       try {
         const response = await getProductsList({
+          customerId: String(auth.user?.customerId || ''),
           pageSize,
           pageNo,
           productName: globalFilter || '',
@@ -61,25 +65,40 @@ export function WinningProducts() {
 
         // 后端返回的数据在 data.products 中
         const apiProducts = response.data?.products || []
-        const products: Product[] = apiProducts.map((item: any) => {
-          // 映射 API 数据到 Product 类型
-          return {
-            id: item.id || '',
-            name: item.name || item.enname || '',
-            image: item.picture || '',
-            shippingLocation: shippingLocations[0], // 默认值
-            price: item.price || 0,
-            sku: item.number || '',
-            category: productCategories[0], // 默认值，可以根据实际需求调整
-            sales: 0, // API 可能没有这个字段
-            isPublic: true,
-            isRecommended: false,
-            isFavorite: false,
-            isMyStore: false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+        const products: Product[] = apiProducts.map(
+          (item: any, index: number) => {
+            // 后端可能存在 enname / enName 等不同写法，统一兼容
+            const englishName = item.enname || item.enName || item.en_name || ''
+
+            const name = englishName || item.name || item.number || ''
+
+            // 便于调试：首条商品在控制台打印一次
+            if (index === 0) {
+              console.log('WinningProducts item sample:', {
+                raw: item,
+                mappedName: name,
+              })
+            }
+
+            // 映射 API 数据到 Product 类型
+            return {
+              id: item.id || '',
+              name,
+              image: item.picture || '',
+              shippingLocation: shippingLocations[0], // 默认值
+              price: item.price || 0,
+              sku: item.number || '',
+              category: productCategories[0], // 默认值，可以根据实际需求调整
+              sales: 0, // API 可能没有这个字段
+              isPublic: true,
+              isRecommended: false,
+              isFavorite: !!(item.isCollect ?? item.isFavorite ?? false),
+              isMyStore: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
           }
-        })
+        )
 
         setData(products)
         setTotalCount(response.data?.totalCount || 0)

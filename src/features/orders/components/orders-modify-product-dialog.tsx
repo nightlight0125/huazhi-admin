@@ -16,8 +16,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Check, Image as ImageIcon, Pencil, Plus, X } from 'lucide-react'
+import { updateSalOutOrder } from '@/lib/api/orders'
+import { useAuthStore } from '@/stores/auth-store'
+import { Check, Image as ImageIcon, Loader2, Pencil, Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { type OrderProduct } from '../data/schema'
 import { OrdersAddProductDialog } from './orders-add-product-dialog'
 
@@ -26,6 +29,9 @@ interface OrdersModifyProductDialogProps {
   onOpenChange: (open: boolean) => void
   products: OrderProduct[]
   onConfirm: (products: OrderProduct[]) => void
+  orderId?: string
+  order?: any // 订单对象
+  onSuccess?: () => void // 成功回调
 }
 
 interface EditableProduct extends OrderProduct {
@@ -87,7 +93,11 @@ export function OrdersModifyProductDialog({
   onOpenChange,
   products: initialProducts,
   onConfirm,
+  orderId,
+  order,
+  onSuccess,
 }: OrdersModifyProductDialogProps) {
+  const { auth } = useAuthStore()
   // Use fake products if no products provided
 
   console.log('initialProducts', initialProducts)
@@ -100,6 +110,7 @@ export function OrdersModifyProductDialog({
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [addProductDialogOpen, setAddProductDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Reset products when dialog opens/closes
   useEffect(() => {
@@ -210,12 +221,151 @@ export function OrdersModifyProductDialog({
     setProducts([...products, editableProduct])
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const cleanedProducts = products.map(
       ({ isEditing, tempSku, tempQuantity, ...rest }) => rest
     )
-    onConfirm(cleanedProducts)
-    onOpenChange(false)
+
+    // 如果提供了 orderId 和 order，则调用 API
+    if (orderId && order) {
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        toast.error('Customer information is missing')
+        return
+      }
+
+      const rawOrder = order as any
+
+      // 获取原有的产品明细（从 order.lingItems）
+      const existingDetailMap = new Map<string, any>()
+      if (rawOrder.lingItems && Array.isArray(rawOrder.lingItems)) {
+        rawOrder.lingItems.forEach((item: any) => {
+          const entryId = String(item.entryId || '')
+          if (entryId) {
+            existingDetailMap.set(entryId, {
+              entryId,
+              skuId: String(
+                item.hzkj_local_sku_id ||
+                item.hzkj_local_sku_id2 ||
+                item.hzkj_local_sku ||
+                ''
+              ),
+              quantity: Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0,
+              flag: 0,
+            })
+          }
+        })
+      }
+
+      // 处理界面上显示的产品（包括原有的和新增的）
+      const updatedDetail: any[] = []
+      cleanedProducts.forEach((product) => {
+        const entryId = product.entryId || ''
+        const skuId = String(
+          product.hzkj_local_sku_id ||
+          (product as any).hzkj_local_sku_id2 ||
+          (product as any).hzkj_local_sku ||
+          ''
+        )
+
+        if (!skuId) {
+          return // 跳过没有 skuId 的产品
+        }
+
+        if (entryId) {
+          // 这是原有的产品，更新它
+          if (existingDetailMap.has(entryId)) {
+            existingDetailMap.set(entryId, {
+              entryId,
+              skuId,
+              quantity: product.quantity || 0,
+              flag: 0,
+            })
+          } else {
+            // 如果 entryId 存在但不在原有明细中，也添加
+            updatedDetail.push({
+              entryId,
+              skuId,
+              quantity: product.quantity || 0,
+              flag: 0,
+            })
+          }
+        } else {
+          // 这是新增的产品
+          updatedDetail.push({
+            entryId: '', // 新增时为空
+            skuId,
+            quantity: product.quantity || 0,
+            flag: 0,
+          })
+        }
+      })
+
+      // 合并原有的（已更新的）和新增的明细
+      const detail = [...Array.from(existingDetailMap.values()), ...updatedDetail]
+
+      if (detail.length === 0) {
+        toast.error('No valid products to update')
+        return
+      }
+
+      // 获取订单地址信息
+      const firstName =
+        rawOrder.firstName ||
+        (rawOrder.customerName && typeof rawOrder.customerName === 'string' && rawOrder.customerName.split(' ')[0]) ||
+        (rawOrder.hzkj_customer_name && typeof rawOrder.hzkj_customer_name === 'object' && rawOrder.hzkj_customer_name.zh_CN) ||
+        ''
+      const lastName =
+        rawOrder.lastName ||
+        (rawOrder.customerName && typeof rawOrder.customerName === 'string' && rawOrder.customerName.split(' ').slice(1).join(' ')) ||
+        ''
+
+      setIsSubmitting(true)
+      try {
+        await updateSalOutOrder({
+          orderId: orderId,
+          customerId: String(customerId),
+          firstName,
+          lastName,
+          phone: rawOrder.phone || rawOrder.hzkj_telephone || rawOrder.phoneNumber || '',
+          countryId: rawOrder.countryId || rawOrder.hzkj_country_id || '',
+          admindivisionId: rawOrder.admindivisionId,
+          city: rawOrder.city || rawOrder.hzkj_address?.split(',')[0] || '',
+          address1: rawOrder.address1 || rawOrder.address || rawOrder.hzkj_address || rawOrder.hzkj_bill_address || '',
+          address2: rawOrder.address2 || rawOrder.hzkj_sam_address || '',
+          postCode: rawOrder.postCode || rawOrder.postalCode || rawOrder.hzkj_post_code || '',
+          taxId: rawOrder.taxId || '',
+          customChannelId: rawOrder.customChannelId || '',
+          email: rawOrder.email || rawOrder.hzkj_email || '',
+          wareHouse: rawOrder.wareHouse || rawOrder.warehouseId || rawOrder.shippingOrigin || '',
+          detail,
+        })
+
+        toast.success('Products updated successfully')
+        
+        // 调用成功回调
+        if (onSuccess) {
+          onSuccess()
+        }
+
+        // 仍然调用 onConfirm 以保持向后兼容
+        onConfirm(cleanedProducts)
+        onOpenChange(false)
+      } catch (error) {
+        console.error('Failed to update products:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to update products. Please try again.'
+        )
+      } finally {
+        setIsSubmitting(false)
+      }
+    } else {
+      // 如果没有提供 orderId 和 order，保持原有行为
+      onConfirm(cleanedProducts)
+      onOpenChange(false)
+    }
   }
 
   const handleCancel = () => {
@@ -405,9 +555,17 @@ export function OrdersModifyProductDialog({
           <Button
             type='button'
             onClick={handleConfirm}
+            disabled={isSubmitting}
             className='bg-orange-500 text-white hover:bg-orange-600'
           >
-            Confirm
+            {isSubmitting ? (
+              <>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                Updating...
+              </>
+            ) : (
+              'Confirm'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -416,6 +574,9 @@ export function OrdersModifyProductDialog({
         open={addProductDialogOpen}
         onOpenChange={setAddProductDialogOpen}
         onConfirm={handleAddProductConfirm}
+        orderId={orderId}
+        order={order}
+        onSuccess={onSuccess}
       />
     </Dialog>
   )

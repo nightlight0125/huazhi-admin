@@ -1,5 +1,6 @@
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTableColumnHeader } from '@/components/data-table'
+import { useState } from 'react'
+import { type ColumnDef, type Row } from '@tanstack/react-table'
+import { Loader2, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -8,9 +9,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { Loader2, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTableColumnHeader } from '@/components/data-table'
 import { type SupportTicket } from '../data/schema'
 
 interface SupportTicketDeleteCellProps {
@@ -18,7 +18,10 @@ interface SupportTicketDeleteCellProps {
   onDelete?: (orderId: string) => void | Promise<void>
 }
 
-function SupportTicketDeleteCell({ row, onDelete }: SupportTicketDeleteCellProps) {
+function SupportTicketDeleteCell({
+  row,
+  onDelete,
+}: SupportTicketDeleteCellProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const ticket = row.original
@@ -157,11 +160,14 @@ export const createSupportTicketsColumns = (options?: {
               </div>
             )}
             <div className='space-y-0.5 text-sm'>
-              <div>Order NO: {ticket.hzkj_localsku_number || ticket.id || '--'}</div>
-              <div>SKU: {ticket.hzkj_localsku_name || '--'}</div>
-              <div>Variant: {ticket.hzkj_localsku_hzkj_sku_value || ticket.id || '--'}</div>
+              <div>Order NO: {ticket.hzkj_localsku_number || '--'}</div>
+              <div>SKU: {ticket.hzkj_localsku_hzkj_name || '--'}</div>
+              <div>Variant: {ticket.hzkj_localsku_number || '--'}</div>
               <div>QTY: {ticket.hzkj_qty || 0}</div>
-              <div>Total Price: ${(ticket.hzkj_localsku_hzkj_pur_price || 0).toFixed(2)}</div>
+              <div>
+                Total Price: $
+                {(ticket.hzkj_localsku_hzkj_pur_price || 0).toFixed(2)}
+              </div>
             </div>
           </div>
         )
@@ -234,41 +240,50 @@ export const createSupportTicketsColumns = (options?: {
         const ticket = row.original
         const statusValue = ticket.hzkj_orderstatus
         // 将字符串转换为数字
-        const statusNumber = statusValue ? parseInt(String(statusValue), 10) : null
-        
+        const statusNumber = statusValue
+          ? parseInt(String(statusValue), 10)
+          : null
+
         // 根据数字映射状态
         // 取消 → 0, 待支付 → 1, 已支付 → 2, 处理中 → 3, 已发货 → 4
         let statusLabel = 'Unknown'
-        let statusClassName = 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
-        
+        let statusClassName =
+          'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
+
         if (statusNumber !== null && !isNaN(statusNumber)) {
           switch (statusNumber) {
             case 0:
               statusLabel = 'Cancelled'
-              statusClassName = 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
+              statusClassName =
+                'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
               break
             case 1:
               statusLabel = 'Awaiting Payment'
-              statusClassName = 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white capitalize'
+              statusClassName =
+                'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white capitalize'
               break
             case 2:
               statusLabel = 'Paid'
-              statusClassName = 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white capitalize'
+              statusClassName =
+                'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white capitalize'
               break
             case 3:
               statusLabel = 'Processing'
-              statusClassName = 'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white capitalize'
+              statusClassName =
+                'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white capitalize'
               break
             case 4:
               statusLabel = 'Shipped'
-              statusClassName = 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white capitalize'
+              statusClassName =
+                'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white capitalize'
               break
             default:
               statusLabel = 'Unknown'
-              statusClassName = 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
+              statusClassName =
+                'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
           }
         }
-        
+
         return (
           <Badge variant='outline' className={statusClassName}>
             {statusLabel}

@@ -5,7 +5,7 @@ import { createLikedProductsColumns } from '@/features/liked-products/components
 import { ProductsTableWithToolbar } from '@/features/liked-products/components/products-table-with-toolbar'
 import type { LikedProduct } from '@/features/liked-products/data/schema'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { getRecommendProductsList } from '@/lib/api/products'
+import { getCollectProductsList } from '@/lib/api/products'
 import { useAuthStore } from '@/stores/auth-store'
 import { getRouteApi } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -45,7 +45,7 @@ export function CollectionProducts() {
   }
 
   const columns = useMemo(
-    () => createLikedProductsColumns(handleRefresh),
+    () => createLikedProductsColumns({ onDeleteSuccess: handleRefresh, useDelCollectApi: true }),
     [handleRefresh]
   )
 
@@ -157,7 +157,7 @@ export function useFetchCollectionProducts(
 
         setIsLoading(true)
         try {
-          const response = await getRecommendProductsList({
+          const response = await getCollectProductsList({
             customerId: String(customerId),
             pageSize,
             pageNo,
@@ -174,8 +174,9 @@ export function useFetchCollectionProducts(
           const likedProducts: LikedProduct[] = apiProducts.map((item: any) => ({
             id: item.id || String(item.id) || '',
             name: item.name || '',
+            enname: item.enname ?? item.hzkj_enname ?? undefined,
             image: item.picture || '',
-            description: item.enname || '',
+            description: item.description || (typeof item.enname === 'string' ? item.enname : '') || '',
             spu: item.number || '',
             priceMin: item.price || 0,
             priceMax: item.price || 0,

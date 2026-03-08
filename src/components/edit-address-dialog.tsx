@@ -407,10 +407,6 @@ export function EditAddressDialog({
                 onChange={(e) => setAddress2(e.target.value)}
               />
             </div>
-
-            
-          
-
             <div className='space-y-2'>
               <Label htmlFor='country'>
                 Country <span className='text-red-500'>*</span>

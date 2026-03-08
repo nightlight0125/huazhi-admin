@@ -3,6 +3,7 @@ import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { getProductsList } from '@/lib/api/products'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { useAuthStore } from '@/stores/auth-store'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -16,6 +17,7 @@ const route = getRouteApi('/_authenticated/all-products')
 export function AllProducts() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
+  const { auth } = useAuthStore()
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
@@ -33,7 +35,7 @@ export function AllProducts() {
   const { pagination, globalFilter } = useTableUrlState({
     search,
     navigate: navigate as any,
-    pagination: { defaultPage: 1, defaultPageSize: 8 },
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
@@ -46,6 +48,7 @@ export function AllProducts() {
       setIsLoading(true)
       try {
         const response = await getProductsList({
+          customerId: String(auth.user?.customerId || ''),
           pageSize,
           pageNo,
           productName: globalFilter || '',
@@ -64,7 +67,7 @@ export function AllProducts() {
             // 将 API 产品数据转换为 Product schema 格式
             return {
               id: apiProduct.id,
-              name: apiProduct.name || apiProduct.enname || '',
+              name: apiProduct.enname || apiProduct.name || '',
               image: apiProduct.picture || '',
               shippingLocation: shippingLocations[0], // 默认值，API 没有提供
               price: apiProduct.price || 0,
@@ -73,7 +76,7 @@ export function AllProducts() {
               sales: 0, // 默认值，API 没有提供
               isPublic: true,
               isRecommended: false,
-              isFavorite: false,
+              isFavorite: !!(apiProduct.isCollect ?? apiProduct.isFavorite ?? false),
               isMyStore: false,
               createdAt: new Date(),
               updatedAt: new Date(),

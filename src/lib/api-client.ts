@@ -14,6 +14,8 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    'openApiSign':'anZYZFdrTFpkUGx5VWNaSmlkbHZIb3pjSEV6LVJOd3dKRVcxV3ZaZjRQYz06MjI5OTI4NDg2NzgxNDM1Njk5Mg==',
+    'x-acgw-identity':'djF8MTk5NmMzOWQxNjQwNDI5ZDYwMDF8NDkxMjA1NzM1MzU2OXxIFC2gwtq5SNZj0TBnFgtAYCiBPHoLXU9qlDtcNTEANXw=',
   },
 })
 
@@ -30,8 +32,20 @@ apiClient.interceptors.request.use(
 
     const isLoginRequest = config.url?.includes('/v2/hzkj/base/member/login')
     const isSignUpRequest = config.url?.includes('/v2/hzkj/base/member/add')
+    const isForgotPasswordRequest =
+      config.url?.includes('/hzkj_member/member/getResetPassWordCode') ||
+      config.url?.includes('/hzkj_member/member/sendCode') ||
+      config.url?.includes('/hzkj_member/member/resetPassword')
 
-    if (isLoginRequest || isSignUpRequest) {
+    const isPaymentCallbackRequest =
+      config.url?.includes('order/paymentCallback')
+
+    if (
+      isLoginRequest ||
+      isSignUpRequest ||
+      isForgotPasswordRequest ||
+      isPaymentCallbackRequest
+    ) {
       if (token && config.headers) {
         config.headers.access_token = `${token}`
         config.headers['x-acgw-identity'] = `djF8MTk5NmMzOWQxNjQwNDI5ZDYwMDF8NDkxMjA1NzM1MzU2OXxIFC2gwtq5SNZj0TBnFgtAYCiBPHoLXU9qlDtcNTEANXw=`
@@ -75,82 +89,162 @@ apiClient.interceptors.request.use(
 )
 
 apiClient.interceptors.response.use(
-  (response) => {
-    // 检查响应数据中是否包含401错误码
+  async (response) => {
+    // 针对「返回 200 但 body 中携带 401」的情况做自动登录和重试
     const responseData = response.data as any
-    if (
+    const config = response.config as
+      | (InternalAxiosRequestConfig & { _logical401Retried?: boolean })
+      | undefined
+
+    const hasLogical401 =
       responseData &&
       typeof responseData === 'object' &&
       (responseData.errorCode === '401' ||
         (responseData.errorCode === 401 && responseData.status === false))
-    ) {
-      // 后端返回了401错误码，需要跳转到登录页
+
+    if (hasLogical401) {
+      const isLoginOrGetToken =
+        config?.url?.includes('/v2/hzkj/base/member/login') ||
+        config?.url?.includes('/oauth2/getToken')
+      if (isLoginOrGetToken) {
+        // 401 来自 login 或 getToken 时不再重试，直接登出，避免死循环
+        const authStore = useAuthStore.getState()
+        authStore.auth.reset()
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+            const redirectPath = window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          }
+        }
+        return Promise.reject(
+          new Error(responseData?.message || 'AccessToken认证不通过，token已过期')
+        )
+      }
+      // 避免无限重试：每个请求只自动重登并重试一次
+      if (config && !config._logical401Retried) {
+        config._logical401Retried = true
+        try {
+          // 先尝试仅用 oauth2/getToken 刷新 token（与登录时一致），避免重复调 login 导致死循环
+          let reloginSuccess = await tryRefreshToken()
+          if (!reloginSuccess) {
+            reloginSuccess = await tryAutoLogin()
+          }
+          if (reloginSuccess) {
+            const { auth } = useAuthStore.getState()
+            const token = auth.accessToken
+            if (token && config.headers) {
+              config.headers.access_token = `${token}`
+              config.headers['x-acgw-identity'] =
+                'djF8MTk5NmMzOWQxNjQwNDI5ZDYwMDF8NDkxMjA1NzM1MzU2OXxIFC2gwtq5SNZj0TBnFgtAYCiBPHoLXU9qlDtcNTEANXw='
+            }
+            // 使用同一配置重试原始请求
+            return apiClient(config)
+          }
+        } catch (err) {
+          console.error('Auto login failed on logical 401:', err)
+        }
+      }
+
+      // 自动登录不可用或失败时，执行登出并跳转登录页
       const authStore = useAuthStore.getState()
       authStore.auth.reset()
 
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname
-        if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
-          // 只使用路径和查询参数，不包括协议和域名
-          const redirectPath = window.location.pathname + window.location.search
-          window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+        if (
+          !currentPath.includes('/sign-in') &&
+          !currentPath.includes('/sign-up')
+        ) {
+          const redirectPath =
+            window.location.pathname + window.location.search
+          window.location.href = `/sign-in?redirect=${encodeURIComponent(
+            redirectPath
+          )}`
         }
       }
 
-      // 创建一个错误对象以便后续处理
       const error = new Error(
         responseData.message || 'AccessToken认证不通过，token已过期'
-      ) as any
-      error.response = response
-      error.isAuthError = true
+      )
       return Promise.reject(error)
     }
 
     return response
   },
-  (error: AxiosError) => {
-    if (error.response) {
-      console.error('API 错误响应:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        url: error.config?.url,
-        method: error.config?.method,
-        requestData: error.config?.data,
-      })
+  async (error: AxiosError) => {
+    const originalRequest = error.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined
 
+    if (error.response) {
       // 检查响应数据中是否包含401错误码
       const responseData = error.response.data as any
-      if (
+      const has401Code =
         responseData &&
         typeof responseData === 'object' &&
         (responseData.errorCode === '401' ||
           responseData.errorCode === 401 ||
-          (responseData.status === false && responseData.errorCode === '401'))
-      ) {
-        // 后端返回了401错误码
+          (responseData.status === false &&
+            responseData.errorCode === '401'))
+
+      const isLoginOrGetTokenReq =
+        originalRequest?.url?.includes('/v2/hzkj/base/member/login') ||
+        originalRequest?.url?.includes('/oauth2/getToken')
+      if (has401Code && isLoginOrGetTokenReq) {
+        const authStore = useAuthStore.getState()
+        authStore.auth.reset()
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+            const redirectPath = window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          }
+        }
+        return Promise.reject(error)
+      }
+      if (has401Code && originalRequest && !originalRequest._retry) {
+        originalRequest._retry = true
+        try {
+          let reloginSuccess = await tryRefreshToken()
+          if (!reloginSuccess) {
+            reloginSuccess = await tryAutoLogin()
+          }
+          if (reloginSuccess) {
+            const { auth } = useAuthStore.getState()
+            const token = auth.accessToken
+            if (token && originalRequest.headers) {
+              originalRequest.headers.access_token = `${token}`
+              originalRequest.headers['x-acgw-identity'] =
+                'djF8MTk5NmMzOWQxNjQwNDI5ZDYwMDF8NDkxMjA1NzM1MzU2OXxIFC2gwtq5SNZj0TBnFgtAYCiBPHoLXU9qlDtcNTEANXw='
+            }
+            return apiClient(originalRequest)
+          }
+        } catch {
+          // 自动登录失败则继续走后续逻辑
+        }
+
+        // 自动登录不可用或失败，再执行原有登出与跳转逻辑
         const authStore = useAuthStore.getState()
         authStore.auth.reset()
 
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname
-          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+          if (
+            !currentPath.includes('/sign-in') &&
+            !currentPath.includes('/sign-up')
+          ) {
             // 只使用路径和查询参数，不包括协议和域名
-            const redirectPath = window.location.pathname + window.location.search
-            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+            const redirectPath =
+              window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(
+              redirectPath
+            )}`
           }
         }
 
         return Promise.reject(error)
       }
-    } else if (error.request) {
-      console.error('API 请求错误 (无响应):', {
-        request: error.request,
-        url: error.config?.url,
-        method: error.config?.method,
-      })
-    } else {
-      console.error('API 错误:', error.message)
     }
 
     // 处理认证错误（HTTP 401 或自定义认证错误）
@@ -161,15 +255,58 @@ apiClient.interceptors.response.use(
       (error as Error)?.message?.includes('Token expired')
 
     if (isAuthError) {
+      const isLoginOrGetTokenReq =
+        originalRequest?.url?.includes('/v2/hzkj/base/member/login') ||
+        originalRequest?.url?.includes('/oauth2/getToken')
+      if (isLoginOrGetTokenReq) {
+        const authStore = useAuthStore.getState()
+        authStore.auth.reset()
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+            const redirectPath = window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          }
+        }
+        return Promise.reject(error)
+      }
+      if (originalRequest && !originalRequest._retry) {
+        originalRequest._retry = true
+        try {
+          let reloginSuccess = await tryRefreshToken()
+          if (!reloginSuccess) {
+            reloginSuccess = await tryAutoLogin()
+          }
+          if (reloginSuccess) {
+            const { auth } = useAuthStore.getState()
+            const token = auth.accessToken
+            if (token && originalRequest.headers) {
+              originalRequest.headers.access_token = `${token}`
+              originalRequest.headers['x-acgw-identity'] =
+                'djF8MTk5NmMzOWQxNjQwNDI5ZDYwMDF8NDkxMjA1NzM1MzU2OXxIFC2gwtq5SNZj0TBnFgtAYCiBPHoLXU9qlDtcNTEANXw='
+            }
+            return apiClient(originalRequest)
+          }
+        } catch {
+          // ignore and fall through to logout
+        }
+      }
+
       const authStore = useAuthStore.getState()
       authStore.auth.reset()
 
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname
-        if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
+        if (
+          !currentPath.includes('/sign-in') &&
+          !currentPath.includes('/sign-up')
+        ) {
           // 只使用路径和查询参数，不包括协议和域名
-          const redirectPath = window.location.pathname + window.location.search
-          window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          const redirectPath =
+            window.location.pathname + window.location.search
+          window.location.href = `/sign-in?redirect=${encodeURIComponent(
+            redirectPath
+          )}`
         }
       }
     }
@@ -177,3 +314,77 @@ apiClient.interceptors.response.use(
   }
 )
 
+// 仅通过 oauth2/getToken 刷新 accessToken，与登录时步骤一致，避免重复调 login 导致死循环
+async function tryRefreshToken(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+  try {
+    const { getToken } = await import('@/lib/api/auth')
+    const { auth } = useAuthStore.getState()
+    const token = await getToken()
+    if (!token || token.trim() === '') return false
+    auth.setAccessToken(token)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// 尝试使用本地保存的邮箱和密码自动登录（先 getToken 再 memberLogin，与正常登录流程一致）
+async function tryAutoLogin(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+
+  try {
+    const raw = window.localStorage.getItem('saved_login_credentials')
+    if (!raw) return false
+
+    const parsed = JSON.parse(raw) as {
+      email?: string
+      password?: string
+    }
+
+    if (!parsed.email || !parsed.password) {
+      return false
+    }
+
+    const { getToken, memberLogin } = await import('@/lib/api/auth')
+    const { auth } = useAuthStore.getState()
+
+    // 与正常登录一致：先请求 oauth2/getToken 再 memberLogin
+    const token = await getToken()
+    auth.setAccessToken(token)
+
+    const loginResponse: any = await memberLogin(
+      parsed.email,
+      parsed.password
+    )
+    const finalToken =
+      loginResponse.token || loginResponse.access_token || token
+
+    if (!finalToken || finalToken.trim() === '') {
+      return false
+    }
+
+    auth.setAccessToken(finalToken)
+
+    // 尽量还原基础用户信息（精简版）
+    const userData = (loginResponse.data as any) ?? {}
+    const user = {
+      accountNo: userData.accountId || userData.id || parsed.email,
+      email: userData.email || parsed.email,
+      role: ['user'],
+      exp: Date.now() + 3 * 60 * 60 * 1000,
+      id: userData.user?.id || userData.id || '',
+      username: userData.user?.username || parsed.email.split('@')[0] || '',
+      roleId: userData.roleId || userData.user?.roleId || '',
+      hzkj_whatsapp1:
+        userData.user?.hzkj_whatsapp1 || userData.hzkj_whatsapp1 || '',
+      customerId: userData.user?.customerId || userData.customerId || '',
+    }
+    auth.setUser(user as any)
+
+    return true
+  } catch (err) {
+    console.error('Auto login failed:', err)
+    return false
+  }
+}

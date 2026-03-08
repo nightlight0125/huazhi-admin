@@ -133,8 +133,8 @@ export const usersColumns: ColumnDef<User>[] = [
       // 使用 roleId 进行过滤匹配，因为过滤器的 value 是 role.id
       // 确保类型一致：将 roleId 转换为字符串，value 数组中的值也应该是字符串
       const roleId = String(row.original.roleId || '')
-      const filterValues = Array.isArray(value) 
-        ? value.map(v => String(v))
+      const filterValues = Array.isArray(value)
+        ? value.map((v) => String(v))
         : []
       return filterValues.includes(roleId)
     },
@@ -163,14 +163,13 @@ export const usersColumns: ColumnDef<User>[] = [
           <Button
             variant='ghost'
             size='sm'
-            className='text-destructive hover:text-destructive h-8 w-8 p-0'
+            className='h-8 w-8 p-0 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
             onClick={() => {
               setCurrentRow(row.original)
               setOpen('delete')
             }}
           >
             <Trash2 className='h-4 w-4' />
-            <span className='sr-only'>删除</span>
           </Button>
         </div>
       )

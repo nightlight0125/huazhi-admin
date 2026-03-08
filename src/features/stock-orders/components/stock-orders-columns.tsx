@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
 import { CreditCard, ImageIcon, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toDisplayString } from '@/features/orders/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -39,7 +40,7 @@ function StockOrderDeleteCell({ row, onDelete }: StockOrderDeleteCellProps) {
       <Button
         variant='ghost'
         size='sm'
-        className='h-8 px-1.5 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300'
+        className='h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)
@@ -140,13 +141,25 @@ export const createStockOrdersColumns = (options?: {
       header: 'SKU',
       cell: ({ row }) => {
         const order = row.original as any
-        const hzkjPicture = order.hzkj_picture
+        const hzkjPicture =
+          order.hzkj_picture ||
+          (Array.isArray(order.lingItems) && order.lingItems[0]
+            ? (order.lingItems[0] as any).hzkj_picture
+            : '')
+        const productName =
+          toDisplayString(order.hzkj_product_name_en) ||
+          (Array.isArray(order.lingItems) && order.lingItems[0]
+            ? toDisplayString((order.lingItems[0] as any).hzkj_product_name_en)
+            : '') ||
+          order.productName ||
+          ''
 
         return (
           <div className='flex items-center gap-2 pr-8'>
             {hzkjPicture ? (
               <img
                 src={hzkjPicture}
+                alt={productName}
                 className='h-10 w-10 rounded object-cover'
               />
             ) : (
@@ -155,7 +168,7 @@ export const createStockOrdersColumns = (options?: {
               </div>
             )}
             <div className='text-sm'>
-              <div className='font-medium'>{order.hzkj_product_name_en}</div>
+              <div className='font-medium'>{productName || '—'}</div>
             </div>
           </div>
         )
@@ -182,7 +195,26 @@ export const createStockOrdersColumns = (options?: {
       header: 'QTY',
       cell: ({ row }) => {
         const order = row.original as any
-        return <div className='text-sm'>{order.hzkj_qty || 0}</div>
+        let raw: unknown = order.hzkj_qty
+        if (raw === undefined || raw === null) {
+          raw = order.lingItems?.[0]?.hzkj_qty
+        }
+        if (raw === undefined || raw === null) {
+          const sum =
+            Array.isArray(order.productList) && order.productList.length > 0
+              ? order.productList.reduce(
+                  (s: number, p: { quantity?: number }) => s + (p.quantity ?? 0),
+                  0
+                )
+              : 0
+          return <div className='text-sm'>{sum}</div>
+        }
+        const num =
+          typeof raw === 'string'
+            ? parseInt(String(raw), 10)
+            : Number(raw)
+        const qty = Number.isNaN(num) ? 0 : num
+        return <div className='text-sm'>{qty}</div>
       },
       size: 80,
     },
@@ -191,11 +223,11 @@ export const createStockOrdersColumns = (options?: {
       header: 'Price',
       cell: ({ row }) => {
         const order = row.original as any
-        const price = order.hzkj_shop_price
-          ? typeof order.hzkj_shop_price === 'string'
-            ? parseFloat(order.hzkj_shop_price) || 0
-            : typeof order.hzkj_shop_price === 'number'
-              ? order.hzkj_shop_price
+        const price = order.hzkj_amount
+          ? typeof order.hzkj_amount === 'string'
+            ? parseFloat(order.hzkj_amount) || 0
+            : typeof order.hzkj_amount === 'number'
+              ? order.hzkj_amount
               : 0
           : 0
 
@@ -212,11 +244,12 @@ export const createStockOrdersColumns = (options?: {
       header: ' Total Amount',
       cell: ({ row }) => {
         const order = row.original as any
-        const amount = order.hzkj_order_amount
-          ? typeof order.hzkj_order_amount === 'string'
-            ? parseFloat(order.hzkj_order_amount) || 0
-            : typeof order.hzkj_order_amount === 'number'
-              ? order.hzkj_order_amount
+        // 使用后端返回的 hzkj_amount 字段
+        const amount = order.hzkj_amount != null
+          ? typeof order.hzkj_amount === 'string'
+            ? parseFloat(order.hzkj_amount) || 0
+            : typeof order.hzkj_amount === 'number'
+              ? order.hzkj_amount
               : 0
           : 0
 
@@ -233,9 +266,14 @@ export const createStockOrdersColumns = (options?: {
       header: 'Warehouse',
       cell: ({ row }) => {
         const order = row.original as any
+        const name =
+          toDisplayString(order.hzkj_warehouse_name) ||
+          (order.lingItems?.[0] && (order.lingItems[0] as any).hzkj_warehouse_name != null
+            ? toDisplayString((order.lingItems[0] as any).hzkj_warehouse_name)
+            : '')
         return (
           <div className='text-sm'>
-            {order.hzkj_warehouse_name?.GLang || '---'}
+            {name || '---'}
           </div>
         )
       },

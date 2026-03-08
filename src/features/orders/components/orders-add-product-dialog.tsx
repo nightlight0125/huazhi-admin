@@ -26,12 +26,18 @@ interface OrdersAddProductDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: (product: OrderProduct) => void
+  orderId?: string
+  order?: any // 订单对象（保留以保持接口兼容）
+  onSuccess?: () => void // 成功回调（保留以保持接口兼容）
 }
 
 export function OrdersAddProductDialog({
   open,
   onOpenChange,
   onConfirm,
+  orderId: _orderId,
+  order: _order,
+  onSuccess: _onSuccess,
 }: OrdersAddProductDialogProps) {
   const { auth } = useAuthStore()
   const [sku, setSku] = useState('')
@@ -40,6 +46,19 @@ export function OrdersAddProductDialog({
   const [quantity, setQuantity] = useState(1)
   const [skuOptions, setSkuOptions] = useState<SkuRecordItem[]>([])
   const [isLoadingSku, setIsLoadingSku] = useState(false)
+
+  // 根据选择的SKU获取图片URL
+  const getImageUrlFromSku = (selectedSku: string): string => {
+    if (!selectedSku) return ''
+    const selectedSkuItem = skuOptions.find(
+      (item) =>
+        ((item as any).number || item.hzkj_sku_number) === selectedSku
+    )
+    if (selectedSkuItem) {
+      return (selectedSkuItem as any).hzkj_picturefield || ''
+    }
+    return ''
+  }
 
   // 获取 SKU 列表
   useEffect(() => {
@@ -83,6 +102,12 @@ export function OrdersAddProductDialog({
   const handleConfirm = () => {
     if (!sku.trim() || !title.trim()) return
 
+    // 获取选择的SKU记录，保存skuId信息
+    const selectedSkuItem = skuOptions.find(
+      (item) =>
+        ((item as any).number || item.hzkj_sku_number) === sku
+    )
+
     const newProduct: OrderProduct = {
       id: sku.trim(),
       productName: title.trim(),
@@ -92,6 +117,8 @@ export function OrdersAddProductDialog({
       productLink: '',
       price: 0,
       totalPrice: 0,
+      // 保存 SKU ID 信息，用于后续调用 API
+      hzkj_local_sku_id: selectedSkuItem?.id ? String(selectedSkuItem.id) : undefined,
     }
 
     onConfirm(newProduct)
@@ -138,6 +165,18 @@ export function OrdersAddProductDialog({
                   value={sku}
                   onValueChange={(value) => {
                     setSku(value)
+                    // 根据选择的SKU自动设置图片URL
+                    const pictureUrl = getImageUrlFromSku(value)
+                    setImageUrl(pictureUrl)
+                    // 根据选择的SKU自动设置title（使用hzkj_name字段）
+                    const selectedSkuItem = skuOptions.find(
+                      (item) =>
+                        ((item as any).number || item.hzkj_sku_number) === value
+                    )
+                    if (selectedSkuItem) {
+                      const skuName = (selectedSkuItem as any).hzkj_name || ''
+                      setTitle(String(skuName))
+                    }
                   }}
                   disabled={isLoadingSku}
                 >
@@ -220,7 +259,7 @@ export function OrdersAddProductDialog({
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='imageUrl'>Image URL</Label>
+              <Label>Product Image</Label>
               <div className='flex items-center gap-3'>
                 {imageUrl ? (
                   <img
@@ -237,13 +276,16 @@ export function OrdersAddProductDialog({
                     <ImageIcon className='text-muted-foreground h-6 w-6' />
                   </div>
                 )}
-                <Input
-                  id='imageUrl'
-                  placeholder='Please enter the image URL'
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  className='flex-1'
-                />
+                {!imageUrl && sku && (
+                  <span className='text-muted-foreground text-sm'>
+                    No image available for selected SKU
+                  </span>
+                )}
+                {!sku && (
+                  <span className='text-muted-foreground text-sm'>
+                    Please select a SKU to view the product image
+                  </span>
+                )}
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ import { apiClient } from '../api-client'
 
 // 获取产品列表请求参数
 export interface GetProductsListRequest {
+  customerId: string
   pageSize: number
   pageNo: number
   productName?: string
@@ -105,6 +106,52 @@ export async function getRecommendProductsList(
   return response.data
 }
 
+// 获取收藏产品列表请求参数
+export interface GetCollectProductsListRequest {
+  customerId: string
+  pageSize: number
+  pageNo: number
+  nameOrCode?: string
+  startDate?: string
+  endDate?: string
+}
+
+// 获取收藏产品列表响应
+export interface GetCollectProductsListResponse {
+  data?: {
+    pageNo: number
+    pageSize: number
+    totalCount: number
+    data?: ApiProductItem[]
+    products?: ApiProductItem[]
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 获取收藏产品列表 API
+export async function getCollectProductsList(
+  params: GetCollectProductsListRequest
+): Promise<GetCollectProductsListResponse> {
+  const response = await apiClient.post<GetCollectProductsListResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getCollectProductsList',
+    params
+  )
+
+  console.log('获取收藏产品列表响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to get collection products list. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 删除推荐产品请求参数
 export interface DelRecommendProductsRequest {
   customerId: string
@@ -133,6 +180,24 @@ export async function delRecommendProducts(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to delete recommend products. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 删除收藏产品（Collection products 菜单用）
+export async function delCollectProducts(
+  params: DelRecommendProductsRequest
+): Promise<DelRecommendProductsResponse> {
+  const response = await apiClient.post<DelRecommendProductsResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/delCollectProducts',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to delete collected products. Please try again.'
     throw new Error(errorMessage)
   }
 
@@ -428,7 +493,7 @@ export async function getProduct(
 
 // 收藏产品请求参数
 export interface CollectProductRequest {
-  goodsId: string
+  productId: string
   customerId: string
 }
 
@@ -446,12 +511,12 @@ export async function collectProduct(
   customerId: string
 ): Promise<CollectProductResponse> {
   const requestData: CollectProductRequest = {
-    goodsId,
-    customerId,
+    productId: goodsId,
+    customerId: customerId,
   }
 
   const response = await apiClient.post<CollectProductResponse>(
-    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/collectProduct',
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/collectProducts',
     requestData
   )
 
@@ -962,6 +1027,8 @@ export async function queryCuShopPackageList(
 export interface BuyProductRequest {
   customerId: string
   customChannelId: string
+  // 支付完成后返回的地址（回调 URL）
+  returnUrl?: string
   // 收货地址相关信息
   firstName: string
   lastName: string
@@ -1145,6 +1212,57 @@ export async function unlinkProduct(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to unlink product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 推送产品到 Shopify 请求参数
+export interface PushProductToShopifyNewRequest {
+  pushProductVO: {
+    shopId: string
+    customerId: string
+    productId?: string
+    title: string
+    tags: string[]
+    pictures: string[]
+    description: string
+    variants: Array<{
+      picture: string
+      sku: string
+      price: number
+      variantValues: Array<{
+        groupName: string
+        name: string
+      }>
+    }>
+  }
+}
+
+// 推送产品到 Shopify 响应
+export interface PushProductToShopifyNewResponse {
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  data?: unknown
+  [key: string]: unknown
+}
+
+// 推送产品到 Shopify API
+export async function pushProductToShopifyNew(
+  params: PushProductToShopifyNewRequest
+): Promise<PushProductToShopifyNewResponse> {
+  const response = await apiClient.post<PushProductToShopifyNewResponse>(
+    '/v2/hzkj/hzkj_commodity/products/pushProductToShopifyNew',
+    params
+  )
+
+  console.log('推送产品到 Shopify 响应:', response.data)
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to push product to Shopify. Please try again.'
     throw new Error(errorMessage)
   }
 

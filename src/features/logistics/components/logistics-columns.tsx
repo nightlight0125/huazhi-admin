@@ -14,7 +14,8 @@ import { type Logistics } from '../data/schema'
 
 export const createLogisticsColumns = (
   onEditShippingTo?: (row: Logistics) => void,
-  onDeleteSuccess?: () => void
+  // 删除成功后的回调，携带被删除的行数据，方便局部更新
+  onDeleteSuccess?: (logistics: Logistics) => void
 ): ColumnDef<Logistics>[] => {
   return [
     {
@@ -138,7 +139,8 @@ export const createLogisticsColumns = (
 
 type DeleteProps = {
   logistics: Logistics
-  onSuccess?: () => void
+  // 删除成功后的回调，携带被删除的行数据
+  onSuccess?: (logistics: Logistics) => void
 }
 
 function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
@@ -167,8 +169,8 @@ function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
       toast.dismiss(loadingToast)
       toast.success('Deleted successfully')
       setOpen(false)
-      // trigger refresh in parent if provided
-      onSuccess?.()
+      // trigger refresh in parent if provided，局部更新列表
+      onSuccess?.(logistics)
     } catch (error) {
       toast.dismiss(loadingToast)
       const msg = error instanceof Error ? error.message : 'Delete failed'
@@ -184,7 +186,7 @@ function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
       <Button
         variant='outline'
         size='sm'
-        className='h-7 border-red-200 px-2 text-xs text-red-500'
+        className='h-7 border-gray-200 px-2 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
         onClick={() => setOpen(true)}
       >
         <Trash2 className='mr-1 h-3.5 w-3.5' />

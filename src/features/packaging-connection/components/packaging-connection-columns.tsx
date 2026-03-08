@@ -1,14 +1,8 @@
+import { type ColumnDef } from '@tanstack/react-table'
+import { ChevronRight, Link2, Link2Off, Minus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { type ColumnDef } from '@tanstack/react-table'
-import {
-  ChevronRight,
-  Link2,
-  Link2Off,
-  Minus,
-  Trash2,
-} from 'lucide-react'
 import { type StoreSku } from '../data/schema'
 
 export const createPackagingConnectionColumns = (options?: {
@@ -39,7 +33,9 @@ export const createPackagingConnectionColumns = (options?: {
               table.getIsAllPageRowsSelected() ||
               (table.getIsSomePageRowsSelected() && 'indeterminate')
             }
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
             aria-label='Select all'
             className='translate-y-[2px]'
           />
@@ -112,7 +108,9 @@ export const createPackagingConnectionColumns = (options?: {
         cell: ({ row }) => {
           const item = row.original
           return (
-            <div className='text-sm'>{item.hzkj_shop_pk_qty ?? item.hzkj_pk_qty ?? '---'}</div>
+            <div className='text-sm'>
+              {item.hzkj_shop_pk_qty ?? item.hzkj_pk_qty ?? '---'}
+            </div>
           )
         },
         size: 100,
@@ -123,9 +121,7 @@ export const createPackagingConnectionColumns = (options?: {
         header: 'Operation Time',
         cell: ({ row }) => {
           const item = row.original
-          return (
-            <div className='text-sm'>{item.hzkj_modifydate || '---'}</div>
-          )
+          return <div className='text-sm'>{item.hzkj_modifydate || '---'}</div>
         },
         size: 180,
       },
@@ -139,14 +135,13 @@ export const createPackagingConnectionColumns = (options?: {
               <Button
                 variant='outline'
                 size='sm'
-                className='h-7 border-red-200 px-2 text-xs text-red-500 hover:bg-red-50'
+                className='h-7 border-gray-200 px-2 text-xs text-gray-500 hover:bg-gray-50'
                 onClick={(e) => {
                   e.stopPropagation()
                   onDelete?.(item)
                 }}
               >
                 <Trash2 className='mr-1 h-3.5 w-3.5' />
-                Delete
               </Button>
             </div>
           )
@@ -226,7 +221,6 @@ export const createPackagingConnectionColumns = (options?: {
             <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
               <img
                 src={item.hzkj_variant_picture || item.image || ''}
-               
                 className='h-full w-full object-cover'
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
@@ -235,7 +229,10 @@ export const createPackagingConnectionColumns = (options?: {
               />
             </div>
             <div className='flex flex-col gap-1'>
-              <div className='text-sm font-medium'>{item.hzkj_local_sku_hzkj_name || item.hzkj_shop_package_hzkj_name}</div>
+              <div className='text-sm font-medium'>
+                {item.hzkj_local_sku_hzkj_name ||
+                  item.hzkj_shop_package_hzkj_name}
+              </div>
               <div className='text-muted-foreground text-xs'>
                 SKU: {item.hzkj_shop_sku || item.hzkj_shop_package_number}
               </div>
@@ -249,27 +246,29 @@ export const createPackagingConnectionColumns = (options?: {
       size: 300,
     },
     {
-      accessorKey: 'Product' ,
+      accessorKey: 'Product',
       header: 'Product',
       cell: ({ row }) => {
         const item = row.original
-            return (
-              <div className='flex items-center gap-3'>
-                <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
-                  <img
-                    src={item.hzkj_local_sku_hzkj_picturefield ||  ''}
-                    alt='SKU'
-                    className='h-full w-full object-cover'
-                  />
-                </div>
-                <div className='flex flex-col gap-1'>
-                  <div className='text-sm font-medium'>{item.hzkj_local_sku_hzkj_name || '---'}</div>
-                  <div className='text-muted-foreground text-xs'>
-                    SKU: {item.hzkj_local_sku_number ||  '---'}
-                  </div>
-                </div>
+        return (
+          <div className='flex items-center gap-3'>
+            <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
+              <img
+                src={item.hzkj_local_sku_hzkj_picturefield || ''}
+                alt='SKU'
+                className='h-full w-full object-cover'
+              />
+            </div>
+            <div className='flex flex-col gap-1'>
+              <div className='text-sm font-medium'>
+                {item.hzkj_local_sku_hzkj_name || '---'}
               </div>
-            )
+              <div className='text-muted-foreground text-xs'>
+                SKU: {item.hzkj_local_sku_number || '---'}
+              </div>
+            </div>
+          </div>
+        )
       },
       size: 250,
     },
@@ -281,7 +280,11 @@ export const createPackagingConnectionColumns = (options?: {
         return (
           <div className='flex items-center gap-2'>
             <span className='text-green-600'>$</span>
-            <span className='text-sm'>{item.hzkj_od_pd_shop_name || item.hzkj_pk_shop_name || item.storeName}</span>
+            <span className='text-sm'>
+              {item.hzkj_od_pd_shop_name ||
+                item.hzkj_pk_shop_name ||
+                item.storeName}
+            </span>
           </div>
         )
       },
@@ -328,9 +331,7 @@ export const createPackagingConnectionColumns = (options?: {
           price != null && typeof price === 'number' && !isNaN(price)
             ? price.toFixed(2)
             : '0.00'
-        return (
-          <div className='text-sm font-medium'>${formattedPrice}</div>
-        )
+        return <div className='text-sm font-medium'>${formattedPrice}</div>
       },
       size: 100,
     },

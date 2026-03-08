@@ -1,3 +1,11 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { buyProduct } from '@/lib/api/products'
+import { getAddress, type AddressItem } from '@/lib/api/users'
+import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,14 +29,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
-import { buyProduct } from '@/lib/api/products'
-import { getAddress, type AddressItem } from '@/lib/api/users'
-import { useAuthStore } from '@/stores/auth-store'
-import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, ChevronDown } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 export interface ConfirmOrderItem {
   id: string
@@ -63,20 +68,16 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<
     string | undefined
   >()
-  const [selectedCoupon, setSelectedCoupon] = useState<string | undefined>()
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
-  const [shippingAddress, setShippingAddress] = useState<AddressItem | null>(null)
+  const [shippingAddress, setShippingAddress] = useState<AddressItem | null>(
+    null
+  )
 
   // 使用 hook 获取物流渠道数据
-  const { channels: shippingMethodOptions, isLoading: isLoadingChannels } = useLogisticsChannels()
+  const { channels: shippingMethodOptions, isLoading: isLoadingChannels } =
+    useLogisticsChannels()
 
   console.log(orderData, 'shippingMethodOptions')
-
-  const couponOptions = [
-    { value: 'none', label: 'No coupon' },
-    { value: 'coupon1', label: 'Coupon 1' },
-    { value: 'coupon2', label: 'Coupon 2' },
-  ]
 
   const handleAddAddress = () => {
     navigate({ to: '/settings' })
@@ -100,10 +101,15 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       return
     }
 
+    const returnUrl = window.location.href
+    console.log(returnUrl, 'returnUrl')
+
     try {
       const response = await buyProduct({
         customerId: String(customerId),
         customChannelId: selectedShippingMethod,
+        // 支付完成后回调地址（当前页面）
+        returnUrl,
         // 地址信息映射
         firstName: shippingAddress.hzkj_customer_first_name ?? '',
         lastName: shippingAddress.hzkj_customer_last_name ?? '',
@@ -122,11 +128,22 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           flag: 0,
         })),
       })
-      if (response.status) {
-        toast.success('Order placed successfully')
-        navigate({ to: '/orders' })
-      } else {
+
+      const paymentUrl =
+        typeof response.data === 'string'
+          ? response.data
+          : response.data && typeof (response.data as any).url === 'string'
+            ? ((response.data as any).url as string)
+            : ''
+
+      if (paymentUrl) {
+        toast.success('Redirecting to payment page...')
+        // 在当前窗口中跳转到支付页面
+        window.location.href = paymentUrl
+      } else if (response.message) {
         toast.error(response.message)
+      } else {
+        toast.error('Failed to create payment session. Please try again.')
       }
     } catch (error) {
       console.error('Failed to place order:', error)
@@ -141,7 +158,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   // 获取地址信息 - 组件加载时调用
   useEffect(() => {
     const fetchAddress = async () => {
-      const userId = auth.user?.id 
+      const userId = auth.user?.id
       try {
         const address = await getAddress(String(userId))
         setShippingAddress(address)
@@ -217,7 +234,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
               </SelectTrigger>
               <SelectContent>
                 {isLoadingChannels ? (
-                  <SelectItem value="loading" disabled>
+                  <SelectItem value='loading' disabled>
                     Loading...
                   </SelectItem>
                 ) : shippingMethodOptions.length > 0 ? (
@@ -227,7 +244,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="no-options" disabled>
+                  <SelectItem value='no-options' disabled>
                     No shipping methods available
                   </SelectItem>
                 )}
@@ -263,9 +280,41 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                         />
                         <div>
                           <div className='text-sm font-medium'>
-                            {item.name.length > 40
-                              ? `${item.name.substring(0, 40)}...`
-                              : item.name}
+                            {(() => {
+                              const raw = (
+                                item as unknown as Record<string, unknown>
+                              ).hzkj_enname
+                              let text = item.name
+                              if (raw != null) {
+                                if (typeof raw === 'string') text = raw
+                                else if (typeof raw === 'object') {
+                                  const obj = raw as Record<string, unknown>
+                                  text =
+                                    (obj.GLang as string) ||
+                                    (obj.zh_CN as string) ||
+                                    item.name
+                                }
+                              }
+                              const displayText =
+                                text.length > 60
+                                  ? `${text.substring(0, 60)}...`
+                                  : text
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className='cursor-default'>
+                                      {displayText}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side='top'
+                                    className='max-w-sm break-words'
+                                  >
+                                    {text}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )
+                            })()}
                           </div>
                           <div className='text-muted-foreground text-xs'>
                             {item.sku}
@@ -287,23 +336,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           </div>
         </div>
 
-        <div className='flex flex-col gap-4 rounded-lg px-6 py-4 md:flex-row md:items-center md:justify-between'>
-          <div className='flex items-center gap-4'>
-            <span className='text-sm font-medium'>Coupon</span>
-            <Select value={selectedCoupon} onValueChange={setSelectedCoupon}>
-              <SelectTrigger className='h-9 w-[260px]'>
-                <SelectValue placeholder='Please select' />
-              </SelectTrigger>
-              <SelectContent>
-                {couponOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
+        <div className='flex flex-col gap-4 rounded-lg px-6 py-4 md:flex-row md:items-center md:justify-end'>
           {/* 右侧 Total + Pay */}
           <div className='flex items-center justify-end gap-4'>
             <div className='flex items-center gap-2'>

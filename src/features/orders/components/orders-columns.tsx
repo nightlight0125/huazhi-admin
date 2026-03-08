@@ -1,4 +1,8 @@
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import { useState } from 'react'
+import { format } from 'date-fns'
+import { type ColumnDef, type Row } from '@tanstack/react-table'
+import { CreditCard, Edit, Loader2, Minus, Plus, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -6,19 +10,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
-import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { format } from 'date-fns'
-import {
-  CreditCard,
-  Edit,
-  Loader2,
-  Minus,
-  Plus,
-  Trash2
-} from 'lucide-react'
-import { useState } from 'react'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type Order } from '../data/schema'
+import { toDisplayString } from '../utils'
 
 interface OrderDeleteCellProps {
   row: Row<Order>
@@ -49,7 +43,7 @@ function OrderDeleteCell({ row, onDelete }: OrderDeleteCellProps) {
       <Button
         variant='ghost'
         size='sm'
-        className='h-8 px-1.5 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300'
+        className='h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)
@@ -104,6 +98,7 @@ export const createOrdersColumns = (options?: {
   onEditCustomerName?: (orderId: string) => void
   onPay?: (orderId: string) => void
   onDelete?: (orderId: string) => void | Promise<void>
+  onSelectShippingMethod?: (order: Order) => void
 }): ColumnDef<Order>[] => {
   const {
     onExpand,
@@ -113,6 +108,7 @@ export const createOrdersColumns = (options?: {
     onEditCustomerName: _onEditCustomerName,
     onPay,
     onDelete,
+    onSelectShippingMethod,
   } = options || {}
 
   return [
@@ -176,8 +172,9 @@ export const createOrdersColumns = (options?: {
       header: 'Store Name',
       cell: ({ row }) => {
         const order = row.original
-        const shopName =
-          (order as any).hzkj_shop_name?.GLang || order.storeName || order.store
+        const shopName = toDisplayString(
+          (order as any).hzkj_shop_name
+        ) || toDisplayString(order.storeName) || toDisplayString(order.store) || '---'
         return (
           <div className='flex items-center gap-2'>
             <span className='font-medium'>{shopName}</span>
@@ -247,8 +244,8 @@ export const createOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original
         const customerName =
-          (order as any).hzkj_customer_name?.GLang ||
-          order.customerName ||
+          toDisplayString((order as any).hzkj_customer_name) ||
+          toDisplayString(order.customerName) ||
           '---'
         return (
           <div className='space-y-1 text-sm'>
@@ -277,26 +274,25 @@ export const createOrdersColumns = (options?: {
       header: 'Shipping Cost',
       cell: ({ row }) => {
         const order = row.original
+        const hasChannel = order.hzkj_customer_channel_name
         return (
-          <div className='space-y-1 text-sm'>
-            <div>{order.hzkj_fre_quo_amount || 0}</div>
-            <div>{order.hzkj_customer_channel_name || '---'}</div>
-          </div>
-        )
-      },
-      size: 150,
-    },
-    {
-      id: 'shipping',
-      header: 'Shipping/No.',
-      cell: ({ row }) => {
-        const order = row.original
-        const providers = (order as any).providers || order.logistics || '---'
-        return (
-          <div className='space-y-1 text-sm'>
-            <div>{providers}</div>
-            <div>{order.trackingNumber || '---'}</div>
-          </div>
+          <button
+            type='button'
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelectShippingMethod?.(order)
+            }}
+            className='hover:bg-muted/50 -mx-1 w-full space-y-1 rounded px-1 py-0.5 text-left text-sm'
+          >
+            <div>{order.hzkj_fre_quo_amount ?? '---'}</div>
+            {hasChannel ? (
+              <div className='text-muted-foreground text-xs'>
+                {toDisplayString(order.hzkj_customer_channel_name)}
+              </div>
+            ) : (
+              <div className='text-xs text-red-500'>[please select]</div>
+            )}
+          </button>
         )
       },
       size: 150,
@@ -308,7 +304,7 @@ export const createOrdersColumns = (options?: {
         const order = row.original
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.hzkj_fulfillment_status || '---'}</div>
+            <div>{toDisplayString(order.hzkj_fulfillment_status) || '---'}</div>
           </div>
         )
       },

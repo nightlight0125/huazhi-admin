@@ -87,6 +87,7 @@ export interface ApiOrderItem {
   hzkj_fulfillment_status?: string | null
   hzkj_reccustomer?: string
   billno?: string
+  hzkj_qty?: number | string
   [key: string]: unknown
   hzkj_product_name_en?: {
     GLang?: string
@@ -163,7 +164,11 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     trackingNumber: '',
     shippingCost: 0,
     otherCosts: 0,
-    totalCost: apiOrder.hzkj_order_amount || 0,
+    totalCost: (apiOrder as any).hzkj_amount != null
+      ? (typeof (apiOrder as any).hzkj_amount === 'string'
+          ? parseFloat((apiOrder as any).hzkj_amount) || 0
+          : Number((apiOrder as any).hzkj_amount)) || 0
+      : (apiOrder.hzkj_order_amount || 0),
     shippingStock: '',
     productName: productList[0]?.productName || '',
     logistics: apiOrder.hzkj_deliveryway || '',
@@ -177,8 +182,17 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     hzkj_orderstatus: apiOrder.hzkj_orderstatus,
     hzkj_fulfillment_status: apiOrder.hzkj_fulfillment_status || null,
     hzkj_order_amount: apiOrder.hzkj_order_amount,
+    hzkj_amount: (apiOrder as any).hzkj_amount,
     hzkj_pack_weight_total: apiOrder.hzkj_pack_weight_total,
-    hzkj_product_name_en: apiOrder.hzkj_product_name_en?.GLang || apiOrder.hzkj_product_name_en?.zh_CN || '',
+    hzkj_product_name_en:
+      (apiOrder.hzkj_product_name_en && typeof apiOrder.hzkj_product_name_en === 'object'
+        ? (apiOrder.hzkj_product_name_en as any).GLang || (apiOrder.hzkj_product_name_en as any).zh_CN
+        : (apiOrder as any).hzkj_product_name_en) ||
+      (productList[0]?.productName ?? ''),
+    hzkj_picture:
+      (apiOrder as any).hzkj_picture ||
+      (apiOrder.lingItems?.[0] as any)?.hzkj_picture ||
+      '',
     // 添加额外的字段以支持 orders-columns.tsx
     lingItems: apiOrder.lingItems,
     hzkj_shop_name: apiOrder.hzkj_shop_name,
@@ -209,7 +223,22 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     // 仓库与税号
     hzkj_dst_warehouse_id: (apiOrder as any).hzkj_dst_warehouse_id,
     hzkj_dst_warehouse_name: (apiOrder as any).hzkj_dst_warehouse_name,
+    hzkj_warehouse_name: (apiOrder as any).hzkj_warehouse_name,
     hzkj_tax_id: (apiOrder as any).hzkj_tax_id,
+    hzkj_qty:
+      apiOrder.hzkj_qty !== undefined && apiOrder.hzkj_qty !== null
+        ? apiOrder.hzkj_qty
+        : apiOrder.lingItems?.[0]?.hzkj_qty !== undefined &&
+            apiOrder.lingItems?.[0]?.hzkj_qty !== null
+          ? apiOrder.lingItems[0].hzkj_qty
+          : apiOrder.lingItems?.length
+            ? String(
+                apiOrder.lingItems.reduce(
+                  (sum, it) => sum + (Number(it.hzkj_qty) || 0),
+                  0
+                )
+              )
+            : undefined,
   } as Order
 }
 
@@ -230,12 +259,13 @@ export async function queryOrder(
     throw new Error(errorMessage)
   }
 
-  const apiOrders = Array.isArray(response.data.data?.array) ? response.data.data?.array : []
+  const data = response.data?.data ?? response.data
+  const apiOrders = Array.isArray(data?.array) ? data.array : []
   const orders = apiOrders.map(transformApiOrderToOrder)
 
   return {
     orders,
-    total: typeof response.data.data?.total === 'number' ? response.data.data?.total : 0,
+    total: typeof data?.total === 'number' ? data.total : 0,
   }
 }
 
@@ -737,6 +767,42 @@ export interface RequestPaymentRequest {
   customerId: string
   orderIds: string[]
   type: number // 2 表示库存订单
+  // 支付完成后返回的地址（回调 URL，可选）
+  returnUrl?: string
+}
+
+/** 获取客户余额请求 */
+export interface GetCustomerBalanceRequest {
+  customerId: string
+}
+
+/** 获取客户余额响应 data */
+export interface GetCustomerBalanceData {
+  balance?: string
+  avaliableBalance?: string
+  [key: string]: unknown
+}
+
+export interface GetCustomerBalanceResponse {
+  data?: GetCustomerBalanceData
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+export async function getCustomerBalance(
+  params: GetCustomerBalanceRequest
+): Promise<GetCustomerBalanceResponse> {
+  const response = await apiClient.post<GetCustomerBalanceResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/getCustomerBalance',
+    params
+  )
+  if (response.data.status === false) {
+    const msg = response.data.message || 'Failed to get customer balance.'
+    throw new Error(msg)
+  }
+  return response.data
 }
 
 export interface RequestPaymentResponse {
@@ -750,9 +816,17 @@ export interface RequestPaymentResponse {
 export async function requestPayment(
   request: RequestPaymentRequest
 ): Promise<RequestPaymentResponse> {
+  // 在浏览器环境下，附加当前页面作为回调地址
+  const payload: RequestPaymentRequest = {
+    ...request,
+    ...(typeof window !== 'undefined'
+      ? { returnUrl: window.location.href }
+      : {}),
+  }
+
   const response = await apiClient.post<RequestPaymentResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/requestPayment',
-    request
+    payload
   )
 
   if (!response.data.status) {
@@ -761,7 +835,98 @@ export async function requestPayment(
     throw new Error(errorMessage)
   }
 
+  // 如果后端返回支付链接，则在当前窗口中跳转到支付页面
+  const paymentUrl =
+    typeof response.data.data === 'string'
+      ? (response.data.data as string)
+      : response.data.data &&
+          typeof (response.data.data as any).url === 'string'
+        ? ((response.data.data as any).url as string)
+        : ''
+
+  if (paymentUrl && typeof window !== 'undefined') {
+    window.location.href = paymentUrl
+  }
+
   return response.data
+}
+
+/** 钱包支付：销售 0，样品 1，备货 2 */
+export interface WalletPaymentRequest {
+  customerId: string
+  orderIds: string[]
+  type: number
+}
+
+export interface WalletPaymentResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+export async function walletPayment(
+  request: WalletPaymentRequest
+): Promise<WalletPaymentResponse> {
+  const response = await apiClient.post<WalletPaymentResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/walletPayment',
+    request
+  )
+  if (response.data.status === false) {
+    const msg =
+      response.data.message || 'Failed to request wallet payment. Please try again.'
+    throw new Error(msg)
+  }
+  return response.data
+}
+
+// 支付完成/失败后回调（携带 session_id）
+export interface PaymentCallbackResponse {
+  status?: boolean
+  message?: string
+  [key: string]: unknown
+}
+
+export async function paymentCallback(sessionId: string): Promise<PaymentCallbackResponse> {
+  const response = await apiClient.post<PaymentCallbackResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/paymentCallback',
+    {},
+    { params: { session_id: sessionId } }
+  )
+  if (response.data?.status === false) {
+    throw new Error(response.data.message || 'Payment callback failed.')
+  }
+  return response.data ?? {}
+}
+
+// 入库（加库存）请求参数
+export interface AddStockRequest {
+  stockType: string // 默认 "1"
+  stockItems: Array<{ skuId: string; qty: number }>
+  warehouseId: string
+  customerId: string
+}
+
+export interface AddStockResponse {
+  status?: boolean
+  message?: string
+  [key: string]: unknown
+}
+
+export async function addStock(
+  request: AddStockRequest
+): Promise<AddStockResponse> {
+  const response = await apiClient.post<AddStockResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/addStock',
+    request
+  )
+  if (response.data?.status === false) {
+    throw new Error(
+      response.data.message || 'Failed to add stock. Please try again.'
+    )
+  }
+  return response.data ?? {}
 }
 
 // 查询售后订单请求参数

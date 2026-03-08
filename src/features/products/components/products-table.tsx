@@ -199,7 +199,7 @@ export function ProductsTable({ data }: DataTableProps) {
                       colSpan={columns.length}
                       className='h-24 text-center'
                     >
-                      暂无数据
+                      No data
                     </TableCell>
                   </TableRow>
                 )}

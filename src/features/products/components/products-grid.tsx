@@ -1,22 +1,4 @@
-import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
-import { DataTablePagination } from '@/components/data-table'
-import { FilterToolbar } from '@/components/filter-toolbar'
-import { ImageSearchInput } from '@/components/image-search-input'
-import { PriceRangePopover } from '@/components/price-range-popover'
-import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
-import { type Product } from '@/features/products/data/schema'
-import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
-import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
-import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
-import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import {
-  collectProduct,
-  type GoodClassItem,
-  queryGoodClassList,
-} from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import {
   type ColumnDef,
@@ -32,8 +14,26 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { Heart, Loader2, ShoppingCart, Store } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  collectProduct,
+  type GoodClassItem,
+  queryGoodClassList,
+} from '@/lib/api/products'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
+import { DataTablePagination } from '@/components/data-table'
+import { FilterToolbar } from '@/components/filter-toolbar'
+import { ImageSearchInput } from '@/components/image-search-input'
+import { PriceRangePopover } from '@/components/price-range-popover'
+import { type Product } from '@/features/products/data/schema'
+import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
+import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
+import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
+import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
 
 // Category item type
 type CategoryItem = {
@@ -170,7 +170,7 @@ export function ProductsGrid({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   // 本地搜索输入值
   const [searchInputValue, setSearchInputValue] = useState<string>('')
-  
+
   // Store Listing Tabs 相关状态
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
@@ -236,7 +236,7 @@ export function ProductsGrid({
   } = useTableUrlState({
     search,
     navigate: navigate as any,
-    pagination: { defaultPage: 1, defaultPageSize: 8 },
+    pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [],
   })
@@ -347,7 +347,7 @@ export function ProductsGrid({
   }, [data, selectedCategories, selectedPriceRange, categoryTree])
 
   // Client-side pagination (when totalCount is not provided)
-  const pageSize = pagination.pageSize || 8
+  const pageSize = pagination.pageSize || 10
   const pageIndex = (pagination.pageIndex || 0) + 1
   const startIndex = (pageIndex - 1) * pageSize
   const endIndex = startIndex + pageSize
@@ -457,7 +457,7 @@ export function ProductsGrid({
 
       {/* Grid Layout */}
       <div className='relative'>
-        <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
+        <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5'>
           {isLoading ? (
             <div className='col-span-full flex h-96 items-center justify-center'>
               <div className='flex items-center gap-2'>
@@ -470,7 +470,7 @@ export function ProductsGrid({
             table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const product = row.original
-                const isFavorite = selectedItems.has(product.id)
+                const isFavorite = product.isFavorite || selectedItems.has(product.id)
 
                 return (
                   <div
@@ -504,7 +504,7 @@ export function ProductsGrid({
                     {/* Product Info */}
                     <div className='space-y-1.5 p-2.5'>
                       {/* Product Title */}
-                      <h3 className='line-clamp-2 h-10 text-sm leading-tight font-semibold'>
+                      <h3 className='line-clamp-2 text-sm leading-tight font-semibold'>
                         {product.name}
                       </h3>
 
@@ -542,18 +542,6 @@ export function ProductsGrid({
                           variant='outline'
                           size='sm'
                           className='h-7 flex-1 px-1'
-                          title='Add to Cart'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            console.log('Add to cart:', product.id)
-                          }}
-                        >
-                          <ShoppingCart className='h-3.5 w-3.5' />
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='h-7 flex-1 px-1'
                           title='Add to Store'
                           onClick={(e) => {
                             e.stopPropagation()
@@ -575,7 +563,7 @@ export function ProductsGrid({
           ) : // Client-side pagination: use paginated filtered data
           paginatedData.length > 0 ? (
             paginatedData.map((product) => {
-              const isFavorite = selectedItems.has(product.id)
+              const isFavorite = product.isFavorite || selectedItems.has(product.id)
 
               return (
                 <div

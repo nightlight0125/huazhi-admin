@@ -16,12 +16,7 @@ import { HelpCircle } from 'lucide-react'
 import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import {
-  deleteOrder,
-  queryOrder,
-  requestPayment,
-  updateSalOutOrder,
-} from '@/lib/api/orders'
+import { deleteOrder, queryOrder, updateSalOutOrder } from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -111,7 +106,8 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     const pageIndex = pagination.pageIndex ?? 0
     const pageSize = pagination.pageSize ?? 10
 
-    const shopOrderStatus =
+    // Tab 切换通过 orderStatus 字段过滤
+    const orderStatus =
       activeTab && activeTab !== '' ? String(activeTab) : undefined
 
     // 格式化日期范围
@@ -124,7 +120,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         : undefined
 
     // 生成请求参数的唯一标识
-    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopOrderStatus || ''}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}`
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${orderStatus || ''}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}`
 
     // 如果请求参数相同，跳过重复请求
     if (lastRequestParamsRef.current === requestKey) {
@@ -143,7 +139,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         str: globalFilter || '',
         pageIndex,
         pageSize,
-        shopOrderStatus,
+        orderStatus,
         startDate: formattedDateRange?.startDate,
         endDate: formattedDateRange?.endDate,
       })
@@ -317,42 +313,6 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
-  const handleBatchPayment = async (orderIds: string[]) => {
-    const customerId = auth.user?.customerId
-    if (!customerId) {
-      toast.error('Customer ID not found')
-      return
-    }
-
-    if (orderIds.length === 0) {
-      toast.error('Please select at least one order')
-      return
-    }
-
-    try {
-      await requestPayment({
-        customerId: String(customerId),
-        orderIds,
-        type: 1, // 1 表示样品订单
-      })
-
-      toast.success(
-        `Payment request submitted successfully for ${orderIds.length} order(s)`
-      )
-      // 刷新订单列表
-      setRefreshKey((prev) => prev + 1)
-      // 清空选择
-      setRowSelection({})
-    } catch (error) {
-      console.error('Failed to request batch payment:', error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to request batch payment. Please try again.'
-      )
-    }
-  }
-
   const columns = useMemo(
     () =>
       createSampleOrdersColumns({
@@ -483,10 +443,10 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      const orderIds = selectedRows.map(
-                        (row) => row.original.id
-                      )
-                      void handleBatchPayment(orderIds)
+                      const firstOrderId = selectedRows[0]?.original.id
+                      if (firstOrderId) {
+                        handlePay(firstOrderId)
+                      }
                     }
                   }}
                   disabled={selectedCount === 0}
@@ -559,7 +519,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
                       colSpan={columns.length}
                       className='h-24 text-center'
                     >
-                      暂无数据
+                      No data
                     </TableCell>
                   </TableRow>
                 )}
@@ -579,8 +539,9 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         order={selectedOrderForPayment}
         orderType={1} // 1 表示样品订单
         onPaymentSuccess={() => {
-          // 支付成功后刷新订单列表
+          // 支付成功后刷新订单列表并清空勾选
           setRefreshKey((prev) => prev + 1)
+          setRowSelection({})
         }}
       />
 

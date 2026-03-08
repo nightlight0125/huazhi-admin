@@ -199,6 +199,8 @@ export interface RequestWalletPaymentRequest {
   amount: number
   currency: string
   currencyNumber: string
+  // 支付完成后返回的地址（回调 URL，可选）
+  returnUrl?: string
 }
 
 // 请求支付接口响应
@@ -214,9 +216,17 @@ export interface RequestWalletPaymentResponse {
 export async function requestWalletPayment(
   request: RequestWalletPaymentRequest
 ): Promise<RequestWalletPaymentResponse> {
+  // 在浏览器环境下，附加当前页面作为回调地址
+  const payload: RequestWalletPaymentRequest = {
+    ...request,
+    ...(typeof window !== 'undefined'
+      ? { returnUrl: window.location.href }
+      : {}),
+  }
+
   const response = await apiClient.post<RequestWalletPaymentResponse>(
     '/v2/hzkj/hzkj_customer/wallet/requestPayment',
-    request
+    payload
   )
 
   if (response.data.status === false) {
@@ -224,6 +234,19 @@ export async function requestWalletPayment(
       response.data.message ||
       'Failed to request payment. Please try again.'
     throw new Error(errorMessage)
+  }
+
+  // 如果后端返回支付链接，则在当前窗口中跳转到支付页面
+  const paymentUrl =
+    typeof response.data.data === 'string'
+      ? (response.data.data as string)
+      : response.data.data &&
+          typeof (response.data.data as any).url === 'string'
+        ? ((response.data.data as any).url as string)
+        : ''
+
+  if (paymentUrl && typeof window !== 'undefined') {
+    window.location.href = paymentUrl
   }
 
   return response.data

@@ -3,18 +3,21 @@ import { type Row } from '@tanstack/react-table'
 import { Store, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { delRecommendProducts } from '@/lib/api/products'
+import { delCollectProducts, delRecommendProducts } from '@/lib/api/products'
 import { Button } from '@/components/ui/button'
 import { type LikedProduct } from '../data/schema'
 
 type LikedProductsRowActionsProps = {
   row: Row<LikedProduct>
   onDeleteSuccess?: () => void
+  /** 为 true 时使用 delCollectProducts（/collection-products），否则使用 delRecommendProducts */
+  useDelCollectApi?: boolean
 }
 
 export function LikedProductsRowActions({
   row,
   onDeleteSuccess,
+  useDelCollectApi = false,
 }: LikedProductsRowActionsProps) {
   const product = row.original
   const { auth } = useAuthStore()
@@ -37,7 +40,7 @@ export function LikedProductsRowActions({
       <Button
         variant='outline'
         size='sm'
-        className='h-7 border-red-200 px-2 text-xs text-red-500'
+        className='h-7 border-gray-200 px-2 text-xs text-gray-500'
         disabled={isDeleting}
         onClick={async (e) => {
           e.stopPropagation()
@@ -51,10 +54,17 @@ export function LikedProductsRowActions({
 
           try {
             setIsDeleting(true)
-            await delRecommendProducts({
-              customerId: String(customerId),
-              productIds: [product.id],
-            })
+            if (useDelCollectApi) {
+              await delCollectProducts({
+                customerId: String(customerId),
+                productIds: [product.id],
+              })
+            } else {
+              await delRecommendProducts({
+                customerId: String(customerId),
+                productIds: [product.id],
+              })
+            }
 
             toast.success('Product removed from collection successfully.')
             // 触发刷新列表

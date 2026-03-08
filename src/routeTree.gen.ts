@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ClerkRouteRouteImport } from './routes/clerk/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as OrderPaymentCallbackRouteImport } from './routes/order.payment-callback'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedStoreManagementRouteImport } from './routes/_authenticated/store-management'
 import { Route as AuthenticatedAllProductsRouteImport } from './routes/_authenticated/all-products'
@@ -83,6 +84,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const OrderPaymentCallbackRoute = OrderPaymentCallbackRouteImport.update({
+  id: '/order/payment-callback',
+  path: '/order/payment-callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   id: '/wallet',
@@ -422,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/all-products': typeof AuthenticatedAllProductsRoute
   '/store-management': typeof AuthenticatedStoreManagementRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/order/payment-callback': typeof OrderPaymentCallbackRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/orders/create': typeof AuthenticatedOrdersCreateRoute
@@ -480,6 +487,7 @@ export interface FileRoutesByTo {
   '/all-products': typeof AuthenticatedAllProductsRoute
   '/store-management': typeof AuthenticatedStoreManagementRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/order/payment-callback': typeof OrderPaymentCallbackRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/orders/create': typeof AuthenticatedOrdersCreateRoute
@@ -543,6 +551,7 @@ export interface FileRoutesById {
   '/_authenticated/all-products': typeof AuthenticatedAllProductsRoute
   '/_authenticated/store-management': typeof AuthenticatedStoreManagementRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
+  '/order/payment-callback': typeof OrderPaymentCallbackRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/orders/create': typeof AuthenticatedOrdersCreateRoute
@@ -604,6 +613,7 @@ export interface FileRouteTypes {
     | '/all-products'
     | '/store-management'
     | '/wallet'
+    | '/order/payment-callback'
     | '/'
     | '/errors/$error'
     | '/orders/create'
@@ -662,6 +672,7 @@ export interface FileRouteTypes {
     | '/all-products'
     | '/store-management'
     | '/wallet'
+    | '/order/payment-callback'
     | '/'
     | '/errors/$error'
     | '/orders/create'
@@ -724,6 +735,7 @@ export interface FileRouteTypes {
     | '/_authenticated/all-products'
     | '/_authenticated/store-management'
     | '/_authenticated/wallet'
+    | '/order/payment-callback'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
     | '/_authenticated/orders/create'
@@ -780,6 +792,7 @@ export interface RootRouteChildren {
   errors404Route: typeof errors404Route
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
+  OrderPaymentCallbackRoute: typeof OrderPaymentCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -804,6 +817,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/order/payment-callback': {
+      id: '/order/payment-callback'
+      path: '/order/payment-callback'
+      fullPath: '/order/payment-callback'
+      preLoaderRoute: typeof OrderPaymentCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/wallet': {
       id: '/_authenticated/wallet'
@@ -1393,6 +1413,7 @@ const rootRouteChildren: RootRouteChildren = {
   errors404Route: errors404Route,
   errors500Route: errors500Route,
   errors503Route: errors503Route,
+  OrderPaymentCallbackRoute: OrderPaymentCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

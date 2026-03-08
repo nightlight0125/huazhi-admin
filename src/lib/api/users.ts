@@ -760,21 +760,18 @@ export async function deleteAccount(
   return response.data
 }
 
-// 时区数据接口
 export interface TimezoneItem {
   id: string
   name: string
   [key: string]: unknown
 }
 
-// 查询时区请求参数
 export interface QueryTimezoneRequest {
   data: Record<string, unknown>
   pageSize: number
   pageNo: number
 }
 
-// 查询时区响应
 export interface QueryTimezoneResponse {
   data?: {
     filter?: string
@@ -790,7 +787,6 @@ export interface QueryTimezoneResponse {
   [key: string]: unknown
 }
 
-// 查询时区列表 API
 export async function queryAdmininteTimezone(
   pageNo: number = 1,
   pageSize: number = 100
@@ -801,14 +797,10 @@ export async function queryAdmininteTimezone(
     pageNo,
   }
 
-  console.log('查询时区请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QueryTimezoneResponse>(
     '/v2/hzkj/base/inte_timezone/queryAdmininteTimezone',
     requestData
   )
-
-  console.log('查询时区响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {

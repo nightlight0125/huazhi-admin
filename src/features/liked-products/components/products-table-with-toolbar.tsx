@@ -1,13 +1,4 @@
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Table as UITable,
-} from '@/components/ui/table'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { useCallback, useEffect, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -22,7 +13,16 @@ import {
   type Table,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { useCallback, useEffect, useState } from 'react'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Table as UITable,
+} from '@/components/ui/table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { LikedProductsBulkActions } from './liked-products-bulk-actions'
 
 type ProductsTableWithToolbarProps<TData> = {
@@ -177,9 +177,7 @@ export function ProductsTableWithToolbar<TData>({
                   className='h-24 text-center'
                 >
                   <div className='flex items-center justify-center'>
-                    <p className='text-muted-foreground text-sm'>
-                      Loading...
-                    </p>
+                    <p className='text-muted-foreground text-sm'>Loading...</p>
                   </div>
                 </TableCell>
               </TableRow>
