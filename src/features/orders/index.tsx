@@ -64,17 +64,14 @@ export function Orders() {
         const options: Option[] = countriesData
           .filter((country: CountryItem) => !!country.id) // 先过滤掉没有ID的国家
           .map((country: CountryItem) => {
-            // 优先使用 twocountrycode，如果没有则使用 hzkj_code
             const countryCode = country.twocountrycode || country.hzkj_code
 
-            // 在 world-countries 库中查找对应的国家信息
             const countryInfo = countryCode
               ? countries.find(
                   (c) => c.cca2.toUpperCase() === countryCode.toUpperCase()
                 )
               : null
 
-            // 生成国家代码（用于图标）
             const code =
               countryInfo?.cca2.toLowerCase() ||
               countryCode?.toLowerCase() ||
@@ -82,13 +79,11 @@ export function Orders() {
 
             return {
               value: country.id!, // 只使用国家ID作为value（如 "1000001"），已过滤确保存在
-              label:
-                country.hzkj_name || country.name || country.description || '',
+              label: country.description || '',
               icon: code ? createFlagIcon(code) : undefined,
             }
           })
         setCountryOptions(options)
-        console.log('options------------111112:', options)
       } catch (error) {
         setCountryOptions([])
       }

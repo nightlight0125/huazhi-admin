@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   collectProduct,
+  delCollectProducts,
   type GoodClassItem,
   queryGoodClassList,
 } from '@/lib/api/products'
@@ -25,6 +26,7 @@ import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTablePagination } from '@/components/data-table'
 import { FilterToolbar } from '@/components/filter-toolbar'
 import { ImageSearchInput } from '@/components/image-search-input'
@@ -183,6 +185,15 @@ export function ProductsGrid({
   )
   const [storeListingColumnFilters, setStoreListingColumnFilters] =
     useState<ColumnFiltersState>([])
+  // Unfavorite confirmation dialog
+  const [unfavoriteConfirm, setUnfavoriteConfirm] = useState<{
+    open: boolean
+    productId: string | null
+  }>({ open: false, productId: null })
+  // Products unfavorited in this session, for correct UI state
+  const [removedFromFavorites, setRemovedFromFavorites] = useState<Set<string>>(
+    new Set()
+  )
 
   // 为 StoreListingTabs 准备 Variant Pricing 表格
   const variantPricingColumns = useMemo(() => createVariantPricingColumns(), [])
@@ -355,35 +366,67 @@ export function ProductsGrid({
 
   const { auth } = useAuthStore()
 
-  const toggleFavorite = async (productId: string) => {
+  const toggleFavorite = (productId: string, isFavorite: boolean) => {
     const customerId = auth.user?.customerId
     if (!customerId) {
       toast.error('Please login first')
       return
     }
 
-    try {
-      // 调用收藏产品 API
-      await collectProduct(productId, String(customerId))
+    if (isFavorite) {
+      setUnfavoriteConfirm({ open: true, productId })
+      return
+    }
 
-      // 更新本地状态
+    void addFavorite(productId, customerId)
+  }
+
+  const addFavorite = async (productId: string, customerId: string) => {
+    try {
+      await collectProduct(productId, String(customerId))
       setSelectedItems((prev) => {
         const next = new Set(prev)
-        if (next.has(productId)) {
-          next.delete(productId)
-          toast.success('Product removed from favorites')
-        } else {
-          next.add(productId)
-          toast.success('Product added to favorites')
-        }
+        next.add(productId)
         return next
       })
+      setRemovedFromFavorites((prev) => {
+        const next = new Set(prev)
+        next.delete(productId)
+        return next
+      })
+      toast.success('Product added to favorites')
     } catch (error) {
-      console.error('Failed to toggle favorite:', error)
       toast.error(
         error instanceof Error
           ? error.message
-          : 'Failed to update favorite. Please try again.'
+          : 'Failed to add favorite. Please try again.'
+      )
+    }
+  }
+
+  const handleConfirmUnfavorite = async () => {
+    const { productId } = unfavoriteConfirm
+    const customerId = auth.user?.customerId
+    if (!productId || !customerId) return
+
+    try {
+      await delCollectProducts({
+        customerId: String(customerId),
+        productIds: [productId],
+      })
+      setSelectedItems((prev) => {
+        const next = new Set(prev)
+        next.delete(productId)
+        return next
+      })
+      setRemovedFromFavorites((prev) => new Set(prev).add(productId))
+      toast.success('Product removed from favorites')
+      setUnfavoriteConfirm({ open: false, productId: null })
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to remove favorite. Please try again.'
       )
     }
   }
@@ -470,7 +513,9 @@ export function ProductsGrid({
             table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const product = row.original
-                const isFavorite = product.isFavorite || selectedItems.has(product.id)
+                const isFavorite =
+                  (product.isFavorite || selectedItems.has(product.id)) &&
+                  !removedFromFavorites.has(product.id)
 
                 return (
                   <div
@@ -501,24 +546,19 @@ export function ProductsGrid({
                       />
                     </div>
 
-                    {/* Product Info */}
                     <div className='space-y-1.5 p-2.5'>
-                      {/* Product Title */}
                       <h3 className='line-clamp-2 text-sm leading-tight font-semibold'>
                         {product.name}
                       </h3>
 
-                      {/* SPU */}
                       <p className='font-mono text-xs text-gray-600'>
                         SPU:{product.sku}
                       </p>
 
-                      {/* Price */}
                       <div className='text-base font-bold text-orange-500'>
                         ${product.price.toFixed(2)}
                       </div>
 
-                      {/* Action Buttons - Bottom */}
                       <div className='flex gap-1.5 pt-1.5'>
                         <Button
                           variant='outline'
@@ -531,7 +571,7 @@ export function ProductsGrid({
                           title='Favorite'
                           onClick={(e) => {
                             e.stopPropagation()
-                            toggleFavorite(product.id)
+                            toggleFavorite(product.id, isFavorite)
                           }}
                         >
                           <Heart
@@ -563,7 +603,9 @@ export function ProductsGrid({
           ) : // Client-side pagination: use paginated filtered data
           paginatedData.length > 0 ? (
             paginatedData.map((product) => {
-              const isFavorite = product.isFavorite || selectedItems.has(product.id)
+              const isFavorite =
+                (product.isFavorite || selectedItems.has(product.id)) &&
+                !removedFromFavorites.has(product.id)
 
               return (
                 <div
@@ -594,24 +636,19 @@ export function ProductsGrid({
                     />
                   </div>
 
-                  {/* Product Info */}
                   <div className='space-y-1.5 p-2.5'>
-                    {/* Product Title */}
                     <h3 className='line-clamp-2 h-10 text-sm leading-tight font-semibold'>
                       {product.name}
                     </h3>
 
-                    {/* SPU */}
                     <p className='font-mono text-xs text-gray-600'>
                       SPU:{product.sku}
                     </p>
 
-                    {/* Price */}
                     <div className='text-base font-bold text-orange-500'>
                       ${product.price.toFixed(2)}
                     </div>
 
-                    {/* Action Buttons - Bottom */}
                     <div className='flex gap-1.5 pt-1.5'>
                       <Button
                         variant='outline'
@@ -624,7 +661,7 @@ export function ProductsGrid({
                         title='Favorite'
                         onClick={(e) => {
                           e.stopPropagation()
-                          toggleFavorite(product.id)
+                          toggleFavorite(product.id, isFavorite)
                         }}
                       >
                         <Heart
@@ -678,6 +715,20 @@ export function ProductsGrid({
 
       {/* Pagination - only show when using server-side pagination */}
       {totalCount > 0 && <DataTablePagination table={table} />}
+
+      {/* Unfavorite confirmation dialog */}
+      <ConfirmDialog
+        open={unfavoriteConfirm.open}
+        onOpenChange={(open) =>
+          setUnfavoriteConfirm((prev) =>
+            open ? { ...prev, open } : { open: false, productId: null }
+          )
+        }
+        title='Remove from Favorites'
+        desc='Are you sure you want to remove this product from your favorites?'
+        confirmText='Confirm'
+        handleConfirm={handleConfirmUnfavorite}
+      />
 
       {/* Store listing 右侧抽屉 */}
       <Sheet open={isStoreListingOpen} onOpenChange={setIsStoreListingOpen}>

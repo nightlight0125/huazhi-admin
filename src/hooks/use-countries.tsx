@@ -1,7 +1,6 @@
-import React from 'react'
-import { queryCountry, type CountryItem } from '@/lib/api/logistics'
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import worldCountries from 'world-countries'
+import { queryCountry, type CountryItem } from '@/lib/api/logistics'
 
 // 创建国旗图标组件
 const createFlagIcon = (countryCode: string) => {
@@ -35,7 +34,9 @@ export function useCountries(
   pageSize: number = 1000,
   enabled: boolean = true
 ) {
-  const [countries, setCountries] = useState<CountryOption[]>(countriesCache || [])
+  const [countries, setCountries] = useState<CountryOption[]>(
+    countriesCache || []
+  )
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const hasLoadedRef = useRef(false)
@@ -66,7 +67,8 @@ export function useCountries(
           hasLoadedRef.current = true
         })
         .catch((err) => {
-          const error = err instanceof Error ? err : new Error('Failed to load countries')
+          const error =
+            err instanceof Error ? err : new Error('Failed to load countries')
           setError(error)
         })
       return
@@ -81,36 +83,36 @@ export function useCountries(
     const loadCountries = async () => {
       try {
         const countryList = await queryCountry(pageNo, pageSize)
-        // 将国家数据映射为选项格式，包含图标
         const countryOptions: CountryOption[] = countryList
           .filter((country) => country.id) // 过滤掉没有ID的国家
           .map((country: CountryItem) => {
-            // 优先使用 twocountrycode，如果没有则使用 hzkj_code
             const countryCode = country.twocountrycode || country.hzkj_code
-            
-            // 在 world-countries 库中查找对应的国家信息
             const countryInfo = countryCode
               ? worldCountries.find(
-                  (c: any) => c.cca2?.toUpperCase() === countryCode.toUpperCase()
+                  (c: any) =>
+                    c.cca2?.toUpperCase() === countryCode.toUpperCase()
                 )
               : null
 
-            // 生成国家代码（用于图标）
-            const code = (countryInfo as any)?.cca2?.toLowerCase() || countryCode?.toLowerCase() || ''
-            
+            const code =
+              (countryInfo as any)?.cca2?.toLowerCase() ||
+              countryCode?.toLowerCase() ||
+              ''
+
             return {
-              label: country.hzkj_name || country.name || country.description || '',
+              label: country.description || '',
               value: country.id || '', // use id so we can send destinationId directly
               icon: code ? createFlagIcon(code) : undefined,
             }
           })
-        
+
         // 更新缓存
         countriesCache = countryOptions
         setCountries(countryOptions)
         return countryOptions
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to load countries')
+        const error =
+          err instanceof Error ? err : new Error('Failed to load countries')
         setError(error)
         console.error('Failed to load countries:', err)
         throw error
@@ -126,4 +128,3 @@ export function useCountries(
 
   return { countries, isLoading, error }
 }
-

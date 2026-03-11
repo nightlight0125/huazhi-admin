@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import { CheckCircle2 } from 'lucide-react'
-import { Card } from '@/components/ui/card'
 import { SignUpForm } from './components/sign-up-form'
 
 const reasons = [
@@ -21,7 +20,7 @@ export function SignUp() {
           <div className='max-w-xl space-y-8 text-left'>
             <div>
               <h1 className='text-3xl font-semibold tracking-tight text-orange-950 lg:text-4xl'>
-                Why people love Dropsure
+                Why people love HyperZone
               </h1>
               <p className='mt-2 text-sm text-orange-900/80'>
                 Scale your dropshipping business faster with reliable
@@ -48,7 +47,7 @@ export function SignUp() {
               </ul>
             </div>
 
-            <div className='grid gap-4 md:grid-cols-2'>
+            {/* <div className='grid gap-4 md:grid-cols-2'>
               <Card className='border-orange-200/70 bg-white/70 text-orange-950 shadow-none backdrop-blur'>
                 <div className='space-y-1 p-4 text-xs text-orange-900/80'>
                   <p className='font-medium tracking-wide text-orange-800/80 uppercase'>
@@ -88,7 +87,7 @@ export function SignUp() {
                   </p>
                 </div>
               </Card>
-            </div>
+            </div> */}
           </div>
         </div>
 

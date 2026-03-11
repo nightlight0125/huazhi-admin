@@ -13,12 +13,12 @@ import {
 } from '@tanstack/react-table'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import {
   getProductsList,
   type GoodClassItem,
   queryGoodClassList,
 } from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
@@ -604,17 +604,11 @@ export function PackagingProductsGrid({
                   />
                 </div>
 
-                {/* Product Info */}
                 <div className='space-y-1.5 p-2.5'>
-                  {/* Sizes */}
                   <div className='text-base'>{product.name}</div>
-
-                  {/* Price */}
                   <div className='text-base font-bold'>
                     ${product.price.toFixed(2)}
                   </div>
-
-                  {/* Description */}
                   <p className='text-muted-foreground line-clamp-2 text-xs leading-tight'>
                     {product.description}
                   </p>

@@ -314,6 +314,16 @@ export const createOrdersColumns = (options?: {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => {
+        const order = row.original
+        const fulfillmentStatus = String(
+          order.hzkj_fulfillment_status ?? ''
+        ).toLowerCase()
+        const isPaid = fulfillmentStatus === 'paid'
+
+        if (isPaid) {
+          return <div className='flex items-center gap-0' />
+        }
+
         return (
           <div
             className='flex items-center gap-0'
@@ -324,7 +334,7 @@ export const createOrdersColumns = (options?: {
               size='sm'
               className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary -mr-1 h-8 px-1.5 hover:bg-transparent dark:hover:bg-transparent'
               onClick={() => {
-                onPay?.(row.original.id)
+                onPay?.(order.id)
               }}
             >
               <CreditCard className='h-3.5 w-3.5' />

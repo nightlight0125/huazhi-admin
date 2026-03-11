@@ -231,7 +231,7 @@ export function ProfileForm() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(async (values) => {
-              try {
+            try {
               const userId = auth.user?.id
               const rowId = profileIdRef.current ?? userId
               if (!rowId) {
@@ -290,7 +290,7 @@ export function ProfileForm() {
           <div className='grid grid-cols-2 gap-4'>
             <div className='space-y-1'>
               <FormLabel>User ID</FormLabel>
-              <div className='bg-muted text-muted-foreground rounded-md border px-3 py-2 text-sm'>
+              <div className='bg-muted text-muted-foreground rounded-md border border-border px-3 py-2 text-sm'>
                 {userId ?? '-'}
               </div>
             </div>
@@ -420,7 +420,7 @@ export function ProfileForm() {
               )
             }
           })}
-          className='mt-10 space-y-6 border-t pt-6'
+          className='mt-10 space-y-6 border-t border-border pt-6'
         >
           <div>
             <h2 className='text-base font-medium'>Change Password</h2>

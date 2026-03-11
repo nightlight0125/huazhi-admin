@@ -1,3 +1,12 @@
+import { useEffect, useState } from 'react'
+import { z } from 'zod'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
+import worldCountries from 'world-countries'
+import { apiClient } from '@/lib/api-client'
+import { queryCountry, type CountryItem } from '@/lib/api/logistics'
+import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,15 +22,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
-import { apiClient } from '@/lib/api-client'
-import { queryCountry, type CountryItem } from '@/lib/api/logistics'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
-import worldCountries from 'world-countries'
-import { z } from 'zod'
 // Input replaced by SelectDropdown for country selection
 import { SelectDropdown } from '@/components/select-dropdown'
 import { type Logistics } from '../data/schema'
@@ -58,13 +58,18 @@ export function EditShippingToDialog({
   onSubmit,
 }: EditShippingToDialogProps) {
   const [countryOptions, setCountryOptions] = useState<
-    Array<{ label: string; value: string; icon?: React.ComponentType<{ className?: string }> }>
+    Array<{
+      label: string
+      value: string
+      icon?: React.ComponentType<{ className?: string }>
+    }>
   >([])
   const [, setIsLoadingData] = useState(false)
   const [, setIsSubmitting] = useState(false)
 
   // 使用 hook 获取物流渠道数据，只在对话框打开时加载
-  const { channels: methodOptions, error: channelsError } = useLogisticsChannels(1, 1000, open)
+  const { channels: methodOptions, error: channelsError } =
+    useLogisticsChannels(1, 1000, open)
 
   // load countries when dialog opens
   useEffect(() => {
@@ -79,19 +84,23 @@ export function EditShippingToDialog({
           .map((country: CountryItem) => {
             // 优先使用 twocountrycode，如果没有则使用 hzkj_code
             const countryCode = country.twocountrycode || country.hzkj_code
-            
+
             // 在 world-countries 库中查找对应的国家信息
             const countryInfo = countryCode
               ? worldCountries.find(
-                  (c: any) => c.cca2?.toUpperCase() === countryCode.toUpperCase()
+                  (c: any) =>
+                    c.cca2?.toUpperCase() === countryCode.toUpperCase()
                 )
               : null
 
             // 生成国家代码（用于图标）
-            const code = (countryInfo as any)?.cca2?.toLowerCase() || countryCode?.toLowerCase() || ''
-            
+            const code =
+              (countryInfo as any)?.cca2?.toLowerCase() ||
+              countryCode?.toLowerCase() ||
+              ''
+
             return {
-              label: country.hzkj_name || country.name || country.description || '',
+              label: country.description || '',
               value: country.id || '', // use id so we can send destinationId directly
               icon: code ? createFlagIcon(code) : undefined,
             }

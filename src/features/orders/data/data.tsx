@@ -8,51 +8,11 @@ export const orderStatuses = [
     value: '' as const,
   },
   {
-    label: 'Pending',
-    value: 'pending' as const,
-  },
-  {
-    label: 'Authorized',
-    value: 'authorized' as const,
-  },
-  {
-    label: 'Partially Paid',
-    value: 'partially_paid' as const,
-  },
-  {
-    label: 'Paid',
-    value: 'paid' as const,
-  },
-  {
-    label: 'Refunded',
-    value: 'refunded' as const,
-  },
-  {
-    label: 'Partially Refunded',
-    value: 'partially_refunded' as const,
-  },
-  {
-    label: 'Voided',
-    value: 'voided' as const,
-  },
-  {
-    label: 'Expired',
-    value: 'expired' as const,
-  },
-]
-
-// 平台订单状态选项
-export const platformOrderStatuses = [
-  {
-    label: 'Cancelled',
-    value: '0' as const,
-  },
-  {
-    label: 'Not Linked to Local SKU',
+    label: 'Unconnected',
     value: 'no' as const,
   },
   {
-    label: 'Pending Payment',
+    label: 'Awaiting Payment',
     value: '1' as const,
   },
   {
@@ -60,13 +20,30 @@ export const platformOrderStatuses = [
     value: '2' as const,
   },
   {
-    label: 'Processing',
+    label: 'processing',
     value: '3' as const,
   },
   {
-    label: 'Shipped',
+    label: 'shipped',
     value: '4' as const,
   },
+  {
+    label: 'cancelled',
+    value: '0' as const,
+  },
+]
+
+// 平台订单状态选项（label 与 value 一一对应）
+export const platformOrderStatuses = [
+  { label: 'pending', value: 'pending' as const },
+  { label: 'authorized', value: 'authorized' as const },
+  { label: 'partially_paid', value: 'partially_paid' as const },
+  { label: 'paid', value: 'paid' as const },
+  { label: 'refunded', value: 'refunded' as const },
+  { label: 'voided', value: 'voided' as const },
+  { label: 'expired', value: 'expired' as const },
+  { label: 'unpaid', value: 'unpaid' as const },
+  { label: 'due', value: 'due' as const },
 ]
 
 // 平台履行状态选项

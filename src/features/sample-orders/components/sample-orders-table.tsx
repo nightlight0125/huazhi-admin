@@ -427,15 +427,15 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
             }, 0)
 
             return (
-              <div className='flex items-center justify-start gap-4 border-b bg-white px-4 py-3'>
+              <div className='flex items-center justify-start gap-4 border-b border-border bg-card px-4 py-3'>
                 <div className='flex flex-col items-start'>
-                  <div className='text-sm'>
+                  <div className='text-sm text-foreground'>
                     Total Amount:{' '}
                     <span className='font-medium'>
                       {selectedCount > 0 ? `$${totalAmount.toFixed(2)}` : '---'}
                     </span>
                   </div>
-                  <div className='flex items-center gap-1 text-xs text-orange-500'>
+                  <div className='flex items-center gap-1 text-xs text-orange-500 dark:text-orange-400'>
                     <HelpCircle className='h-3 w-3' />
                     <span>Referenced amount</span>
                   </div>

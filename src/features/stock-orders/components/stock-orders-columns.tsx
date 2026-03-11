@@ -3,11 +3,11 @@ import { format } from 'date-fns'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
 import { CreditCard, ImageIcon, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { toDisplayString } from '@/features/orders/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { toDisplayString } from '@/features/orders/utils'
 import { type StockOrder } from '../data/schema'
 
 // 删除订单单元格组件
@@ -203,16 +203,15 @@ export const createStockOrdersColumns = (options?: {
           const sum =
             Array.isArray(order.productList) && order.productList.length > 0
               ? order.productList.reduce(
-                  (s: number, p: { quantity?: number }) => s + (p.quantity ?? 0),
+                  (s: number, p: { quantity?: number }) =>
+                    s + (p.quantity ?? 0),
                   0
                 )
               : 0
           return <div className='text-sm'>{sum}</div>
         }
         const num =
-          typeof raw === 'string'
-            ? parseInt(String(raw), 10)
-            : Number(raw)
+          typeof raw === 'string' ? parseInt(String(raw), 10) : Number(raw)
         const qty = Number.isNaN(num) ? 0 : num
         return <div className='text-sm'>{qty}</div>
       },
@@ -245,13 +244,14 @@ export const createStockOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original as any
         // 使用后端返回的 hzkj_amount 字段
-        const amount = order.hzkj_amount != null
-          ? typeof order.hzkj_amount === 'string'
-            ? parseFloat(order.hzkj_amount) || 0
-            : typeof order.hzkj_amount === 'number'
-              ? order.hzkj_amount
-              : 0
-          : 0
+        const amount =
+          order.hzkj_amount != null
+            ? typeof order.hzkj_amount === 'string'
+              ? parseFloat(order.hzkj_amount) || 0
+              : typeof order.hzkj_amount === 'number'
+                ? order.hzkj_amount
+                : 0
+            : 0
 
         return (
           <div className='text-sm font-medium text-green-600'>
@@ -268,14 +268,11 @@ export const createStockOrdersColumns = (options?: {
         const order = row.original as any
         const name =
           toDisplayString(order.hzkj_warehouse_name) ||
-          (order.lingItems?.[0] && (order.lingItems[0] as any).hzkj_warehouse_name != null
+          (order.lingItems?.[0] &&
+          (order.lingItems[0] as any).hzkj_warehouse_name != null
             ? toDisplayString((order.lingItems[0] as any).hzkj_warehouse_name)
             : '')
-        return (
-          <div className='text-sm'>
-            {name || '---'}
-          </div>
-        )
+        return <div className='text-sm'>{name || '---'}</div>
       },
       size: 120,
     },
@@ -290,17 +287,17 @@ export const createStockOrdersColumns = (options?: {
           '0': {
             label: '取消',
             color:
-              'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-red-500',
+              'border-transparent bg-red-500 text-white dark:bg-red-500/25 dark:text-red-400',
           },
           '1': {
             label: '待支付',
             color:
-              'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-orange-500',
+              'border-transparent bg-orange-500 text-white dark:bg-orange-500/25 dark:text-orange-400',
           },
           '2': {
             label: '已支付',
             color:
-              'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-green-500',
+              'border-transparent bg-green-500 text-white dark:bg-green-500/25 dark:text-green-400',
           },
         }
         const statusInfo =
@@ -308,8 +305,7 @@ export const createStockOrdersColumns = (options?: {
             ? statusMap[String(orderStatus)]
             : {
                 label: '---',
-                color:
-                  'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                color: 'border-transparent bg-muted text-muted-foreground',
               }
 
         return (
@@ -327,23 +323,29 @@ export const createStockOrdersColumns = (options?: {
       header: 'Action',
       cell: ({ row }) => {
         const order = row.original
+        const orderStatus = (order as any).hzkj_orderstatus
+        const isPendingPayment = String(orderStatus ?? '') === '1'
         return (
           <div
             className='flex items-center gap-2'
             onClick={(e) => e.stopPropagation()}
           >
-            <Button
-              variant='ghost'
-              size='sm'
-              className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
-              onClick={() => {
-                onPay?.(order.id)
-              }}
-            >
-              <CreditCard className='h-4 w-4' />
-              Pay
-            </Button>
-            <StockOrderDeleteCell row={row} onDelete={onDelete} />
+            {isPendingPayment && (
+              <>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
+                  onClick={() => {
+                    onPay?.(order.id)
+                  }}
+                >
+                  <CreditCard className='h-4 w-4' />
+                  Pay
+                </Button>
+                <StockOrderDeleteCell row={row} onDelete={onDelete} />
+              </>
+            )}
           </div>
         )
       },

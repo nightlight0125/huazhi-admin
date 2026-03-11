@@ -167,24 +167,19 @@ export function ProductsGridTable({
                 />
               </div>
 
-              {/* Product Info */}
               <div className='space-y-1.5 p-2.5'>
-                {/* Product Title */}
                 <h3 className='line-clamp-2 text-sm leading-tight font-semibold'>
                   {item.name}
                 </h3>
 
-                {/* SPU */}
                 <p className='font-mono text-xs text-gray-600'>
                   SPU : {item.sku}
                 </p>
 
-                {/* Price */}
                 <div className='text-base font-bold text-green-600'>
                   ${item.price.toFixed(2)}
                 </div>
 
-                {/* Action Buttons - Bottom */}
                 <div className='flex gap-1.5 pt-1.5'>
                   <Button
                     variant='outline'

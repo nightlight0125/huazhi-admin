@@ -270,27 +270,27 @@ export const createSampleOrdersColumns = (options?: {
           '0': {
             label: '取消',
             color:
-              'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-red-500',
+              'border-transparent bg-red-500 text-white dark:bg-red-500/25 dark:text-red-400',
           },
           '1': {
             label: '待支付',
             color:
-              'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-orange-500',
+              'border-transparent bg-orange-500 text-white dark:bg-orange-500/25 dark:text-orange-400',
           },
           '2': {
             label: '已支付',
             color:
-              'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-green-500',
+              'border-transparent bg-green-500 text-white dark:bg-green-500/25 dark:text-green-400',
           },
           '3': {
             label: '处理中',
             color:
-              'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-purple-500',
+              'border-transparent bg-purple-500 text-white dark:bg-purple-500/25 dark:text-purple-400',
           },
           '4': {
             label: '已发货',
             color:
-              'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-blue-500',
+              'border-transparent bg-blue-500 text-white dark:bg-blue-500/25 dark:text-blue-400',
           },
         }
 
@@ -299,8 +299,7 @@ export const createSampleOrdersColumns = (options?: {
             ? statusMap[String(orderStatus)]
             : {
                 label: '---',
-                color:
-                  'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                color: 'border-transparent bg-muted text-muted-foreground',
               }
 
         return (
@@ -318,23 +317,29 @@ export const createSampleOrdersColumns = (options?: {
       header: 'Action',
       cell: ({ row }) => {
         const order = row.original
+        const orderStatus = (order as any).hzkj_orderstatus
+        const isPendingPayment = String(orderStatus ?? '') === '1'
         return (
           <div
             className='flex items-center gap-2'
             onClick={(e) => e.stopPropagation()}
           >
-            <Button
-              variant='ghost'
-              size='sm'
-              className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
-              onClick={() => {
-                onPay?.(order.id)
-              }}
-            >
-              <CreditCard className='h-4 w-4' />
-              Pay
-            </Button>
-            <SampleOrderDeleteCell row={row} onDelete={onDelete} />
+            {isPendingPayment && (
+              <>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
+                  onClick={() => {
+                    onPay?.(order.id)
+                  }}
+                >
+                  <CreditCard className='h-4 w-4' />
+                  Pay
+                </Button>
+                <SampleOrderDeleteCell row={row} onDelete={onDelete} />
+              </>
+            )}
           </div>
         )
       },

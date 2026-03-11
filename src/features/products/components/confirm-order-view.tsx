@@ -101,15 +101,17 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       return
     }
 
-    const returnUrl = window.location.href
-    console.log(returnUrl, 'returnUrl')
-
     try {
+      const returnUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`
+          : undefined
+
       const response = await buyProduct({
         customerId: String(customerId),
         customChannelId: selectedShippingMethod,
-        // 支付完成后回调地址（当前页面）
-        returnUrl,
+        // 支付完成后回调地址（带 session_id 占位符，支付平台会替换为真实 ID）
+        ...(returnUrl ? { returnUrl } : {}),
         // 地址信息映射
         firstName: shippingAddress.hzkj_customer_first_name ?? '',
         lastName: shippingAddress.hzkj_customer_last_name ?? '',

@@ -58,10 +58,11 @@ export function ProductDesign() {
 
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!productId) return
+      const customerId = auth.user?.customerId
+      if (!productId || !customerId) return
 
       try {
-        const productData = await getProduct(productId)
+        const productData = await getProduct(productId, String(customerId))
         setProduct(productData)
       } catch (error) {
         console.error('Failed to fetch product:', error)
@@ -70,7 +71,7 @@ export function ProductDesign() {
     }
 
     void fetchProduct()
-  }, [productId])
+  }, [productId, auth.user?.customerId])
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricCanvasRef = useRef<Canvas | null>(null)

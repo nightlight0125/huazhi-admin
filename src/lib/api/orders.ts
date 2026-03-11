@@ -311,6 +311,52 @@ export async function orderStatistics(
   return response.data.data || {}
 }
 
+// 创建订单（addBTOrder）请求体，对齐 addBTOrder 接口
+export interface AddBTOrderRequest {
+  orderVo: {
+    customerId: string
+    shopId: string
+    orderNumber: string
+    customerName: string
+    countryId: string
+    admindivisionId?: string
+    city: string
+    address1: string
+    phone: string
+    email?: string
+    postCode: string
+    taxId?: string
+    detail: Array<{ skuId: string; quantity: number }>
+  }
+}
+
+// 创建订单响应
+export interface AddBTOrderResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 创建订单 API（addBTOrder）
+export async function addBTOrder(
+  params: AddBTOrderRequest
+): Promise<AddBTOrderResponse> {
+  const response = await apiClient.post<AddBTOrderResponse>(
+    '/v2/hzkj/hzkj_customer/order/addBTOrder',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to create order. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 删除订单请求参数
 export interface DeleteOrderRequest {
   customerId: string
@@ -816,11 +862,14 @@ export interface RequestPaymentResponse {
 export async function requestPayment(
   request: RequestPaymentRequest
 ): Promise<RequestPaymentResponse> {
-  // 在浏览器环境下，附加当前页面作为回调地址
+  // 在浏览器环境下，附加带有 session_id 占位符的回调地址
+  // 支付服务商会将 {CHECKOUT_SESSION_ID} 替换为真实的会话 ID，并重定向回该地址
   const payload: RequestPaymentRequest = {
     ...request,
-    ...(typeof window !== 'undefined'
-      ? { returnUrl: window.location.href }
+    ...(typeof window !== 'undefined' && !request.returnUrl
+      ? {
+          returnUrl: `${window.location.origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`,
+        }
       : {}),
   }
 
@@ -891,8 +940,7 @@ export interface PaymentCallbackResponse {
 export async function paymentCallback(sessionId: string): Promise<PaymentCallbackResponse> {
   const response = await apiClient.post<PaymentCallbackResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/paymentCallback',
-    {},
-    { params: { session_id: sessionId } }
+    { session_id: sessionId }
   )
   if (response.data?.status === false) {
     throw new Error(response.data.message || 'Payment callback failed.')
