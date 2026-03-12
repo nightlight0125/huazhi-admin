@@ -1,8 +1,7 @@
-import { DataTableToolbar } from '@/components/data-table'
-import { HeaderActions } from '@/components/header-actions'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useEffect, useState } from 'react'
+import { Package, PackagePlus, Store } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import {
   deleteShopPackage,
   queryCuShopPackageList,
@@ -12,10 +11,12 @@ import {
   type OdPdPackageListItem,
 } from '@/lib/api/products'
 import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
-import { useAuthStore } from '@/stores/auth-store'
-import { Package, Store } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTableToolbar } from '@/components/data-table'
+import { HeaderActions } from '@/components/header-actions'
+import { Header } from '@/components/layout/header'
+import { Main } from '@/components/layout/main'
 import { ApplyPackagingDialog } from './components/apply-packaging-dialog'
 import { DisconnectConfirmDialog } from './components/disconnect-confirm-dialog'
 import {
@@ -73,6 +74,7 @@ export function PackagingConnection() {
     'all' | 'connected' | 'unconnected'
   >('all')
   const [connectDialogOpen, setConnectDialogOpen] = useState(false)
+  const [addNewPackagingMode, setAddNewPackagingMode] = useState(false)
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedStoreSku, setSelectedStoreSku] = useState<StoreSku | null>(
@@ -83,6 +85,7 @@ export function PackagingConnection() {
   const [itemToDelete, setItemToDelete] = useState<any | null>(null)
 
   const handleConnect = async (storeSku: StoreSku) => {
+    setAddNewPackagingMode(false)
     setSelectedStoreSku(storeSku)
 
     const customerId = auth.user?.customerId
@@ -114,14 +117,24 @@ export function PackagingConnection() {
     }
   }
 
+  const handleAddNewPackaging = () => {
+    const firstRow = packagingData[0]
+    if (!firstRow) {
+      toast.error('No data')
+      return
+    }
+    setAddNewPackagingMode(true)
+    setSelectedStoreSku(firstRow as StoreSku)
+    setConnectDialogOpen(true)
+  }
+
   const handleDisconnect = (storeSku: StoreSku) => {
     setStoreSkuToDisconnect(storeSku)
     setDisconnectDialogOpen(true)
   }
 
-  const handleConnectDialogConfirm = (selectedProducts: PackagingProduct[]) => {
-    console.log('Selected products:', selectedProducts)
-    console.log('Store SKU:', selectedStoreSku)
+  const handleConnectDialogConfirm = (_selectedProducts: PackagingProduct[]) => {
+    setRefreshKey((k) => k + 1)
   }
 
   const handleDisconnectConfirm = async () => {
@@ -147,8 +160,8 @@ export function PackagingConnection() {
         odPdPackageId: String(odPdPackageId),
       })
       toast.success('Package disconnected successfully')
-    setDisconnectDialogOpen(false)
-    setStoreSkuToDisconnect(null)
+      setDisconnectDialogOpen(false)
+      setStoreSkuToDisconnect(null)
 
       // 重新获取数据
       const userId = auth.user?.id
@@ -232,7 +245,11 @@ export function PackagingConnection() {
   }
 
   const handleDeleteConfirm = async () => {
-    if (!itemToDelete?.hzkj_shop_package_id) {
+    // Order tab 使用 hzkj_shop_pd_package_id，Store tab 使用 hzkj_shop_package_id
+    const shopPackageId =
+      itemToDelete?.hzkj_shop_pd_package_id ??
+      itemToDelete?.hzkj_shop_package_id
+    if (!shopPackageId) {
       toast.error('Invalid item data')
       setDeleteDialogOpen(false)
       setItemToDelete(null)
@@ -241,29 +258,12 @@ export function PackagingConnection() {
 
     try {
       await deleteShopPackage({
-        shopPackageId: String(itemToDelete.hzkj_shop_package_id),
+        shopPackageId: String(shopPackageId),
       })
       toast.success('Shop package deleted successfully')
       setDeleteDialogOpen(false)
       setItemToDelete(null)
-      
-      // 重新获取数据 - 通过触发 useEffect 重新获取
-      // 由于 useEffect 依赖 activeTab, pageNo, pageSize 等，删除后数据会自动刷新
-      // 但为了确保立即刷新，我们可以强制触发一次数据获取
-      const userId = auth.user?.id
-      const customerId = auth.user?.customerId
-      if (userId && customerId && activeTab === 'stores') {
-        const response = await queryCuShopPackageList({
-          data: {
-            hzkj_pk_shop_hzkj_customer_id: String(customerId),
-            accountId: String(userId),
-          },
-          pageSize,
-          pageNo,
-        })
-        setPackagingData((response.rows || []) as any[])
-        setTotalCount(response.totalCount || 0)
-      }
+      setRefreshKey((k) => k + 1)
     } catch (error) {
       console.error('Failed to delete shop package:', error)
       toast.error(
@@ -286,6 +286,7 @@ export function PackagingConnection() {
   const [storeFilterValue, setStoreFilterValue] = useState<
     string[] | undefined
   >(undefined)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // 获取店铺列表
   useEffect(() => {
@@ -308,8 +309,14 @@ export function PackagingConnection() {
         const options = response.list
           .filter((shop: ShopListItem) => shop.id) // 过滤掉没有 id 的店铺
           .map((shop: ShopListItem) => ({
-            label: typeof shop.name === 'string' ? shop.name : (typeof shop.platform === 'string' ? shop.platform : String(shop.id || '')),
-            value: typeof shop.id === 'string' ? shop.id : String(shop.id || ''),
+            label:
+              typeof shop.name === 'string'
+                ? shop.name
+                : typeof shop.platform === 'string'
+                  ? shop.platform
+                  : String(shop.id || ''),
+            value:
+              typeof shop.id === 'string' ? shop.id : String(shop.id || ''),
           }))
 
         setStoreNameOptions(options)
@@ -401,16 +408,9 @@ export function PackagingConnection() {
         const transformedData = (response.rows || []).map(
           transformOdPdPackageToStoreSku
         )
-        console.log('Fetched packaging data:', {
-          count: transformedData.length,
-          totalCount: response.totalCount,
-          statusFilter: statusFilterValue,
-          data: transformedData,
-        })
         setPackagingData(transformedData)
         setTotalCount(response.totalCount || 0)
       } catch (error) {
-        console.error('Failed to fetch packaging data:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -430,6 +430,7 @@ export function PackagingConnection() {
     pageSize,
     statusFilterValue,
     storeFilterValue,
+    refreshKey,
   ])
 
   const { table, expandedRows, handleExpand } = usePackagingConnectionTable(
@@ -445,21 +446,8 @@ export function PackagingConnection() {
     }
   )
 
-  // 调试：检查表格数据
   useEffect(() => {
     if (table) {
-      const rows = table.getRowModel().rows
-      console.log('Table rows count:', rows.length)
-      console.log('Table data:', packagingData.length)
-      console.log('Table filtered rows:', table.getFilteredRowModel().rows.length)
-      console.log('Table column filters:', table.getState().columnFilters)
-    }
-  }, [table, packagingData, table])
-
-  // 当 statusFilterValue 变化时，重置分页并清除客户端过滤
-  useEffect(() => {
-    if (table) {
-      // 先清除 columnFilters 中 status 的过滤值（必须在 setPageIndex 之前）
       const currentFilters = table.getState().columnFilters
       const filteredFilters = currentFilters.filter(
         (filter) => filter.id !== 'status'
@@ -467,43 +455,43 @@ export function PackagingConnection() {
       if (filteredFilters.length !== currentFilters.length) {
         table.setColumnFilters(filteredFilters)
       }
-      
-      // 清除 status 列的客户端过滤（因为使用服务端过滤）
+
       const statusColumn = table.getColumn('status')
       if (statusColumn) {
         statusColumn.setFilterValue(undefined)
       }
-      
-      // 重置分页
+
       table.setPageIndex(0)
       setPageNo(1)
     }
   }, [statusFilterValue, table])
 
-  // 监听分页变化 - 从表格同步到父组件状态
   useEffect(() => {
     if (!table) return
-    
+
     const pagination = table.getState().pagination
     const newPageNo = pagination.pageIndex + 1
     const newPageSize = pagination.pageSize
-    
+
     if (newPageNo !== pageNo) {
       setPageNo(newPageNo)
     }
     if (newPageSize !== pageSize) {
       setPageSize(newPageSize)
     }
-  }, [table, table?.getState().pagination.pageIndex, table?.getState().pagination.pageSize])
+  }, [
+    table,
+    table?.getState().pagination.pageIndex,
+    table?.getState().pagination.pageSize,
+  ])
 
-  // 同步父组件状态到表格分页
   useEffect(() => {
     if (!table) return
-    
+
     const currentPagination = table.getState().pagination
     const expectedPageIndex = pageNo - 1
     const expectedPageSize = pageSize
-    
+
     if (
       currentPagination.pageIndex !== expectedPageIndex ||
       currentPagination.pageSize !== expectedPageSize
@@ -513,17 +501,7 @@ export function PackagingConnection() {
     }
   }, [table, pageNo, pageSize])
 
-  // 监听过滤变化（只监听 storeName，不监听 status，因为 status 使用服务端过滤）
-  useEffect(() => {
-    const storeColumn = table.getColumn('storeName')
-    if (storeColumn) {
-      const filterValue = storeColumn.getFilterValue() as string[] | undefined
-      if (JSON.stringify(filterValue) !== JSON.stringify(storeFilterValue)) {
-        setStoreFilterValue(filterValue)
-      }
-    }
-    // 注意：不监听 status 列的过滤变化，因为 status 使用服务端过滤
-  }, [table, storeFilterValue])
+  // storeName 的过滤由 onFilterChange 直接更新 storeFilterValue，无需从此处同步
 
   const handleStatusTabChange = (status: 'connected' | 'unconnected') => {
     const nextStatus =
@@ -586,41 +564,62 @@ export function PackagingConnection() {
             {tabs.map((tab) => (
               <TabsContent key={tab.value} value={tab.value} className='mt-0'>
                 <div className='space-y-4'>
-                  <div className='flex items-center gap-2'>
-                    <Tabs
-                      value={statusTab}
-                      onValueChange={(value) => {
-                        if (value === 'connected' || value === 'unconnected') {
-                          handleStatusTabChange(value)
-                        }
-                      }}
-                      className='w-fit'
-                    >
-                      <TabsList className='h-8 gap-1'>
-                        <TabsTrigger
-                          value='connected'
-                          className='data-[state=active]:text-primary px-3 py-1.5 text-xs'
+                  {tab.value !== 'stores' && (
+                    <div className='flex items-center gap-2'>
+                      <Tabs
+                        value={statusTab}
+                        onValueChange={(value) => {
+                          if (value === 'connected' || value === 'unconnected') {
+                            handleStatusTabChange(value)
+                          }
+                        }}
+                        className='w-fit'
+                      >
+                        <TabsList className='h-8 gap-1'>
+                          <TabsTrigger
+                            value='connected'
+                            className='data-[state=active]:text-primary px-3 py-1.5 text-xs'
+                          >
+                            Connected
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value='unconnected'
+                            className='data-[state=active]:text-primary px-3 py-1.5 text-xs'
+                          >
+                            Unconnected
+                          </TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                      {tab.value === 'order' && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='h-8 border-orange-200 bg-orange-50 px-3 text-xs text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30'
+                          onClick={handleAddNewPackaging}
                         >
-                          Connected
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value='unconnected'
-                          className='data-[state=active]:text-primary px-3 py-1.5 text-xs'
-                        >
-                          Unconnected
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </div>
+                          <PackagePlus className='mr-1.5 h-3.5 w-3.5' />
+                          Add New Packaging
+                        </Button>
+                      )}
+                    </div>
+                  )}
 
                   <DataTableToolbar
                     table={table}
                     showSearch={false}
+                    onFilterChange={(columnId, value) => {
+                      if (columnId === 'storeName') {
+                        setStoreFilterValue(value)
+                        setPageNo(1)
+                        table?.setPageIndex(0)
+                      }
+                    }}
                     filters={[
                       {
                         columnId: 'storeName',
                         title: 'Store Name',
                         options: storeNameOptions,
+                        singleSelect: true,
                       },
                     ]}
                   />
@@ -638,9 +637,13 @@ export function PackagingConnection() {
       </Main>
       <ApplyPackagingDialog
         open={connectDialogOpen}
-        onOpenChange={setConnectDialogOpen}
+        onOpenChange={(open) => {
+          setConnectDialogOpen(open)
+          if (!open) setAddNewPackagingMode(false)
+        }}
         storeSku={selectedStoreSku}
         onConfirm={handleConnectDialogConfirm}
+        hideProductDetails={addNewPackagingMode}
       />
       <DisconnectConfirmDialog
         open={disconnectDialogOpen}

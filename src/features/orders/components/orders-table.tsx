@@ -443,7 +443,7 @@ export function OrdersTable({
     try {
       const response = await queryOrder({
         customerId: String(customerId),
-        type: 'hzkj_orders_BT_Sample',
+        type: 'hzkj_orders_BT',
         str: globalFilter || '',
         pageIndex,
         pageSize,
@@ -765,7 +765,9 @@ export function OrdersTable({
     }
   }
 
-  const handleBatchPay = (selectedRows: { original: { id: string; totalCost?: number } }[]) => {
+  const handleBatchPay = (
+    selectedRows: { original: { id: string; totalCost?: number } }[]
+  ) => {
     if (selectedRows.length === 0) return
     const orderIds = selectedRows.map((r) => r.original.id)
     const totalAmount = selectedRows.reduce(
@@ -952,9 +954,9 @@ export function OrdersTable({
             }, 0)
 
             return (
-              <div className='flex items-center justify-start gap-4 border-b border-border bg-card px-4 py-3'>
+              <div className='border-border bg-card flex items-center justify-start gap-4 border-b px-4 py-3'>
                 <div className='flex flex-col items-start'>
-                  <div className='text-sm text-foreground'>
+                  <div className='text-foreground text-sm'>
                     Total Amount:{' '}
                     <span className='font-medium'>
                       {selectedCount > 0 ? `$${totalAmount.toFixed(2)}` : '---'}

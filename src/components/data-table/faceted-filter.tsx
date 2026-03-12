@@ -29,7 +29,7 @@ type DataTableFacetedFilterProps<TData, TValue> = {
     value: string
     icon?: React.ComponentType<{ className?: string }>
   }[]
-  onFilterChange?: () => void
+  onFilterChange?: (value: string[] | undefined) => void
   columnFilters?: Array<{ id: string; value: unknown }>
   singleSelect?: boolean // 是否单选模式
 }
@@ -131,12 +131,15 @@ export function DataTableFacetedFilter<TData, TValue>({
                   <CommandItem
                     key={option.value}
                     onSelect={() => {
+                      let newValue: string[] | undefined
                       if (singleSelect) {
                         // 单选模式：如果点击的是已选中的项，清除选择；否则只选择当前项
                         if (isSelected) {
                           column?.setFilterValue(undefined)
+                          newValue = undefined
                         } else {
                           column?.setFilterValue([option.value])
+                          newValue = [option.value]
                         }
                       } else {
                         // 多选模式：原有的逻辑
@@ -147,11 +150,11 @@ export function DataTableFacetedFilter<TData, TValue>({
                           nextSelected.add(option.value)
                         }
                         const filterValues = Array.from(nextSelected)
-                        column?.setFilterValue(
+                        newValue =
                           filterValues.length > 0 ? filterValues : undefined
-                        )
+                        column?.setFilterValue(newValue)
                       }
-                      onFilterChange?.()
+                      onFilterChange?.(newValue)
                     }}
                   >
                     <div
@@ -184,7 +187,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                   <CommandItem
                     onSelect={() => {
                       column?.setFilterValue(undefined)
-                      onFilterChange?.()
+                      onFilterChange?.(undefined)
                     }}
                     className='justify-center text-center'
                   >

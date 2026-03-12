@@ -342,6 +342,7 @@ export function usePackagingConnectionTable(
       onConnect: handleConnect,
       onDelete: handleDelete,
       isStoreTab: options?.activeTab === 'stores',
+      isOrderTab: options?.activeTab === 'order',
     })
   }, [
     handleExpand,

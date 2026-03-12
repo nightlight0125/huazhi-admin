@@ -180,6 +180,10 @@ export interface QueryStoreSKUListRequest {
   customerId: string
   pageNo: number
   pageSize: number
+  /** 有值时传，无值不传 */
+  skuId?: string
+  /** 有值时传，无值不传 */
+  productName?: string
 }
 
 // 查询店铺产品列表响应

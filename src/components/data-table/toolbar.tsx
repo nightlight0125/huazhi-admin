@@ -36,7 +36,10 @@ type DataTableToolbarProps<TData> = {
   showSearch?: boolean
   showSearchButton?: boolean
   onSearch?: (searchValue: string) => void // 搜索回调函数，接收搜索值
-  onFilterChange?: () => void // 过滤器变化时的回调
+  onFilterChange?: (
+    columnId: string,
+    value: string[] | undefined
+  ) => void // 过滤器变化时的回调，可直接使用 value 无需从表格读取
   filters?: {
     columnId: string
     title: string
@@ -184,7 +187,9 @@ export function DataTableToolbar<TData>({
                 column={column}
                 title={filter.title}
                 options={filter.options || []}
-                onFilterChange={onFilterChange}
+                onFilterChange={(value) =>
+                  onFilterChange?.(filter.columnId, value)
+                }
                 columnFilters={table.getState().columnFilters}
                 singleSelect={filter.singleSelect}
               />

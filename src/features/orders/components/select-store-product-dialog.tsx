@@ -67,6 +67,8 @@ export function SelectStoreProductDialog({
   const [pageNo, setPageNo] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
+  const [appliedSkuId, setAppliedSkuId] = useState('')
+  const [appliedProductName, setAppliedProductName] = useState('')
   const customerId = auth.user?.customerId
 
   useEffect(() => {
@@ -80,11 +82,14 @@ export function SelectStoreProductDialog({
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        const res = await queryStoreSKUList({
+        const params: Parameters<typeof queryStoreSKUList>[0] = {
           customerId: String(customerId),
           pageNo,
           pageSize,
-        })
+        }
+        if (appliedSkuId.trim()) params.skuId = appliedSkuId.trim()
+        if (appliedProductName.trim()) params.productName = appliedProductName.trim()
+        const res = await queryStoreSKUList(params)
         const data = res.data as Record<string, unknown> | undefined
         let rows: Record<string, unknown>[] = []
         let count = 0
@@ -115,19 +120,11 @@ export function SelectStoreProductDialog({
       }
     }
     void fetchData()
-  }, [open, customerId, pageNo, pageSize])
-
-  const filteredProducts = products.filter((item) => {
-    const skuNum = String(item.skuNumber ?? '')
-    const skuName = String(item.skuEName ?? '')
-    const matchesSku =
-      !skuId || skuNum.toLowerCase().includes(skuId.toLowerCase())
-    const matchesName =
-      !productName || skuName.toLowerCase().includes(productName.toLowerCase())
-    return matchesSku && matchesName
-  })
+  }, [open, customerId, pageNo, pageSize, appliedSkuId, appliedProductName])
 
   const handleSearch = () => {
+    setAppliedSkuId(skuId)
+    setAppliedProductName(productName)
     setPageNo(1)
   }
 
@@ -141,9 +138,7 @@ export function SelectStoreProductDialog({
   const toggleProduct = (item: StoreProductItem) => {
     const key = String(item.skuNumber ?? item.id ?? '')
     setSelectedProducts((prev) => {
-      const exists = prev.some(
-        (p) => String(p.skuNumber ?? p.id ?? '') === key
-      )
+      const exists = prev.some((p) => String(p.skuNumber ?? p.id ?? '') === key)
       if (exists) {
         return prev.filter((p) => String(p.skuNumber ?? p.id ?? '') !== key)
       }
@@ -154,6 +149,8 @@ export function SelectStoreProductDialog({
   const handleClose = () => {
     setSkuId('')
     setProductName('')
+    setAppliedSkuId('')
+    setAppliedProductName('')
     setSelectedProducts([])
     setProducts([])
     setTotalCount(0)
@@ -193,7 +190,7 @@ export function SelectStoreProductDialog({
               />
             </div>
           </div>
-          {/* <div className='flex-1 space-y-2'>
+          <div className='flex-1 space-y-2'>
             <Label htmlFor='product-name'>Product Name</Label>
             <div className='relative'>
               <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
@@ -210,7 +207,7 @@ export function SelectStoreProductDialog({
                 className='pl-9'
               />
             </div>
-          </div> */}
+          </div>
           <div className='flex gap-2'>
             <Button
               onClick={handleSearch}
@@ -227,7 +224,8 @@ export function SelectStoreProductDialog({
               className='bg-orange-500 text-white hover:bg-orange-600'
               disabled={selectedProducts.length === 0}
             >
-              Confirm {selectedProducts.length > 0 && `(${selectedProducts.length})`}
+              Confirm{' '}
+              {selectedProducts.length > 0 && `(${selectedProducts.length})`}
             </Button>
           </div>
         </div>
@@ -242,62 +240,62 @@ export function SelectStoreProductDialog({
             <div className='flex items-center justify-center py-12'>
               <Loader2 className='text-muted-foreground h-8 w-8 animate-spin' />
             </div>
-          ) : filteredProducts.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className='text-muted-foreground py-12 text-center'>
               No store products found
             </div>
           ) : (
             <div className='grid grid-cols-5 gap-4'>
-              {filteredProducts.map((item, idx) => {
+              {products.map((item, idx) => {
                 const key = String(item.skuNumber ?? item.id ?? idx)
                 const isSelected = selectedProducts.some(
                   (p) => String(p.skuNumber ?? p.id ?? '') === key
                 )
                 return (
-                <div
-                  key={key}
-                  onClick={() => toggleProduct(item)}
-                  className={`relative cursor-pointer rounded-lg border bg-white p-3 transition-all ${
-                    isSelected
-                      ? 'border-orange-500 ring-2 ring-orange-500'
-                      : 'border-gray-200 hover:shadow-md'
-                  }`}
-                >
-                  {isSelected && (
-                    <div className='absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-white'>
-                      <Check className='h-3 w-3' strokeWidth={3} />
-                    </div>
-                  )}
-                  <div className='relative mb-3 aspect-square overflow-hidden rounded border border-gray-200 bg-gray-50'>
-                    {item.picture ? (
-                      <img
-                        src={resolvePictureUrl(item.picture)}
-                        alt={String(item.skuEName ?? '')}
-                        className='h-full w-full object-contain'
-                        referrerPolicy='no-referrer'
-                        onError={(e) => {
-                          e.currentTarget.onerror = null
-                          e.currentTarget.src =
-                            'data:image/svg+xml,' +
-                            encodeURIComponent(
-                              '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="#f0f0f0" width="100" height="100"/><text x="50" y="55" fill="#999" font-size="12" text-anchor="middle">No Image</text></svg>'
-                            )
-                        }}
-                      />
-                    ) : (
-                      <div className='flex h-full w-full items-center justify-center text-xs text-gray-400'>
-                        No Image
+                  <div
+                    key={key}
+                    onClick={() => toggleProduct(item)}
+                    className={`relative cursor-pointer rounded-lg border bg-white p-3 transition-all ${
+                      isSelected
+                        ? 'border-orange-500 ring-2 ring-orange-500'
+                        : 'border-gray-200 hover:shadow-md'
+                    }`}
+                  >
+                    {isSelected && (
+                      <div className='absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-white'>
+                        <Check className='h-3 w-3' strokeWidth={3} />
                       </div>
                     )}
+                    <div className='relative mb-3 aspect-square overflow-hidden rounded border border-gray-200 bg-gray-50'>
+                      {item.picture ? (
+                        <img
+                          src={resolvePictureUrl(item.picture)}
+                          alt={String(item.skuEName ?? '')}
+                          className='h-full w-full object-contain'
+                          referrerPolicy='no-referrer'
+                          onError={(e) => {
+                            e.currentTarget.onerror = null
+                            e.currentTarget.src =
+                              'data:image/svg+xml,' +
+                              encodeURIComponent(
+                                '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="#f0f0f0" width="100" height="100"/><text x="50" y="55" fill="#999" font-size="12" text-anchor="middle">No Image</text></svg>'
+                              )
+                          }}
+                        />
+                      ) : (
+                        <div className='flex h-full w-full items-center justify-center text-xs text-gray-400'>
+                          No Image
+                        </div>
+                      )}
+                    </div>
+                    <div className='line-clamp-2 max-h-[2.5rem] overflow-hidden text-xs leading-tight font-medium text-gray-900'>
+                      {String(item.skuEName ?? '')}
+                    </div>
+                    <div className='font-mono text-[14px] text-gray-600'>
+                      {String(item.skuNumber ?? '')}
+                    </div>
                   </div>
-                  <div className='line-clamp-2 max-h-[2.5rem] overflow-hidden text-xs leading-tight font-medium text-gray-900'>
-                    {String(item.skuEName ?? '')}
-                  </div>
-                  <div className='font-mono text-[14px] text-gray-600'>
-                    {String(item.skuNumber ?? '')}
-                  </div>
-                </div>
-              )
+                )
               })}
             </div>
           )}

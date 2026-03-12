@@ -267,7 +267,7 @@ export async function walletCallback(
 ): Promise<WalletCallbackResponse> {
   const response = await apiClient.post<WalletCallbackResponse>(
     '/v2/hzkj/hzkj_customer/wallet/callback',
-    { session_id: sessionId }
+    { sessionId: sessionId }
   )
   if (response.data?.status === false) {
     throw new Error(response.data.message || 'Wallet payment callback failed.')

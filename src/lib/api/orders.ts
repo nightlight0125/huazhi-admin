@@ -250,8 +250,6 @@ export async function queryOrder(
     '/v2/hzkj/hzkj_ordercenter/order/queryOrder',
     params
   )
-  console.log('queryOrder response:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -940,7 +938,7 @@ export interface PaymentCallbackResponse {
 export async function paymentCallback(sessionId: string): Promise<PaymentCallbackResponse> {
   const response = await apiClient.post<PaymentCallbackResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/paymentCallback',
-    { session_id: sessionId }
+    { sessionId: sessionId }
   )
   if (response.data?.status === false) {
     throw new Error(response.data.message || 'Payment callback failed.')
@@ -1085,7 +1083,6 @@ export interface ApiInvoiceRecordItem {
 // 获取 Invoice Records 请求参数
 export interface GetInvoiceRecordsRequest {
   data: {
-    hzkj_orderstatus: string
     hzkj_customer_id: string
     // 可选的时间范围过滤字段
     hzkj_datetimefield_start?: string
@@ -1117,18 +1114,14 @@ export async function getInvoiceRecords(
   customerId: string,
   pageNo: number = 1,
   pageSize: number = 10,
-  // 可选的时间范围参数，当输入日期时由前端传入
   hzkj_datetimefield_start?: string,
   hzkj_datetimefield_end?: string,
-  // 可选的 Clients Order Number（搜索框）
   hzkj_source_number?: string
 ): Promise<{ rows: ApiInvoiceRecordItem[]; totalCount: number }> {
   const data: GetInvoiceRecordsRequest['data'] = {
-    hzkj_orderstatus: '0',
     hzkj_customer_id: customerId,
   }
 
-  // 如果有日期过滤条件，则附加到请求数据中
   if (hzkj_datetimefield_start) {
     data.hzkj_datetimefield_start = hzkj_datetimefield_start
   }
@@ -1145,27 +1138,18 @@ export async function getInvoiceRecords(
     pageNo,
   }
 
-  console.log('获取 Invoice Records 请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<GetInvoiceRecordsResponse>(
     '/v2/hzkj/hzkj_ordercenter/hzkj_orders/getInvoiceRecords',
     requestData
   )
 
-  console.log('获取 Invoice Records 响应:', response.data)
-
-  // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to get invoice records. Please try again.'
     throw new Error(errorMessage)
   }
-
-  // 返回数据
   const rows = response.data.data?.rows || []
   const totalCount = response.data.data?.totalCount || 0
-
-  console.log('获取 Invoice Records 响应数据1111111111:', rows)
 
   return {
     rows: Array.isArray(rows) ? rows : [],

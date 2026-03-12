@@ -1,11 +1,9 @@
-import { DataTableColumnHeader } from '@/components/data-table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { type ApiInvoiceRecordItem } from '@/lib/api/orders'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Download, Eye, FileText } from 'lucide-react'
-import { walletRecordStatuses } from '../data/data'
+import { type ApiInvoiceRecordItem } from '@/lib/api/orders'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { DataTableColumnHeader } from '@/components/data-table'
 import { type WalletRecord } from '../data/schema'
 
 // Invoice Records 的列定义（4列：Clients Order Number, Price, Date, Status）
@@ -41,11 +39,7 @@ export const createInvoiceColumns = (): ColumnDef<ApiInvoiceRecordItem>[] => [
     ),
     cell: ({ row }) => {
       const value = row.original.hzkj_source_number as string | undefined
-      return (
-        <div className='text-sm'>
-          {value || '-'}
-        </div>
-      )
+      return <div className='text-sm'>{value || '-'}</div>
     },
   },
   {
@@ -59,7 +53,7 @@ export const createInvoiceColumns = (): ColumnDef<ApiInvoiceRecordItem>[] => [
         return <span className='text-muted-foreground'>-</span>
       }
       return (
-        <div className='font-medium text-sm'>
+        <div className='text-sm font-medium'>
           {new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD',
@@ -78,7 +72,7 @@ export const createInvoiceColumns = (): ColumnDef<ApiInvoiceRecordItem>[] => [
       if (!dateStr) {
         return <span className='text-muted-foreground'>-</span>
       }
-      
+
       try {
         const date = new Date(dateStr)
         if (isNaN(date.getTime())) {
@@ -107,11 +101,7 @@ export const createInvoiceColumns = (): ColumnDef<ApiInvoiceRecordItem>[] => [
     ),
     cell: ({ row }) => {
       const status = row.original.normal as string | undefined
-      return (
-        <div className='text-sm'>
-          {status || '-'}
-        </div>
-      )
+      return <div className='text-sm'>{status || '-'}</div>
     },
   },
 ]
@@ -237,37 +227,8 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
       <DataTableColumnHeader column={column} title='status' />
     ),
     cell: ({ row }) => {
-      const status = walletRecordStatuses.find(
-        (status) => status.value === row.getValue('status')
-      )
-
-      if (!status) {
-        return null
-      }
-
-      // 状态样式映射
-      const statusClassNameMap: Record<string, string> = {
-        pending:
-          'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white',
-        completed:
-          'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white',
-        failed:
-          'border-transparent bg-red-500 text-white dark:bg-red-500 dark:text-white',
-        cancelled:
-          'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-      }
-
-      const statusClassName =
-        statusClassNameMap[status.value] ||
-        'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-
-      return (
-        <div className='flex w-[100px] items-center gap-2'>
-          <Badge variant='outline' className={statusClassName}>
-            {status.label}
-          </Badge>
-        </div>
-      )
+      const status = row.original.hzkj_status ?? '---'
+      return String(status)
     },
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id))

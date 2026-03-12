@@ -80,6 +80,7 @@ function mapApiWalletItemToWalletRecord(
     // notes 列已删除，这里保持为空字符串但不展示
     notes: '',
     status,
+    hzkj_status: item.hzkj_status,
     createdAt: date,
     updatedAt: date,
   }

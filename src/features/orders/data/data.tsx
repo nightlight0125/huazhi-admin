@@ -20,15 +20,15 @@ export const orderStatuses = [
     value: '2' as const,
   },
   {
-    label: 'processing',
+    label: 'Processing',
     value: '3' as const,
   },
   {
-    label: 'shipped',
+    label: 'Shipped',
     value: '4' as const,
   },
   {
-    label: 'cancelled',
+    label: 'Cancelled',
     value: '0' as const,
   },
 ]
@@ -49,22 +49,22 @@ export const platformOrderStatuses = [
 // 平台履行状态选项
 export const platformFulfillmentStatuses = [
   {
-    label: '未履行',
+    label: 'Unfulfilled',
     value: 'unfulfilled' as const,
     icon: Clock,
   },
   {
-    label: '部分履行',
+    label: 'Partial',
     value: 'partial' as const,
     icon: AlertCircle,
   },
   {
-    label: '已履行',
+    label: 'Fulfilled',
     value: 'fulfilled' as const,
     icon: CheckCircle,
   },
   {
-    label: '已补货',
+    label: 'Restocked',
     value: 'restocked' as const,
     icon: Package,
   },
@@ -73,27 +73,27 @@ export const platformFulfillmentStatuses = [
 // 物流状态选项
 export const logisticsStatuses = [
   {
-    label: '待处理',
+    label: 'Pending',
     value: 'pending' as const,
     icon: Clock,
   },
   {
-    label: '已取件',
+    label: 'Picked Up',
     value: 'picked_up' as const,
     icon: Package,
   },
   {
-    label: '运输中',
+    label: 'In Transit',
     value: 'in_transit' as const,
     icon: Truck,
   },
   {
-    label: '已送达',
+    label: 'Delivered',
     value: 'delivered' as const,
     icon: CheckCircle,
   },
   {
-    label: '异常',
+    label: 'Exception',
     value: 'exception' as const,
     icon: AlertCircle,
   },

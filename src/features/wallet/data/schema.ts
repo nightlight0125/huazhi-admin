@@ -17,6 +17,7 @@ export const walletRecordSchema = z.object({
   cashback: z.number().optional(), // 返现
   notes: z.string().optional(), // 备注
   status: walletRecordStatusSchema, // 充值状态
+  hzkj_status: z.string().optional(), // 后端原始状态，直接展示
   createdAt: z.date(), // 创建时间
   updatedAt: z.date(), // 更新时间
   // 其他字段（保持向后兼容）

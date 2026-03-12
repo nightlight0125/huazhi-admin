@@ -89,10 +89,10 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     const pageIndex = pagination.pageIndex ?? 0
     const pageSize = pagination.pageSize ?? 10
 
-    const shopOrderStatus =
+    const orderStatus =
       activeTab && activeTab !== '' ? String(activeTab) : undefined
 
-    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopOrderStatus || ''}-${refreshKey}`
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${orderStatus || ''}-${refreshKey}`
 
     if (lastRequestParamsRef.current === requestKey) {
       return
@@ -109,7 +109,7 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
         str: globalFilter || '',
         pageIndex,
         pageSize,
-        shopOrderStatus,
+        orderStatus,
       })
 
       setData(response.orders as any)
@@ -260,14 +260,6 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-  if (isLoading) {
-    return (
-      <div className='flex h-96 items-center justify-center'>
-        <p className='text-muted-foreground text-sm'>Loading stock orders...</p>
-      </div>
-    )
-  }
-
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <DataTableToolbar
@@ -322,9 +314,9 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
             }, 0)
 
             return (
-              <div className='flex items-center justify-start gap-4 border-b border-border bg-card px-4 py-3'>
+              <div className='border-border bg-card flex items-center justify-start gap-4 border-b px-4 py-3'>
                 <div className='flex flex-col items-start'>
-                  <div className='text-sm text-foreground'>
+                  <div className='text-foreground text-sm'>
                     Total Amount:{' '}
                     <span className='font-medium'>
                       {selectedCount > 0 ? `$${totalAmount.toFixed(2)}` : '---'}
@@ -375,7 +367,16 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className='text-muted-foreground h-24 text-center'
+                    >
+                      Loading stock orders...
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => {
                     return (
                       <TableRow

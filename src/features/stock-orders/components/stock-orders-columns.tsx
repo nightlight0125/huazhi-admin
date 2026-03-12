@@ -285,17 +285,17 @@ export const createStockOrdersColumns = (options?: {
         // 状态映射
         const statusMap: Record<string, { label: string; color: string }> = {
           '0': {
-            label: '取消',
+            label: 'Cancelled',
             color:
               'border-transparent bg-red-500 text-white dark:bg-red-500/25 dark:text-red-400',
           },
           '1': {
-            label: '待支付',
+            label: 'Pending',
             color:
               'border-transparent bg-orange-500 text-white dark:bg-orange-500/25 dark:text-orange-400',
           },
           '2': {
-            label: '已支付',
+            label: 'Paid',
             color:
               'border-transparent bg-green-500 text-white dark:bg-green-500/25 dark:text-green-400',
           },
