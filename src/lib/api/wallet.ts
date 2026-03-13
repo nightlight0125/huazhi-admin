@@ -274,3 +274,41 @@ export async function walletCallback(
   }
   return response.data ?? {}
 }
+
+/** 后端返回 data 为 base64 字符串（无 data:application/pdf;base64, 前缀），转为 Blob 供下载 */
+function base64ToPdfBlob(base64: string): Blob {
+  const binaryString = atob(base64)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  return new Blob([bytes], { type: 'application/pdf' })
+}
+
+/** 获取发票/充值记录 PDF 批量下载。type: "1"-充值记录, "2"-发票记录。后端返回 data 为 base64 字符串 */
+export async function getInvoicePdf(
+  customerId: string,
+  ids: string[],
+  type: '1' | '2'
+): Promise<Blob> {
+  const response = await apiClient.post<{
+    data?: string
+    status?: boolean
+    message?: string | null
+    errorCode?: string
+  }>('/v2/hzkj/hzkj_customer/invoice/getInvoicePdf', {
+    customerId,
+    ids,
+    type,
+  })
+  if (response.data?.status === false) {
+    throw new Error(
+      response.data.message || 'Failed to get invoice PDF. Please try again.'
+    )
+  }
+  const base64 = response.data?.data
+  if (typeof base64 !== 'string' || !base64) {
+    throw new Error('Invalid PDF response from server')
+  }
+  return base64ToPdfBlob(base64)
+}

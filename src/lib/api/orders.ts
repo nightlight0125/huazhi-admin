@@ -1073,6 +1073,7 @@ export async function queryAfterSaleOrders(
 
 // Invoice Records 项（API返回的数据结构）
 export interface ApiInvoiceRecordItem {
+  id?: string // 记录 ID，用于 getInvoicePdf 等接口
   hzkj_source_number?: string // 客户订单号
   hzkj_order_amount?: number // 订单金额
   hzkj_datetimefield?: string // 日期时间

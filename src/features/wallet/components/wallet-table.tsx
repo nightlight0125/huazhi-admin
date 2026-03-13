@@ -11,7 +11,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { getInvoiceRecords, type ApiInvoiceRecordItem } from '@/lib/api/orders'
-import { getWalletList, type ApiFundRecordItem } from '@/lib/api/wallet'
+import {
+  getInvoicePdf,
+  getWalletList,
+  type ApiFundRecordItem,
+} from '@/lib/api/wallet'
 import { useAuthStore } from '@/stores/auth-store'
 import { getRouteApi } from '@tanstack/react-router'
 import {
@@ -23,7 +27,7 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { walletRecordTypes } from '../data/data'
 import { type WalletRecord, type WalletRecordType } from '../data/schema'
@@ -114,6 +118,7 @@ export function WalletTable({ data }: DataTableProps) {
   } | null>(null)
   // Invoice Records 的搜索（Clients Order Number），使用本地状态，避免重复请求
   const [invoiceSearch, setInvoiceSearch] = useState<string>('')
+  const [isDownloading, setIsDownloading] = useState(false)
 
   // 避免开发环境 StrictMode 导致的重复请求
   const lastRechargeRequestKeyRef = useRef<string | null>(null)
@@ -345,6 +350,51 @@ export function WalletTable({ data }: DataTableProps) {
   const columns =
     activeTab === 'invoice' ? createInvoiceColumns() : createWalletColumns()
 
+  const handleDownloadBatch = useCallback(
+    async (tableRef: ReturnType<typeof useReactTable<any>>) => {
+      const customerId = auth.user?.customerId
+      if (!customerId) {
+        toast.error('Customer ID not found')
+        return
+      }
+      const selectedRows = tableRef.getFilteredSelectedRowModel().rows
+      if (selectedRows.length === 0) {
+        toast.error('Please select at least one record to download')
+        return
+      }
+      const ids = selectedRows
+        .map((row) => (row.original as { id?: string }).id)
+        .filter((id): id is string => !!id)
+      if (ids.length === 0) {
+        toast.error('Selected records have no valid IDs')
+        return
+      }
+      setIsDownloading(true)
+      try {
+        const type = activeTab === 'recharge' ? '1' : '2'
+        const blob = await getInvoicePdf(String(customerId), ids, type)
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `invoice-${activeTab}-${Date.now()}.pdf`
+        a.click()
+        URL.revokeObjectURL(url)
+        toast.success(`Downloaded ${ids.length} record(s)`)
+        tableRef.resetRowSelection()
+      } catch (error) {
+        console.error('Failed to download PDF:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to download. Please try again.'
+        )
+      } finally {
+        setIsDownloading(false)
+      }
+    },
+    [auth.user?.customerId, activeTab]
+  )
+
   // 这里同时支持两种数据结构（WalletRecord 和 ApiInvoiceRecordItem），
   // 为了简化类型推导，使用 any 让 Table 以运行时数据为准
   const table = useReactTable<any>({
@@ -435,11 +485,10 @@ export function WalletTable({ data }: DataTableProps) {
             <Button
               variant='outline'
               className='space-x-2'
-              onClick={() => {
-                console.log('Export wallet records (current tab):', activeTab)
-              }}
+              disabled={isDownloading}
+              onClick={() => handleDownloadBatch(table)}
             >
-              Download Batch
+              {isDownloading ? 'Downloading...' : 'Download Batch'}
             </Button>
           </div>
 

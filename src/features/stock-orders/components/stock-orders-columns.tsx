@@ -243,13 +243,13 @@ export const createStockOrdersColumns = (options?: {
       header: ' Total Amount',
       cell: ({ row }) => {
         const order = row.original as any
-        // 使用后端返回的 hzkj_amount 字段
+        // 使用后端返回的 hzkj_order_amount 字段
         const amount =
-          order.hzkj_amount != null
-            ? typeof order.hzkj_amount === 'string'
-              ? parseFloat(order.hzkj_amount) || 0
-              : typeof order.hzkj_amount === 'number'
-                ? order.hzkj_amount
+          order.hzkj_order_amount != null
+            ? typeof order.hzkj_order_amount === 'string'
+              ? parseFloat(order.hzkj_order_amount) || 0
+              : typeof order.hzkj_order_amount === 'number'
+                ? order.hzkj_order_amount
                 : 0
             : 0
 

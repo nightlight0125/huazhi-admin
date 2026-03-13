@@ -1,5 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Download, Eye, FileText } from 'lucide-react'
+import { Download, FileText } from 'lucide-react'
 import { type ApiInvoiceRecordItem } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -241,19 +241,6 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
 
       return (
         <div className='flex gap-2'>
-          <Button
-            variant='outline'
-            size='sm'
-            className='h-7 px-2 text-xs'
-            onClick={(e) => {
-              e.stopPropagation()
-              console.log('View wallet record details:', record.id)
-              // TODO: 在这里打开详情对话框或侧边栏
-            }}
-          >
-            <Eye className='mr-1 h-3.5 w-3.5' />
-          </Button>
-
           {record.type === 'invoice' && record.invoiceUrl && (
             <Button
               variant='outline'

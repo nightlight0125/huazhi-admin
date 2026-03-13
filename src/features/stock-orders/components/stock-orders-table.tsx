@@ -144,38 +144,55 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     }
   }, [fetchOrders])
 
+  const getOrderAmount = (order: any) => {
+    if (order.hzkj_order_amount !== undefined) {
+      const amount = order.hzkj_order_amount
+      return typeof amount === 'string'
+        ? parseFloat(amount) || 0
+        : typeof amount === 'number'
+          ? amount
+          : 0
+    }
+    if (order.hzkj_amount !== undefined) {
+      const amount = order.hzkj_amount
+      return typeof amount === 'string'
+        ? parseFloat(amount) || 0
+        : typeof amount === 'number'
+          ? amount
+          : 0
+    }
+    if (order.cost?.total !== undefined) {
+      return typeof order.cost.total === 'number'
+        ? order.cost.total
+        : parseFloat(String(order.cost.total)) || 0
+    }
+    return 0
+  }
+
   const handlePay = (orderId: string) => {
     const order = data.find((o) => o.id === orderId) as any
     if (order) {
       setSelectedOrderForPayment({
         id: order.id,
-        getTotalAmount: () => {
-          if (order.hzkj_order_amount !== undefined) {
-            const amount = order.hzkj_order_amount
-            return typeof amount === 'string'
-              ? parseFloat(amount) || 0
-              : typeof amount === 'number'
-                ? amount
-                : 0
-          }
-          if (order.hzkj_amount !== undefined) {
-            const amount = order.hzkj_amount
-            return typeof amount === 'string'
-              ? parseFloat(amount) || 0
-              : typeof amount === 'number'
-                ? amount
-                : 0
-          }
-          if (order.cost?.total !== undefined) {
-            return typeof order.cost.total === 'number'
-              ? order.cost.total
-              : parseFloat(String(order.cost.total)) || 0
-          }
-          return 0
-        },
+        getTotalAmount: () => getOrderAmount(order),
       })
       setPayDialogOpen(true)
     }
+  }
+
+  const handleBatchPay = (selectedRows: { original: any }[]) => {
+    if (selectedRows.length === 0) return
+    const orderIds = selectedRows.map((r) => r.original.id)
+    const totalAmount = selectedRows.reduce(
+      (sum, row) => sum + getOrderAmount(row.original),
+      0
+    )
+    setSelectedOrderForPayment({
+      id: orderIds[0],
+      getTotalAmount: () => totalAmount,
+      orderIds,
+    })
+    setPayDialogOpen(true)
   }
 
   const handleEditAddress = (orderId: string) => {
@@ -286,32 +303,10 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
           {(() => {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             const selectedCount = selectedRows.length
-            const totalAmount = selectedRows.reduce((sum, row) => {
-              const order = row.original as any
-
-              // 优先使用后端返回的 hzkj_order_amount 字段
-              if (order.hzkj_order_amount !== undefined) {
-                const amount = order.hzkj_order_amount
-                const total =
-                  typeof amount === 'string'
-                    ? parseFloat(amount) || 0
-                    : typeof amount === 'number'
-                      ? amount
-                      : 0
-                return sum + total
-              }
-
-              // 如果没有 hzkj_order_amount，使用 cost.total
-              if (order.cost?.total !== undefined) {
-                const total =
-                  typeof order.cost.total === 'number'
-                    ? order.cost.total
-                    : parseFloat(String(order.cost.total)) || 0
-                return sum + total
-              }
-
-              return sum
-            }, 0)
+            const totalAmount = selectedRows.reduce(
+              (sum, row) => sum + getOrderAmount(row.original),
+              0
+            )
 
             return (
               <div className='border-border bg-card flex items-center justify-start gap-4 border-b px-4 py-3'>
@@ -330,10 +325,7 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      const firstOrderId = selectedRows[0]?.original.id
-                      if (firstOrderId) {
-                        handlePay(firstOrderId)
-                      }
+                      handleBatchPay(selectedRows)
                     }
                   }}
                   disabled={selectedCount === 0}
