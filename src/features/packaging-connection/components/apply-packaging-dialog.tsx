@@ -19,6 +19,8 @@ interface ApplyPackagingDialogProps {
   onOpenChange: (open: boolean) => void
   storeSku: StoreSku | null
   onConfirm?: (selectedProducts: PackagingProduct[]) => void
+  /** Order tab 的 Add New Packaging 模式下隐藏产品详情区域 */
+  hideProductDetails?: boolean
 }
 
 export function ApplyPackagingDialog({
@@ -26,6 +28,7 @@ export function ApplyPackagingDialog({
   onOpenChange,
   storeSku,
   onConfirm,
+  hideProductDetails = false,
 }: ApplyPackagingDialogProps) {
   const [skuSearch, setSkuSearch] = useState('')
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
@@ -240,7 +243,8 @@ export function ApplyPackagingDialog({
         </div>
 
         <div className='flex-1 space-y-6 overflow-y-auto px-4 py-4'>
-          {/* 产品详情区域 */}
+          {/* 产品详情区域 - Order 的 Add New Packaging 模式下不展示 */}
+          {!hideProductDetails && (
           <div className='bg-muted/50 space-y-3 rounded-lg p-4'>
             <div className='flex items-center gap-3'>
               <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
@@ -282,6 +286,7 @@ export function ApplyPackagingDialog({
               </div>
             </div>
           </div>
+          )}
 
           {/* 包装产品类型选择区域 */}
           <div className='space-y-2'>

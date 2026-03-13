@@ -1,7 +1,7 @@
 import { type ImgHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
-const logoSrc = new URL('./HyperZoneLOGO.png', import.meta.url).toString()
+const logoSrc = new URL('./HyperZoneLOGO.svg', import.meta.url).toString()
 
 export function Logo({
   className,

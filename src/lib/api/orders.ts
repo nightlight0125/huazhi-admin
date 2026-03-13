@@ -250,8 +250,6 @@ export async function queryOrder(
     '/v2/hzkj/hzkj_ordercenter/order/queryOrder',
     params
   )
-  console.log('queryOrder response:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -309,6 +307,52 @@ export async function orderStatistics(
   }
 
   return response.data.data || {}
+}
+
+// 创建订单（addBTOrder）请求体，对齐 addBTOrder 接口
+export interface AddBTOrderRequest {
+  orderVo: {
+    customerId: string
+    shopId: string
+    orderNumber: string
+    customerName: string
+    countryId: string
+    admindivisionId?: string
+    city: string
+    address1: string
+    phone: string
+    email?: string
+    postCode: string
+    taxId?: string
+    detail: Array<{ skuId: string; quantity: number }>
+  }
+}
+
+// 创建订单响应
+export interface AddBTOrderResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 创建订单 API（addBTOrder）
+export async function addBTOrder(
+  params: AddBTOrderRequest
+): Promise<AddBTOrderResponse> {
+  const response = await apiClient.post<AddBTOrderResponse>(
+    '/v2/hzkj/hzkj_customer/order/addBTOrder',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to create order. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
 }
 
 // 删除订单请求参数
@@ -816,11 +860,14 @@ export interface RequestPaymentResponse {
 export async function requestPayment(
   request: RequestPaymentRequest
 ): Promise<RequestPaymentResponse> {
-  // 在浏览器环境下，附加当前页面作为回调地址
+  // 在浏览器环境下，附加带有 session_id 占位符的回调地址
+  // 支付服务商会将 {CHECKOUT_SESSION_ID} 替换为真实的会话 ID，并重定向回该地址
   const payload: RequestPaymentRequest = {
     ...request,
-    ...(typeof window !== 'undefined'
-      ? { returnUrl: window.location.href }
+    ...(typeof window !== 'undefined' && !request.returnUrl
+      ? {
+          returnUrl: `${window.location.origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`,
+        }
       : {}),
   }
 
@@ -891,8 +938,7 @@ export interface PaymentCallbackResponse {
 export async function paymentCallback(sessionId: string): Promise<PaymentCallbackResponse> {
   const response = await apiClient.post<PaymentCallbackResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/paymentCallback',
-    {},
-    { params: { session_id: sessionId } }
+    { sessionId: sessionId }
   )
   if (response.data?.status === false) {
     throw new Error(response.data.message || 'Payment callback failed.')
@@ -1027,6 +1073,7 @@ export async function queryAfterSaleOrders(
 
 // Invoice Records 项（API返回的数据结构）
 export interface ApiInvoiceRecordItem {
+  id?: string // 记录 ID，用于 getInvoicePdf 等接口
   hzkj_source_number?: string // 客户订单号
   hzkj_order_amount?: number // 订单金额
   hzkj_datetimefield?: string // 日期时间
@@ -1037,7 +1084,6 @@ export interface ApiInvoiceRecordItem {
 // 获取 Invoice Records 请求参数
 export interface GetInvoiceRecordsRequest {
   data: {
-    hzkj_orderstatus: string
     hzkj_customer_id: string
     // 可选的时间范围过滤字段
     hzkj_datetimefield_start?: string
@@ -1069,18 +1115,14 @@ export async function getInvoiceRecords(
   customerId: string,
   pageNo: number = 1,
   pageSize: number = 10,
-  // 可选的时间范围参数，当输入日期时由前端传入
   hzkj_datetimefield_start?: string,
   hzkj_datetimefield_end?: string,
-  // 可选的 Clients Order Number（搜索框）
   hzkj_source_number?: string
 ): Promise<{ rows: ApiInvoiceRecordItem[]; totalCount: number }> {
   const data: GetInvoiceRecordsRequest['data'] = {
-    hzkj_orderstatus: '0',
     hzkj_customer_id: customerId,
   }
 
-  // 如果有日期过滤条件，则附加到请求数据中
   if (hzkj_datetimefield_start) {
     data.hzkj_datetimefield_start = hzkj_datetimefield_start
   }
@@ -1097,27 +1139,18 @@ export async function getInvoiceRecords(
     pageNo,
   }
 
-  console.log('获取 Invoice Records 请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<GetInvoiceRecordsResponse>(
     '/v2/hzkj/hzkj_ordercenter/hzkj_orders/getInvoiceRecords',
     requestData
   )
 
-  console.log('获取 Invoice Records 响应:', response.data)
-
-  // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to get invoice records. Please try again.'
     throw new Error(errorMessage)
   }
-
-  // 返回数据
   const rows = response.data.data?.rows || []
   const totalCount = response.data.data?.totalCount || 0
-
-  console.log('获取 Invoice Records 响应数据1111111111:', rows)
 
   return {
     rows: Array.isArray(rows) ? rows : [],

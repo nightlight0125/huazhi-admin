@@ -1,14 +1,13 @@
 import { faker } from '@faker-js/faker'
 import { type Order, type OrderStatus } from './schema'
-import { 
-  orderStatuses, 
-  platformOrderStatuses, 
-  platformFulfillmentStatuses, 
+import {
+  orderStatuses,
+  platformFulfillmentStatuses,
   // logisticsStatuses,
   stores,
   logistics,
   shippingOrigins,
-  countries
+  countries,
 } from './data'
 
 // Set a fixed seed for consistent data generation
@@ -19,7 +18,9 @@ export const orders: Order[] = Array.from({ length: 100 }, () => {
   const orderStatus = faker.helpers
     .arrayElement(orderStatuses.slice(1))
     .value as OrderStatus
-  const platformOrderStatus = faker.helpers.arrayElement(platformOrderStatuses).value
+  const platformOrderStatus = faker.helpers
+    .arrayElement(orderStatuses.filter((s) => s.value !== ''))
+    .value as '0' | '1' | '2' | '3' | '4' | 'no'
   const platformFulfillmentStatus = faker.helpers.arrayElement(platformFulfillmentStatuses).value
   // const logisticsStatus = faker.helpers.arrayElement(logisticsStatuses).value
   const store = faker.helpers.arrayElement(stores)

@@ -131,6 +131,89 @@ export interface GetCollectProductsListResponse {
   [key: string]: unknown
 }
 
+// 获取收藏 SKU 列表请求参数
+export interface GetCollectSKUsListRequest {
+  customerId: string
+  pageSize: number
+  pageNo: number
+  nameOrCode?: string
+  startDate?: string
+  endDate?: string
+}
+
+// 获取收藏 SKU 列表响应
+// 返回 data 中项字段与表单映射：Product Name<-spuName, Product Pic Url<-pic
+// Product Variants/Quantity/Product Link 无对应后端字段
+export interface GetCollectSKUsListResponse {
+  data?: {
+    data?: Array<{ spuName?: string; pic?: string; [key: string]: unknown }>
+    rows?: Array<{ spuName?: string; pic?: string; [key: string]: unknown }>
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 获取收藏 SKU 列表 API
+export async function getCollectSKUsList(
+  params: GetCollectSKUsListRequest
+): Promise<GetCollectSKUsListResponse> {
+  const response = await apiClient.post<GetCollectSKUsListResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getCollectSKUsList',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to get collected SKUs list. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 查询店铺产品列表请求参数
+export interface QueryStoreSKUListRequest {
+  customerId: string
+  pageNo: number
+  pageSize: number
+  /** 有值时传，无值不传 */
+  skuId?: string
+  /** 有值时传，无值不传 */
+  productName?: string
+}
+
+// 查询店铺产品列表响应
+export interface QueryStoreSKUListResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询店铺产品列表 API
+export async function queryStoreSKUList(
+  params: QueryStoreSKUListRequest
+): Promise<QueryStoreSKUListResponse> {
+  const response = await apiClient.post<QueryStoreSKUListResponse>(
+    '/v2/hzkj/hzkj_commodity/products/queryStoreSKUList',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to get store products list. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 获取收藏产品列表 API
 export async function getCollectProductsList(
   params: GetCollectProductsListRequest
@@ -459,6 +542,7 @@ export async function addCuOdPdPackageAPI(
 // 获取产品详情请求参数
 export interface GetProductRequest {
   productId: string
+  customerId: string
 }
 
 // 获取产品详情响应
@@ -472,11 +556,12 @@ export interface GetProductResponse {
 
 // 获取产品详情 API
 export async function getProduct(
-  productId: string
+  productId: string,
+  customerId: string
 ): Promise<ApiProductItem | null> {
   const response = await apiClient.post<GetProductResponse>(
     '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getProduct',
-    { productId }
+    { productId, customerId }
   )
 
   console.log('获取产品详情响应:', response.data)

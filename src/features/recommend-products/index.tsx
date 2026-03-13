@@ -5,7 +5,7 @@ import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { getRecommendProductsList } from '@/lib/api/products'
 import { useAuthStore } from '@/stores/auth-store'
 import { getRouteApi } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ProductsTableWithToolbar } from '../liked-products/components/products-table-with-toolbar'
 import { createRecommendProductsColumns } from './components/recommend-products-columns'
@@ -23,7 +23,7 @@ export function RecommendProducts() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   // 获取分页状态和搜索状态（从 URL）
-  const { pagination, globalFilter } = useTableUrlState({
+  const { pagination, globalFilter, onGlobalFilterChange } = useTableUrlState({
     search,
     navigate: navigate as any,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
@@ -31,25 +31,47 @@ export function RecommendProducts() {
     columnFilters: [],
   })
 
+  const handleSearch = (searchValue: string) => {
+    onGlobalFilterChange?.(searchValue)
+  }
+
+  const lastRequestParamsRef = useRef<string>('')
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   useEffect(() => {
-    const fetchData = async () => {
-      const customerId = auth.user?.customerId
-      if (!customerId) {
-        setIsLoading(false)
-        return
-      }
+    const customerId = auth.user?.customerId
+    if (!customerId) return
 
-      const pageNo = pagination.pageIndex + 1
-      const pageSize = pagination.pageSize
+    const pageIndex = pagination.pageIndex
+    const pageSize = pagination.pageSize
+    const nameOrCode = globalFilter?.trim() || ''
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${nameOrCode}-${refreshKey}`
 
-      setIsLoading(true)
-      try {
-        const response = await getRecommendProductsList({
-          customerId: String(customerId),
-          pageSize,
-          pageNo,
-          nameOrCode: globalFilter || '',
-        })
+    if (lastRequestParamsRef.current === requestKey) return
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      const currentKey = `${customerId}-${pagination.pageIndex}-${pagination.pageSize}-${(globalFilter ?? '').trim()}-${refreshKey}`
+      if (lastRequestParamsRef.current === currentKey) return
+      lastRequestParamsRef.current = currentKey
+
+      const fetchData = async () => {
+        const pageNo = pagination.pageIndex + 1
+        const pageSizeVal = pagination.pageSize
+        const searchVal = (globalFilter ?? '').trim() || ''
+
+        setIsLoading(true)
+        try {
+          const response = await getRecommendProductsList({
+            customerId: String(customerId),
+            pageSize: pageSizeVal,
+            pageNo,
+            nameOrCode: searchVal,
+          })
 
         // 后端返回的数据在 data.data 中
         const apiProducts = response.data?.data || response.data?.products || []
@@ -91,6 +113,14 @@ export function RecommendProducts() {
     }
 
     void fetchData()
+    }, 250)
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
+    }
   }, [
     auth.user?.customerId,
     pagination.pageIndex,
@@ -123,6 +153,7 @@ export function RecommendProducts() {
             navigate={navigate}
             totalCount={totalCount}
             isLoading={isLoading}
+            onSearch={handleSearch}
           />
         </div>
       </Main>

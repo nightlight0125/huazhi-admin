@@ -212,15 +212,18 @@ export interface RequestWalletPaymentResponse {
   [key: string]: unknown
 }
 
-// 请求支付 API
+// 请求支付 API（参考订单支付，使用 session_id 回调格式）
 export async function requestWalletPayment(
   request: RequestWalletPaymentRequest
 ): Promise<RequestWalletPaymentResponse> {
-  // 在浏览器环境下，附加当前页面作为回调地址
+  // 在浏览器环境下，附加带有 session_id 占位符的回调地址
+  // 支付服务商会将 {CHECKOUT_SESSION_ID} 替换为真实的会话 ID，并重定向回该地址
   const payload: RequestWalletPaymentRequest = {
     ...request,
-    ...(typeof window !== 'undefined'
-      ? { returnUrl: window.location.href }
+    ...(typeof window !== 'undefined' && !request.returnUrl
+      ? {
+          returnUrl: `${window.location.origin}/wallet/paymentcallback?session_id={CHECKOUT_SESSION_ID}`,
+        }
       : {}),
   }
 
@@ -252,3 +255,60 @@ export async function requestWalletPayment(
   return response.data
 }
 
+// 钱包充值支付完成/失败后回调（携带 session_id）
+export interface WalletCallbackResponse {
+  status?: boolean
+  message?: string
+  [key: string]: unknown
+}
+
+export async function walletCallback(
+  sessionId: string
+): Promise<WalletCallbackResponse> {
+  const response = await apiClient.post<WalletCallbackResponse>(
+    '/v2/hzkj/hzkj_customer/wallet/callback',
+    { sessionId: sessionId }
+  )
+  if (response.data?.status === false) {
+    throw new Error(response.data.message || 'Wallet payment callback failed.')
+  }
+  return response.data ?? {}
+}
+
+/** 后端返回 data 为 base64 字符串（无 data:application/pdf;base64, 前缀），转为 Blob 供下载 */
+function base64ToPdfBlob(base64: string): Blob {
+  const binaryString = atob(base64)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  return new Blob([bytes], { type: 'application/pdf' })
+}
+
+/** 获取发票/充值记录 PDF 批量下载。type: "1"-充值记录, "2"-发票记录。后端返回 data 为 base64 字符串 */
+export async function getInvoicePdf(
+  customerId: string,
+  ids: string[],
+  type: '1' | '2'
+): Promise<Blob> {
+  const response = await apiClient.post<{
+    data?: string
+    status?: boolean
+    message?: string | null
+    errorCode?: string
+  }>('/v2/hzkj/hzkj_customer/invoice/getInvoicePdf', {
+    customerId,
+    ids,
+    type,
+  })
+  if (response.data?.status === false) {
+    throw new Error(
+      response.data.message || 'Failed to get invoice PDF. Please try again.'
+    )
+  }
+  const base64 = response.data?.data
+  if (typeof base64 !== 'string' || !base64) {
+    throw new Error('Invalid PDF response from server')
+  }
+  return base64ToPdfBlob(base64)
+}

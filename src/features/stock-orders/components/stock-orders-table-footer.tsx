@@ -44,7 +44,7 @@ export function StockOrdersTableFooter({
 
 
   return (
-    <div className='flex items-center justify-between border-t bg-white px-4 py-3'>
+    <div className='border-border bg-card flex items-center justify-between border-t px-4 py-3'>
       {/* Left: Selection checkboxes and count */}
       <div className='flex items-center gap-4'>
         <div className='flex items-center gap-2'>
@@ -80,7 +80,7 @@ export function StockOrdersTableFooter({
         </div>
         <div className='text-sm'>
           Selected:{' '}
-          <span className='font-semibold text-orange-500'>{selectedCount}</span>
+          <span className='font-semibold text-orange-500 dark:text-orange-400'>{selectedCount}</span>
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export function StockOrdersTableFooter({
         {pageNumbers.map((pageNumber, index) => (
           <div key={`${pageNumber}-${index}`} className='flex items-center'>
             {pageNumber === '...' ? (
-              <span className='px-2 text-sm text-gray-500'>...</span>
+              <span className='text-muted-foreground px-2 text-sm'>...</span>
             ) : (
               <Button
                 variant={currentPage === pageNumber ? 'default' : 'outline'}

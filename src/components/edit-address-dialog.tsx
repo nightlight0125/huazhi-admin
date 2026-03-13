@@ -15,33 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useWarehouses } from '@/hooks/use-warehouses'
 import {
   queryAdmindivision,
   queryAdmindivisionLevel,
-  type AdmindivisionItem,
-  type AdmindivisionLevelItem,
 } from '@/lib/api/users'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
-import countries from 'world-countries'
-
-type CountryOption = {
-  value: string
-  label: string
-  flagClass: string
-}
-
-const countryOptions: CountryOption[] = countries.map((country) => {
-  const code = country.cca2.toLowerCase()
-  const flagClass = `fi fi-${code}`
-
-  return {
-    value: country.cca2,
-    label: country.name.common,
-    flagClass,
-  }
-})
+import { useCountries } from '@/hooks/use-countries'
 
 export interface AddressData {
   customerName: string
@@ -81,30 +63,39 @@ interface EditAddressDialogProps {
     email?: string
     shippingOrigin?: string
     taxId?: string
+    countryId?: number
   }
   onConfirm: (addressData: AddressData) => void
 }
 
 // ---- Region data helpers (shared logic with address-form) ----
 
-// 缓存 levels 数据，避免重复请求
-const levelsCache = new Map<number, AdmindivisionLevelItem[]>()
-
-// 根据国家代码获取国家 ID（与 address-form 中保持一致的占位实现）
-const getCountryId = (countryCode: string): number | undefined => {
-  if (countryCode === 'CN') return 1000001
-  // 其他国家暂时也返回中国的 ID，占位实现，后续可按实际映射扩展
-  return 1000001
+// 根据选择的国家 value（来自 queryCountry 的 id 字段）返回数值型 countryId
+const getCountryId = (countryIdFromSelect: string): number | undefined => {
+  const num = Number(countryIdFromSelect)
+  if (Number.isNaN(num)) return undefined
+  return num
 }
 
-// 获取或缓存 levels
-const getLevels = async (countryId: number): Promise<AdmindivisionLevelItem[]> => {
-  if (levelsCache.has(countryId)) {
-    return levelsCache.get(countryId)!
+// 根据 division id 查找其所属的 level id
+async function findLevelIdForDivision(
+  countryId: number,
+  divisionId: string
+): Promise<string> {
+  const levelsData = await queryAdmindivisionLevel(countryId, 1, 100)
+  for (const level of levelsData) {
+    const divs = await queryAdmindivision(
+      countryId,
+      level.id,
+      undefined,
+      1,
+      500
+    )
+    if (divs.some((d) => String(d.id) === String(divisionId))) {
+      return level.id
+    }
   }
-  const levels = await queryAdmindivisionLevel(countryId)
-  levelsCache.set(countryId, levels)
-  return levels
+  return ''
 }
 
 export function EditAddressDialog({
@@ -119,25 +110,34 @@ export function EditAddressDialog({
   const [address2, setAddress2] = useState('')
   const [city, setCity] = useState('')
   const [country, setCountry] = useState('')
+  const [provinceLevel, setProvinceLevel] = useState('')
   const [province, setProvince] = useState('')
   const [postcode, setPostcode] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [warehouse, setWarehouse] = useState('')
   const [taxId, setTaxId] = useState('')
+  const [countryId, setCountryId] = useState<number | undefined>(
+    initialData?.countryId
+  )
 
-  // 省份 / 城市下拉数据
-  const [provinces, setProvinces] = useState<
-    Array<{ label: string; value: string; number?: string }>
-  >([])
-  const [cities, setCities] = useState<Array<{ label: string; value: string }>>(
+  // 第二级：levels（省/市等）；第三级：divisions（行政区如广西）
+  const [levels, setLevels] = useState<Array<{ label: string; value: string }>>(
     []
   )
-  const [isLoadingProvinces, setIsLoadingProvinces] = useState(false)
-  const [isLoadingCities, setIsLoadingCities] = useState(false)
+  const [divisions, setDivisions] = useState<
+    Array<{ label: string; value: string; number?: string }>
+  >([])
   
   // 使用 useWarehouses hook 获取仓库数据
   const { warehouses: warehouseOptions, isLoading: isLoadingWarehouses } = useWarehouses()
+  // 使用 useCountries 从后端加载国家列表（仅在弹框打开时加载）
+  const { countries: countryOptions } = useCountries(1, 1000, open)
+
+  // 供级联展示使用的名称（国家 / 级别 / 行政区）。城市由下面的输入框单独维护。
+  const selectedCountryOption = countryOptions.find((c) => c.value === country)
+  const selectedLevelOption = levels.find((l) => l.value === provinceLevel)
+  const selectedDivisionOption = divisions.find((d) => d.value === province)
 
   // Initialize form with initial data
   useEffect(() => {
@@ -153,14 +153,17 @@ export function EditAddressDialog({
       setLastName(initLast)
       setAddress(initialData.address || '')
       setAddress2(initialData.address2 || '')
-      // city 不直接写入 state，先保存为初始值，等城市下拉加载完后再匹配并选中
-      // Find country value by label, or use the country string directly
+      setCity(initialData.city || '')
+      // 优先使用 countryId（后端 hzkj_country_id），其次按 label 匹配，最后用 country 原值
       const countryValue =
-        countryOptions.find((c) => c.label === initialData.country)?.value ||
-        initialData.country ||
-        ''
+        (initialData.countryId != null &&
+          countryOptions.find((c) => c.value === String(initialData.countryId)))
+          ? String(initialData.countryId)
+          : countryOptions.find((c) => c.label === initialData.country)?.value ||
+            initialData.country ||
+            ''
       setCountry(countryValue)
-      // 省份：initialData.province 现在优先是 hzkj_admindivision_id，对应下拉的 value
+      setProvinceLevel('')
       setProvince(initialData.province || '')
       setPostcode(initialData.postalCode || '')
       setPhone(initialData.phoneNumber || '')
@@ -172,14 +175,18 @@ export function EditAddressDialog({
       setWarehouse(warehouseValue)
       // 税号：直接从 initialData.taxId 回填
       setTaxId(initialData.taxId || '')
+      // 初始国家 ID：来自父级 initialData，如果没有则保持 undefined
+      setCountryId(initialData.countryId)
     }
-  }, [initialData, open, warehouseOptions])
+  }, [initialData, open, warehouseOptions, countryOptions])
 
-  // 加载省份列表
+  // 加载第二级：levels（省/市等）
   useEffect(() => {
-    const loadProvinces = async () => {
+    const loadLevels = async () => {
       if (!country) {
-        setProvinces([])
+        setLevels([])
+        setDivisions([])
+        setProvinceLevel('')
         setProvince('')
         return
       }
@@ -187,101 +194,76 @@ export function EditAddressDialog({
       const countryId = getCountryId(country)
       if (!countryId) return
 
-      setIsLoadingProvinces(true)
       try {
-        const levels = await getLevels(countryId)
-        const provinceLevel = levels.find((level) => level.level === 1)
-        if (!provinceLevel) {
-          setProvinces([])
-          return
-        }
-
-        const divisions: AdmindivisionItem[] = await queryAdmindivision(
-          countryId,
-          provinceLevel.id,
-          undefined
-        )
-        const options = divisions.map((div) => ({
-          label: div.name,
-          value: String(div.id),
-          number: div.number,
+        const levelsData = await queryAdmindivisionLevel(countryId, 1, 100)
+        const opts = levelsData.map((l) => ({
+          label: l.name ?? String(l.id),
+          value: l.id,
         }))
-        setProvinces(options)
+        setLevels(opts)
+        setDivisions([])
+        setProvinceLevel('')
+        setProvince('')
 
-        // 如果有初始省份信息且当前还未选择 province，则尝试匹配
-        if (initialData?.province && !province) {
-          const matched = options.find(
-            (opt) =>
-              opt.value === initialData.province ||
-              opt.label === initialData.province ||
-              opt.number === initialData.province
-          )
-          if (matched) {
-            setProvince(matched.value)
+        // 如有初始 division id，解析其 level 并回填
+        if (initialData?.province) {
+          const divId = initialData.province
+          const levelId = await findLevelIdForDivision(countryId, divId)
+          if (levelId) {
+            setProvinceLevel(levelId)
+            setProvince(divId)
           }
         }
       } catch (error) {
-        console.error('Failed to load provinces in edit-address-dialog:', error)
-      } finally {
-        setIsLoadingProvinces(false)
+        console.error('Failed to load levels in edit-address-dialog:', error)
       }
     }
 
-    if (open) {
-      void loadProvinces()
-    }
-  }, [country, open, initialData?.province, province])
+    if (open) void loadLevels()
+  }, [country, open])
 
-  // 加载城市列表
+  // 加载第三级：divisions（行政区）
   useEffect(() => {
-    const loadCities = async () => {
-      if (!country || !province) {
-        setCities([])
-        setCity('')
+    const loadDivisions = async () => {
+      if (!country || !provinceLevel) {
+        setDivisions([])
         return
       }
 
       const countryId = getCountryId(country)
       if (!countryId) return
 
-      setIsLoadingCities(true)
       try {
-        const levels = await getLevels(countryId)
-        const cityLevel = levels.find((level) => level.level === 2)
-        if (!cityLevel) {
-          setCities([])
-          return
-        }
-
-        const divisions: AdmindivisionItem[] = await queryAdmindivision(
+        const rows = await queryAdmindivision(
           countryId,
-          cityLevel.id,
-          province
+          provinceLevel,
+          undefined,
+          1,
+          500
         )
-        const options = divisions.map((div) => ({
-          label: div.name,
-          value: String(div.id),
+        const opts = rows.map((d) => ({
+          label: d.name,
+          value: String(d.id),
+          number: d.number,
         }))
-        setCities(options)
+        setDivisions(opts)
 
-        // 如果有初始城市名称且当前还未选择 city，则尝试匹配
-        if (initialData?.city && !city) {
-          const matched = options.find((opt) => opt.label === initialData.city)
-          if (matched) {
-            setCity(matched.value)
-          }
+        if (initialData?.province && !opts.find((o) => o.value === province)) {
+          const matched = opts.find(
+            (o) =>
+              o.value === initialData.province ||
+              o.label === initialData.province ||
+              o.number === initialData.province
+          )
+          if (matched) setProvince(matched.value)
         }
       } catch (error) {
-        console.error('Failed to load cities in edit-address-dialog:', error)
-      } finally {
-        setIsLoadingCities(false)
+        console.error('Failed to load divisions in edit-address-dialog:', error)
       }
     }
 
-    if (open) {
-      void loadCities()
-    }
-  }, [country, province, open, initialData?.city, city])
+    if (open) void loadDivisions()
+  }, [country, provinceLevel, open, initialData?.province])
 
   const handleConfirm = () => {
     if (
@@ -309,19 +291,19 @@ export function EditAddressDialog({
       lastName: lastName.trim(),
       address: address.trim(),
       address2: address2.trim() || undefined,
-      city: (cities.find((c) => c.value === city)?.label || city || '').trim(),
+      city: city.trim(),
       country: countryLabel,
       province:
-        provinces.find((p) => p.value === province)?.label ||
+        divisions.find((d) => d.value === province)?.label ||
         province.trim() ||
         undefined,
       postalCode: postcode.trim(),
       phoneNumber: phone.trim(),
       email: email.trim() || undefined,
       shippingOrigin: warehouseLabel,
-      countryId: getCountryId(country),
+      countryId: countryId ?? getCountryId(country),
       admindivisionId: province || undefined,
-      cityId: city || undefined,
+      cityId: undefined,
       warehouseId: warehouse || undefined,
       taxId: taxId.trim() || undefined,
     })
@@ -340,12 +322,16 @@ export function EditAddressDialog({
       setLastName(initLast)
       setAddress(initialData.address || '')
       setAddress2(initialData.address2 || '')
-      // city / province 会在加载完选项后根据初始 label / id 回填，这里不直接设置 city
+      setCity(initialData.city || '')
       const countryValue =
-        countryOptions.find((c) => c.label === initialData.country)?.value ||
-        initialData.country ||
-        ''
+        (initialData.countryId != null &&
+          countryOptions.find((c) => c.value === String(initialData.countryId)))
+          ? String(initialData.countryId)
+          : countryOptions.find((c) => c.label === initialData.country)?.value ||
+            initialData.country ||
+            ''
       setCountry(countryValue)
+      setProvinceLevel('')
       setProvince(initialData.province || '')
       setPostcode(initialData.postalCode || '')
       setPhone(initialData.phoneNumber || '')
@@ -409,69 +395,135 @@ export function EditAddressDialog({
             </div>
             <div className='space-y-2'>
               <Label htmlFor='country'>
-                Country <span className='text-red-500'>*</span>
+                Country / Province <span className='text-red-500'>*</span>
               </Label>
-              <Select value={country} onValueChange={setCountry}>
-                <SelectTrigger id='country'>
-                  <SelectValue placeholder='Select country' />
-                </SelectTrigger>
-                <SelectContent>
-                {countryOptions.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    <span
-                      className={cn(c.flagClass, 'mr-2')}
-                      aria-hidden='true'
-                    />
-                    {c.label}
-                  </SelectItem>
-                ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className={cn(
+                      'w-full justify-between',
+                      !country &&
+                        !provinceLevel &&
+                        !province &&
+                        'text-muted-foreground'
+                    )}
+                  >
+                    <span className='truncate'>
+                      {selectedCountryOption &&
+                      selectedLevelOption &&
+                      selectedDivisionOption
+                        ? `${selectedCountryOption.label} / ${selectedLevelOption.label} / ${selectedDivisionOption.label}`
+                        : selectedCountryOption && selectedLevelOption
+                          ? `${selectedCountryOption.label} / ${selectedLevelOption.label}`
+                          : selectedCountryOption
+                            ? selectedCountryOption.label
+                            : 'Select country / province / city'}
+                    </span>
+                    <span className='ml-2 text-xs text-muted-foreground'>▼</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-[720px] p-2' align='start'>
+                  <div className='flex gap-2'>
+                    {/* Country 列 */}
+                    <div className='flex-1 max-h-64 overflow-y-auto border-r pr-1'>
+                      <div className='mb-2 text-xs font-medium text-muted-foreground'>
+                        Country/Region
+                      </div>
+                      {countryOptions.map((c) => {
+                        const isActive = c.value === country
+                        return (
+                          <button
+                            key={c.value}
+                            type='button'
+                            className={cn(
+                              'flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-muted',
+                              isActive && 'bg-muted font-medium'
+                            )}
+                            onClick={() => {
+                              setCountry(c.value)
+                              setProvinceLevel('')
+                              setProvince('')
+                              setCountryId(getCountryId(c.value))
+                            }}
+                          >
+                            <span className='flex items-center gap-2 truncate'>
+                              {c.icon && <c.icon className='h-4 w-4' />}
+                              <span>{c.label}</span>
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Level 列：省/市等级别 */}
+                    {levels.length > 0 && (
+                      <div className='flex-1 max-h-64 overflow-y-auto border-r px-1'>
+                        <div className='mb-2 text-xs font-medium text-muted-foreground'>
+                          Province
+                        </div>
+                        {levels.map((l) => {
+                          const isActive = l.value === provinceLevel
+                          return (
+                            <button
+                              key={l.value}
+                              type='button'
+                              className={cn(
+                                'flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-muted',
+                                isActive && 'bg-muted font-medium'
+                              )}
+                              onClick={() => {
+                                setProvinceLevel(l.value)
+                                setProvince('')
+                              }}
+                            >
+                              <span className='truncate'>{l.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Division 列：行政区 */}
+                    {divisions.length > 0 && (
+                      <div className='flex-1 max-h-64 overflow-y-auto pl-1'>
+                        <div className='mb-2 text-xs font-medium text-muted-foreground'>
+                          Region
+                        </div>
+                        {divisions.map((d) => {
+                          const isActive = d.value === province
+                          return (
+                            <button
+                              key={d.value}
+                              type='button'
+                              className={cn(
+                                'flex w-full items-center rounded px-2 py-1 text-left text-sm hover:bg-muted',
+                                isActive && 'bg-muted font-medium'
+                              )}
+                              onClick={() => setProvince(d.value)}
+                            >
+                              <span className='truncate'>{d.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-            <div className='space-y-2'>
-              <Label htmlFor='province'>Province</Label>
-              <Select
-                value={province}
-                onValueChange={(value) => {
-                  setProvince(value)
-                  // 切换省份时清空城市
-                  setCity('')
-                }}
-                disabled={isLoadingProvinces || !country}
-              >
-                <SelectTrigger id='province'>
-                  <SelectValue placeholder='Please select province' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='none'>None</SelectItem>
-                  {provinces.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>
-                      {p.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
             <div className='space-y-2'>
               <Label htmlFor='city'>
                 City <span className='text-red-500'>*</span>
               </Label>
-              <Select
+              <Input
+                id='city'
+                placeholder='Please enter city'
                 value={city}
-                onValueChange={setCity}
-                disabled={isLoadingCities || !province}
-              >
-                <SelectTrigger id='city'>
-                  <SelectValue placeholder='Please select city' />
-                </SelectTrigger>
-                <SelectContent>
-                  {cities.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(e) => setCity(e.target.value)}
+              />
             </div>
 
             <div className='space-y-2'>

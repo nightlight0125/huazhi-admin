@@ -146,10 +146,10 @@ export function DataTableBulkActions<TData>({
       >
         <div
           className={cn(
-            'p-2 shadow-xl',
+            'border-border p-2 shadow-xl',
             'rounded-xl border',
             'bg-background/95 supports-[backdrop-filter]:bg-background/60 backdrop-blur-lg',
-            'flex items-center gap-x-2'
+            'text-foreground flex items-center gap-x-2'
           )}
         >
           <Tooltip>

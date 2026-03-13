@@ -5,16 +5,16 @@ export const stockOrderStatuses = [
     value: '' as const,
   },
   {
-    label: 'Awaiting Payment',
-    value: 'awaiting_payment' as const,
+    label: 'Pending',
+    value: '1',
   },
   {
     label: 'Paid',
-    value: 'paid' as const,
+    value: '2',
   },
   {
     label: 'Cancelled',
-    value: 'cancelled' as const,
+    value: '0',
   },
 ]
 

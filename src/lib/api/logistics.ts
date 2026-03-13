@@ -240,6 +240,40 @@ export async function getCusList(
   }
 }
 
+// 批量更新订单物流渠道请求
+export interface BatchUpdOrderLogsRequest {
+  orderId: string[]
+  logsId: string
+}
+
+// 批量更新订单物流渠道响应
+export interface BatchUpdOrderLogsResponse {
+  data?: string
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 批量更新订单物流渠道 API
+export async function batchUpdOrderLogs(
+  request: BatchUpdOrderLogsRequest
+): Promise<BatchUpdOrderLogsResponse> {
+  const response = await apiClient.post<BatchUpdOrderLogsResponse>(
+    '/v2/hzkj/hzkj_logistics/hzkj_cus_freight/batchUpdOrderLogs',
+    request
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to batch update order logistics. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 运费选项接口（后端返回的原始格式）
 export interface FreightOption {
   logsId: string

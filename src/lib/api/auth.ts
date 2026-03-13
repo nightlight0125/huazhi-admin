@@ -303,6 +303,8 @@ export interface GetResetPassWordCodeResponse {
   status?: boolean
   message?: string
   errorCode?: string
+  /** 后端返回的验证码数字（用于页面展示，用户输入后提交） */
+  data?: string | number
   [key: string]: unknown
 }
 
@@ -345,9 +347,11 @@ export async function sendCode(
     { email, code }
   )
   if (response.data.status === false) {
-    throw new Error(
+    const error: any = new Error(
       response.data.message || 'Failed to send verification code. Please try again.'
     )
+    error.errorCode = response.data.errorCode
+    throw error
   }
   return response.data
 }
@@ -355,7 +359,6 @@ export async function sendCode(
 // ---------- 忘记密码：重置密码 ----------
 export interface ResetPasswordRequest {
   email: string
-  newPassword: string
   resetPasswordCode: string
 }
 
@@ -366,20 +369,21 @@ export interface ResetPasswordResponse {
   [key: string]: unknown
 }
 
-/** 使用验证码重置密码 */
+/** 使用邮箱验证码重置密码（用户输入新密码） */
 export async function resetPassword(
   email: string,
-  newPassword: string,
   resetPasswordCode: string
 ): Promise<ResetPasswordResponse> {
   const response = await apiClient.post<ResetPasswordResponse>(
     '/v2/hzkj/hzkj_member/member/resetPassword',
-    { email, newPassword, resetPasswordCode }
+    { email, resetPasswordCode }
   )
   if (response.data.status === false) {
-    throw new Error(
+    const error: any = new Error(
       response.data.message || 'Failed to reset password. Please try again.'
     )
+    error.errorCode = response.data.errorCode
+    throw error
   }
   return response.data
 }

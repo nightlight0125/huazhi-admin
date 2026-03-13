@@ -38,7 +38,8 @@ apiClient.interceptors.request.use(
       config.url?.includes('/hzkj_member/member/resetPassword')
 
     const isPaymentCallbackRequest =
-      config.url?.includes('order/paymentCallback')
+      config.url?.includes('order/paymentCallback') ||
+      config.url?.includes('wallet/callback')
 
     if (
       isLoginRequest ||

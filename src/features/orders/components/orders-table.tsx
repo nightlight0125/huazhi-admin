@@ -261,6 +261,7 @@ export function OrdersTable({
   platformOrderStatusOptions = [],
   countryOptions = [],
 }: DataTableProps) {
+  const searchParams = route.useSearch() as Record<string, unknown>
   const { auth } = useAuthStore()
   const [data, setData] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -279,7 +280,10 @@ export function OrdersTable({
     status: false,
     shippingOrigin: false,
   })
-  const [activeTab, setActiveTab] = useState('')
+  const [activeTab, setActiveTab] = useState(() => {
+    const initial = searchParams.orderStatus
+    return typeof initial === 'string' ? initial : ''
+  })
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [modifyProductDialog, setModifyProductDialog] = useState<{
     open: boolean
@@ -327,7 +331,7 @@ export function OrdersTable({
     onPaginationChange,
     ensurePageInRange,
   } = useTableUrlState({
-    search: route.useSearch(),
+    search: searchParams,
     navigate: route.useNavigate(),
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
@@ -353,6 +357,14 @@ export function OrdersTable({
       },
     ],
   })
+
+  // 当 URL 中的 orderStatus 发生变化时，同步到当前激活的 Tab
+  useEffect(() => {
+    const urlStatus = searchParams.orderStatus
+    if (typeof urlStatus === 'string' && urlStatus !== activeTab) {
+      setActiveTab(urlStatus)
+    }
+  }, [searchParams, activeTab])
 
   const formattedDateRange = useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
@@ -393,7 +405,6 @@ export function OrdersTable({
         ? String(storeFilter.value[0])
         : undefined
 
-    // 「Store Order Status」筛选栏 -> shopOrderStatus 字段
     const platformOrderStatusFilter = columnFilters.find(
       (f) => f.id === 'platformOrderStatus'
     )
@@ -432,7 +443,7 @@ export function OrdersTable({
     try {
       const response = await queryOrder({
         customerId: String(customerId),
-        type: 'hzkj_orders_BT_Sample',
+        type: 'hzkj_orders_BT',
         str: globalFilter || '',
         pageIndex,
         pageSize,
@@ -748,10 +759,27 @@ export function OrdersTable({
     if (order) {
       setSelectedOrderForPayment({
         id: order.id,
-        getTotalAmount: () => order.totalCost,
+        getTotalAmount: () => order.totalCost ?? 0,
       })
       setPayDialogOpen(true)
     }
+  }
+
+  const handleBatchPay = (
+    selectedRows: { original: { id: string; totalCost?: number } }[]
+  ) => {
+    if (selectedRows.length === 0) return
+    const orderIds = selectedRows.map((r) => r.original.id)
+    const totalAmount = selectedRows.reduce(
+      (sum, r) => sum + (r.original.totalCost ?? 0),
+      0
+    )
+    setSelectedOrderForPayment({
+      id: orderIds[0],
+      getTotalAmount: () => totalAmount,
+      orderIds,
+    })
+    setPayDialogOpen(true)
   }
 
   const handleDelete = async (orderId: string) => {
@@ -904,7 +932,7 @@ export function OrdersTable({
         ]}
       />
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-        <TabsList className='grid w-full grid-cols-9'>
+        <TabsList className='grid w-full grid-cols-7'>
           {orderStatuses.map((status) => (
             <TabsTrigger
               key={status.value}
@@ -926,15 +954,15 @@ export function OrdersTable({
             }, 0)
 
             return (
-              <div className='flex items-center justify-start gap-4 border-b bg-white px-4 py-3'>
+              <div className='border-border bg-card flex items-center justify-start gap-4 border-b px-4 py-3'>
                 <div className='flex flex-col items-start'>
-                  <div className='text-sm'>
+                  <div className='text-foreground text-sm'>
                     Total Amount:{' '}
                     <span className='font-medium'>
                       {selectedCount > 0 ? `$${totalAmount.toFixed(2)}` : '---'}
                     </span>
                   </div>
-                  <div className='flex items-center gap-1 text-xs text-orange-500'>
+                  <div className='flex items-center gap-1 text-xs text-orange-500 dark:text-orange-400'>
                     <HelpCircle className='h-3 w-3' />
                     <span>Referenced amount</span>
                   </div>
@@ -942,10 +970,7 @@ export function OrdersTable({
                 <Button
                   onClick={() => {
                     if (selectedCount > 0) {
-                      const firstOrderId = selectedRows[0]?.original.id
-                      if (firstOrderId) {
-                        handlePay(firstOrderId)
-                      }
+                      handleBatchPay(selectedRows)
                     }
                   }}
                   disabled={selectedCount === 0}

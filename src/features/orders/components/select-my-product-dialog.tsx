@@ -10,8 +10,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { queryStoreSKUList } from '@/lib/api/products'
-import { getPageNumbers } from '@/lib/utils'
+import { getCollectSKUsList } from '@/lib/api/products'
+import { cn, getPageNumbers } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,13 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-// 后端返回项，直接使用不作处理
-type StoreProductItem = Record<string, unknown>
+type MyProductItem = Record<string, unknown>
 
 const API_BASE = 'https://test.hzdrop.com/kapi/'
 const ORIGIN = 'https://test.hzdrop.com'
 
-/** 将后端返回的 picture 转为可用的完整 URL（相对路径需拼接域名） */
 function resolvePictureUrl(picture: unknown): string {
   const raw = typeof picture === 'string' ? picture.trim() : ''
   if (!raw) return ''
@@ -45,30 +43,26 @@ function resolvePictureUrl(picture: unknown): string {
   return `${API_BASE}${raw.replace(/^\//, '')}`
 }
 
-interface SelectStoreProductDialogProps {
+interface SelectMyProductDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect?: (products: StoreProductItem[]) => void
+  onSelect?: (products: MyProductItem[]) => void
 }
 
-export function SelectStoreProductDialog({
+export function SelectMyProductDialog({
   open,
   onOpenChange,
   onSelect,
-}: SelectStoreProductDialogProps) {
+}: SelectMyProductDialogProps) {
   const { auth } = useAuthStore()
-  const [skuId, setSkuId] = useState('')
-  const [productName, setProductName] = useState('')
-  const [selectedProducts, setSelectedProducts] = useState<StoreProductItem[]>(
-    []
-  )
-  const [products, setProducts] = useState<StoreProductItem[]>([])
+  const [nameOrCode, setNameOrCode] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
+  const [selectedProducts, setSelectedProducts] = useState<MyProductItem[]>([])
+  const [products, setProducts] = useState<MyProductItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [pageNo, setPageNo] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
-  const [appliedSkuId, setAppliedSkuId] = useState('')
-  const [appliedProductName, setAppliedProductName] = useState('')
   const customerId = auth.user?.customerId
 
   useEffect(() => {
@@ -82,16 +76,14 @@ export function SelectStoreProductDialog({
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        const params: Parameters<typeof queryStoreSKUList>[0] = {
+        const res = await getCollectSKUsList({
           customerId: String(customerId),
           pageNo,
           pageSize,
-        }
-        if (appliedSkuId.trim()) params.skuId = appliedSkuId.trim()
-        if (appliedProductName.trim()) params.productName = appliedProductName.trim()
-        const res = await queryStoreSKUList(params)
+          nameOrCode: appliedSearch.trim() || undefined,
+        })
         const data = res.data as Record<string, unknown> | undefined
-        let rows: Record<string, unknown>[] = []
+        let rows: MyProductItem[] = []
         let count = 0
         if (data) {
           if (Array.isArray(data.data)) rows = data.data
@@ -111,7 +103,7 @@ export function SelectStoreProductDialog({
         toast.error(
           error instanceof Error
             ? error.message
-            : 'Failed to load store products.'
+            : 'Failed to load collected products.'
         )
         setProducts([])
         setTotalCount(0)
@@ -120,11 +112,10 @@ export function SelectStoreProductDialog({
       }
     }
     void fetchData()
-  }, [open, customerId, pageNo, pageSize, appliedSkuId, appliedProductName])
+  }, [open, customerId, pageNo, pageSize, appliedSearch])
 
   const handleSearch = () => {
-    setAppliedSkuId(skuId)
-    setAppliedProductName(productName)
+    setAppliedSearch(nameOrCode)
     setPageNo(1)
   }
 
@@ -135,22 +126,23 @@ export function SelectStoreProductDialog({
     }
   }
 
-  const toggleProduct = (item: StoreProductItem) => {
-    const key = String(item.skuNumber ?? item.id ?? '')
+  const getItemKey = (item: MyProductItem) =>
+    String(item.id ?? item.skuId ?? item.spuName ?? '')
+
+  const toggleProduct = (item: MyProductItem) => {
+    const key = getItemKey(item)
     setSelectedProducts((prev) => {
-      const exists = prev.some((p) => String(p.skuNumber ?? p.id ?? '') === key)
+      const exists = prev.some((p) => getItemKey(p) === key)
       if (exists) {
-        return prev.filter((p) => String(p.skuNumber ?? p.id ?? '') !== key)
+        return prev.filter((p) => getItemKey(p) !== key)
       }
       return [...prev, item]
     })
   }
 
   const handleClose = () => {
-    setSkuId('')
-    setProductName('')
-    setAppliedSkuId('')
-    setAppliedProductName('')
+    setNameOrCode('')
+    setAppliedSearch('')
     setSelectedProducts([])
     setProducts([])
     setTotalCount(0)
@@ -166,39 +158,21 @@ export function SelectStoreProductDialog({
       <DialogContent className='flex max-h-[90vh] w-[80vw] max-w-[80vw] flex-col sm:w-[80vw] sm:max-w-[80vw]'>
         <DialogHeader>
           <div className='flex items-center justify-between'>
-            <DialogTitle>Select Store Product</DialogTitle>
+            <DialogTitle>Select My Product</DialogTitle>
           </div>
         </DialogHeader>
 
         {/* Search and Filter Section */}
-        <div className='flex items-end gap-4 border-b pb-4'>
+        <div className='border-border flex items-end gap-4 border-b pb-4'>
           <div className='flex-1 space-y-2'>
-            <Label htmlFor='sku-id'>SKU ID</Label>
+            <Label htmlFor='name-or-code'>Product Name / Code</Label>
             <div className='relative'>
               <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
               <Input
-                id='sku-id'
-                placeholder='Enter SKU ID'
-                value={skuId}
-                onChange={(e) => setSkuId(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch()
-                  }
-                }}
-                className='pl-9'
-              />
-            </div>
-          </div>
-          <div className='flex-1 space-y-2'>
-            <Label htmlFor='product-name'>Product Name</Label>
-            <div className='relative'>
-              <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
-              <Input
-                id='product-name'
-                placeholder='Enter Product Name'
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
+                id='name-or-code'
+                placeholder='Enter product name or code'
+                value={nameOrCode}
+                onChange={(e) => setNameOrCode(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleSearch()
@@ -211,7 +185,7 @@ export function SelectStoreProductDialog({
           <div className='flex gap-2'>
             <Button
               onClick={handleSearch}
-              className='bg-orange-500 text-white hover:bg-orange-600'
+              className='bg-orange-500 text-white hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700'
               disabled={isLoading}
             >
               {isLoading ? (
@@ -221,7 +195,7 @@ export function SelectStoreProductDialog({
             </Button>
             <Button
               onClick={handleConfirm}
-              className='bg-orange-500 text-white hover:bg-orange-600'
+              className='bg-orange-500 text-white hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700'
               disabled={selectedProducts.length === 0}
             >
               Confirm{' '}
@@ -242,35 +216,36 @@ export function SelectStoreProductDialog({
             </div>
           ) : products.length === 0 ? (
             <div className='text-muted-foreground py-12 text-center'>
-              No store products found
+              No collected products found
             </div>
           ) : (
             <div className='grid grid-cols-5 gap-4'>
               {products.map((item, idx) => {
-                const key = String(item.skuNumber ?? item.id ?? idx)
+                const key = getItemKey(item) || `idx-${idx}`
                 const isSelected = selectedProducts.some(
-                  (p) => String(p.skuNumber ?? p.id ?? '') === key
+                  (p) => getItemKey(p) === getItemKey(item)
                 )
                 return (
                   <div
                     key={key}
                     onClick={() => toggleProduct(item)}
-                    className={`relative cursor-pointer rounded-lg border bg-white p-3 transition-all ${
+                    className={cn(
+                      'border-border bg-card relative cursor-pointer rounded-lg border p-3 transition-all',
                       isSelected
-                        ? 'border-orange-500 ring-2 ring-orange-500'
-                        : 'border-gray-200 hover:shadow-md'
-                    }`}
+                        ? 'border-orange-500 ring-2 ring-orange-500 dark:border-orange-400 dark:ring-orange-400'
+                        : 'hover:shadow-md'
+                    )}
                   >
                     {isSelected && (
-                      <div className='absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-white'>
+                      <div className='absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-white dark:bg-orange-600'>
                         <Check className='h-3 w-3' strokeWidth={3} />
                       </div>
                     )}
-                    <div className='relative mb-3 aspect-square overflow-hidden rounded border border-gray-200 bg-gray-50'>
-                      {item.picture ? (
+                    <div className='border-border bg-muted relative mb-3 aspect-square overflow-hidden rounded border'>
+                      {item.pic ? (
                         <img
-                          src={resolvePictureUrl(item.picture)}
-                          alt={String(item.skuEName ?? '')}
+                          src={resolvePictureUrl(item.pic)}
+                          alt={String(item.spuName ?? '')}
                           className='h-full w-full object-contain'
                           referrerPolicy='no-referrer'
                           onError={(e) => {
@@ -283,16 +258,17 @@ export function SelectStoreProductDialog({
                           }}
                         />
                       ) : (
-                        <div className='flex h-full w-full items-center justify-center text-xs text-gray-400'>
+                        <div className='text-muted-foreground flex h-full w-full items-center justify-center text-xs'>
                           No Image
                         </div>
                       )}
                     </div>
-                    <div className='line-clamp-2 max-h-[2.5rem] overflow-hidden text-xs leading-tight font-medium text-gray-900'>
-                      {String(item.skuEName ?? '')}
+                    <div className='text-foreground line-clamp-2 max-h-[2.5rem] overflow-hidden text-xs leading-tight font-medium'>
+                      {String(item.spuName ?? '')}
                     </div>
-                    <div className='font-mono text-[14px] text-gray-600'>
-                      {String(item.skuNumber ?? '')}
+
+                    <div className='text-muted-foreground text-[14px]'>
+                      {String(item.number ?? '')}
                     </div>
                   </div>
                 )
@@ -303,7 +279,7 @@ export function SelectStoreProductDialog({
 
         {/* Pagination */}
         {customerId && totalCount > 0 && (
-          <div className='border-t pt-4'>
+          <div className='border-border border-t pt-4'>
             <div className='flex flex-col items-center justify-between gap-4 sm:flex-row'>
               <div className='text-muted-foreground flex items-center gap-2 text-sm'>
                 <Select

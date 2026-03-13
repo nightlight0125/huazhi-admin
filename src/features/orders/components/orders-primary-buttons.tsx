@@ -1,6 +1,14 @@
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,6 +24,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
+import { batchUpdOrderLogs } from '@/lib/api/logistics'
 import {
   addRMAOrder,
   queryAfterSaleReasonList,
@@ -59,6 +69,17 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
   const [selectedReasonId, setSelectedReasonId] = useState<string>('')
   const [dealType, setDealType] = useState<string>('')
   const [description, setDescription] = useState<string>('')
+
+  // 更改物流渠道弹框
+  const [shippingDialogOpen, setShippingDialogOpen] = useState(false)
+  const [selectedOrderIdsForShipping, setSelectedOrderIdsForShipping] = useState<string[]>([])
+  const [selectedLogsId, setSelectedLogsId] = useState<string>('')
+  const [isSubmittingShipping, setIsSubmittingShipping] = useState(false)
+  const { channels: logisticsChannels, isLoading: isLoadingChannels } = useLogisticsChannels(
+    1,
+    1000,
+    shippingDialogOpen
+  )
 
   const dealTypeOptions = [
     { label: 'Return and refund', value: 'A' },
@@ -168,8 +189,18 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
         console.log('Cancel')
         break
       case 'change_shipping':
-        // TODO: Implement change shipping method action
-        console.log('Change Shipping Method')
+        if (!table) {
+          toast.error('Table not available')
+          return
+        }
+        const shippingRows = table.getFilteredSelectedRowModel().rows
+        if (shippingRows.length === 0) {
+          toast.error('Please select at least one order')
+          return
+        }
+        setSelectedOrderIdsForShipping(shippingRows.map((r) => r.original.id))
+        setSelectedLogsId('')
+        setShippingDialogOpen(true)
         break
       case 'download_invoice':
         // TODO: Implement download invoice action
@@ -213,6 +244,34 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
         break
       default:
         break
+    }
+  }
+
+  const handleConfirmShipping = async () => {
+    if (!selectedLogsId) {
+      toast.error('Please select a logistics channel')
+      return
+    }
+    if (selectedOrderIdsForShipping.length === 0) {
+      toast.error('No orders selected')
+      return
+    }
+    try {
+      setIsSubmittingShipping(true)
+      await batchUpdOrderLogs({
+        orderId: selectedOrderIdsForShipping,
+        logsId: selectedLogsId,
+      })
+      toast.success('Logistics channel updated successfully')
+      setShippingDialogOpen(false)
+      setSelectedOrderIdsForShipping([])
+      setSelectedLogsId('')
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to update logistics channel'
+      )
+    } finally {
+      setIsSubmittingShipping(false)
     }
   }
 
@@ -367,6 +426,64 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
           </div>
         </div>
       </ConfirmDialog>
+
+      <Dialog open={shippingDialogOpen} onOpenChange={setShippingDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Change Shipping Method</DialogTitle>
+            <DialogDescription>
+              Update the logistics channel for {selectedOrderIdsForShipping.length} selected
+              order(s). Choose a channel below and confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='grid gap-4 py-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='shipping-channel'>Logistics Channel</Label>
+              <Select
+                value={selectedLogsId}
+                onValueChange={setSelectedLogsId}
+                disabled={isLoadingChannels || isSubmittingShipping}
+              >
+                <SelectTrigger id='shipping-channel'>
+                  <SelectValue
+                    placeholder={
+                      isLoadingChannels ? 'Loading channels...' : 'Select logistics channel'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {logisticsChannels
+                    .filter((ch) => ch.value)
+                    .map((ch) => (
+                      <SelectItem key={ch.value} value={ch.value}>
+                        {ch.label || ch.value}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => setShippingDialogOpen(false)}
+              disabled={isSubmittingShipping}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmShipping} disabled={isSubmittingShipping}>
+              {isSubmittingShipping ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Updating...
+                </>
+              ) : (
+                'Confirm'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

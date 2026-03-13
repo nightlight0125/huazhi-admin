@@ -97,6 +97,8 @@ export function OrdersEditAddressDialog({
       : order.shippingOrigin || '',
     // 税号：直接映射后端 hzkj_tax_id
     taxId: rawOrder.hzkj_tax_id || '',
+    // 后端国家 ID，编辑时应尽量保持不变
+    countryId: rawOrder.countryId || rawOrder.hzkj_country_id,
   }
 
   return (

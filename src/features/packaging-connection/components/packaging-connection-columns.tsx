@@ -12,6 +12,7 @@ export const createPackagingConnectionColumns = (options?: {
   onConnect?: (storeSku: StoreSku) => void
   onDelete?: (item: any) => void
   isStoreTab?: boolean
+  isOrderTab?: boolean
 }): ColumnDef<StoreSku | any>[] => {
   const {
     onExpand,
@@ -20,6 +21,7 @@ export const createPackagingConnectionColumns = (options?: {
     onConnect,
     onDelete,
     isStoreTab = false,
+    isOrderTab = false,
   } = options || {}
 
   // 如果是 stores tab，返回不同的列定义
@@ -279,7 +281,6 @@ export const createPackagingConnectionColumns = (options?: {
         const item = row.original
         return (
           <div className='flex items-center gap-2'>
-            <span className='text-green-600'>$</span>
             <span className='text-sm'>
               {item.hzkj_od_pd_shop_name ||
                 item.hzkj_pk_shop_name ||
@@ -288,12 +289,15 @@ export const createPackagingConnectionColumns = (options?: {
           </div>
         )
       },
-      filterFn: (row, id, value) => {
+      filterFn: (row, _id, value) => {
         if (!value || !Array.isArray(value) || value.length === 0) {
           return true
         }
-        const storeName = row.getValue(id) as string
-        return value.includes(storeName)
+        // value 是店铺 ID（来自 storeNameOptions），需用行数据中的 hzkj_od_pd_shop_id 比对
+        const rowStoreId = row.original.hzkj_od_pd_shop_id
+          ? String(row.original.hzkj_od_pd_shop_id)
+          : ''
+        return value.some((v) => String(v) === rowStoreId)
       },
       size: 150,
     },
@@ -368,6 +372,19 @@ export const createPackagingConnectionColumns = (options?: {
               >
                 <Link2 className='mr-1 h-3.5 w-3.5' />
                 Connect
+              </Button>
+            )}
+            {isOrderTab && (
+              <Button
+                variant='outline'
+                size='sm'
+                className='h-7 border-gray-200 px-2 text-xs text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete?.(item)
+                }}
+              >
+                <Trash2 className='mr-1 h-3.5 w-3.5' />
               </Button>
             )}
           </div>

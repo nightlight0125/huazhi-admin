@@ -1,5 +1,48 @@
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import {
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnFiltersState,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/react-table'
+import {
+  ArrowLeft,
+  ChevronDown,
+  Copy,
+  Heart,
+  Loader2,
+  Palette,
+  ShoppingCart,
+  Store,
+  Tag,
+  Truck,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import countries from 'world-countries'
+import { useAuthStore } from '@/stores/auth-store'
+import type { ShopInfo } from '@/stores/shop-store'
+import {
+  calcuFreight,
+  getStatesList,
+  queryCountry,
+  type CountryItem,
+  type FreightOption,
+  type StateItem,
+} from '@/lib/api/logistics'
+import {
+  collectProduct,
+  delCollectProducts,
+  getProduct,
+  selectSpecGetSku,
+  type ApiProductItem,
+  type SelectSpecGetSkuResponseItem,
+} from '@/lib/api/products'
+import { getUserShop } from '@/lib/api/shop'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -38,56 +81,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ShippingOptionsDialog } from '@/components/shipping-options-dialog'
 import { type BrandItem } from '@/features/brands/data/schema'
 import { packagingProducts } from '@/features/packaging-products/data/data'
 import { BrandCustomizationDialog } from '@/features/product-connections/components/brand-customization-dialog'
-import { StoreListingTabs, type StoreListingTabsHandle } from '@/features/store-management/components/store-listing-tabs'
+import {
+  StoreListingTabs,
+  type StoreListingTabsHandle,
+} from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
 import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
-import {
-  calcuFreight,
-  getStatesList,
-  queryCountry,
-  type CountryItem,
-  type FreightOption,
-  type StateItem,
-} from '@/lib/api/logistics'
-import {
-  collectProduct,
-  getProduct,
-  selectSpecGetSku,
-  type ApiProductItem,
-  type SelectSpecGetSkuResponseItem,
-} from '@/lib/api/products'
-import { getUserShop } from '@/lib/api/shop'
-import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/stores/auth-store'
-import type { ShopInfo } from '@/stores/shop-store'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnFiltersState,
-  type RowSelectionState,
-  type SortingState,
-} from '@tanstack/react-table'
-import {
-  ArrowLeft,
-  ChevronDown,
-  Copy,
-  Heart,
-  Loader2,
-  Palette,
-  ShoppingCart,
-  Store,
-  Tag,
-  Truck,
-} from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
-import countries from 'world-countries'
 import { type Product } from '../data/schema'
 import {
   ConfirmOrderView,
@@ -102,13 +106,14 @@ type CountryOption = {
   id?: string // 国家ID
 }
 
-
 // 将国家/地区数据转换为 CountryOption 格式
-function mapCountriesToCountryOptions(countriesData: CountryItem[]): CountryOption[] {
+function mapCountriesToCountryOptions(
+  countriesData: CountryItem[]
+): CountryOption[] {
   return countriesData.map((country) => {
     // 优先使用 twocountrycode，如果没有则使用 hzkj_code
     const countryCode = country.twocountrycode || country.hzkj_code
-    
+
     // 在 world-countries 库中查找对应的国家信息
     const countryInfo = countryCode
       ? countries.find(
@@ -117,12 +122,13 @@ function mapCountriesToCountryOptions(countriesData: CountryItem[]): CountryOpti
       : null
 
     // 生成国旗图标类名
-    const code = countryInfo?.cca2.toLowerCase() || countryCode?.toLowerCase() || ''
+    const code =
+      countryInfo?.cca2.toLowerCase() || countryCode?.toLowerCase() || ''
     const flagClass = code ? `fi fi-${code}` : ''
 
     return {
       value: countryCode || country.hzkj_code || country.id || '',
-      label: country.hzkj_name || country.name || '',
+      label: country.description || '',
       flagClass,
       id: country.id,
     }
@@ -199,7 +205,9 @@ export function ProductDetails() {
   const from = search.from as string | undefined
   const isFromPackagingProducts =
     from?.startsWith('packaging-products') ?? false
-  const shouldShowCollectionButton = !(from?.includes('packaging-products') ?? false)
+  const shouldShowCollectionButton = !(
+    from?.includes('packaging-products') ?? false
+  )
   const packagingTab =
     from === 'packaging-products-my'
       ? 'my-packaging'
@@ -213,6 +221,7 @@ export function ProductDetails() {
   )
 
   // 状态声明
+  const { auth } = useAuthStore()
   const [apiProduct, setApiProduct] = useState<ApiProductItem | null>(null)
   const [isLoadingProduct, setIsLoadingProduct] = useState(false)
   const [richTextContent, setRichTextContent] = useState<string>('')
@@ -222,11 +231,12 @@ export function ProductDetails() {
   // 从 API 获取产品详情
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!productId) return
+      const customerId = auth.user?.customerId
+      if (!productId || !customerId) return
 
       setIsLoadingProduct(true)
       try {
-        const productData = await getProduct(productId)
+        const productData = await getProduct(productId, String(customerId))
         setApiProduct(productData)
         // 提取富文本内容
         if (productData) {
@@ -251,7 +261,7 @@ export function ProductDetails() {
     }
 
     void fetchProduct()
-  }, [productId, productDetailRefreshKey])
+  }, [productId, productDetailRefreshKey, auth.user?.customerId])
 
   // 辅助函数：从可能的多语言对象中提取名称
   const extractName = (name: unknown): string => {
@@ -355,9 +365,7 @@ export function ProductDetails() {
 
   const [selectedQuantity, setSelectedQuantity] = useState(1)
   const [selectedTo, setSelectedTo] = useState<string>('')
-  const [selectedSpecs, setSelectedSpecs] = useState<
-    Record<string, string>
-  >({})
+  const [selectedSpecs, setSelectedSpecs] = useState<Record<string, string>>({})
   const [selectedSku, setSelectedSku] = useState<string>('')
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null)
   const [selectedSkuPrice, setSelectedSkuPrice] = useState<number | null>(null)
@@ -370,9 +378,9 @@ export function ProductDetails() {
     Array<{ id: string; name: string; value: string }>
   >([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
-  const { auth } = useAuthStore()
   const storeListingTabsRef = useRef<StoreListingTabsHandle>(null)
   const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false)
+  const [isUncollectDialogOpen, setIsUncollectDialogOpen] = useState(false)
   const [isCollecting, setIsCollecting] = useState(false)
   const [isCollected, setIsCollected] = useState(false)
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
@@ -455,13 +463,12 @@ export function ProductDetails() {
 
   // 检查是否所有规格都已选择
   const areAllSpecsSelected = () => {
-    if (!apiProduct) return true 
+    if (!apiProduct) return true
 
     const skuSpecs = Array.isArray(
       (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
     )
-      ? ((apiProduct as Record<string, unknown>)
-          .hzkj_sku_spec_e as Array<{
+      ? ((apiProduct as Record<string, unknown>).hzkj_sku_spec_e as Array<{
           hzkj_sku_spec_id?: string
           [key: string]: unknown
         }>)
@@ -492,48 +499,49 @@ export function ProductDetails() {
         (id): id is string => typeof id === 'string' && id !== ''
       )
 
-        if (specIds.length === 0) {
-          setSelectedSku('')
-          setSelectedSkuPrice(null)
-          setSelectedSkuEnname(null)
-          return
-        }
+      if (specIds.length === 0) {
+        setSelectedSku('')
+        setSelectedSkuPrice(null)
+        setSelectedSkuEnname(null)
+        return
+      }
 
-        setIsLoadingSkuBySpecs(true)
-        try {
-          const response = await selectSpecGetSku({
-            productId: String(productId),
-            specIds,
-          })
-          if (Array.isArray(response.data) && response.data.length > 0) {
-            const skuData = response.data[0]
-            const skuNumber = skuData?.number || ''
-            const skuPrice = typeof skuData?.price === 'number' ? skuData.price : null
-            const skuEnname = skuData?.enname || null
-            const skuId = skuData?.id ?? null
-            setSelectedSku(skuNumber)
-            setSelectedSkuPrice(skuPrice)
-            setSelectedSkuEnname(skuEnname)
-            setSelectedSkuId(skuId)
-          } else {
-            setSelectedSku('')
-            setSelectedSkuPrice(null)
-            setSelectedSkuEnname(null)
-            setSelectedSkuId(null)
-          }
-        } catch (error) {
+      setIsLoadingSkuBySpecs(true)
+      try {
+        const response = await selectSpecGetSku({
+          productId: String(productId),
+          specIds,
+        })
+        if (Array.isArray(response.data) && response.data.length > 0) {
+          const skuData = response.data[0]
+          const skuNumber = skuData?.number || ''
+          const skuPrice =
+            typeof skuData?.price === 'number' ? skuData.price : null
+          const skuEnname = skuData?.enname || null
+          const skuId = skuData?.id ?? null
+          setSelectedSku(skuNumber)
+          setSelectedSkuPrice(skuPrice)
+          setSelectedSkuEnname(skuEnname)
+          setSelectedSkuId(skuId)
+        } else {
           setSelectedSku('')
           setSelectedSkuPrice(null)
           setSelectedSkuEnname(null)
           setSelectedSkuId(null)
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : 'Failed to load SKU. Please try again.'
-          )
-        } finally {
-          setIsLoadingSkuBySpecs(false)
         }
+      } catch (error) {
+        setSelectedSku('')
+        setSelectedSkuPrice(null)
+        setSelectedSkuEnname(null)
+        setSelectedSkuId(null)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load SKU. Please try again.'
+        )
+      } finally {
+        setIsLoadingSkuBySpecs(false)
+      }
     }
 
     void fetchSkuBySpecs()
@@ -574,6 +582,11 @@ export function ProductDetails() {
     }
 
     const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Please login first')
+      return
+    }
+
     setIsCollecting(true)
     try {
       await collectProduct(String(productId), String(customerId))
@@ -589,6 +602,34 @@ export function ProductDetails() {
       )
     } finally {
       setIsCollecting(false)
+    }
+  }
+
+  // 处理取消收藏产品
+  const handleUncollect = async () => {
+    if (!productId) return
+
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Please login first')
+      return
+    }
+
+    try {
+      await delCollectProducts({
+        customerId: String(customerId),
+        productIds: [productId],
+      })
+      setIsCollected(false)
+      setIsUncollectDialogOpen(false)
+      toast.success('Product removed from favorites')
+    } catch (error) {
+      console.error('Failed to remove from favorites:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to remove favorite. Please try again.'
+      )
     }
   }
 
@@ -625,16 +666,14 @@ export function ProductDetails() {
           const data = response.data as { data?: unknown }
           if (Array.isArray(data.data)) {
             shopsData = data.data as ShopInfo[]
-          }
-          else if (
+          } else if (
             typeof data.data === 'object' &&
             data.data !== null &&
             'list' in data.data
           ) {
             const list = (data.data as { list?: unknown[] }).list
             shopsData = Array.isArray(list) ? (list as ShopInfo[]) : []
-          }
-          else if (typeof data.data === 'object' && data.data !== null) {
+          } else if (typeof data.data === 'object' && data.data !== null) {
             shopsData = [data.data as ShopInfo]
           }
         }
@@ -672,8 +711,7 @@ export function ProductDetails() {
     const skuSpecs = Array.isArray(
       (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
     )
-      ? ((apiProduct as Record<string, unknown>)
-          .hzkj_sku_spec_e as Array<{
+      ? ((apiProduct as Record<string, unknown>).hzkj_sku_spec_e as Array<{
           hzkj_sku_spec_id?: string
           hzkj_sku_spec_enname?: string
           hzkj_sku_spec_name?: string
@@ -697,7 +735,9 @@ export function ProductDetails() {
   )
 
   // 从产品数据生成 variant pricing 数据
-  const [variantPricingData, setVariantPricingData] = useState<VariantPricing[]>([])
+  const [variantPricingData, setVariantPricingData] = useState<
+    VariantPricing[]
+  >([])
   const [isLoadingVariantPricing, setIsLoadingVariantPricing] = useState(false)
 
   // 生成所有规格组合（笛卡尔积）
@@ -707,8 +747,7 @@ export function ProductDetails() {
     const skuSpecs = Array.isArray(
       (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
     )
-      ? ((apiProduct as Record<string, unknown>)
-          .hzkj_sku_spec_e as Array<{
+      ? ((apiProduct as Record<string, unknown>).hzkj_sku_spec_e as Array<{
           hzkj_sku_spec_id?: string
           hzkj_sku_spec_enname?: string
           hzkj_sku_specvalue_e?: Array<{
@@ -721,7 +760,9 @@ export function ProductDetails() {
       : []
 
     // 收集所有规格值
-    const specValuesList: Array<Array<{ specId: string; valueId: string; valueName: string }>> = []
+    const specValuesList: Array<
+      Array<{ specId: string; valueId: string; valueName: string }>
+    > = []
     skuSpecs.forEach((spec) => {
       if (spec.hzkj_sku_spec_id && Array.isArray(spec.hzkj_sku_specvalue_e)) {
         const values = spec.hzkj_sku_specvalue_e
@@ -798,77 +839,79 @@ export function ProductDetails() {
         }
 
         // 为每个组合调用 selectSpecGetSku 获取 SKU
-        const variantDataPromises = specCombinations.map(async (combination) => {
-          // 提取规格值 ID
-          const specIds = Object.keys(combination)
-            .filter((key) => !key.endsWith('_name'))
-            .map((key) => combination[key])
-            .filter((id) => id)
+        const variantDataPromises = specCombinations.map(
+          async (combination) => {
+            // 提取规格值 ID
+            const specIds = Object.keys(combination)
+              .filter((key) => !key.endsWith('_name'))
+              .map((key) => combination[key])
+              .filter((id) => id)
 
-          if (specIds.length === 0) {
-            return null
-          }
+            if (specIds.length === 0) {
+              return null
+            }
 
-          try {
-            const response = await selectSpecGetSku({
-              productId: String(productId),
-              specIds,
-            })
-
-            if (
-              Array.isArray(response.data) &&
-              response.data.length > 0
-            ) {
-              const skuData = response.data[0] as SelectSpecGetSkuResponseItem
-              const skuNumber = skuData?.number || ''
-              // 处理价格，优先使用 price，其次使用 souprice，最后使用产品默认价格
-              let skuPrice: number = productPrice
-              const rawPrice = (skuData as any).price
-              const rawSouprice = (skuData as any).souprice
-              if (rawPrice !== undefined && typeof rawPrice === 'number') {
-                skuPrice = rawPrice
-              } else if (rawSouprice !== undefined && typeof rawSouprice === 'number') {
-                skuPrice = rawSouprice
-              }
-
-              // Shipping Fee 默认 0
-              const shippingCost = 0
-              const totalPrice: number = skuPrice + shippingCost
-
-              // 构建规格值映射
-              const specValues: Record<string, string> = {}
-              specInfo.forEach((spec) => {
-                const valueName = combination[`${spec.specId}_name`] || ''
-                specValues[`spec_${spec.specId}`] = valueName
+            try {
+              const response = await selectSpecGetSku({
+                productId: String(productId),
+                specIds,
               })
 
-              // 使用产品图片
-              const skuImage =
-                typeof skuData?.pic === 'string' && skuData.pic.trim()
-                  ? skuData.pic
-                  : typeof productImage === 'string'
-                    ? productImage.split(';')[0] || productImage
-                    : ''
+              if (Array.isArray(response.data) && response.data.length > 0) {
+                const skuData = response.data[0] as SelectSpecGetSkuResponseItem
+                const skuNumber = skuData?.number || ''
+                // 处理价格，优先使用 price，其次使用 souprice，最后使用产品默认价格
+                let skuPrice: number = productPrice
+                const rawPrice = (skuData as any).price
+                const rawSouprice = (skuData as any).souprice
+                if (rawPrice !== undefined && typeof rawPrice === 'number') {
+                  skuPrice = rawPrice
+                } else if (
+                  rawSouprice !== undefined &&
+                  typeof rawSouprice === 'number'
+                ) {
+                  skuPrice = rawSouprice
+                }
 
-              return {
-                id: skuData?.id || String(Math.random()),
-                skuId: skuData?.id,
-                sku: skuNumber,
-                image: skuImage,
-                cjPrice: skuPrice,
-                shippingFee: '$0.00',
-                totalDropshippingPrice: `$${totalPrice.toFixed(2)}`,
-                yourPrice: undefined,
-                ...specValues,
-              } as VariantPricing
+                // Shipping Fee 默认 0
+                const shippingCost = 0
+                const totalPrice: number = skuPrice + shippingCost
+
+                // 构建规格值映射
+                const specValues: Record<string, string> = {}
+                specInfo.forEach((spec) => {
+                  const valueName = combination[`${spec.specId}_name`] || ''
+                  specValues[`spec_${spec.specId}`] = valueName
+                })
+
+                // 使用产品图片
+                const skuImage =
+                  typeof skuData?.pic === 'string' && skuData.pic.trim()
+                    ? skuData.pic
+                    : typeof productImage === 'string'
+                      ? productImage.split(';')[0] || productImage
+                      : ''
+
+                return {
+                  id: skuData?.id || String(Math.random()),
+                  skuId: skuData?.id,
+                  sku: skuNumber,
+                  image: skuImage,
+                  cjPrice: skuPrice,
+                  shippingFee: '$0.00',
+                  totalDropshippingPrice: `$${totalPrice.toFixed(2)}`,
+                  yourPrice: undefined,
+                  ...specValues,
+                } as VariantPricing
+              }
+            } catch (error) {
+              console.error('Failed to get SKU for spec combination:', error)
+              return null
             }
-          } catch (error) {
-            console.error('Failed to get SKU for spec combination:', error)
+
             return null
           }
-
-          return null
-        })
+        )
 
         const variantDataResults = await Promise.all(variantDataPromises)
         const variantData = variantDataResults.filter(
@@ -885,11 +928,7 @@ export function ProductDetails() {
     }
 
     void fetchVariantPricingData()
-  }, [
-    apiProduct,
-    productId,
-    specInfo,
-  ])
+  }, [apiProduct, productId, specInfo])
   const variantPricingTable = useReactTable<VariantPricing>({
     data: variantPricingData,
     columns: variantPricingColumns,
@@ -1003,8 +1042,8 @@ export function ProductDetails() {
     )
   }
 
-  const totalPrice = (selectedSkuPrice ?? productData?.price ?? 0) * selectedQuantity
-
+  const totalPrice =
+    (selectedSkuPrice ?? productData?.price ?? 0) * selectedQuantity
 
   return (
     <div className='container mx-auto px-4 py-6'>
@@ -1085,7 +1124,6 @@ export function ProductDetails() {
                         <span className='text-muted-foreground'>
                           SPU: {productData.sku}
                         </span>
-                        
 
                         <button
                           onClick={handleCopySPU}
@@ -1097,11 +1135,11 @@ export function ProductDetails() {
                       </div>
                       <div>
                         {isLoadingSkuBySpecs ? (
-                          <div className='text-sm text-muted-foreground'>
+                          <div className='text-muted-foreground text-sm'>
                             Loading SKU...
                           </div>
                         ) : selectedSku ? (
-                          <div className='text-sm text-muted-foreground'>
+                          <div className='text-muted-foreground text-sm'>
                             select SKU: {selectedSku}
                           </div>
                         ) : apiProduct &&
@@ -1110,7 +1148,7 @@ export function ProductDetails() {
                               ?.hzkj_sku_spec_e
                           ) &&
                           Object.values(selectedSpecs).length > 0 ? (
-                          <div className='text-sm text-muted-foreground'>
+                          <div className='text-muted-foreground text-sm'>
                             Please select all attributes
                           </div>
                         ) : null}
@@ -1119,18 +1157,20 @@ export function ProductDetails() {
 
                     {/* 价格和MOQ */}
                     <div className='flex items-center gap-4'>
-                    <div className='text-3xl font-bold text-orange-500 dark:text-orange-300'>
-                        ${(selectedSkuPrice ?? productData?.price ?? 0).toFixed(2)}
-                    </div>
-                    <div className='rounded border border-gray-300 bg-gray-50 px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'>
-                      MOQ: 1
-                    </div>
+                      <div className='text-3xl font-bold text-orange-500 dark:text-orange-300'>
+                        $
+                        {(selectedSkuPrice ?? productData?.price ?? 0).toFixed(
+                          2
+                        )}
+                      </div>
+                      <div className='rounded border border-gray-300 bg-gray-50 px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'>
+                        MOQ: 1
+                      </div>
                     </div>
 
                     {apiProduct &&
                       Array.isArray(
-                        (apiProduct as Record<string, unknown>)
-                          ?.hzkj_sku_spec_e
+                        (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
                       ) &&
                       (
                         (apiProduct as Record<string, unknown>)
@@ -1596,7 +1636,9 @@ export function ProductDetails() {
                 <div className='flex items-center justify-between text-sm'>
                   <span className='text-muted-foreground'>Variation Name</span>
                   <span>
-                    {selectedSkuEnname ? extractName(selectedSkuEnname) || '--' : '--'}
+                    {selectedSkuEnname
+                      ? extractName(selectedSkuEnname) || '--'
+                      : '--'}
                   </span>
                 </div>
 
@@ -1605,7 +1647,8 @@ export function ProductDetails() {
                   <div className='flex items-center justify-between'>
                     <span className='text-muted-foreground'>Product Price</span>
                     <span className='font-medium'>
-                      ${(selectedSkuPrice ?? productData?.price ?? 0).toFixed(2)}
+                      $
+                      {(selectedSkuPrice ?? productData?.price ?? 0).toFixed(2)}
                     </span>
                   </div>
                   <div className='flex items-center justify-between'>
@@ -1763,7 +1806,13 @@ export function ProductDetails() {
                         variant='outline'
                         className='w-full'
                         size='lg'
-                        onClick={() => setIsCollectDialogOpen(true)}
+                        onClick={() => {
+                          if (isCollected) {
+                            setIsUncollectDialogOpen(true)
+                          } else {
+                            setIsCollectDialogOpen(true)
+                          }
+                        }}
                         disabled={isCollecting}
                       >
                         <div className='flex w-full items-center justify-start'>
@@ -1791,7 +1840,7 @@ export function ProductDetails() {
                             setIsCollectDialogOpen(open)
                           }
                         }}
-                        title='sure to collect this product?'
+                        title='Collect product'
                         desc='Are you sure you want to collect this product?'
                         handleConfirm={handleCollect}
                         isLoading={isCollecting}
@@ -1799,39 +1848,53 @@ export function ProductDetails() {
                           isCollecting ? (
                             <>
                               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                              handling...
+                              Handling...
                             </>
                           ) : (
-                            'confirm'
+                            'Confirm'
                           )
                         }
+                      />
+                      <ConfirmDialog
+                        open={isUncollectDialogOpen}
+                        onOpenChange={setIsUncollectDialogOpen}
+                        title='Remove from Favorites'
+                        desc='Are you sure you want to remove this product from your favorites?'
+                        handleConfirm={handleUncollect}
+                        confirmText='Confirm'
                       />
                     </>
                   )}
 
-                {isFromPackagingProducts && (
+                  {isFromPackagingProducts && (
                     <Button
                       variant='outline'
                       className='w-full'
                       size='lg'
                       onClick={() => {
                         // 设计前需要选择且只能选择一个属性（父级规格 ID 作为 skuId）
-                        const selectedEntries = Object.entries(selectedSpecs).filter(
-                          ([, v]) => v && v !== ''
-                        )
+                        const selectedEntries = Object.entries(
+                          selectedSpecs
+                        ).filter(([, v]) => v && v !== '')
 
                         if (selectedEntries.length === 0) {
-                          toast.error('Please select one attribute before design')
+                          toast.error(
+                            'Please select one attribute before design'
+                          )
                           return
                         }
 
                         if (selectedEntries.length > 1) {
-                          toast.error('You can only select one attribute for design')
+                          toast.error(
+                            'You can only select one attribute for design'
+                          )
                           return
                         }
 
                         if (!selectedSkuId) {
-                          toast.error('SKU is not loaded yet, please try again in a moment')
+                          toast.error(
+                            'SKU is not loaded yet, please try again in a moment'
+                          )
                           return
                         }
 

@@ -23,16 +23,22 @@ export function SettingsProfile() {
   }
 
   return (
-    <div>
+    <div className='text-foreground'>
       <Tabs defaultValue='profile' className='w-full'>
-        <TabsList className='grid w-50 grid-cols-2'>
+        <TabsList className='grid w-50 grid-cols-2 bg-muted'>
           <TabsTrigger value='profile'>Profile</TabsTrigger>
           <TabsTrigger value='address'>Address</TabsTrigger>
         </TabsList>
-        <TabsContent value='profile' className='mt-6'>
+        <TabsContent
+          value='profile'
+          className='mt-6 rounded-lg border border-border bg-card p-6 shadow-sm'
+        >
           <ProfileForm />
         </TabsContent>
-        <TabsContent value='address' className='mt-6'>
+        <TabsContent
+          value='address'
+          className='mt-6 rounded-lg border border-border bg-card p-6 shadow-sm'
+        >
           <AddressForm />
         </TabsContent>
       </Tabs>

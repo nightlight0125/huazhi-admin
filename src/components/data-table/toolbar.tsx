@@ -36,7 +36,10 @@ type DataTableToolbarProps<TData> = {
   showSearch?: boolean
   showSearchButton?: boolean
   onSearch?: (searchValue: string) => void // 搜索回调函数，接收搜索值
-  onFilterChange?: () => void // 过滤器变化时的回调
+  onFilterChange?: (
+    columnId: string,
+    value: string[] | undefined
+  ) => void // 过滤器变化时的回调，可直接使用 value 无需从表格读取
   filters?: {
     columnId: string
     title: string
@@ -92,13 +95,8 @@ export function DataTableToolbar<TData>({
   // Avoid accessing non-existent columns (will trigger tanstack table warnings)
   const searchColumn = searchKey ? table.getColumn(searchKey) : undefined
 
-  // 同步搜索输入值（从表格状态读取）
-  // 如果提供了 onSearch 回调，则不从表格状态同步，保持用户输入的值
+  // 同步搜索输入值（从表格状态/URL 读取），确保刷新或直接打开带 filter 的链接时输入框显示正确
   useEffect(() => {
-    // 如果提供了 onSearch，说明搜索是手动触发的，不应该从表格状态同步
-    if (onSearch) {
-      return
-    }
     if (searchKey && searchColumn) {
       const value = (searchColumn.getFilterValue() as string) ?? ''
       setSearchInputValue(value)
@@ -106,7 +104,7 @@ export function DataTableToolbar<TData>({
       const value = table.getState().globalFilter ?? ''
       setSearchInputValue(value)
     }
-  }, [table.getState().globalFilter, searchKey, searchColumn, onSearch])
+  }, [table.getState().globalFilter, searchKey, searchColumn])
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRangeValue(range)
@@ -184,7 +182,9 @@ export function DataTableToolbar<TData>({
                 column={column}
                 title={filter.title}
                 options={filter.options || []}
-                onFilterChange={onFilterChange}
+                onFilterChange={(value) =>
+                  onFilterChange?.(filter.columnId, value)
+                }
                 columnFilters={table.getState().columnFilters}
                 singleSelect={filter.singleSelect}
               />

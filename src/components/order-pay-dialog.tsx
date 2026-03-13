@@ -22,6 +22,8 @@ export type PaymentMethod = 'balance' | 'credit_card' | 'airwallex'
 export interface OrderPayable {
   id: string
   getTotalAmount: () => number
+  /** 批量支付时的订单 ID 列表，不传则使用 [id] */
+  orderIds?: string[]
 }
 
 interface OrderPayDialogProps {
@@ -86,15 +88,16 @@ export function OrderPayDialog({
 
   if (!order) return null
 
-  const credits = 0
-
   const rawTotalAmount = order.getTotalAmount()
   const totalAmount =
     typeof rawTotalAmount === 'number' && !Number.isNaN(rawTotalAmount)
       ? rawTotalAmount
       : 0
 
-  const numberOfOrders = 1
+  const orderIds = order.orderIds && order.orderIds.length > 0
+    ? order.orderIds
+    : [order.id]
+  const numberOfOrders = orderIds.length
 
   // 根据当前菜单路由决定支付 type：/orders -> 0 销售，/sample-orders -> 1 样品，/stock-orders -> 2 备货
   const pathname = location.pathname ?? ''
@@ -123,14 +126,14 @@ export function OrderPayDialog({
       if (selectedPaymentMethod === 'balance') {
         await walletPayment({
           customerId: String(customerId),
-          orderIds: [order.id],
+          orderIds,
           type: paymentType,
         })
         toast.success('Wallet payment submitted successfully')
       } else {
         const response = await requestPayment({
           customerId: String(customerId),
-          orderIds: [order.id],
+          orderIds,
           type: orderType,
         })
         const paymentUrl =
@@ -232,9 +235,7 @@ export function OrderPayDialog({
             <div className='flex items-center justify-between'>
               <span className='text-sm'>Total Amount :</span>
               <span className='text-sm font-semibold text-orange-600'>
-                {isLoadingBalance
-                  ? '...'
-                  : `Pay $${availableBalance.toFixed(2)}`}
+                {isLoadingBalance ? '...' : `Pay $${totalAmount.toFixed(2)}`}
               </span>
             </div>
             <div className='flex items-center justify-between'>
@@ -244,16 +245,22 @@ export function OrderPayDialog({
               </span>
             </div>
             <div className='flex items-center justify-between'>
-              <span className='text-sm'>Bonus:</span>
+              <span className='text-sm'>Available:</span>
               <span className='text-sm font-semibold text-orange-600'>
-                ${totalAmount.toFixed(2)}
+                {isLoadingBalance ? '...' : `$${availableBalance.toFixed(2)}`}
               </span>
             </div>
             <div className='flex items-center justify-between'>
+              <span className='text-sm'>Bonus:</span>
+              {/* <span className='text-sm font-semibold text-orange-600'>
+                ${totalAmount.toFixed(2)}
+              </span> */}
+            </div>
+            <div className='flex items-center justify-between'>
               <span className='text-sm'>Credits:</span>
-              <span className='text-sm font-semibold'>
+              {/* <span className='text-sm font-semibold'>
                 ${credits.toFixed(2)}
-              </span>
+              </span> */}
             </div>
             <div className='flex items-center justify-between'>
               <span className='text-sm'>No. of Orders:</span>
