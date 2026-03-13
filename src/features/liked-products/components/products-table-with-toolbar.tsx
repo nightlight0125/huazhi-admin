@@ -91,14 +91,17 @@ export function ProductsTableWithToolbar<TData>({
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
+    // 服务端搜索时（totalCount + onSearch）由接口过滤，不再做客户端过滤，否则会误过滤服务端已返回的数据
     globalFilterFn:
       globalFilterFn ||
-      ((row, _columnId, filterValue) => {
-        const name = String((row.original as any).name || '').toLowerCase()
-        const spu = String((row.original as any).spu || '').toLowerCase()
-        const searchValue = String(filterValue).toLowerCase()
-        return name.includes(searchValue) || spu.includes(searchValue)
-      }),
+      (totalCount !== undefined && onSearch
+        ? () => true // 服务端模式：直通，不再过滤
+        : (row, _columnId, filterValue) => {
+            const name = String((row.original as any).name || '').toLowerCase()
+            const spu = String((row.original as any).spu || '').toLowerCase()
+            const searchValue = String(filterValue).toLowerCase()
+            return name.includes(searchValue) || spu.includes(searchValue)
+          }),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel:

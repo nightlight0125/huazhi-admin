@@ -201,7 +201,7 @@ export function useFetchCollectionProducts(
       }
 
       void fetchData()
-    }, 100) // 100ms 防抖延迟
+    }, 250) // 250ms 防抖，等待 navigate/状态更新完成，避免连续多次请求
 
     // 清理函数
     return () => {

@@ -95,13 +95,8 @@ export function DataTableToolbar<TData>({
   // Avoid accessing non-existent columns (will trigger tanstack table warnings)
   const searchColumn = searchKey ? table.getColumn(searchKey) : undefined
 
-  // 同步搜索输入值（从表格状态读取）
-  // 如果提供了 onSearch 回调，则不从表格状态同步，保持用户输入的值
+  // 同步搜索输入值（从表格状态/URL 读取），确保刷新或直接打开带 filter 的链接时输入框显示正确
   useEffect(() => {
-    // 如果提供了 onSearch，说明搜索是手动触发的，不应该从表格状态同步
-    if (onSearch) {
-      return
-    }
     if (searchKey && searchColumn) {
       const value = (searchColumn.getFilterValue() as string) ?? ''
       setSearchInputValue(value)
@@ -109,7 +104,7 @@ export function DataTableToolbar<TData>({
       const value = table.getState().globalFilter ?? ''
       setSearchInputValue(value)
     }
-  }, [table.getState().globalFilter, searchKey, searchColumn, onSearch])
+  }, [table.getState().globalFilter, searchKey, searchColumn])
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRangeValue(range)
