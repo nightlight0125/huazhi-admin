@@ -211,9 +211,9 @@ export function AllProductsGrid({
     productId: string | null
   }>({ open: false, productId: null })
   // 本页已取消收藏的产品 ID，用于正确更新 UI 状态
-  const [removedFromFavorites, setRemovedFromFavorites] = useState<
-    Set<string>
-  >(new Set())
+  const [removedFromFavorites, setRemovedFromFavorites] = useState<Set<string>>(
+    new Set()
+  )
 
   // 为 StoreListingTabs 准备 Variant Pricing 表格
   const variantPricingColumns = useMemo(() => createVariantPricingColumns(), [])
@@ -559,11 +559,7 @@ export function AllProductsGrid({
                                   />
                                 ) : null
                               })()}
-                            <span>
-                              {option.name ||
-                                option.hzkj_name ||
-                                option.description}
-                            </span>
+                            <span>{option.description}</span>
                           </div>
                         </CommandItem>
                       )

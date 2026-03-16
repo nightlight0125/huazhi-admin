@@ -133,7 +133,9 @@ export function PackagingConnection() {
     setDisconnectDialogOpen(true)
   }
 
-  const handleConnectDialogConfirm = (_selectedProducts: PackagingProduct[]) => {
+  const handleConnectDialogConfirm = (
+    _selectedProducts: PackagingProduct[]
+  ) => {
     setRefreshKey((k) => k + 1)
   }
 
@@ -246,9 +248,7 @@ export function PackagingConnection() {
 
   const handleDeleteConfirm = async () => {
     // Order tab 使用 hzkj_shop_pd_package_id，Store tab 使用 hzkj_shop_package_id
-    const shopPackageId =
-      itemToDelete?.hzkj_shop_pd_package_id ??
-      itemToDelete?.hzkj_shop_package_id
+    const shopPackageId = itemToDelete?.id || ''
     if (!shopPackageId) {
       toast.error('Invalid item data')
       setDeleteDialogOpen(false)
@@ -569,7 +569,10 @@ export function PackagingConnection() {
                       <Tabs
                         value={statusTab}
                         onValueChange={(value) => {
-                          if (value === 'connected' || value === 'unconnected') {
+                          if (
+                            value === 'connected' ||
+                            value === 'unconnected'
+                          ) {
                             handleStatusTabChange(value)
                           }
                         }}

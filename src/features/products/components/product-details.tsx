@@ -805,7 +805,10 @@ export function ProductDetails() {
     return combinations
   }
 
+  // 仅在打开 Store Listing 抽屉时加载 variant pricing 数据，避免进入详情页时频繁请求
   useEffect(() => {
+    if (!isStoreListingOpen) return
+
     const fetchVariantPricingData = async () => {
       if (!apiProduct || !productId) {
         setVariantPricingData([])
@@ -838,7 +841,6 @@ export function ProductDetails() {
           return
         }
 
-        // 为每个组合调用 selectSpecGetSku 获取 SKU
         const variantDataPromises = specCombinations.map(
           async (combination) => {
             // 提取规格值 ID
@@ -860,7 +862,6 @@ export function ProductDetails() {
               if (Array.isArray(response.data) && response.data.length > 0) {
                 const skuData = response.data[0] as SelectSpecGetSkuResponseItem
                 const skuNumber = skuData?.number || ''
-                // 处理价格，优先使用 price，其次使用 souprice，最后使用产品默认价格
                 let skuPrice: number = productPrice
                 const rawPrice = (skuData as any).price
                 const rawSouprice = (skuData as any).souprice
@@ -928,7 +929,7 @@ export function ProductDetails() {
     }
 
     void fetchVariantPricingData()
-  }, [apiProduct, productId, specInfo])
+  }, [isStoreListingOpen, apiProduct, productId, specInfo])
   const variantPricingTable = useReactTable<VariantPricing>({
     data: variantPricingData,
     columns: variantPricingColumns,

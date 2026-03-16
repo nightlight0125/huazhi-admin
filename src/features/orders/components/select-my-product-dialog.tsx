@@ -76,11 +76,12 @@ export function SelectMyProductDialog({
     const fetchData = async () => {
       setIsLoading(true)
       try {
+        const searchVal = appliedSearch.trim() || undefined
         const res = await getCollectSKUsList({
           customerId: String(customerId),
           pageNo,
           pageSize,
-          nameOrCode: appliedSearch.trim() || undefined,
+          ...(searchVal && { nameOrCode: searchVal }),
         })
         const data = res.data as Record<string, unknown> | undefined
         let rows: MyProductItem[] = []
@@ -165,7 +166,7 @@ export function SelectMyProductDialog({
         {/* Search and Filter Section */}
         <div className='border-border flex items-end gap-4 border-b pb-4'>
           <div className='flex-1 space-y-2'>
-            <Label htmlFor='name-or-code'>Product Name / Code</Label>
+            <Label htmlFor='name-or-code'>Product Name / SKU</Label>
             <div className='relative'>
               <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
               <Input
