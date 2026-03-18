@@ -16,12 +16,7 @@ interface CommissionRecordsBulkActionsProps {
 export function CommissionRecordsBulkActions({
   table,
 }: CommissionRecordsBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
-  const handleBulkAction = (action: string) => {
-    const items = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on commission records:`, items)
-    // TODO: Implement actual bulk actions
+  const handleBulkAction = (_action: string) => {
   }
 
   return (

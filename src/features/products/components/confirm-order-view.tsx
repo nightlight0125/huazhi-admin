@@ -77,10 +77,17 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const { channels: shippingMethodOptions, isLoading: isLoadingChannels } =
     useLogisticsChannels()
 
-  console.log(orderData, 'shippingMethodOptions')
-
   const handleAddAddress = () => {
-    navigate({ to: '/settings' })
+    // 保存确认订单数据，返回后可恢复视图
+    sessionStorage.setItem(
+      'confirm-order-return',
+      JSON.stringify({ payload: orderData })
+    )
+    const returnTo = `/products/${orderData.productId}`
+    navigate({
+      to: '/settings',
+      search: { tab: 'address', returnTo },
+    })
   }
 
   const handlePay = async () => {

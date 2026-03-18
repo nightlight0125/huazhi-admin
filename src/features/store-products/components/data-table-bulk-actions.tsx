@@ -120,12 +120,10 @@ export function DataTableBulkActions<TData>({
             </TooltipContent>
           </Tooltip>
           <DropdownMenuContent sideOffset={14}>
-            <DropdownMenuItem
-              onClick={() => console.log('Sort by store price')}
-            >
+            <DropdownMenuItem onClick={() => {}}>
               Sort by Store Price
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => console.log('Sort by hz price')}>
+            <DropdownMenuItem onClick={() => {}}>
               Sort by Price
             </DropdownMenuItem>
           </DropdownMenuContent>

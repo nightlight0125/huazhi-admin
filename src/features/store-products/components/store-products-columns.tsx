@@ -117,9 +117,8 @@ export const createStoreProductsColumns = (
           value={product.shippingFrom}
           options={shippingFromOptions}
           className='h-8 w-[120px] text-xs'
-          onValueChange={(value) => {
+          onValueChange={(_value) => {
             // Handle value change - you can update the data here
-            console.log('Shipping From changed:', value, product.id)
           }}
         />
       )
@@ -139,9 +138,8 @@ export const createStoreProductsColumns = (
           options={shippingMethodOptions}
           placeholder='请选择'
           className='h-8 w-[140px] text-xs'
-          onValueChange={(value) => {
+          onValueChange={(_value) => {
             // Handle value change - you can update the data here
-            console.log('Shipping Method changed:', value, product.id)
           }}
         />
       )
@@ -202,7 +200,6 @@ export const createStoreProductsColumns = (
             className='h-7 border-red-200 px-2 text-xs text-red-500'
             onClick={(e) => {
               e.stopPropagation()
-              console.log('Delete store product:', product.id)
               // TODO: 在这里调用删除店铺商品的接口
             }}
           >

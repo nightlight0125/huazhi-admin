@@ -19,12 +19,10 @@ interface SampleOrdersBulkActionsProps {
   table: Table<SampleOrder>
 }
 
-export function SampleOrdersBulkActions({ table }: SampleOrdersBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
-  const handleBulkAction = (action: string) => {
-    const items = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on sample orders:`, items)
+export function SampleOrdersBulkActions({
+  table,
+}: SampleOrdersBulkActionsProps) {
+  const handleBulkAction = (_action: string) => {
     // TODO: Implement actual bulk actions
     table.resetRowSelection()
   }
@@ -123,4 +121,3 @@ export function SampleOrdersBulkActions({ table }: SampleOrdersBulkActionsProps)
     </BulkActionsToolbar>
   )
 }
-

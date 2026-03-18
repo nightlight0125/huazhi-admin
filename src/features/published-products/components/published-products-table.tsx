@@ -1,20 +1,4 @@
-import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import {
-  queryGoodClassList,
-  queryPushProductsList,
-  type GoodClassItem,
-} from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   flexRender,
@@ -25,8 +9,24 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { Loader2 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  queryGoodClassList,
+  queryPushProductsList,
+  type GoodClassItem,
+} from '@/lib/api/products'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type PublishedProduct } from '../data/schema'
 import { PublishedProductsBulkActions } from './published-products-bulk-actions'
 import { publishedProductsColumns } from './published-products-columns'
@@ -174,9 +174,7 @@ export function PublishedProductsTable({ status }: DataTableProps) {
     const fetchCategories = async () => {
       try {
         const categories = await queryGoodClassList('00000001', 1, 100)
-        console.log('categories===================:', categories)
         const tree = convertToCategoryTree(categories)
-        console.log('tree===================:', tree)
         setCategoryTree(tree)
       } catch (error) {
         toast.error(
@@ -331,7 +329,7 @@ export function PublishedProductsTable({ status }: DataTableProps) {
     searchValue,
     selectedShopId,
     auth.user?.customerId,
-    refreshKey, 
+    refreshKey,
   ])
 
   const filteredData = useMemo(() => {

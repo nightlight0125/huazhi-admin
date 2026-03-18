@@ -1,5 +1,5 @@
-import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
 import { type Table } from '@tanstack/react-table'
+import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -20,11 +20,7 @@ interface SourcingBulkActionsProps {
 }
 
 export function DataTableBulkActions({ table }: SourcingBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
-  const handleBulkAction = (action: string) => {
-    const items = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on sourcing:`, items)
+  const handleBulkAction = (_action: string) => {
     table.resetRowSelection()
   }
 
@@ -133,5 +129,3 @@ export function DataTableBulkActions({ table }: SourcingBulkActionsProps) {
     </BulkActionsToolbar>
   )
 }
-
-

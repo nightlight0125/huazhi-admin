@@ -97,3 +97,23 @@
     height: 0;
   }
 }
+
+/* Command/Select hover 暗色模式：防止选中/悬停时显示白色 */
+.dark [cmdk-item][data-selected='true'],
+.dark [cmdk-item][aria-selected='true'],
+.dark [data-slot='command-item'][data-selected='true'] {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+.dark [cmdk-item]:hover {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+/* 物流方式选择 label 悬停/选中 */
+.dark label[class*='hover:bg-muted']:hover,
+.dark label.bg-muted,
+.dark [data-slot='popover-content'] label:hover {
+  background-color: var(--muted) !important;
+}

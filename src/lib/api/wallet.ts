@@ -80,14 +80,10 @@ export async function getWalletList(
     pageNo,
   }
 
-  console.log('获取钱包列表请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<GetWalletListResponse>(
     '/v2/hzkj/hzkj_member/hzkj_customer_wallet/getWalletList',
     requestData
   )
-
-  console.log('获取钱包列表响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -163,14 +159,10 @@ export async function getWalletInfo(
     pageNo,
   }
 
-  console.log('获取钱包信息请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<GetWalletInfoResponse>(
     '/v2/hzkj/hzkj_member/hzkj_customer_wallet/getWalletInfo',
     requestData
   )
-
-  console.log('获取钱包信息响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {

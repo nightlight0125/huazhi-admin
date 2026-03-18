@@ -1,6 +1,6 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { type Row } from '@tanstack/react-table'
-import { Trash2, Edit, Eye, Download } from 'lucide-react'
+import { Download, Edit, Eye, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -25,7 +25,6 @@ export function DataTableRowActions<TData>({
   const { setOpen, setCurrentRow } = useBrands()
 
   const handleDownload = () => {
-    console.log('下载文件:', brandItem.fileName)
     // 这里可以实现文件下载逻辑
     alert(`正在下载文件: ${brandItem.fileName}`)
   }
@@ -60,9 +59,7 @@ export function DataTableRowActions<TData>({
           <Edit className='mr-2 h-4 w-4' />
           编辑项目
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={handleDownload}
-        >
+        <DropdownMenuItem onClick={handleDownload}>
           <Download className='mr-2 h-4 w-4' />
           下载文件
         </DropdownMenuItem>

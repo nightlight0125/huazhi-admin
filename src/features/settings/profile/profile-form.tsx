@@ -180,15 +180,6 @@ export function ProfileForm() {
           (auth.user?.hzkj_whatsapp1 as string | undefined) || ''
         const whatsappFromProfile =
           (profile?.hzkj_whatsapp1 as string | undefined) || ''
-
-        console.log('Profile data:', {
-          profile,
-          hzkj_emailfield3: profile?.hzkj_emailfield3,
-          emailFromProfile,
-          emailFromUser,
-          finalEmail: email,
-        })
-
         form.reset({
           ...defaultValues,
           firstName,
@@ -290,7 +281,7 @@ export function ProfileForm() {
           <div className='grid grid-cols-2 gap-4'>
             <div className='space-y-1'>
               <FormLabel>User ID</FormLabel>
-              <div className='bg-muted text-muted-foreground rounded-md border border-border px-3 py-2 text-sm'>
+              <div className='bg-muted text-muted-foreground border-border rounded-md border px-3 py-2 text-sm'>
                 {userId ?? '-'}
               </div>
             </div>
@@ -420,7 +411,7 @@ export function ProfileForm() {
               )
             }
           })}
-          className='mt-10 space-y-6 border-t border-border pt-6'
+          className='border-border mt-10 space-y-6 border-t pt-6'
         >
           <div>
             <h2 className='text-base font-medium'>Change Password</h2>

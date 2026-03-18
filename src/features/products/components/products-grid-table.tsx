@@ -206,7 +206,6 @@ export function ProductsGridTable({
                     title='Add to Cart'
                     onClick={(e) => {
                       e.stopPropagation()
-                      console.log('Add to cart:', item.id)
                     }}
                   >
                     <ShoppingCart className='h-3.5 w-3.5' />
@@ -218,7 +217,6 @@ export function ProductsGridTable({
                     title='Add to Store'
                     onClick={(e) => {
                       e.stopPropagation()
-                      console.log('Add to store:', item.id)
                     }}
                   >
                     <Store className='h-3.5 w-3.5' />

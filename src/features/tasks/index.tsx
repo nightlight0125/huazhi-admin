@@ -7,8 +7,6 @@ import { TasksPrimaryButtons } from './components/tasks-primary-buttons'
 import { TasksProvider } from './components/tasks-provider'
 import { TasksTable } from './components/tasks-table'
 
-console.log(tasks)
-
 export function Tasks() {
   return (
     <TasksProvider>

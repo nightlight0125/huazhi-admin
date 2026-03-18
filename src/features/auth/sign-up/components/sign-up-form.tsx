@@ -19,15 +19,19 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { PasswordInput } from '@/components/password-input'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { PasswordInput } from '@/components/password-input'
 
 // Country options for phone dial code selector (code used for flag-icons: fi fi-xx)
-const PHONE_COUNTRY_OPTIONS: { code: string; dialCode: string; label: string }[] = [
+const PHONE_COUNTRY_OPTIONS: {
+  code: string
+  dialCode: string
+  label: string
+}[] = [
   { code: 'US', dialCode: '+1', label: 'United States' },
   { code: 'CN', dialCode: '+86', label: 'China' },
   { code: 'GB', dialCode: '+44', label: 'United Kingdom' },
@@ -96,7 +100,6 @@ export function SignUpForm({
   })
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    console.log('表单提交被触发！', data)
     setIsLoading(true)
 
     const loadingToast = toast.loading('Creating account...')
@@ -172,8 +175,6 @@ export function SignUpForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, (errors) => {
-          console.log('表单验证失败:', errors)
-          // 显示第一个验证错误
           const firstError = Object.values(errors)[0]
           if (firstError?.message) {
             toast.error(firstError.message)
@@ -266,7 +267,7 @@ export function SignUpForm({
                       <PopoverTrigger asChild>
                         <button
                           type='button'
-                          className='mr-3 flex items-center gap-1.5 border-r pr-3 text-sm text-muted-foreground hover:text-foreground'
+                          className='text-muted-foreground hover:text-foreground mr-3 flex items-center gap-1.5 border-r pr-3 text-sm'
                         >
                           <span
                             className={cn(
@@ -286,9 +287,8 @@ export function SignUpForm({
                               <button
                                 type='button'
                                 className={cn(
-                                  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent',
-                                  currentOption.code === opt.code &&
-                                    'bg-accent'
+                                  'hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
+                                  currentOption.code === opt.code && 'bg-accent'
                                 )}
                                 onClick={() => {
                                   setSelectedPhoneCountry(opt)
@@ -323,9 +323,7 @@ export function SignUpForm({
                       onChange={(e) => {
                         const next = e.target.value.replace(/\D/g, '')
                         field.onChange(
-                          next
-                            ? `${currentOption.dialCode}-${next}`
-                            : ''
+                          next ? `${currentOption.dialCode}-${next}` : ''
                         )
                       }}
                       placeholder='Phone Number'

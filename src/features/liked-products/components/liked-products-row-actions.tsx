@@ -31,7 +31,6 @@ export function LikedProductsRowActions({
         className='h-7 px-2 text-xs'
         onClick={(e) => {
           e.stopPropagation()
-          console.log('Publish liked product to store:', product.id)
         }}
       >
         <Store className='mr-1 h-3.5 w-3.5' />

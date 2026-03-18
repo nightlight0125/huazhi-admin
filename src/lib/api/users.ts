@@ -56,14 +56,10 @@ export async function queryAccount(
     pageNo,
   }
 
-  console.log('查询账户请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QueryAccountResponse>(
     '/v2/hzkj/hzkj_member/hzkj_account_record/queryAccount',
     requestData
   )
-
-  console.log('查询账户响应:', response.data)
 
   // 检查响应状态
   if (!response.data.status) {
@@ -245,14 +241,10 @@ export async function addAccount(
     member: memberData,
   }
 
-  console.log('添加账户请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<AddAccountResponse>(
     '/v2/hzkj/hzkj_member/member/addAccount',
     requestData
   )
-
-  console.log('添加账户响应:', response.data)
 
   // 检查响应状态
   if (!response.data.status) {
@@ -289,14 +281,10 @@ export async function updatePassword(
     newPassword: newPassword,
   }
 
-  console.log('重置密码请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<UpdatePasswordResponse>(
     '/v2/hzkj/hzkj_member/member/updatePassword',
     requestData
   )
-
-  console.log('重置密码响应:', response.data)
 
   // 检查响应状态
   if (!response.data.status) {
@@ -348,7 +336,6 @@ export async function getProfileInfo(
     }
   )
 
-  console.log('获取 Profile Info 响应:', response.data)
 
   if (!response.data.status) {
     const errorMessage =
@@ -393,14 +380,12 @@ export async function updateProfile(
     data: rows,
   }
 
-  console.log('更新 Profile 请求数据:', JSON.stringify(requestData, null, 2))
 
   const response = await apiClient.post<UpdateProfileResponse>(
     '/v2/hzkj/hzkj_member/hzkj_member_customer/updateProfile',
     requestData
   )
 
-  console.log('更新 Profile 响应:', response.data)
 
   if (!response.data.status) {
     const errorMessage =
@@ -466,14 +451,10 @@ export async function queryCustomerUser(
     pageNo,
   }
 
-  console.log('查询客户用户请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QueryCustomerUserResponse>(
     '/v2/hzkj/hzkj_member/hzkj_member_customer/queryCustomerUser',
     requestData
   )
-
-  console.log('查询客户用户响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -545,14 +526,10 @@ export async function queryCustomerRecommendList(
     ...(options?.endDate && { endDate: options.endDate }),
   }
 
-  console.log('查询客户推荐列表请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QueryCustomerRecommendListResponse>(
     '/v2/hzkj/hzkj_customer/member/queryRecommendList',
     requestData
   )
-
-  console.log('查询客户推荐列表响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -640,14 +617,10 @@ export async function queryCustomerTrace(
     ...(endDate && { endDate }),
   }
 
-  console.log('查询客户追踪请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QueryCustomerTraceResponse>(
     '/v2/hzkj/hzkj_customer/hzkj_trace/queryCustomerTrace',
     requestData
   )
-
-  console.log('查询客户追踪响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -697,14 +670,10 @@ export async function updateAccountInfo(
     data: [accountData],
   }
 
-  console.log('更新账户信息请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<UpdateAccountInfoResponse>(
     '/v2/hzkj/hzkj_member/hzkj_account_record/updateAccountInfo',
     requestData
   )
-
-  console.log('更新账户信息响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -741,14 +710,10 @@ export async function deleteAccount(
     accountId,
   }
 
-  console.log('删除账户请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<DeleteAccountResponse>(
     '/v2/hzkj/hzkj_ordercenter/member/deleteAccount',
     requestData
   )
-
-  console.log('删除账户响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -947,14 +912,10 @@ export async function queryAdmindivisionLevel(
     pageNo,
   }
 
-  console.log('查询行政区划级别请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QueryAdmindivisionLevelResponse>(
     '/v2/hzkj/base/bd_admindivisionlevel/queryAdmindivisionlevel',
     requestData
   )
-
-  console.log('查询行政区划级别响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -969,11 +930,12 @@ export async function queryAdmindivisionLevel(
   return Array.isArray(rows) ? rows : []
 }
 
-// 行政区划数据接口
+// 行政区划数据接口（接口返回 fullspell 作为显示名，此处映射为 name 供业务使用）
 export interface AdmindivisionItem {
   id: string
   number?: string
   name: string
+  fullspell?: string
   level?: number
   country_id?: string | number
   parent_id?: string | number
@@ -1025,14 +987,10 @@ export async function queryAdmindivision(
     pageNo,
   }
 
-  console.log('查询行政区划请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QueryAdmindivisionResponse>(
     '/v2/hzkj/base/bd_admindivision/queryAdmindivision',
     requestData
   )
-
-  console.log('查询行政区划响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -1042,9 +1000,17 @@ export async function queryAdmindivision(
     throw new Error(errorMessage)
   }
 
-  // 返回 rows 数组，如果没有 rows 则返回空数组
+  // 返回 rows 数组，接口使用 fullspell 作为显示名，映射为 name
   const rows = response.data.data?.rows
-  return Array.isArray(rows) ? rows : []
+  if (!Array.isArray(rows)) return []
+
+  return rows.map((item) => ({
+    ...item,
+    name:
+      (item as { fullspell?: string }).fullspell ??
+      item.name ??
+      String(item.id ?? ''),
+  }))
 }
 
 // 更新账单地址请求参数
@@ -1083,14 +1049,10 @@ export async function updateBillAddress(
     data: [addressData],
   }
 
-  console.log('更新账单地址请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<UpdateBillAddressResponse>(
     '/v2/hzkj/hzkj_member/hzkj_member_customer/updateBillAdress',
     requestData
   )
-
-  console.log('更新账单地址响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -1139,14 +1101,10 @@ export async function updateAddress(
     data: [addressData],
   }
 
-  console.log('更新收货地址请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<UpdateAddressResponse>(
     '/v2/hzkj/hzkj_member/hzkj_member_customer/updateAdress',
     requestData
   )
-
-  console.log('更新收货地址响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {

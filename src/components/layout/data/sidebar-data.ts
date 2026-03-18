@@ -68,12 +68,8 @@ export const sidebarData: SidebarData = {
               title: 'Sourcing',
               url: '/sourcing',
             },
-            // {
-            //   title: 'Liked products',
-            //   url: '/liked-products',
-            // },
             {
-              title: 'Collection products',
+              title: 'Collection Products',
               url: '/collection-products',
             },
             {
@@ -91,7 +87,7 @@ export const sidebarData: SidebarData = {
               url: '/store-products',
             },
             {
-              title: 'Published products',
+              title: 'Published Products',
               url: '/published-products',
             },
           ],

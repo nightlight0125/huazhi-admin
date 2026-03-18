@@ -12,7 +12,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { Trash2 } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -21,11 +23,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DataTablePagination, DataTableToolbar, DataTableBulkActions } from '@/components/data-table'
+import {
+  DataTableBulkActions,
+  DataTablePagination,
+  DataTableToolbar,
+} from '@/components/data-table'
 import { type Brand } from '../data/schema'
 import { brandsColumns as columns } from './brands-columns'
-import { Button } from '@/components/ui/button'
-import { Trash2 } from 'lucide-react'
 
 const route = getRouteApi('/_authenticated/brands/')
 
@@ -34,7 +38,6 @@ type DataTableProps = {
 }
 
 export function BrandsTable({ data }: DataTableProps) {
-  
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -97,11 +100,9 @@ export function BrandsTable({ data }: DataTableProps) {
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-
   const handleBulkDelete = () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows
-    const selectedBrands = selectedRows.map(row => row.original as Brand)
-    console.log('批量删除品牌:', selectedBrands)
+    const selectedBrands = selectedRows.map((row) => row.original as Brand)
     alert(`已删除 ${selectedBrands.length} 个品牌`)
     table.resetRowSelection()
   }
@@ -173,13 +174,9 @@ export function BrandsTable({ data }: DataTableProps) {
         </Table>
       </div>
       <DataTablePagination table={table} />
-      <DataTableBulkActions table={table} entityName="品牌">
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={handleBulkDelete}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
+      <DataTableBulkActions table={table} entityName='品牌'>
+        <Button variant='destructive' size='sm' onClick={handleBulkDelete}>
+          <Trash2 className='mr-2 h-4 w-4' />
           删除选中项
         </Button>
       </DataTableBulkActions>

@@ -7,17 +7,17 @@ import {
   QueryClientProvider,
 } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import 'flag-icons/css/flag-icons.min.css'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+// Styles
 import { handleServerError } from '@/lib/handle-server-error'
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
 // Generated Routes
 import { routeTree } from './routeTree.gen'
-// Styles
 import './styles/index.css'
-import 'flag-icons/css/flag-icons.min.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

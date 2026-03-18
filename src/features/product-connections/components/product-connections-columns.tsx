@@ -166,9 +166,7 @@ export const productConnectionsColumns: ColumnDef<ProductConnection>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => {
-      const product = row.original
-
+    cell: () => {
       return (
         <div className='flex gap-2'>
           <Button
@@ -177,7 +175,6 @@ export const productConnectionsColumns: ColumnDef<ProductConnection>[] = [
             className='h-7 px-2 text-xs'
             onClick={(e) => {
               e.stopPropagation()
-              console.log('Connect products:', product.id)
               // TODO: 在这里调用关联产品的实际接口
             }}
           >
@@ -190,7 +187,6 @@ export const productConnectionsColumns: ColumnDef<ProductConnection>[] = [
             className='h-7 border-red-200 px-2 text-xs text-red-500'
             onClick={(e) => {
               e.stopPropagation()
-              console.log('Delete product connection:', product.id)
               // TODO: 在这里调用删除关联关系的实际接口
             }}
           >

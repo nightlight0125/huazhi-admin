@@ -27,8 +27,6 @@ export async function getUserShop(
     }
   )
 
-  console.log('获取用户店铺响应:', response.data)
-
   // 检查响应状态
   if (!response.data.status) {
     const errorMessage =
@@ -77,7 +75,7 @@ export async function getUserShopList(
 ): Promise<{ list: ShopListItem[]; total: number }> {
   const {
     hzkjAccountId,
-    queryParam = 'w',
+    queryParam = '',
     pageNo = 0,
     pageSize = 10,
   } = params
@@ -93,8 +91,6 @@ export async function getUserShopList(
       },
     }
   )
-
-  console.log('获取用户店铺列表响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -145,8 +141,6 @@ export async function shopifyOAuth(
     }
   )
 
-  console.log('Shopify OAuth 响应:', response.data)
-
   // 检查响应状态
   if (!response.data.status) {
     const errorMessage =
@@ -155,14 +149,12 @@ export async function shopifyOAuth(
   }
 
   // 返回 OAuth URL
-  console.log('response.data:', response.data?.data)
   const data = response.data?.data
   const url = data && typeof data === 'object' && 'url' in data
     ? (data as { url?: string }).url
     : typeof data === 'string'
       ? data
       : undefined
-  console.log('url:', url)
   if (!url || typeof url !== 'string') {
     throw new Error('OAuth URL not found in response')
   }
@@ -203,8 +195,6 @@ export async function shopifyCallback(
     }
   )
 
-  console.log('Shopify 回调响应:', response.data)
-
   // 检查响应状态
   if (!response.data.status) {
     const errorMessage =
@@ -231,6 +221,40 @@ export interface UnbindShopResponse {
   [key: string]: unknown
 }
 
+// 绑定店铺请求参数
+export interface AddShopRequest {
+  addShopVO: {
+    customerId: string
+    accountId: string
+    shopName: string
+  }
+}
+
+// 绑定店铺响应
+export interface AddShopResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string
+  status: boolean
+  [key: string]: unknown
+}
+
+// 绑定店铺 API
+export async function addShop(params: AddShopRequest): Promise<AddShopResponse> {
+  const response = await apiClient.post<AddShopResponse>(
+    '/v2/hzkj/hzkj_customer/shop/addShop',
+    params
+  )
+
+  if (!response.data.status) {
+    const errorMessage =
+      response.data.message || 'Failed to add shop. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 解绑店铺 API
 export async function unbindShop(
   params: UnbindShopRequest
@@ -243,8 +267,6 @@ export async function unbindShop(
       flag: params.flag,
     }
   )
-
-  console.log('解绑店铺响应:', response.data)
 
   // 检查响应状态
   if (!response.data.status) {

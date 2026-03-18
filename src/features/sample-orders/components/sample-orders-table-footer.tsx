@@ -44,7 +44,7 @@ export function SampleOrdersTableFooter({
 
 
   return (
-    <div className='flex items-center justify-between border-t bg-white px-4 py-3'>
+    <div className='flex items-center justify-between border-t border-border bg-background px-4 py-3'>
       {/* Left: Selection checkboxes and count */}
       <div className='flex items-center gap-4'>
         <div className='flex items-center gap-2'>
@@ -106,7 +106,7 @@ export function SampleOrdersTableFooter({
         {pageNumbers.map((pageNumber, index) => (
           <div key={`${pageNumber}-${index}`} className='flex items-center'>
             {pageNumber === '...' ? (
-              <span className='px-2 text-sm text-gray-500'>...</span>
+              <span className='text-muted-foreground px-2 text-sm'>...</span>
             ) : (
               <Button
                 variant={currentPage === pageNumber ? 'default' : 'outline'}

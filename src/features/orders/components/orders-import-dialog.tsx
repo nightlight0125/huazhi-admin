@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,14 +11,16 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload } from 'lucide-react'
 
 interface OrdersImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean | null) => void
 }
 
-export function OrdersImportDialog({ open, onOpenChange }: OrdersImportDialogProps) {
+export function OrdersImportDialog({
+  open,
+  onOpenChange,
+}: OrdersImportDialogProps) {
   const [file, setFile] = useState<File | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,7 +33,6 @@ export function OrdersImportDialog({ open, onOpenChange }: OrdersImportDialogPro
   const handleImport = () => {
     if (file) {
       // 这里应该处理文件导入逻辑
-      console.log('导入文件:', file.name)
       onOpenChange(false)
       setFile(null)
     }
@@ -56,7 +58,7 @@ export function OrdersImportDialog({ open, onOpenChange }: OrdersImportDialogPro
             />
           </div>
           {file && (
-            <div className='text-sm text-muted-foreground'>
+            <div className='text-muted-foreground text-sm'>
               已选择文件: {file.name}
             </div>
           )}

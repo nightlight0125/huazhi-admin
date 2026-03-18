@@ -195,13 +195,9 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     setPayDialogOpen(true)
   }
 
-  const handleEditAddress = (orderId: string) => {
-    console.log('Edit address for order:', orderId)
-  }
+  const handleEditAddress = (_orderId: string) => {}
 
-  const handleAddPackage = (orderId: string) => {
-    console.log('Add package for order:', orderId)
-  }
+  const handleAddPackage = (_orderId: string) => {}
 
   const handleDelete = async (orderId: string) => {
     const customerId = auth.user?.customerId
@@ -284,7 +280,7 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
         searchPlaceholder='Enter Order Number,SKU,Product Name'
       />
       <div className='mb-2 flex items-center justify-end'>
-        <StockOrdersActionsMenu />
+        <StockOrdersActionsMenu table={table} />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
         <TabsList className='grid w-full grid-cols-4'>

@@ -1,8 +1,8 @@
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { paymentCallback } from '@/lib/api/orders'
 import { Loader2 } from 'lucide-react'
+import { paymentCallback } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 
 const searchSchema = z.object({
@@ -17,7 +17,9 @@ export const Route = createFileRoute('/order/payment-callback')({
 function OrderPaymentCallbackPage() {
   const { session_id } = Route.useSearch()
   const navigate = useNavigate()
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
+    'loading'
+  )
   const [message, setMessage] = useState<string>('')
 
   useEffect(() => {
@@ -33,12 +35,16 @@ function OrderPaymentCallbackPage() {
       .then(() => {
         if (cancelled) return
         setStatus('success')
-        setMessage('Payment result has been processed. You can close this window or go back to Stock Orders.')
+        setMessage(
+          'Payment result has been processed. You can close this window or go back to Stock Orders.'
+        )
       })
       .catch((err) => {
         if (cancelled) return
         setStatus('error')
-        setMessage(err instanceof Error ? err.message : 'Payment callback failed.')
+        setMessage(
+          err instanceof Error ? err.message : 'Payment callback failed.'
+        )
       })
 
     return () => {
@@ -47,10 +53,10 @@ function OrderPaymentCallbackPage() {
   }, [session_id])
 
   return (
-    <div className='flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/30 p-6'>
+    <div className='bg-muted/30 flex min-h-svh flex-col items-center justify-center gap-6 p-6'>
       {status === 'loading' && (
         <>
-          <Loader2 className='h-10 w-10 animate-spin text-primary' />
+          <Loader2 className='text-primary h-10 w-10 animate-spin' />
           <p className='text-muted-foreground text-sm'>
             Processing payment result...
           </p>
@@ -74,17 +80,12 @@ function OrderPaymentCallbackPage() {
               />
             </svg>
           </div>
-          <p className='text-center font-medium text-foreground'>{message}</p>
+          <p className='text-foreground text-center font-medium'>{message}</p>
           <div className='flex gap-3'>
-            <Button
-              variant='outline'
-              onClick={() => window.close()}
-            >
+            {/* <Button variant='outline' onClick={() => window.close()}>
               Close window
-            </Button>
-            <Button
-              onClick={() => navigate({ to: '/stock-orders' })}
-            >
+            </Button> */}
+            <Button onClick={() => navigate({ to: '/stock-orders' })}>
               Go to Stock Orders
             </Button>
           </div>
@@ -93,9 +94,9 @@ function OrderPaymentCallbackPage() {
 
       {status === 'error' && (
         <>
-          <div className='rounded-full bg-destructive/10 p-4'>
+          <div className='bg-destructive/10 rounded-full p-4'>
             <svg
-              className='h-10 w-10 text-destructive'
+              className='text-destructive h-10 w-10'
               fill='none'
               viewBox='0 0 24 24'
               stroke='currentColor'
@@ -108,17 +109,15 @@ function OrderPaymentCallbackPage() {
               />
             </svg>
           </div>
-          <p className='text-center font-medium text-destructive'>{message}</p>
+          <p className='text-destructive text-center font-medium'>{message}</p>
           <div className='flex gap-3'>
-            <Button
+            {/* <Button
               variant='outline'
               onClick={() => window.close()}
             >
               Close window
-            </Button>
-            <Button
-              onClick={() => navigate({ to: '/stock-orders' })}
-            >
+            </Button> */}
+            <Button onClick={() => navigate({ to: '/stock-orders' })}>
               Go to Stock Orders
             </Button>
           </div>

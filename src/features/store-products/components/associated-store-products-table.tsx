@@ -26,8 +26,6 @@ import { Link2, Loader2, Minus, Plus, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { type StoreProduct } from '../data/schema'
-import { AssociatedBulkActions } from './associated-bulk-actions'
-
 interface AssociatedStoreProductsTableProps {
   data?: StoreProduct[]
 }
@@ -124,23 +122,6 @@ export function AssociatedStoreProductsTable({
     auth.user?.customerId,
     auth.user?.id,
   ])
-
-  // 获取选中的产品 ID
-  const selectedIds = useMemo(() => {
-    return new Set(
-      Object.keys(rowSelection)
-        .map((index) => {
-          const item = data[Number(index)]
-          return item?.entryId || item?.localSpuId || ''
-        })
-        .filter(Boolean)
-    )
-  }, [rowSelection, data])
-
-  // 清除所有选中
-  const handleClearSelection = () => {
-    setRowSelection({})
-  }
 
   // 处理断开连接
   const handleDisconnect = (productId: string) => {
@@ -429,10 +410,6 @@ export function AssociatedStoreProductsTable({
 
   return (
     <div className='space-y-4'>
-      <AssociatedBulkActions
-        selectedIds={selectedIds}
-        onClearSelection={handleClearSelection}
-      />
       <DataTableToolbar
         table={table}
         searchPlaceholder='enter store product\name\ID'

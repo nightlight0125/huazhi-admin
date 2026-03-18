@@ -1,3 +1,14 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  linkProduct,
+  querySkuByCustomer,
+  queryUnconnectedVariants,
+  type SkuRecordItem,
+  type UnconnectedVariantItem,
+} from '@/lib/api/products'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -6,17 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  linkProduct,
-  querySkuByCustomer,
-  queryUnconnectedVariants,
-  type SkuRecordItem,
-  type UnconnectedVariantItem,
-} from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
-import { Link2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { toast } from 'sonner'
 
 /* ===================== types ===================== */
 
@@ -59,14 +59,15 @@ export function ProductsConnectionDialog({
   const { auth } = useAuthStore()
 
   const [storeProducts, setStoreProducts] = useState<StoreProduct[]>([])
-  const [teemDropProducts, setTeemDropProducts] = useState<TeemDropProduct[]>([])
+  const [teemDropProducts, setTeemDropProducts] = useState<TeemDropProduct[]>(
+    []
+  )
   const [isLoadingStoreProducts, setIsLoadingStoreProducts] = useState(false)
   const [isLoadingTeemDropProducts, setIsLoadingTeemDropProducts] =
     useState(false)
 
-  const [selectedStoreProductId, setSelectedStoreProductId] = useState<string>(
-    ''
-  )
+  const [selectedStoreProductId, setSelectedStoreProductId] =
+    useState<string>('')
 
   const [connections, setConnections] = useState<
     Array<{ storeProductId: string; teemDropProductId: string }>
@@ -87,7 +88,6 @@ export function ProductsConnectionDialog({
         c.storeProductId === selectedStoreProductId &&
         c.teemDropProductId === teemDropProductId
     )
-
 
   const { sortedStoreProducts, sortedTeemDropProducts } = useMemo(() => {
     // 创建连接映射
@@ -118,7 +118,7 @@ export function ProductsConnectionDialog({
       return product
     }
 
-    // 获取下一个未使用的 TeemDrop Product（按原始顺序）
+    // 获取下一个未使用的 HyperZone Product（按原始顺序）
     let teemDropCursor = 0
     const getNextUnusedTeemDrop = (): TeemDropProduct | null => {
       while (
@@ -151,7 +151,9 @@ export function ProductsConnectionDialog({
 
         const connectedTeemDropId = storeToTeemDrop.get(store.id)
         if (connectedTeemDropId && !usedTeemDropIds.has(connectedTeemDropId)) {
-          const teemDrop = teemDropProducts.find((p) => p.id === connectedTeemDropId)
+          const teemDrop = teemDropProducts.find(
+            (p) => p.id === connectedTeemDropId
+          )
           if (teemDrop) {
             sortedStores.push(store)
             sortedTeemDrops.push(teemDrop)
@@ -217,14 +219,25 @@ export function ProductsConnectionDialog({
         const formatted: StoreProduct[] = result.map(
           (item: UnconnectedVariantItem) => {
             // 后端返回的字段：variantid (小写), title, picture
-            const variantid = typeof item.variantid === 'string' 
-              ? item.variantid 
-              : typeof item.variantId === 'string'
-                ? item.variantId
-                : String(item.variantid || item.variantId || item.id || '')
+            const variantid =
+              typeof item.variantid === 'string'
+                ? item.variantid
+                : typeof item.variantId === 'string'
+                  ? item.variantId
+                  : String(item.variantid || item.variantId || item.id || '')
             const id = variantid
-            const picture = typeof item.picture === 'string' ? item.picture : (typeof item.image === 'string' ? item.image : '')
-            const title = typeof item.title === 'string' ? item.title : (typeof item.description === 'string' ? item.description : id)
+            const picture =
+              typeof item.picture === 'string'
+                ? item.picture
+                : typeof item.image === 'string'
+                  ? item.image
+                  : ''
+            const title =
+              typeof item.title === 'string'
+                ? item.title
+                : typeof item.description === 'string'
+                  ? item.description
+                  : id
 
             return {
               id,
@@ -258,17 +271,15 @@ export function ProductsConnectionDialog({
     const fetchTeemDropProducts = async () => {
       setIsLoadingTeemDropProducts(true)
       try {
-        const result = await querySkuByCustomer(
-          undefined,
-          '0',
-          '0',
-          1,
-          100
-        )
+        const result = await querySkuByCustomer(undefined, '0', '0', 1, 100)
 
-        const rows = Array.isArray(result) ? result : (result as {
-          rows: SkuRecordItem[]
-        }).rows
+        const rows = Array.isArray(result)
+          ? result
+          : (
+              result as {
+                rows: SkuRecordItem[]
+              }
+            ).rows
 
         const formatted: TeemDropProduct[] = (rows || []).map(
           (item: SkuRecordItem & { [key: string]: unknown }) => {
@@ -288,11 +299,11 @@ export function ProductsConnectionDialog({
 
         setTeemDropProducts(formatted)
       } catch (error) {
-        console.error('Failed to load TeemDrop products in dialog:', error)
+        console.error('Failed to load HyperZone products in dialog:', error)
         toast.error(
           error instanceof Error
             ? error.message
-            : 'Failed to load TeemDrop products. Please try again.'
+            : 'Failed to load HyperZone products. Please try again.'
         )
         setTeemDropProducts([])
       } finally {
@@ -302,7 +313,13 @@ export function ProductsConnectionDialog({
 
     void fetchStoreProducts()
     void fetchTeemDropProducts()
-  }, [open, auth.user?.customerId, auth.user?.id, selectedStoreProductId, leftProductId])
+  }, [
+    open,
+    auth.user?.customerId,
+    auth.user?.id,
+    selectedStoreProductId,
+    leftProductId,
+  ])
 
   /* ---------- core logic ---------- */
 
@@ -389,13 +406,14 @@ export function ProductsConnectionDialog({
                 </div>
               ) : (
                 sortedStoreProducts.map((product, index) => {
-                const selected = selectedStoreProductId === product.id
-                const connected = isStoreConnected(product.id)
-                const teemDropProductAtSameIndex = sortedTeemDropProducts[index]
-                const isConnectedToSameIndex =
-                  teemDropProductAtSameIndex &&
-                  getConnectedTeemDropId(product.id) ===
-                    teemDropProductAtSameIndex.id
+                  const selected = selectedStoreProductId === product.id
+                  const connected = isStoreConnected(product.id)
+                  const teemDropProductAtSameIndex =
+                    sortedTeemDropProducts[index]
+                  const isConnectedToSameIndex =
+                    teemDropProductAtSameIndex &&
+                    getConnectedTeemDropId(product.id) ===
+                      teemDropProductAtSameIndex.id
 
                   return (
                     <div
@@ -409,7 +427,9 @@ export function ProductsConnectionDialog({
                           className='h-14 w-14 rounded object-cover'
                         />
                         <div className='flex-1'>
-                          <p className='text-sm'>{product.description || product.title}</p>
+                          <p className='text-sm'>
+                            {product.description || product.title}
+                          </p>
                           <p className='text-muted-foreground text-xs'>
                             Variant ID: {product.variantid || product.variantId}
                           </p>
@@ -449,7 +469,7 @@ export function ProductsConnectionDialog({
 
           {/* ================= 右侧 ================= */}
           <div className='flex flex-1 flex-col overflow-hidden'>
-            <h3 className='mb-4 text-sm font-semibold'>TeemDrop Products</h3>
+            <h3 className='mb-4 text-sm font-semibold'>HyperZone Products</h3>
             <div className='flex-1 space-y-3 overflow-y-auto'>
               {isLoadingTeemDropProducts ? (
                 <div className='text-muted-foreground py-4 text-center text-sm'>
@@ -461,13 +481,13 @@ export function ProductsConnectionDialog({
                 </div>
               ) : (
                 sortedTeemDropProducts.map((product, index) => {
-                const active = isConnectedToSelected(product.id)
-                // 检查这个产品是否连接到对应位置的 Store Product
-                const storeProductAtSameIndex = sortedStoreProducts[index]
-                const isConnectedToSameIndex =
-                  storeProductAtSameIndex &&
-                  getConnectedTeemDropId(storeProductAtSameIndex.id) ===
-                    product.id
+                  const active = isConnectedToSelected(product.id)
+                  // 检查这个产品是否连接到对应位置的 Store Product
+                  const storeProductAtSameIndex = sortedStoreProducts[index]
+                  const isConnectedToSameIndex =
+                    storeProductAtSameIndex &&
+                    getConnectedTeemDropId(storeProductAtSameIndex.id) ===
+                      product.id
 
                   return (
                     <div

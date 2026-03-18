@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import {
+  useNavigate,
+  useParams,
+  useRouter,
+  useSearch,
+} from '@tanstack/react-router'
 import {
   getCoreRowModel,
   getFilteredRowModel,
@@ -202,6 +207,7 @@ export function ProductDetails() {
   })
   const search = useSearch({ from: '/_authenticated/products/$productId' })
   const navigate = useNavigate()
+  const { history } = useRouter()
   const from = search.from as string | undefined
   const isFromPackagingProducts =
     from?.startsWith('packaging-products') ?? false
@@ -353,7 +359,6 @@ export function ProductDetails() {
         const countryOptionsData = mapCountriesToCountryOptions(countriesData)
         setCountryOptions(countryOptionsData)
         const states = await getStatesList(1, 1000)
-        console.log('states:', states)
         setStatesData(states)
       } catch (error) {
         setCountryOptions([])
@@ -370,7 +375,6 @@ export function ProductDetails() {
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null)
   const [selectedSkuPrice, setSelectedSkuPrice] = useState<number | null>(null)
   const [selectedSkuEnname, setSelectedSkuEnname] = useState<unknown>(null)
-  const [isLoadingSkuBySpecs, setIsLoadingSkuBySpecs] = useState(false)
   const [selectedThumbnail, setSelectedThumbnail] = useState(0)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const [selectedStore, setSelectedStore] = useState('')
@@ -506,7 +510,6 @@ export function ProductDetails() {
         return
       }
 
-      setIsLoadingSkuBySpecs(true)
       try {
         const response = await selectSpecGetSku({
           productId: String(productId),
@@ -539,8 +542,6 @@ export function ProductDetails() {
             ? error.message
             : 'Failed to load SKU. Please try again.'
         )
-      } finally {
-        setIsLoadingSkuBySpecs(false)
       }
     }
 
@@ -556,12 +557,9 @@ export function ProductDetails() {
     setSelectedBuyType('sample')
     setPurchaseMode('sample')
     setIsPurchaseDialogOpen(true)
-    console.log('isPurchaseDialogOpen set to true')
   }
 
   const handleBuyStockButtonClick = () => {
-    console.log('handleBuyStockButtonClick called')
-
     // 检查是否所有规格都已选择
     if (!areAllSpecsSelected()) {
       toast.error('Please select attribute values')
@@ -571,7 +569,6 @@ export function ProductDetails() {
     setSelectedBuyType('stock')
     setPurchaseMode('stock')
     setIsPurchaseDialogOpen(true)
-    console.log('isPurchaseDialogOpen set to true')
   }
 
   // 处理收藏产品
@@ -646,6 +643,24 @@ export function ProductDetails() {
     setConfirmOrderPayload(null)
   }
 
+  // 从添加地址页返回时恢复确认订单视图
+  useEffect(() => {
+    if (!productId) return
+    try {
+      const stored = sessionStorage.getItem('confirm-order-return')
+      if (!stored) return
+      const { payload } = JSON.parse(stored) as {
+        payload?: ConfirmOrderPayload
+      }
+      if (payload?.productId === productId) {
+        setConfirmOrderPayload(payload)
+        setViewMode('confirm')
+      }
+    } finally {
+      sessionStorage.removeItem('confirm-order-return')
+    }
+  }, [productId])
+
   // 当发布弹框打开时，获取店铺列表
   useEffect(() => {
     const fetchStores = async () => {
@@ -677,8 +692,6 @@ export function ProductDetails() {
             shopsData = [data.data as ShopInfo]
           }
         }
-
-        console.log('最终解析的店铺列表:', shopsData)
 
         const storeOptions = shopsData
           .filter((shop) => shop.id) // 过滤掉没有 id 的店铺
@@ -962,8 +975,6 @@ export function ProductDetails() {
       return
     }
 
-    const store = stores.find((s) => s.value === selectedStore)
-    console.log(`发布产品 ${productData.name} 到店铺: ${store?.name}`)
 
     setIsPublishDialogOpen(false)
     setIsStoreListingOpen(true)
@@ -1018,9 +1029,7 @@ export function ProductDetails() {
           <p className='text-muted-foreground mb-4'>
             Please check the product ID is correct
           </p>
-          <Button onClick={() => navigate({ to: '/all-products' })}>
-            Back to product list
-          </Button>
+          <Button onClick={() => history.go(-1)}>Back to product list</Button>
         </div>
       </div>
     )
@@ -1035,16 +1044,18 @@ export function ProductDetails() {
             product data not available
           </h2>
           <p className='text-muted-foreground mb-4'>Please try again later</p>
-          <Button onClick={() => navigate({ to: '/all-products' })}>
-            Back to product list
-          </Button>
+          <Button onClick={() => history.go(-1)}>Back to product list</Button>
         </div>
       </div>
     )
   }
 
-  const totalPrice =
+  const productSubtotal =
     (selectedSkuPrice ?? productData?.price ?? 0) * selectedQuantity
+  const shippingCost = selectedShippingMethodData?.cost
+    ? parseFloat(selectedShippingMethodData.cost.replace(/[$,]/g, '')) || 0
+    : 0
+  const totalPrice = productSubtotal + shippingCost
 
   return (
     <div className='container mx-auto px-4 py-6'>
@@ -1052,7 +1063,7 @@ export function ProductDetails() {
       <div className='mb-6'>
         <Button
           variant='ghost'
-          onClick={() => navigate({ to: '/all-products' })}
+          onClick={() => history.go(-1)}
           className='flex items-center gap-2'
         >
           <ArrowLeft className='h-4 w-4' />
@@ -1134,25 +1145,14 @@ export function ProductDetails() {
                           <Copy className='h-4 w-4' />
                         </button>
                       </div>
-                      <div>
-                        {isLoadingSkuBySpecs ? (
-                          <div className='text-muted-foreground text-sm'>
-                            Loading SKU...
-                          </div>
-                        ) : selectedSku ? (
-                          <div className='text-muted-foreground text-sm'>
-                            select SKU: {selectedSku}
-                          </div>
-                        ) : apiProduct &&
-                          Array.isArray(
-                            (apiProduct as Record<string, unknown>)
-                              ?.hzkj_sku_spec_e
-                          ) &&
-                          Object.values(selectedSpecs).length > 0 ? (
-                          <div className='text-muted-foreground text-sm'>
-                            Please select all attributes
-                          </div>
-                        ) : null}
+                      <div className='min-h-5 text-sm'>
+                        {selectedSku ? (
+                          <span className='text-muted-foreground'>
+                            SKU: {selectedSku}
+                          </span>
+                        ) : (
+                          <span className='invisible'>.</span>
+                        )}
                       </div>
                     </div>
 
@@ -1669,95 +1669,6 @@ export function ProductDetails() {
 
                 {/* 操作按钮 */}
                 <div className='space-y-2'>
-                  <Dialog
-                    open={isPublishDialogOpen}
-                    onOpenChange={setIsPublishDialogOpen}
-                  >
-                    {!isFromPackagingProducts ? (
-                      <Button
-                        className='w-full'
-                        size='lg'
-                        onClick={handlePublishToStoreClick}
-                      >
-                        <div className='flex w-full items-center justify-start'>
-                          <Store className='mr-2 h-4 w-4' />
-                          <span>Publish To Store</span>
-                        </div>
-                      </Button>
-                    ) : null}
-                    <DialogContent className='sm:max-w-md'>
-                      <DialogHeader>
-                        <DialogTitle>Publish To Store</DialogTitle>
-                      </DialogHeader>
-                      <div className='space-y-4 py-4'>
-                        <div className='space-y-2'>
-                          <Label htmlFor='store-select'>Select Store</Label>
-                          <Select
-                            value={selectedStore}
-                            onValueChange={setSelectedStore}
-                            disabled={isLoadingStores}
-                          >
-                            <SelectTrigger id='store-select'>
-                              <SelectValue
-                                placeholder={
-                                  isLoadingStores
-                                    ? 'Loading shops...'
-                                    : stores.length === 0
-                                      ? 'No shops available'
-                                      : 'Select Store to Publish'
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {stores.length === 0 && !isLoadingStores ? (
-                                <div className='text-muted-foreground px-2 py-1.5 text-sm'>
-                                  No shops available
-                                </div>
-                              ) : (
-                                stores.map((store) => (
-                                  <SelectItem
-                                    key={store.id}
-                                    value={store.value}
-                                  >
-                                    {store.name}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className='bg-muted/50 space-y-2 rounded-lg p-3'>
-                          <div className='text-sm font-medium'>
-                            product info
-                          </div>
-                          <div className='text-muted-foreground text-sm'>
-                            <div>name: {productData.name}</div>
-                            <div>SKU: {productData.sku}</div>
-                            <div>price: ${productData.price.toFixed(2)}</div>
-                          </div>
-                        </div>
-
-                        <div className='flex gap-2 pt-2'>
-                          <Button
-                            variant='outline'
-                            className='flex-1'
-                            onClick={() => setIsPublishDialogOpen(false)}
-                          >
-                            cancel
-                          </Button>
-                          <Button
-                            className='flex-1'
-                            onClick={handlePublishToStore}
-                            disabled={!selectedStore}
-                          >
-                            confirm
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-
                   {!isFromPackagingProducts ? (
                     <Button
                       variant='outline'
@@ -1769,7 +1680,6 @@ export function ProductDetails() {
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        console.log('Buy Sample button clicked')
                         handleBuySampleButtonClick()
                       }}
                     >
@@ -1790,7 +1700,6 @@ export function ProductDetails() {
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        console.log('Buy Stock button clicked')
                         handleBuyStockButtonClick()
                       }}
                     >
@@ -1914,6 +1823,95 @@ export function ProductDetails() {
                       </div>
                     </Button>
                   )}
+
+                  <Dialog
+                    open={isPublishDialogOpen}
+                    onOpenChange={setIsPublishDialogOpen}
+                  >
+                    {!isFromPackagingProducts ? (
+                      <Button
+                        className='w-full'
+                        size='lg'
+                        onClick={handlePublishToStoreClick}
+                      >
+                        <div className='flex w-full items-center justify-start'>
+                          <Store className='mr-2 h-4 w-4' />
+                          <span>Publish To Store</span>
+                        </div>
+                      </Button>
+                    ) : null}
+                    <DialogContent className='sm:max-w-md'>
+                      <DialogHeader>
+                        <DialogTitle>Publish To Store</DialogTitle>
+                      </DialogHeader>
+                      <div className='space-y-4 py-4'>
+                        <div className='space-y-2'>
+                          <Label htmlFor='store-select'>Select Store</Label>
+                          <Select
+                            value={selectedStore}
+                            onValueChange={setSelectedStore}
+                            disabled={isLoadingStores}
+                          >
+                            <SelectTrigger id='store-select'>
+                              <SelectValue
+                                placeholder={
+                                  isLoadingStores
+                                    ? 'Loading shops...'
+                                    : stores.length === 0
+                                      ? 'No shops available'
+                                      : 'Select Store to Publish'
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {stores.length === 0 && !isLoadingStores ? (
+                                <div className='text-muted-foreground px-2 py-1.5 text-sm'>
+                                  No shops available
+                                </div>
+                              ) : (
+                                stores.map((store) => (
+                                  <SelectItem
+                                    key={store.id}
+                                    value={store.value}
+                                  >
+                                    {store.name}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className='bg-muted/50 space-y-2 rounded-lg p-3'>
+                          <div className='text-sm font-medium'>
+                            product info
+                          </div>
+                          <div className='text-muted-foreground text-sm'>
+                            <div>name: {productData.name}</div>
+                            <div>SKU: {productData.sku}</div>
+                            <div>price: ${productData.price.toFixed(2)}</div>
+                          </div>
+                        </div>
+
+                        <div className='flex gap-2 pt-2'>
+                          <Button
+                            variant='outline'
+                            className='flex-1'
+                            onClick={() => setIsPublishDialogOpen(false)}
+                          >
+                            cancel
+                          </Button>
+                          <Button
+                            className='flex-1'
+                            onClick={handlePublishToStore}
+                            disabled={!selectedStore}
+                          >
+                            confirm
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardContent>
             </Card>
@@ -2057,8 +2055,7 @@ export function ProductDetails() {
         onOpenChange={setIsShippingOptionsDialogOpen}
         defaultTo={selectedTo || 'FR'}
         defaultQuantity={selectedQuantity}
-        onSelect={(optionId) => {
-          console.log('Selected shipping option:', optionId)
+        onSelect={(_optionId) => {
           // 这里可以处理选择后的逻辑
         }}
       />
@@ -2161,6 +2158,7 @@ export function ProductDetails() {
         onConfirmOrder={handleConfirmOrder}
         apiProduct={apiProduct}
         initialSelectedSpecs={selectedSpecs}
+        defaultQuantity={selectedQuantity}
       />
     </div>
   )

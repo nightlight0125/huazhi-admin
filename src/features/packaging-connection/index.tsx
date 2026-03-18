@@ -564,8 +564,8 @@ export function PackagingConnection() {
             {tabs.map((tab) => (
               <TabsContent key={tab.value} value={tab.value} className='mt-0'>
                 <div className='space-y-4'>
-                  {tab.value !== 'stores' && (
-                    <div className='flex items-center gap-2'>
+                  <div className='flex items-center gap-2'>
+                    {tab.value !== 'stores' && (
                       <Tabs
                         value={statusTab}
                         onValueChange={(value) => {
@@ -593,19 +593,19 @@ export function PackagingConnection() {
                           </TabsTrigger>
                         </TabsList>
                       </Tabs>
-                      {tab.value === 'order' && (
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='h-8 border-orange-200 bg-orange-50 px-3 text-xs text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30'
-                          onClick={handleAddNewPackaging}
-                        >
-                          <PackagePlus className='mr-1.5 h-3.5 w-3.5' />
-                          Add New Packaging
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    {tab.value === 'stores' && (
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className='h-8 border-orange-200 bg-orange-50 px-3 text-xs text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30'
+                        onClick={handleAddNewPackaging}
+                      >
+                        <PackagePlus className='mr-1.5 h-3.5 w-3.5' />
+                        Add New Packaging
+                      </Button>
+                    )}
+                  </div>
 
                   <DataTableToolbar
                     table={table}

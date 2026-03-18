@@ -231,9 +231,6 @@ export async function getCusList(
 
   const totalCount = dataObj?.totalCount || 0
 
-  console.log('Extracted rows:', rows)
-  console.log('Extracted totalCount:', totalCount)
-
   return {
     rows: Array.isArray(rows) ? rows : [],
     totalCount: typeof totalCount === 'number' ? totalCount : 0,
@@ -304,8 +301,6 @@ export async function calcuFreight(
     params
   )
 
-  console.log('计算运费响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -332,8 +327,6 @@ export async function calcuOrderFreight(
     '/v2/hzkj/hzkj_logistics/hzkj_cus_freight/calcuOrderFreight',
     params
   )
-
-  console.log('计算订单运费响应:', response.data)
 
   if (response.data.status === false) {
     const errorMessage =

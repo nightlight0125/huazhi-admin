@@ -70,9 +70,8 @@ export function StoresTable({
     setEditDialogOpen(true)
   }
 
-  const handleConfirmEdit = (newStoreName: string) => {
+  const handleConfirmEdit = (_newStoreName: string) => {
     if (editingStore) {
-      console.log('Update store name:', editingStore.id, newStoreName)
       // TODO: 实现实际的更新逻辑
       // 这里可以调用 API 更新 store name
     }

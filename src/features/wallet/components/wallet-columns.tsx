@@ -1,5 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
-import { Download, FileText } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { type ApiInvoiceRecordItem } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -248,34 +248,11 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
               className='h-7 px-2 text-xs'
               onClick={(e) => {
                 e.stopPropagation()
-                console.log(
-                  'Download invoice:',
-                  record.invoiceNumber || record.id
-                )
                 // TODO: 在这里触发发票下载
               }}
             >
               <Download className='mr-1 h-3.5 w-3.5' />
               Invoice
-            </Button>
-          )}
-
-          {record.type === 'recharge' && (
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-7 px-2 text-xs'
-              onClick={(e) => {
-                e.stopPropagation()
-                console.log(
-                  'View recharge transaction:',
-                  record.transactionId || record.id
-                )
-                // TODO: 在这里查看充值交易详情
-              }}
-            >
-              <FileText className='mr-1 h-3.5 w-3.5' />
-              Trans
             </Button>
           )}
         </div>
@@ -284,5 +261,4 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   },
 ]
 
-// 为了向后兼容，导出默认的列定义
 export const walletColumns = createWalletColumns()

@@ -1,6 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import Quill from 'quill'
 import 'quill/dist/quill.snow.css'
-import { useEffect, useRef, useState } from 'react'
 
 type RichTextEditorProps = {
   initialContent?: string
@@ -165,42 +165,34 @@ export function RichTextEditor({
           ],
         })
 
-        // 验证初始化 key 是否仍然有效（防止重复初始化）
         if (initKeyRef.current === initKey && !quillRef.current) {
           quillRef.current = quill
           setIsLoaded(true)
-
-          // 设置初始内容（优先使用 pendingInitialContentRef，因为它可能包含最新的值）
-          const contentToSet = pendingInitialContentRef.current || initialContent
+          const contentToSet =
+            pendingInitialContentRef.current || initialContent
           if (contentToSet) {
-            // 使用 Quill 的 API 设置 HTML 内容，而不是直接设置 innerHTML
             quill.clipboard.dangerouslyPasteHTML(0, contentToSet)
-            console.log('RichTextEditor: Setting initial content on Quill init:', contentToSet.substring(0, 50))
           }
 
-          // 监听内容变化
           quill.on('text-change', () => {
             const content = quill.root.innerHTML
             onChangeRef.current?.(content)
           })
 
-          // 初始化完成后，再次检查并设置内容（处理异步传入的情况）
-          // 使用 requestAnimationFrame 确保 DOM 已完全渲染
           requestAnimationFrame(() => {
             if (quillRef.current && pendingInitialContentRef.current) {
               const currentContent = quillRef.current.root.innerHTML.trim()
               const newContent = (pendingInitialContentRef.current || '').trim()
               if (currentContent !== newContent) {
-                // 先清空内容，再设置新内容
                 quillRef.current.setContents([])
-                // 使用 Quill 的 API 设置 HTML 内容
-                quillRef.current.clipboard.dangerouslyPasteHTML(0, pendingInitialContentRef.current)
-                console.log('RichTextEditor: Content set after Quill initialization')
+                quillRef.current.clipboard.dangerouslyPasteHTML(
+                  0,
+                  pendingInitialContentRef.current
+                )
               }
             }
           })
         } else {
-          // 如果 key 不匹配或已有实例，销毁这个实例
           try {
             const container = quill.container
             if (container && container.parentNode) {
@@ -253,20 +245,20 @@ export function RichTextEditor({
       const newContent = (initialContent || '').trim()
       // 只有当内容真正不同时才更新，避免不必要的更新
       if (currentContent !== newContent) {
-        console.log('RichTextEditor: Updating content from', currentContent.substring(0, 50), 'to', newContent.substring(0, 50))
         // 使用 setTimeout 确保在下一个事件循环中更新，避免与 Quill 的内部状态冲突
         setTimeout(() => {
           if (quillRef.current) {
             // 先清空内容，再设置新内容
             quillRef.current.setContents([])
             // 使用 Quill 的 API 设置 HTML 内容
-            quillRef.current.clipboard.dangerouslyPasteHTML(0, initialContent || '')
-            console.log('RichTextEditor: Content updated successfully')
+            quillRef.current.clipboard.dangerouslyPasteHTML(
+              0,
+              initialContent || ''
+            )
           }
         }, 0)
       }
     } else if (!quillRef.current && initialContent) {
-      console.log('RichTextEditor: Quill not initialized yet, but initialContent is available:', initialContent.substring(0, 50))
       // 如果 Quill 还没初始化，保存到 ref 中，等待初始化完成后设置
       pendingInitialContentRef.current = initialContent
     }

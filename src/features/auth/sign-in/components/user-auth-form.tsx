@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { getToken, memberLogin } from '@/lib/api/auth'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
   FormControl,
@@ -18,7 +19,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
-import { Checkbox } from '@/components/ui/checkbox'
 
 const formSchema = z.object({
   email: z.email({
@@ -28,11 +28,9 @@ const formSchema = z.object({
     .string()
     .min(1, 'Please enter your password')
     .min(1, 'Password is required'),
-  rememberMe: z
-    .boolean()
-    .refine((val) => val === true, {
-      message: 'Please confirm “Remember me” before signing in.',
-    }),
+  rememberMe: z.boolean().refine((val) => val === true, {
+    message: 'Please confirm “Remember me” before signing in.',
+  }),
 })
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
@@ -139,13 +137,10 @@ export function UserAuthForm({
         const { queryRole } = await import('@/lib/api/users')
         const roleList = await queryRole(1, 100)
         auth.setRoles(roleList)
-        console.log('Roles fetched and stored after login:', roleList)
       } catch (error) {
-        console.error('Failed to fetch roles after login:', error)
         // 不阻止登录流程，角色列表可以在需要时再加载
       }
 
-      // 持久化登录邮箱和密码，用于 401 时自动登录（仅在用户勾选 Remember me 时）
       try {
         if (typeof window !== 'undefined') {
           if (data.rememberMe) {
@@ -273,13 +268,13 @@ export function UserAuthForm({
         <div className='mt-3 flex items-center justify-between text-sm'>
           <Link
             to='/sign-up'
-            className='text-muted-foreground underline underline-offset-4 hover:text-foreground'
+            className='text-muted-foreground hover:text-foreground underline underline-offset-4'
           >
             Don't have an account?
           </Link>
           <Link
             to='/forgot-password'
-            className='text-muted-foreground underline underline-offset-4 hover:text-foreground'
+            className='text-muted-foreground hover:text-foreground underline underline-offset-4'
           >
             Forgot Password?
           </Link>

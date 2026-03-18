@@ -1,3 +1,12 @@
+import { useEffect, useState } from 'react'
+import { z } from 'zod'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { ChevronDown } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -22,15 +31,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
-import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/stores/auth-store'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronDown } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
-import { z } from 'zod'
 
 const formSchema = z.object({
   shops: z.array(z.string()).min(1, {
@@ -79,10 +79,8 @@ export function StoreProductsImportDialog({
           pageSize: 100,
         })
 
-        console.log('最终解析的店铺列表:', list)
         setShops(list)
       } catch (error) {
-        console.error('获取店铺列表失败:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -97,9 +95,8 @@ export function StoreProductsImportDialog({
     fetchShops()
   }, [open, auth.user?.id])
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  const onSubmit = (_data: z.infer<typeof formSchema>) => {
     // 选中的是店铺 id 数组
-    console.log('选中的店铺 IDs:', data.shops)
     // TODO: 在这里接入实际的导入逻辑（例如请求后端导入所选店铺）
     onOpenChange(false)
   }

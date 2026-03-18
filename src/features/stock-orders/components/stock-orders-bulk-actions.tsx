@@ -20,11 +20,7 @@ interface StockOrdersBulkActionsProps {
 }
 
 export function StockOrdersBulkActions({ table }: StockOrdersBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
-  const handleBulkAction = (action: string) => {
-    const items = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on stock orders:`, items)
+  const handleBulkAction = (_action: string) => {
     // TODO: Implement actual bulk actions
     table.resetRowSelection()
   }
@@ -123,4 +119,3 @@ export function StockOrdersBulkActions({ table }: StockOrdersBulkActionsProps) {
     </BulkActionsToolbar>
   )
 }
-

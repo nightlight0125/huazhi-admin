@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,7 +12,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { type Order } from '../data/schema'
 
 interface OrdersMergeDialogProps {
@@ -20,7 +20,11 @@ interface OrdersMergeDialogProps {
   selectedOrders: Order[]
 }
 
-export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: OrdersMergeDialogProps) {
+export function OrdersMergeDialog({
+  open,
+  onOpenChange,
+  selectedOrders,
+}: OrdersMergeDialogProps) {
   const [formData, setFormData] = useState({
     mergedOrderNumber: '',
     customer: '',
@@ -28,13 +32,6 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
   })
 
   const handleSubmit = () => {
-    const orderIds = selectedOrders.map(order => order.id)
-    console.log('合并订单:', { 
-      orderIds, 
-      mergedOrderNumber: formData.mergedOrderNumber,
-      customer: formData.customer,
-      note: formData.note 
-    })
     onOpenChange(false)
     setFormData({ mergedOrderNumber: '', customer: '', note: '' })
   }
@@ -66,14 +63,17 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
             将 {selectedOrders.length} 个订单合并为一个新订单
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className='space-y-6'>
           {/* 选中订单列表 */}
           <div className='space-y-2'>
             <Label>选中的订单</Label>
-            <div className='max-h-32 overflow-y-auto space-y-1'>
+            <div className='max-h-32 space-y-1 overflow-y-auto'>
               {selectedOrders.map((order) => (
-                <div key={order.id} className='flex items-center justify-between p-2 border rounded'>
+                <div
+                  key={order.id}
+                  className='flex items-center justify-between rounded border p-2'
+                >
                   <div className='flex items-center gap-2'>
                     <Badge variant='outline'>{order.platformOrderNumber}</Badge>
                     <span className='text-sm'>{order.customer}</span>
@@ -93,7 +93,12 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
               <Input
                 id='mergedOrderNumber'
                 value={formData.mergedOrderNumber}
-                onChange={(e) => setFormData({ ...formData, mergedOrderNumber: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    mergedOrderNumber: e.target.value,
+                  })
+                }
                 placeholder='输入新订单号'
                 required
               />
@@ -103,7 +108,9 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
               <Input
                 id='customer'
                 value={formData.customer}
-                onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, customer: e.target.value })
+                }
                 placeholder='输入客户名称'
                 required
               />
@@ -115,7 +122,9 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
             <Textarea
               id='note'
               value={formData.note}
-              onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, note: e.target.value })
+              }
               placeholder='请输入合并订单的说明...'
             />
           </div>
@@ -123,30 +132,32 @@ export function OrdersMergeDialog({ open, onOpenChange, selectedOrders }: Orders
           {/* 费用汇总 */}
           <div className='space-y-2'>
             <Label>费用汇总</Label>
-            <div className='grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg'>
+            <div className='bg-muted grid grid-cols-3 gap-4 rounded-lg p-4'>
               <div className='text-center'>
-                <div className='text-sm text-muted-foreground'>运费</div>
-                <div className='font-medium'>${totalShippingCost.toFixed(2)}</div>
+                <div className='text-muted-foreground text-sm'>运费</div>
+                <div className='font-medium'>
+                  ${totalShippingCost.toFixed(2)}
+                </div>
               </div>
               <div className='text-center'>
-                <div className='text-sm text-muted-foreground'>其他费用</div>
+                <div className='text-muted-foreground text-sm'>其他费用</div>
                 <div className='font-medium'>${totalOtherCosts.toFixed(2)}</div>
               </div>
               <div className='text-center'>
-                <div className='text-sm text-muted-foreground'>总成本</div>
-                <div className='font-bold text-primary'>${totalCost.toFixed(2)}</div>
+                <div className='text-muted-foreground text-sm'>总成本</div>
+                <div className='text-primary font-bold'>
+                  ${totalCost.toFixed(2)}
+                </div>
               </div>
             </div>
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit}>
-            确认合并
-          </Button>
+          <Button onClick={handleSubmit}>确认合并</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

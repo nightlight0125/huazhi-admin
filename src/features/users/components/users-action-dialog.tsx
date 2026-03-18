@@ -138,8 +138,6 @@ export function UsersActionDialog({
 
   const onSubmit = async (values: UserForm) => {
     if (isEdit) {
-      console.log('values', values)
-
       if (!currentRow) {
         toast.error('User data is missing')
         return
@@ -194,8 +192,6 @@ export function UsersActionDialog({
 
     setIsSubmitting(true)
     const loadingToast = toast.loading('Creating user...')
-
-    console.log('values.roleId', values.roleId)
 
     try {
       await addAccount({

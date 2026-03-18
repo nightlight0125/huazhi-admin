@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import worldCountries from 'world-countries'
-import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
+import { ChevronDown, ChevronUp, HelpCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryCountry, type CountryItem } from '@/lib/api/logistics'
@@ -490,6 +491,8 @@ function AddressFields(props: {
 }
 
 export function AddressForm() {
+  const navigate = useNavigate()
+  const { returnTo } = useSearch({ from: '/_authenticated/settings/' })
   const { auth } = useAuthStore()
   const [invoiceOpen, setInvoiceOpen] = useState(true)
   const [consigneeOpen, setConsigneeOpen] = useState(false)
@@ -513,6 +516,7 @@ export function AddressForm() {
   >(null)
   const [consigneeLoadingLevelIndex, setConsigneeLoadingLevelIndex] =
     useState<number | null>(null)
+  const [isLoadingAddressData, setIsLoadingAddressData] = useState(true)
 
   const invoiceForm = useForm<InvoiceAddressValues>({
     resolver: zodResolver(invoiceAddressSchema),
@@ -568,8 +572,12 @@ export function AddressForm() {
   // 回填/刷新地址数据：调用 getAddress 接口（保存成功后也可调用以刷新表单）
   const loadAddressData = async (options?: { silent?: boolean }) => {
     const userId = auth.user?.id
-    if (!userId || countries.length === 0) return
+    if (!userId || countries.length === 0) {
+      setIsLoadingAddressData(false)
+      return
+    }
 
+    setIsLoadingAddressData(true)
     try {
       const addressData = await getAddress(userId)
       if (!addressData) return
@@ -610,12 +618,82 @@ export function AddressForm() {
         return ''
       }
 
+      // 根据 divisionId 和 parent_id 递归构建完整路径 [省id, 市id, ..., 叶节点id]
+      const buildDivisionPath = async (
+        countryId: string,
+        divisionId: string
+      ): Promise<string[]> => {
+        if (!divisionId) return []
+        const levels = await queryAdmindivisionLevel(countryId, 1, 100)
+        for (const level of levels) {
+          const divisions = await queryAdmindivision(
+            countryId,
+            level.id,
+            undefined,
+            1,
+            500
+          )
+          const found = divisions.find(
+            (d) => String(d.id) === String(divisionId)
+          )
+          if (found) {
+            const parentId = found.parent_id
+            if (
+              parentId == null ||
+              parentId === '' ||
+              String(parentId) === '0'
+            ) {
+              return [String(divisionId)]
+            }
+            const parentPath = await buildDivisionPath(
+              countryId,
+              String(parentId)
+            )
+            return [...parentPath, String(divisionId)]
+          }
+        }
+        return []
+      }
+
+      // 根据 number 查找 division id（当只有 number 无 id 时）
+      const findDivisionIdByNumber = async (
+        countryId: string,
+        divisionNumber: string | undefined
+      ): Promise<string> => {
+        if (!divisionNumber) return ''
+        const levels = await queryAdmindivisionLevel(countryId, 1, 100)
+        for (const level of levels) {
+          const divisions = await queryAdmindivision(
+            countryId,
+            level.id,
+            undefined,
+            1,
+            500
+          )
+          const found = divisions.find(
+            (d) => String((d as { number?: string }).number ?? '') === String(divisionNumber)
+          )
+          if (found) return String(found.id)
+        }
+        return ''
+      }
+
       const invoiceDivisionId = addressData.hzkj_admindivision2_id
         ? String(addressData.hzkj_admindivision2_id)
-        : ''
+        : invoiceCountryId
+          ? await findDivisionIdByNumber(
+              invoiceCountryId,
+              addressData.hzkj_admindivision2_number
+            )
+          : ''
       const consigneeDivisionId = addressData.hzkj_admindivision_id
         ? String(addressData.hzkj_admindivision_id)
-        : ''
+        : consigneeCountryId
+          ? await findDivisionIdByNumber(
+              consigneeCountryId,
+              addressData.hzkj_admindivision_number
+            )
+          : ''
 
       let invoiceLevelId = ''
       let consigneeLevelId = ''
@@ -632,6 +710,26 @@ export function AddressForm() {
         )
       }
 
+      // 构建完整 divisionPath（省/市/区等多级路径），若构建失败则退化为单级
+      const invoiceDivisionPathRaw = invoiceCountryId
+        ? await buildDivisionPath(invoiceCountryId, invoiceDivisionId)
+        : []
+      const invoiceDivisionPath =
+        invoiceDivisionPathRaw.length > 0
+          ? invoiceDivisionPathRaw
+          : invoiceDivisionId
+            ? [invoiceDivisionId]
+            : []
+      const consigneeDivisionPathRaw = consigneeCountryId
+        ? await buildDivisionPath(consigneeCountryId, consigneeDivisionId)
+        : []
+      const consigneeDivisionPath =
+        consigneeDivisionPathRaw.length > 0
+          ? consigneeDivisionPathRaw
+          : consigneeDivisionId
+            ? [consigneeDivisionId]
+            : []
+
       invoiceForm.reset({
         firstName: addressData.hzkj_customer_first_name2 ?? '',
         lastName: addressData.hzkj_customer_last_name2 ?? '',
@@ -642,6 +740,7 @@ export function AddressForm() {
         country: invoiceCountryId,
         province: invoiceDivisionId,
         provinceLevel: invoiceLevelId,
+        divisionPath: invoiceDivisionPath,
         city: addressData.hzkj_bill_city ?? '',
         postcode: addressData.hzkj_textfield3 ?? '',
         taxId: addressData.hzkj_tax_id2 ?? '',
@@ -661,66 +760,46 @@ export function AddressForm() {
         country: consigneeCountryId,
         province: consigneeDivisionId,
         provinceLevel: consigneeLevelId,
+        divisionPath: consigneeDivisionPath,
         city: addressData.hzkj_city ?? '',
         postcode: addressData.hzkj_textfield1 ?? '',
       })
 
+      // 加载行政区级联列并回填
       if (invoiceCountryId) {
         const levels = await queryAdmindivisionLevel(invoiceCountryId, 1, 100)
         setInvoiceLevels(levels)
-        if (levels.length > 0) {
-          const firstLevelId = levels[0].id
-          const rows = await queryAdmindivision(
+        if (levels.length > 0 && invoiceDivisionPath.length > 0) {
+          void loadDivision(
             invoiceCountryId,
-            firstLevelId,
+            0,
             undefined,
-            1,
-            500
+            true,
+            levels,
+            true
           )
-          const col0 = rows.map((d) => ({
-            value: d.id,
-            label: d.name ?? String(d.id),
-          }))
-          setInvoiceDivisionColumns([col0])
-          if (invoiceDivisionId) {
-            const inFirstLevel = col0.some(
-              (d) => String(d.value) === String(invoiceDivisionId)
-            )
-            invoiceForm.setValue('province', invoiceDivisionId)
-            invoiceForm.setValue(
-              'divisionPath',
-              inFirstLevel ? [invoiceDivisionId] : []
-            )
-          }
+        } else {
+          setInvoiceDivisionColumns([])
         }
       }
       if (consigneeCountryId) {
-        const levels = await queryAdmindivisionLevel(consigneeCountryId, 1, 100)
+        const levels = await queryAdmindivisionLevel(
+          consigneeCountryId,
+          1,
+          100
+        )
         setConsigneeLevels(levels)
-        if (levels.length > 0) {
-          const firstLevelId = levels[0].id
-          const rows = await queryAdmindivision(
+        if (levels.length > 0 && consigneeDivisionPath.length > 0) {
+          void loadDivision(
             consigneeCountryId,
-            firstLevelId,
+            0,
             undefined,
-            1,
-            500
+            false,
+            levels,
+            true
           )
-          const col0 = rows.map((d) => ({
-            value: d.id,
-            label: d.name ?? String(d.id),
-          }))
-          setConsigneeDivisionColumns([col0])
-          if (consigneeDivisionId) {
-            const inFirstLevel = col0.some(
-              (d) => String(d.value) === String(consigneeDivisionId)
-            )
-            consigneeForm.setValue('province', consigneeDivisionId)
-            consigneeForm.setValue(
-              'divisionPath',
-              inFirstLevel ? [consigneeDivisionId] : []
-            )
-          }
+        } else {
+          setConsigneeDivisionColumns([])
         }
       }
 
@@ -734,6 +813,8 @@ export function AddressForm() {
           ? error.message
           : 'Failed to load address data. Please try again.'
       )
+    } finally {
+      setIsLoadingAddressData(false)
     }
   }
 
@@ -748,7 +829,8 @@ export function AddressForm() {
     levelIndex: number,
     parentId: string | undefined,
     isInvoice: boolean,
-    levelsOverride?: AdmindivisionLevelItem[]
+    levelsOverride?: AdmindivisionLevelItem[],
+    preservePath?: boolean // 回填时保留已设置的 divisionPath
   ) => {
     if (!countryId) return
     const levels =
@@ -762,7 +844,7 @@ export function AddressForm() {
       ? setInvoiceLoadingLevelIndex
       : setConsigneeLoadingLevelIndex
 
-    if (levelIndex === 0) {
+    if (levelIndex === 0 && !preservePath) {
       if (isInvoice) {
         invoiceForm.setValue('divisionPath', [])
         invoiceForm.setValue('province', '')
@@ -801,13 +883,14 @@ export function AddressForm() {
           ? invoiceForm.getValues('divisionPath')
           : consigneeForm.getValues('divisionPath')) ?? []
       if (divisionPath.length > levelIndex + 1) {
-        const parentId = divisionPath[levelIndex]
+        const nextParentId = divisionPath[levelIndex]
         void loadDivision(
           countryId,
           levelIndex + 1,
-          parentId,
+          nextParentId,
           isInvoice,
-          levels
+          levels,
+          preservePath
         )
       }
     } catch (error) {
@@ -879,6 +962,11 @@ export function AddressForm() {
 
       await loadAddressData({ silent: true })
 
+      if (returnTo) {
+        navigate({ to: returnTo })
+        return
+      }
+
       if (data.syncShippingAddress) {
         consigneeForm.reset({
           firstName: data.firstName,
@@ -938,6 +1026,10 @@ export function AddressForm() {
       toast.success('Shipping address updated successfully!')
 
       await loadAddressData({ silent: true })
+
+      if (returnTo) {
+        navigate({ to: returnTo })
+      }
     } catch (error) {
       console.error('Failed to save shipping address:', error)
       toast.error(
@@ -949,7 +1041,15 @@ export function AddressForm() {
   }
 
   return (
-    <div className='min-h-0 space-y-4'>
+    <div className='relative min-h-0 space-y-4'>
+      {isLoadingAddressData && (
+        <div className='bg-background/80 absolute inset-0 z-10 flex items-center justify-center rounded-md'>
+          <div className='text-muted-foreground flex flex-col items-center gap-2'>
+            <Loader2 className='h-8 w-8 animate-spin' />
+            <span className='text-sm'>Loading address...</span>
+          </div>
+        </div>
+      )}
       {/* 账单地址 */}
       <Collapsible open={invoiceOpen} onOpenChange={setInvoiceOpen}>
         <div className='rounded-md border border-border bg-card'>

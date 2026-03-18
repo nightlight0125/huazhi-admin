@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { type Row } from '@tanstack/react-table'
-import { 
-  MoreHorizontal, 
-  MessageSquare, 
-  X, 
-  Pause, 
-  Play, 
-  Package, 
-  Truck, 
-  Download, 
-  FileDown 
+import {
+  MoreHorizontal,
+  MessageSquare,
+  X,
+  Pause,
+  Play,
+  Package,
+  Truck,
+  Download,
+  FileDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,16 +20,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { type Order } from '../data/schema'
-import { useOrders } from './orders-provider'
-import { OrdersConfirmDialog } from './orders-confirm-dialog'
 import { OrdersChangeShippingDialog } from './orders-change-shipping-dialog'
+import { OrdersConfirmDialog } from './orders-confirm-dialog'
+import { useOrders } from './orders-provider'
 
 interface DataTableRowActionsProps {
   row: Row<Order>
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
-  const { } = useOrders()
+  const {} = useOrders()
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean
     title: string
@@ -41,26 +41,25 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     title: '',
     description: '',
     confirmText: '确认',
-    onConfirm: () => {}
+    onConfirm: () => {},
   })
   const [changeShippingDialog, setChangeShippingDialog] = useState(false)
 
   const handleSingleAction = (action: string) => {
     const order = row.original
-    
+
     // 对于简单的操作，直接执行
     if (['download_invoice', 'export_order'].includes(action)) {
-      console.log(`单个操作: ${action}`, order.id)
       // 这里应该调用相应的 API
       return
     }
-    
+
     // 对于特殊的操作，打开专门的对话框
     if (action === 'change_shipping') {
       setChangeShippingDialog(true)
       return
     }
-    
+
     // 对于需要确认的操作
     const actionNames = {
       quote: '询问报价',
@@ -68,18 +67,17 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       pause: '暂停订单',
       resume: '恢复订单',
       free_stock: '使用自由库存',
-      cancel_payment: '取消付款'
+      cancel_payment: '取消付款',
     }
-    
+
     setConfirmDialog({
       open: true,
       title: actionNames[action as keyof typeof actionNames],
       description: `确定要对订单 ${order.platformOrderNumber} 执行此操作吗？`,
       confirmText: '确认执行',
       onConfirm: () => {
-        console.log(`单个操作: ${action}`, order.id)
         // 这里应该调用相应的 API
-      }
+      },
     })
   }
 
@@ -89,7 +87,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         <DropdownMenuTrigger asChild>
           <Button
             variant='ghost'
-            className='flex h-8 w-8 p-0 data-[state=open]:bg-muted'
+            className='data-[state=open]:bg-muted flex h-8 w-8 p-0'
           >
             <MoreHorizontal className='h-4 w-4' />
             <span className='sr-only'>Open menu</span>
@@ -100,44 +98,50 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <MessageSquare className='mr-2 h-4 w-4' />
             询问报价
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem onClick={() => handleSingleAction('cancel')}>
             <X className='mr-2 h-4 w-4' />
             取消订单
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem onClick={() => handleSingleAction('pause')}>
             <Pause className='mr-2 h-4 w-4' />
             暂停订单
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem onClick={() => handleSingleAction('resume')}>
             <Play className='mr-2 h-4 w-4' />
             恢复订单
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem onClick={() => handleSingleAction('free_stock')}>
             <Package className='mr-2 h-4 w-4' />
             使用自由库存
           </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={() => handleSingleAction('change_shipping')}>
+
+          <DropdownMenuItem
+            onClick={() => handleSingleAction('change_shipping')}
+          >
             <Truck className='mr-2 h-4 w-4' />
             更改发货方式
           </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={() => handleSingleAction('cancel_payment')}>
+
+          <DropdownMenuItem
+            onClick={() => handleSingleAction('cancel_payment')}
+          >
             <X className='mr-2 h-4 w-4' />
             取消付款
           </DropdownMenuItem>
-          
+
           <DropdownMenuSeparator />
-          
-          <DropdownMenuItem onClick={() => handleSingleAction('download_invoice')}>
+
+          <DropdownMenuItem
+            onClick={() => handleSingleAction('download_invoice')}
+          >
             <Download className='mr-2 h-4 w-4' />
             下载发票
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem onClick={() => handleSingleAction('export_order')}>
             <FileDown className='mr-2 h-4 w-4' />
             导出订单

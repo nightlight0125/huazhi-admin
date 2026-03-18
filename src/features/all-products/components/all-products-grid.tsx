@@ -497,7 +497,7 @@ export function AllProductsGrid({
               >
                 {selectedLocation
                   ? locationOptions.find((opt) => opt.id === selectedLocation)
-                      ?.name || 'Ship from anywhere'
+                      ?.description || 'Ship from anywhere'
                   : 'Ship from anywhere'}
                 <ChevronDown className='ml-2 h-4 w-4 opacity-50' />
               </Button>

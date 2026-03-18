@@ -112,10 +112,7 @@ export interface QueryOrderResponse {
   [key: string]: unknown
 }
 
-// 将 API 订单项转换为 Order 类型
 function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
-  // 转换产品列表
-  console.log(apiOrder, 'apiOrder')
   const productList = (apiOrder.lingItems || []).map((item, index) => ({
     id: item.entryId || `product-${index}`,
     productName: item.hzkj_product_name_en?.GLang || item.hzkj_local_sku_name_cn?.GLang || '',
@@ -297,8 +294,6 @@ export async function orderStatistics(
     params
   )
 
-  console.log('订单统计响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -379,8 +374,6 @@ export async function deleteOrder(
     params
   )
 
-  console.log('删除订单响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -436,8 +429,6 @@ export async function updateSalOutOrder(
     params
   )
 
-  console.log('更新发货订单响应:', response.data)
-
   if (response.data.status === false) {
     const errorMessage =
       response.data.message ||
@@ -481,14 +472,10 @@ export async function addRMAOrder(
     cusNote: params.cusNote || '',
   }
 
-  console.log('创建售后订单请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<AddRMAOrderResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/addRMAOrder',
     requestData
   )
-
-  console.log('创建售后订单响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -612,8 +599,6 @@ export async function syncShopOrders(
     params
   )
 
-  console.log('同步店铺订单响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -653,14 +638,10 @@ export async function graphicStatistics(
     customerId,
   }
 
-  console.log('订单图形统计请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<GraphicStatisticsResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/graphicStatistics',
     requestData
   )
-
-  console.log('订单图形统计响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -723,14 +704,10 @@ export async function hotProductStatistics(
     ...(endDate && { endDate }),
   }
 
-  console.log('热销产品统计请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<HotProductStatisticsResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/hotProductStatistics',
     requestData
   )
-
-  console.log('热销产品统计响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -780,14 +757,10 @@ export async function orderCountStatistics(
     customerId,
   }
 
-  console.log('订单数量统计请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<OrderCountStatisticsResponse>(
     '/v2/hzkj/hzkj_ordercenter/order/orderCountStatistics',
     requestData
   )
-
-  console.log('订单数量统计响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -1053,8 +1026,6 @@ export async function queryAfterSaleOrders(
     params
   )
 
-  console.log('查询售后订单响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -1156,4 +1127,41 @@ export async function getInvoiceRecords(
     rows: Array.isArray(rows) ? rows : [],
     totalCount: typeof totalCount === 'number' ? totalCount : 0,
   }
+}
+
+/** 订单发票 PDF 下载。type: "1"-Store Orders, "2"-Sample Orders, "3"-Stock Orders */
+function base64ToPdfBlob(base64: string): Blob {
+  const binaryString = atob(base64)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  return new Blob([bytes], { type: 'application/pdf' })
+}
+
+export async function getOrderInvoicePdf(
+  customerId: string,
+  ids: string[],
+  type: '1' | '2' | '3'
+): Promise<Blob> {
+  const response = await apiClient.post<{
+    data?: string
+    status?: boolean
+    message?: string | null
+    errorCode?: string
+  }>('/v2/hzkj/hzkj_ordercenter/invoice/getOrderInvoicePdf', {
+    customerId,
+    ids,
+    type,
+  })
+  if (response.data?.status === false) {
+    throw new Error(
+      response.data.message || 'Failed to get order invoice PDF. Please try again.'
+    )
+  }
+  const base64 = response.data?.data
+  if (typeof base64 !== 'string' || !base64) {
+    throw new Error('Invalid PDF response from server')
+  }
+  return base64ToPdfBlob(base64)
 }

@@ -47,12 +47,7 @@ export function StoreProductsRowActions({
           </DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => {
-            console.log('Delete store product:', product.id)
-          }}
-          className='text-red-500'
-        >
+        <DropdownMenuItem onClick={() => {}} className='text-red-500'>
           delete
           <DropdownMenuShortcut>
             <Trash2 size={16} />
@@ -62,5 +57,3 @@ export function StoreProductsRowActions({
     </DropdownMenu>
   )
 }
-
-

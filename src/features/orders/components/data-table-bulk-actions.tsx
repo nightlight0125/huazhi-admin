@@ -17,10 +17,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
-import { useOrders } from './orders-provider'
 import { OrdersBulkActionsDialog } from './orders-bulk-actions-dialog'
-import { OrdersMergeDialog } from './orders-merge-dialog'
 import { OrdersConfirmDialog } from './orders-confirm-dialog'
+import { OrdersMergeDialog } from './orders-merge-dialog'
+import { useOrders } from './orders-provider'
 
 interface DataTableBulkActionsProps {
   table: Table<any>
@@ -46,15 +46,22 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
     title: '',
     description: '',
     confirmText: '确认',
-    onConfirm: () => {}
+    onConfirm: () => {},
   })
 
   const handleBulkAction = (action: string) => {
     const selectedOrderIds = selectedRows.map((row) => row.original.id)
 
     // 对于简单的操作，直接执行
-    if (['upload', 'export_orders', 'sort-by-date', 'sort-by-status', 'sort-by-amount'].includes(action)) {
-      console.log(`批量操作: ${action}`, selectedOrderIds)
+    if (
+      [
+        'upload',
+        'export_orders',
+        'sort-by-date',
+        'sort-by-status',
+        'sort-by-amount',
+      ].includes(action)
+    ) {
       // 这里应该调用相应的 API
       table.resetRowSelection()
       return
@@ -72,7 +79,11 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
     }
 
     // 对于需要简单确认的操作
-    if (['quote', 'pause', 'resume', 'free_stock', 'cancel_payment'].includes(action)) {
+    if (
+      ['quote', 'pause', 'resume', 'free_stock', 'cancel_payment'].includes(
+        action
+      )
+    ) {
       const actionNames = {
         quote: '询问报价',
         pause: '暂停订单',
@@ -87,7 +98,6 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
         description: `确定要对选中的 ${selectedRows.length} 个订单执行此操作吗？`,
         confirmText: '确认执行',
         onConfirm: () => {
-          console.log(`批量操作: ${action}`, selectedOrderIds)
           // 这里应该调用相应的 API
           table.resetRowSelection()
         },
@@ -179,10 +189,14 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
             <DropdownMenuItem onClick={() => handleBulkAction('sort-by-date')}>
               Sort by Date
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleBulkAction('sort-by-status')}>
+            <DropdownMenuItem
+              onClick={() => handleBulkAction('sort-by-status')}
+            >
               Sort by Status
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleBulkAction('sort-by-amount')}>
+            <DropdownMenuItem
+              onClick={() => handleBulkAction('sort-by-amount')}
+            >
               Sort by Amount
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -239,7 +253,6 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
         onOpenChange={setMergeDialog}
         selectedOrders={selectedRows.map((row) => row.original)}
       />
-
 
       <OrdersConfirmDialog
         open={confirmDialog.open}

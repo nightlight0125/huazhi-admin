@@ -21,23 +21,34 @@ type PriceRangePopoverProps = {
   step?: number
 }
 
+const SLIDER_UI_MAX = 999_999
+
 export function PriceRangePopover({
   value,
   onChange,
   min = 0,
-  max = 1000,
+  max,
   step = 10,
 }: PriceRangePopoverProps) {
+  const effectiveMax = max ?? SLIDER_UI_MAX
   const [open, setOpen] = useState(false)
   const [localMin, setLocalMin] = useState<number>(value?.min ?? min)
-  const [localMax, setLocalMax] = useState<number>(value?.max ?? max)
+  const [localMax, setLocalMax] = useState<number>(
+    value?.max ?? max ?? SLIDER_UI_MAX
+  )
 
-  const clamp = (val: number) => Math.min(max, Math.max(min, val))
+  const clampMin = (val: number) => Math.max(min, val)
+  const clampMax = (val: number) =>
+    max != null ? Math.min(max, Math.max(min, val)) : Math.max(min, val)
 
   const displayLabel =
-    value && value.min !== min && value.max !== max
+    value && (value.min !== min || value.max !== effectiveMax)
       ? `$${value.min} - $${value.max}`
       : 'Price range'
+
+  // 滑块轨道视觉范围限制在 [min, effectiveMax]，避免输入超大数值时轨道溢出
+  const visualMin = Math.min(Math.max(localMin, min), effectiveMax)
+  const visualMax = Math.min(Math.max(localMax, min), effectiveMax)
 
   return (
     <Popover
@@ -46,7 +57,7 @@ export function PriceRangePopover({
         setOpen(nextOpen)
         if (nextOpen) {
           setLocalMin(value?.min ?? min)
-          setLocalMax(value?.max ?? max)
+          setLocalMax(value?.max ?? max ?? SLIDER_UI_MAX)
         }
       }}
     >
@@ -66,23 +77,23 @@ export function PriceRangePopover({
       >
         <div className='space-y-4'>
           {/* 双滑块 */}
-          <div className='relative h-6'>
+          <div className='relative h-6 overflow-hidden'>
             <div className='bg-muted absolute top-1/2 right-0 left-0 h-1 -translate-y-1/2 rounded-full' />
             <div
               className='bg-primary absolute top-1/2 h-1 -translate-y-1/2 rounded-full'
               style={{
-                left: `${((localMin - min) / (max - min)) * 100}%`,
-                right: `${100 - ((localMax - min) / (max - min)) * 100}%`,
+                left: `${((visualMin - min) / (effectiveMax - min)) * 100}%`,
+                right: `${100 - ((visualMax - min) / (effectiveMax - min)) * 100}%`,
               }}
             />
             <input
               type='range'
               min={min}
-              max={max}
+              max={effectiveMax}
               step={step}
               value={localMin}
               onChange={(e) => {
-                const next = clamp(Number(e.target.value))
+                const next = clampMin(Number(e.target.value))
                 setLocalMin(Math.min(next, localMax))
               }}
               className='[&::-webkit-slider-thumb]:bg-primary pointer-events-none absolute top-1/2 left-0 h-1 w-full -translate-y-1/2 appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full'
@@ -90,11 +101,11 @@ export function PriceRangePopover({
             <input
               type='range'
               min={min}
-              max={max}
+              max={effectiveMax}
               step={step}
               value={localMax}
               onChange={(e) => {
-                const next = clamp(Number(e.target.value))
+                const next = clampMax(Number(e.target.value))
                 setLocalMax(Math.max(next, localMin))
               }}
               className='[&::-webkit-slider-thumb]:bg-primary pointer-events-none absolute top-1/2 left-0 h-1 w-full -translate-y-1/2 appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full'
@@ -110,7 +121,7 @@ export function PriceRangePopover({
                   type='number'
                   value={localMin}
                   onChange={(e) => {
-                    const num = clamp(Number(e.target.value) || min)
+                    const num = clampMin(Number(e.target.value) || min)
                     setLocalMin(Math.min(num, localMax))
                   }}
                   className='h-6 border-0 p-0 text-xs focus-visible:ring-0'
@@ -125,7 +136,10 @@ export function PriceRangePopover({
                   type='number'
                   value={localMax}
                   onChange={(e) => {
-                    const num = clamp(Number(e.target.value) || max)
+                    const raw = Number(e.target.value)
+                    const num = Number.isNaN(raw)
+                      ? localMax
+                      : clampMax(raw)
                     setLocalMax(Math.max(num, localMin))
                   }}
                   className='h-6 border-0 p-0 text-xs focus-visible:ring-0'
@@ -143,7 +157,7 @@ export function PriceRangePopover({
               onClick={() => {
                 onChange(undefined)
                 setLocalMin(min)
-                setLocalMax(max)
+                setLocalMax(max ?? SLIDER_UI_MAX)
                 setOpen(false)
               }}
             >

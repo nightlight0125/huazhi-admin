@@ -1,3 +1,9 @@
+import { useEffect, useRef, useState } from 'react'
+import { Building2, Wallet } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getCurrency, type CurrencyItem } from '@/lib/api/base'
+import { getWalletInfo, requestWalletPayment } from '@/lib/api/wallet'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,12 +32,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { getCurrency, type CurrencyItem } from '@/lib/api/base'
-import { getWalletInfo, requestWalletPayment } from '@/lib/api/wallet'
-import { useAuthStore } from '@/stores/auth-store'
-import { Building2, Wallet } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import { type WalletStats } from '../data/schema'
 
 interface WalletStatsProps {
@@ -207,21 +207,20 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
     if (!validateInput()) {
       return
     }
-    
+
     // Bank Transfer 最小金额不能低于 0.5
     const amount = parseFloat(topupAmount)
     if (amount < 0.5) {
       toast.error('Minimum amount for Bank Transfer is 0.5')
       return
     }
-    
+
     setSelectedPaymentMethod('bank-transfer')
     setShowConfirmDialog(true)
   }
 
   return (
     <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card -mx-4 grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:px-6'>
-      {/* Account Balance and Benefits Card */}
       <Card className='@container/card'>
         <CardHeader>
           <div className='flex items-center gap-2'>
@@ -254,8 +253,8 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
                 >
                   <div className='flex items-center justify-between'>
                     <span className='font-medium'>
-                      ${tier.min.toFixed(0)}-
-                      {tier.max === 99999.0 ? '∞' : `$${tier.max.toFixed(0)}`}
+                      ${tier.min.toFixed(0)}-{tier.max}
+                      {'11 '}Benefits
                     </span>
                     <Badge variant='secondary' className='text-xs'>
                       {tier.percentage.toFixed(1)}%

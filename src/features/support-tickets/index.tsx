@@ -1,17 +1,16 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { format } from 'date-fns'
+import { getRouteApi } from '@tanstack/react-router'
+import { type DateRange } from 'react-day-picker'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryAfterSaleOrders } from '@/lib/api/orders'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { queryAfterSaleOrders } from '@/lib/api/orders'
-import { useAuthStore } from '@/stores/auth-store'
-import { getRouteApi } from '@tanstack/react-router'
-import { format } from 'date-fns'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { type DateRange } from 'react-day-picker'
-import { toast } from 'sonner'
 import { SupportTicketsTable } from './components/support-tickets-table'
 
 const route = getRouteApi('/_authenticated/support-tickets/')
-
 
 export function SupportTickets() {
   const search = route.useSearch()
@@ -21,9 +20,15 @@ export function SupportTickets() {
   const [totalCount, setTotalCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
-  const [selectedStore, setSelectedStore] = useState<string | undefined>(undefined)
-  const [selectedType, setSelectedType] = useState<string | undefined>(undefined)
-  const [selectedOrderStatus, setSelectedOrderStatus] = useState<string | undefined>(undefined)
+  const [selectedStore, setSelectedStore] = useState<string | undefined>(
+    undefined
+  )
+  const [selectedType, setSelectedType] = useState<string | undefined>(
+    undefined
+  )
+  const [selectedOrderStatus, setSelectedOrderStatus] = useState<
+    string | undefined
+  >(undefined)
   const lastRequestKeyRef = useRef<string>('')
   const isRequestingRef = useRef<boolean>(false)
 
@@ -87,9 +92,6 @@ export function SupportTickets() {
 
         const result = await queryAfterSaleOrders(requestParams)
 
-        console.log('result', result)
-
-
         setData(result?.rows || [])
         setTotalCount(result.totalCount || 0)
       } catch (error) {
@@ -124,12 +126,25 @@ export function SupportTickets() {
 
   // 当筛选条件变化时，重置到第一页并重新获取数据
   useEffect(() => {
-    if (dateRange || selectedStore || selectedType || selectedOrderStatus !== undefined || searchKeyword) {
+    if (
+      dateRange ||
+      selectedStore ||
+      selectedType ||
+      selectedOrderStatus !== undefined ||
+      searchKeyword
+    ) {
       // 重置请求 key，强制重新获取
       lastRequestKeyRef.current = ''
       fetchAfterSaleOrders(true)
     }
-  }, [dateRange, selectedStore, selectedType, selectedOrderStatus, searchKeyword, fetchAfterSaleOrders])
+  }, [
+    dateRange,
+    selectedStore,
+    selectedType,
+    selectedOrderStatus,
+    searchKeyword,
+    fetchAfterSaleOrders,
+  ])
 
   return (
     <>

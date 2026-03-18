@@ -33,8 +33,6 @@ export function Overview() {
       setIsLoading(true)
       try {
         const statistics = await graphicStatistics(String(customerId))
-        console.log('=======121')
-
         const chartData: ChartDataItem[] = Object.entries(statistics)
           .map(([date, item]) => {
             const statItem = item as {

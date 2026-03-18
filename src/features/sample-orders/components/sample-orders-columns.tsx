@@ -31,8 +31,6 @@ function SampleOrderDeleteCell({ row, onDelete }: SampleOrderDeleteCellProps) {
   const [isLoading, setIsLoading] = useState(false)
   const order = row.original
 
-  console.log('order', order)
-
   const handleConfirmDelete = async () => {
     if (!onDelete) return
 

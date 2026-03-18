@@ -21,23 +21,15 @@ interface DataTableBulkActionsProps {
 }
 
 export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
   const handleBulkExport = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Export wallet records:', selected)
     table.resetRowSelection()
   }
 
   const handleBulkDelete = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Delete wallet records:', selected)
     table.resetRowSelection()
   }
 
-  const handleBulkAction = (action: string) => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on wallet records:`, selected)
+  const handleBulkAction = (_action: string) => {
     table.resetRowSelection()
   }
 

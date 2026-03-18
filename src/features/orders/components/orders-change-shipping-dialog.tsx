@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,7 +10,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { logistics, shippingOrigins } from '../data/data'
 import { type Order } from '../data/schema'
 
@@ -27,7 +27,11 @@ interface OrdersChangeShippingDialogProps {
   order: Order
 }
 
-export function OrdersChangeShippingDialog({ open, onOpenChange, order }: OrdersChangeShippingDialogProps) {
+export function OrdersChangeShippingDialog({
+  open,
+  onOpenChange,
+  order,
+}: OrdersChangeShippingDialogProps) {
   const [formData, setFormData] = useState({
     shippingMethod: order.logistics,
     shippingOrigin: order.shippingOrigin,
@@ -35,14 +39,12 @@ export function OrdersChangeShippingDialog({ open, onOpenChange, order }: Orders
   })
 
   const handleSubmit = () => {
-    console.log('更改发货方式:', { 
-      orderId: order.id,
-      shippingMethod: formData.shippingMethod,
-      shippingOrigin: formData.shippingOrigin,
-      note: formData.note 
-    })
     onOpenChange(false)
-    setFormData({ shippingMethod: order.logistics, shippingOrigin: order.shippingOrigin, note: '' })
+    setFormData({
+      shippingMethod: order.logistics,
+      shippingOrigin: order.shippingOrigin,
+      note: '',
+    })
   }
 
   return (
@@ -54,12 +56,12 @@ export function OrdersChangeShippingDialog({ open, onOpenChange, order }: Orders
             为订单 {order.platformOrderNumber} 更改发货方式
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className='space-y-6'>
           {/* 订单信息 */}
           <div className='space-y-2'>
             <Label>订单信息</Label>
-            <div className='p-3 border rounded-lg bg-muted/50'>
+            <div className='bg-muted/50 rounded-lg border p-3'>
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-2'>
                   <Badge variant='outline'>{order.platformOrderNumber}</Badge>
@@ -69,11 +71,15 @@ export function OrdersChangeShippingDialog({ open, onOpenChange, order }: Orders
                   ${order.totalCost.toFixed(2)}
                 </span>
               </div>
-              <div className='mt-2 text-sm text-muted-foreground'>
-                当前物流: {logistics.find(l => l.value === order.logistics)?.label || order.logistics}
+              <div className='text-muted-foreground mt-2 text-sm'>
+                当前物流:{' '}
+                {logistics.find((l) => l.value === order.logistics)?.label ||
+                  order.logistics}
               </div>
-              <div className='text-sm text-muted-foreground'>
-                当前发货地: {shippingOrigins.find(s => s.value === order.shippingOrigin)?.label || order.shippingOrigin}
+              <div className='text-muted-foreground text-sm'>
+                当前发货地:{' '}
+                {shippingOrigins.find((s) => s.value === order.shippingOrigin)
+                  ?.label || order.shippingOrigin}
               </div>
             </div>
           </div>
@@ -82,7 +88,12 @@ export function OrdersChangeShippingDialog({ open, onOpenChange, order }: Orders
           <div className='grid grid-cols-2 gap-4'>
             <div className='space-y-2'>
               <Label htmlFor='shippingMethod'>新的物流方式</Label>
-              <Select value={formData.shippingMethod} onValueChange={(value) => setFormData({ ...formData, shippingMethod: value })}>
+              <Select
+                value={formData.shippingMethod}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, shippingMethod: value })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder='选择物流方式' />
                 </SelectTrigger>
@@ -97,7 +108,12 @@ export function OrdersChangeShippingDialog({ open, onOpenChange, order }: Orders
             </div>
             <div className='space-y-2'>
               <Label htmlFor='shippingOrigin'>新的发货地</Label>
-              <Select value={formData.shippingOrigin} onValueChange={(value) => setFormData({ ...formData, shippingOrigin: value })}>
+              <Select
+                value={formData.shippingOrigin}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, shippingOrigin: value })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder='选择发货地' />
                 </SelectTrigger>
@@ -117,19 +133,19 @@ export function OrdersChangeShippingDialog({ open, onOpenChange, order }: Orders
             <Textarea
               id='note'
               value={formData.note}
-              onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, note: e.target.value })
+              }
               placeholder='请输入更改发货方式的原因...'
             />
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit}>
-            确认更改
-          </Button>
+          <Button onClick={handleSubmit}>确认更改</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

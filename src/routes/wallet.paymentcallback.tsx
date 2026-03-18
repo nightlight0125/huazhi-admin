@@ -1,8 +1,8 @@
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { walletCallback } from '@/lib/api/wallet'
 import { Loader2 } from 'lucide-react'
+import { walletCallback } from '@/lib/api/wallet'
 import { Button } from '@/components/ui/button'
 
 const searchSchema = z.object({
@@ -17,7 +17,9 @@ export const Route = createFileRoute('/wallet/paymentcallback')({
 function WalletPaymentCallbackPage() {
   const { session_id } = Route.useSearch()
   const navigate = useNavigate()
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
+    'loading'
+  )
   const [message, setMessage] = useState<string>('')
 
   useEffect(() => {
@@ -51,10 +53,10 @@ function WalletPaymentCallbackPage() {
   }, [session_id])
 
   return (
-    <div className='flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/30 p-6'>
+    <div className='bg-muted/30 flex min-h-svh flex-col items-center justify-center gap-6 p-6'>
       {status === 'loading' && (
         <>
-          <Loader2 className='h-10 w-10 animate-spin text-primary' />
+          <Loader2 className='text-primary h-10 w-10 animate-spin' />
           <p className='text-muted-foreground text-sm'>
             Processing payment result...
           </p>
@@ -78,11 +80,11 @@ function WalletPaymentCallbackPage() {
               />
             </svg>
           </div>
-          <p className='text-center font-medium text-foreground'>{message}</p>
+          <p className='text-foreground text-center font-medium'>{message}</p>
           <div className='flex gap-3'>
-            <Button variant='outline' onClick={() => window.close()}>
+            {/* <Button variant='outline' onClick={() => window.close()}>
               Close window
-            </Button>
+            </Button> */}
             <Button onClick={() => navigate({ to: '/wallet' })}>
               Go to Wallet
             </Button>
@@ -92,9 +94,9 @@ function WalletPaymentCallbackPage() {
 
       {status === 'error' && (
         <>
-          <div className='rounded-full bg-destructive/10 p-4'>
+          <div className='bg-destructive/10 rounded-full p-4'>
             <svg
-              className='h-10 w-10 text-destructive'
+              className='text-destructive h-10 w-10'
               fill='none'
               viewBox='0 0 24 24'
               stroke='currentColor'
@@ -107,11 +109,11 @@ function WalletPaymentCallbackPage() {
               />
             </svg>
           </div>
-          <p className='text-center font-medium text-destructive'>{message}</p>
+          <p className='text-destructive text-center font-medium'>{message}</p>
           <div className='flex gap-3'>
-            <Button variant='outline' onClick={() => window.close()}>
+            {/* <Button variant='outline' onClick={() => window.close()}>
               Close window
-            </Button>
+            </Button> */}
             <Button onClick={() => navigate({ to: '/wallet' })}>
               Go to Wallet
             </Button>
