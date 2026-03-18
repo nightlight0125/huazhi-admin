@@ -1,11 +1,11 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { getRouteApi } from '@tanstack/react-router'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryAccount } from '@/lib/api/users'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { queryAccount } from '@/lib/api/users'
-import { useAuthStore } from '@/stores/auth-store'
-import { getRouteApi } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import { UsersDialogs } from './components/users-dialogs'
 import { UsersPrimaryButtons } from './components/users-primary-buttons'
 import { UsersProvider } from './components/users-provider'
@@ -61,74 +61,86 @@ export function Users() {
   const pageNo = (search.page as number) || 1
   const pageSize = (search.pageSize as number) || 10
 
-  const fetchUsers = useCallback(async (filters?: {
-    role?: string[]
-    status?: string[]
-    username?: string
-  }, forceRefresh?: boolean) => {
-    let username = ''
-    if (filters?.username !== undefined) {
-      username = filters.username || ''
-    } else {
-      username = (search.username as string) || ''
-    }
-    
-    const roleFilter = filters?.role ?? (search.role as string[]) ?? []
-    const statusFilter = filters?.status ?? (search.status as string[]) ?? []
-    const hzkj_role_id = roleFilter.length > 0 ? roleFilter[0] : undefined
-    
-    const trimmedUsername = username.trim()
-    const hzkj_queryParams = trimmedUsername || '*'
-    
-    let enable: string | undefined = undefined
-    if (statusFilter.length > 0) {
-      const status = statusFilter[0]
-      enable =
-        status === 'active' ? '1' : status === 'inactive' ? '0' : undefined
-    }
-
-    const requestKey = `${hzkj_member_id}-${pageNo}-${pageSize}-${hzkj_role_id || ''}-${hzkj_queryParams}-${enable || ''}`
-
-    if (!forceRefresh && lastRequestKeyRef.current === requestKey) {
-      console.log('Request parameters unchanged, skipping request')
-      return
-    }
-
-    if (isRequestingRef.current) {
-      console.log('Request already in progress, skipping')
-      return
-    }
-
-    lastRequestKeyRef.current = requestKey
-    isRequestingRef.current = true
-
-    setIsLoading(true)
-    try {
-      const result = await queryAccount(hzkj_member_id, pageNo, pageSize, {
-        hzkj_role_id,
-        hzkj_queryParams,
-        enable,
-      })
-      if (Array.isArray(result.rows) && result.rows.length > 0) {
-        const mappedUsers = result.rows.map(mapApiDataToUser)
-        setUsers(mappedUsers)
+  const fetchUsers = useCallback(
+    async (
+      filters?: {
+        role?: string[]
+        status?: string[]
+        username?: string
+      },
+      forceRefresh?: boolean
+    ) => {
+      let username = ''
+      if (filters?.username !== undefined) {
+        username = filters.username || ''
       } else {
-        setUsers([])
+        username = (search.username as string) || ''
       }
-      setTotalCount(result.totalCount)
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to load users. Please try again.'
-      )
-      setUsers([])
-      setTotalCount(0)
-    } finally {
-      setIsLoading(false)
-      isRequestingRef.current = false
-    }
-  }, [auth.accessToken, hzkj_member_id, pageNo, pageSize, search.username, search.role, search.status])
+
+      const roleFilter = filters?.role ?? (search.role as string[]) ?? []
+      const statusFilter = filters?.status ?? (search.status as string[]) ?? []
+      const hzkj_role_id = roleFilter.length > 0 ? roleFilter[0] : undefined
+
+      const trimmedUsername = username.trim()
+      const hzkj_queryParams = trimmedUsername || '*'
+
+      let enable: string | undefined = undefined
+      if (statusFilter.length > 0) {
+        const status = statusFilter[0]
+        enable =
+          status === 'active' ? '1' : status === 'inactive' ? '0' : undefined
+      }
+
+      const requestKey = `${hzkj_member_id}-${pageNo}-${pageSize}-${hzkj_role_id || ''}-${hzkj_queryParams}-${enable || ''}`
+
+      if (!forceRefresh && lastRequestKeyRef.current === requestKey) {
+        return
+      }
+
+      if (isRequestingRef.current) {
+        return
+      }
+
+      lastRequestKeyRef.current = requestKey
+      isRequestingRef.current = true
+
+      setIsLoading(true)
+      try {
+        const result = await queryAccount(hzkj_member_id, pageNo, pageSize, {
+          hzkj_role_id,
+          hzkj_queryParams,
+          enable,
+        })
+        if (Array.isArray(result.rows) && result.rows.length > 0) {
+          const mappedUsers = result.rows.map(mapApiDataToUser)
+          setUsers(mappedUsers)
+        } else {
+          setUsers([])
+        }
+        setTotalCount(result.totalCount)
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load users. Please try again.'
+        )
+        setUsers([])
+        setTotalCount(0)
+      } finally {
+        setIsLoading(false)
+        isRequestingRef.current = false
+      }
+    },
+    [
+      auth.accessToken,
+      hzkj_member_id,
+      pageNo,
+      pageSize,
+      search.username,
+      search.role,
+      search.status,
+    ]
+  )
 
   useEffect(() => {
     fetchUsers()

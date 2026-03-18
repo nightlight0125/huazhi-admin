@@ -133,7 +133,9 @@ export function PackagingConnection() {
     setDisconnectDialogOpen(true)
   }
 
-  const handleConnectDialogConfirm = (_selectedProducts: PackagingProduct[]) => {
+  const handleConnectDialogConfirm = (
+    _selectedProducts: PackagingProduct[]
+  ) => {
     setRefreshKey((k) => k + 1)
   }
 
@@ -246,9 +248,7 @@ export function PackagingConnection() {
 
   const handleDeleteConfirm = async () => {
     // Order tab 使用 hzkj_shop_pd_package_id，Store tab 使用 hzkj_shop_package_id
-    const shopPackageId =
-      itemToDelete?.hzkj_shop_pd_package_id ??
-      itemToDelete?.hzkj_shop_package_id
+    const shopPackageId = itemToDelete?.id || ''
     if (!shopPackageId) {
       toast.error('Invalid item data')
       setDeleteDialogOpen(false)
@@ -564,12 +564,15 @@ export function PackagingConnection() {
             {tabs.map((tab) => (
               <TabsContent key={tab.value} value={tab.value} className='mt-0'>
                 <div className='space-y-4'>
-                  {tab.value !== 'stores' && (
-                    <div className='flex items-center gap-2'>
+                  <div className='flex items-center gap-2'>
+                    {tab.value !== 'stores' && (
                       <Tabs
                         value={statusTab}
                         onValueChange={(value) => {
-                          if (value === 'connected' || value === 'unconnected') {
+                          if (
+                            value === 'connected' ||
+                            value === 'unconnected'
+                          ) {
                             handleStatusTabChange(value)
                           }
                         }}
@@ -590,19 +593,19 @@ export function PackagingConnection() {
                           </TabsTrigger>
                         </TabsList>
                       </Tabs>
-                      {tab.value === 'order' && (
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='h-8 border-orange-200 bg-orange-50 px-3 text-xs text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30'
-                          onClick={handleAddNewPackaging}
-                        >
-                          <PackagePlus className='mr-1.5 h-3.5 w-3.5' />
-                          Add New Packaging
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    {tab.value === 'stores' && (
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className='h-8 border-orange-200 bg-orange-50 px-3 text-xs text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30'
+                        onClick={handleAddNewPackaging}
+                      >
+                        <PackagePlus className='mr-1.5 h-3.5 w-3.5' />
+                        Add New Packaging
+                      </Button>
+                    )}
+                  </div>
 
                   <DataTableToolbar
                     table={table}

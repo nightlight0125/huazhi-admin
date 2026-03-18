@@ -152,7 +152,6 @@ export const usersColumns: ColumnDef<User>[] = [
             size='sm'
             className='h-8 w-8 p-0'
             onClick={() => {
-              console.log('row.original', row.original)
               setCurrentRow(row.original)
               setOpen('edit')
             }}

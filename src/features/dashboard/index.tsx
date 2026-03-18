@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { getReminder, type ReminderItem } from '@/lib/api/base'
+import {
+  getReminder,
+  getNowReminder,
+  type ReminderItem,
+} from '@/lib/api/base'
 import {
   orderCountStatistics,
   type OrderCountStatisticsData,
@@ -12,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -39,6 +43,7 @@ export function Dashboard() {
     null
   )
   const [showReminderDialog, setShowReminderDialog] = useState(false)
+  const [reminderDetailLoading, setReminderDetailLoading] = useState(false)
 
   // 获取客户用户信息
   useEffect(() => {
@@ -113,10 +118,31 @@ export function Dashboard() {
     void fetchReminders()
   }, [])
 
-  // 处理点击 Read More
-  const handleReadMore = (reminder: ReminderItem) => {
+  // 处理点击 Read More：打开弹框并调用 getNowReminder 接口获取详情
+  const handleReadMore = async (reminder: ReminderItem) => {
     setSelectedReminder(reminder)
     setShowReminderDialog(true)
+    setReminderDetailLoading(true)
+    const customerId = authUser?.customerId || authUser?.id
+    if (!customerId) {
+      setReminderDetailLoading(false)
+      toast.error('Customer ID not found. Please login again.')
+      return
+    }
+    try {
+      const detail = await getNowReminder(String(customerId))
+      setSelectedReminder(detail as ReminderItem)
+    } catch (error) {
+      console.error('Failed to fetch reminder detail:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load reminder details. Please try again.'
+      )
+      // 请求失败时保留列表数据作为回退展示
+    } finally {
+      setReminderDetailLoading(false)
+    }
   }
 
   // 格式化日期
@@ -157,9 +183,7 @@ export function Dashboard() {
           className='space-y-4'
         >
           <TabsContent value='overview' className='space-y-4'>
-            {/* 标题与卡片之间间距缩小一半 */}
             <div className='space-y-2'>
-              {/* 标题同一行：Dashboard 左；Account Balance 在右侧栏内居左，与下方卡片对齐 */}
               <div className='flex flex-wrap items-end justify-between gap-2'>
                 <h2 className='text-lg font-bold'>Dashboard</h2>
                 <div className='w-full text-left lg:w-[320px] lg:flex-shrink-0 xl:w-[340px] 2xl:w-[360px]'>
@@ -167,14 +191,13 @@ export function Dashboard() {
                 </div>
               </div>
 
-              {/* 卡片同一行：四张统计卡与 Account Balance 卡同一高度起始 */}
               <div className='flex flex-col gap-4 lg:flex-row'>
                 <div className='min-w-0 flex-1'>
-                  <div className='grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-                    <Link to='/orders' className='block'>
-                      <Card className='cursor-pointer transition-opacity hover:opacity-90'>
-                        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                          <CardTitle className='text-sm font-medium'>
+                  <div className='grid w-full items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                    <Link to='/orders' className='block h-full'>
+                      <Card className='flex h-full min-h-[120px] cursor-pointer flex-col transition-opacity hover:opacity-90'>
+                        <CardHeader className='flex min-h-[2.75rem] shrink-0 flex-row items-center justify-between space-y-0 pb-2'>
+                          <CardTitle className='line-clamp-2 text-sm font-medium'>
                             New Orders
                           </CardTitle>
                           <svg
@@ -185,12 +208,12 @@ export function Dashboard() {
                             strokeLinecap='round'
                             strokeLinejoin='round'
                             strokeWidth='2'
-                            className='text-muted-foreground h-4 w-4'
+                            className='text-muted-foreground h-4 w-4 shrink-0'
                           >
                             <path d='M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' />
                           </svg>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className='flex flex-1 items-end pt-0'>
                           <div className='text-2xl font-bold'>
                             {orderStats.newCount}
                           </div>
@@ -199,13 +222,13 @@ export function Dashboard() {
                     </Link>
                     <Link
                       to='/orders'
-                      search={{ orderStatus: 'pending' }}
-                      className='block'
+                      search={{ orderStatus: '1' }}
+                      className='block h-full'
                     >
-                      <Card className='cursor-pointer transition-opacity hover:opacity-90'>
-                        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                          <CardTitle className='text-sm font-medium'>
-                            Awaiting Payment
+                      <Card className='flex h-full min-h-[120px] cursor-pointer flex-col transition-opacity hover:opacity-90'>
+                        <CardHeader className='flex min-h-[2.75rem] shrink-0 flex-row items-center justify-between space-y-0 pb-2'>
+                          <CardTitle className='line-clamp-2 text-sm font-medium'>
+                            Pending Payment
                           </CardTitle>
                           <svg
                             xmlns='http://www.w3.org/2000/svg'
@@ -215,14 +238,14 @@ export function Dashboard() {
                             strokeLinecap='round'
                             strokeLinejoin='round'
                             strokeWidth='2'
-                            className='text-muted-foreground h-3 w-3'
+                            className='text-muted-foreground h-4 w-4 shrink-0'
                           >
                             <path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' />
                             <circle cx='9' cy='7' r='4' />
                             <path d='M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' />
                           </svg>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className='flex flex-1 items-end pt-0'>
                           <div className='text-2xl font-bold'>
                             {orderStats.paymentCount}
                           </div>
@@ -231,12 +254,12 @@ export function Dashboard() {
                     </Link>
                     <Link
                       to='/orders'
-                      search={{ orderStatus: 'paid' }}
-                      className='block'
+                      search={{ orderStatus: '2' }}
+                      className='block h-full'
                     >
-                      <Card className='cursor-pointer transition-opacity hover:opacity-90'>
-                        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                          <CardTitle className='text-sm font-medium'>
+                      <Card className='flex h-full min-h-[120px] cursor-pointer flex-col transition-opacity hover:opacity-90'>
+                        <CardHeader className='flex min-h-[2.75rem] shrink-0 flex-row items-center justify-between space-y-0 pb-2'>
+                          <CardTitle className='line-clamp-2 text-sm font-medium'>
                             Paid Orders
                           </CardTitle>
                           <svg
@@ -247,23 +270,23 @@ export function Dashboard() {
                             strokeLinecap='round'
                             strokeLinejoin='round'
                             strokeWidth='2'
-                            className='text-muted-foreground h-4 w-4'
+                            className='text-muted-foreground h-4 w-4 shrink-0'
                           >
                             <rect width='20' height='14' x='2' y='5' rx='2' />
                             <path d='M2 10h20' />
                           </svg>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className='flex flex-1 items-end pt-0'>
                           <div className='text-2xl font-bold'>
                             {orderStats.paidCount}
                           </div>
                         </CardContent>
                       </Card>
                     </Link>
-                    <Link to='/support-tickets' className='block'>
-                      <Card className='cursor-pointer transition-opacity hover:opacity-90'>
-                        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                          <CardTitle className='text-sm font-medium'>
+                    <Link to='/support-tickets' className='block h-full'>
+                      <Card className='flex h-full min-h-[120px] cursor-pointer flex-col transition-opacity hover:opacity-90'>
+                        <CardHeader className='flex min-h-[2.75rem] shrink-0 flex-row items-center justify-between space-y-0 pb-2'>
+                          <CardTitle className='line-clamp-2 text-sm font-medium'>
                             Support Tickets
                           </CardTitle>
                           <svg
@@ -274,12 +297,12 @@ export function Dashboard() {
                             strokeLinecap='round'
                             strokeLinejoin='round'
                             strokeWidth='2'
-                            className='text-muted-foreground h-4 w-4'
+                            className='text-muted-foreground h-4 w-4 shrink-0'
                           >
                             <path d='M22 12h-4l-3 9L9 3l-3 9H2' />
                           </svg>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className='flex flex-1 items-end pt-0'>
                           <div className='text-2xl font-bold'>
                             {orderStats.rmaCount}
                           </div>
@@ -427,7 +450,6 @@ export function Dashboard() {
                   </Card>
                 </div>
 
-                {/* Notifications */}
                 <div>
                   <h2 className='mb-2 text-base font-bold'>Notifications</h2>
                   <Card>
@@ -482,62 +504,56 @@ export function Dashboard() {
 
       {/* Reminder Detail Dialog */}
       <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
-        <DialogContent className='max-h-[80vh] max-w-2xl overflow-y-auto'>
+        <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
             <DialogTitle>
               {selectedReminder?.hzkj_textfield || 'Notification Details'}
             </DialogTitle>
-            <DialogDescription asChild>
-              <div className='space-y-4 pt-4'>
-                {selectedReminder && (
-                  <>
-                    <div>
-                      <p className='mb-1 text-sm font-semibold'>Bill No:</p>
-                      <p className='text-muted-foreground text-sm'>
-                        {selectedReminder.billno || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className='mb-1 text-sm font-semibold'>Text Field:</p>
-                      <p className='text-muted-foreground text-sm'>
-                        {selectedReminder.hzkj_textfield || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className='mb-1 text-sm font-semibold'>
-                        Effective Start Date:
-                      </p>
-                      <p className='text-muted-foreground text-sm'>
-                        {formatDate(
-                          selectedReminder.hzkj_effective_time_startdate
-                        )}
-                      </p>
-                    </div>
-                    <div>
-                      <p className='mb-1 text-sm font-semibold'>
-                        Effective End Date:
-                      </p>
-                      <p className='text-muted-foreground text-sm'>
-                        {formatDate(
-                          selectedReminder.hzkj_effective_time_enddate
-                        )}
-                      </p>
-                    </div>
-                    <div>
-                      <p className='mb-1 text-sm font-semibold'>Content:</p>
-                      <div
-                        className='text-muted-foreground prose prose-sm max-w-none text-sm'
-                        dangerouslySetInnerHTML={{
-                          __html:
-                            selectedReminder.hzkj_richtextfield || '<p>-</p>',
-                        }}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-            </DialogDescription>
           </DialogHeader>
+          {reminderDetailLoading ? (
+            <div className='flex min-h-[120px] items-center justify-center py-8'>
+              <Loader2 className='text-muted-foreground h-8 w-8 animate-spin' />
+            </div>
+          ) : selectedReminder ? (
+            <div className='space-y-4 py-4'>
+              <div className='flex justify-between gap-4 text-sm'>
+                <span className='text-muted-foreground shrink-0'>Bill No:</span>
+                <span className='font-medium'>
+                  {selectedReminder.billno || '-'}
+                </span>
+              </div>
+              <div className='flex justify-between gap-4 text-sm'>
+                <span className='text-muted-foreground shrink-0'>
+                  Text Field:
+                </span>
+                <span className='font-medium'>
+                  {selectedReminder.hzkj_textfield || '-'}
+                </span>
+              </div>
+              <div className='flex justify-between gap-4 text-sm'>
+                <span className='text-muted-foreground shrink-0'>
+                  Effective Start Date:
+                </span>
+                <span className='font-medium'>
+                  {formatDate(
+                    ((selectedReminder as Record<string, unknown>)
+                      .createtime as string | undefined) ??
+                      selectedReminder.hzkj_effective_time_startdate
+                  )}
+                </span>
+              </div>
+              <div className='space-y-2'>
+                <p className='text-muted-foreground text-sm'>Content:</p>
+                <div
+                  className='text-muted-foreground prose prose-sm max-w-none text-sm'
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      selectedReminder.hzkj_richtextfield || '<p>-</p>',
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

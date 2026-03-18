@@ -675,7 +675,6 @@ export function ProductsGrid({
                         title='Add to Cart'
                         onClick={(e) => {
                           e.stopPropagation()
-                          console.log('Add to cart:', product.id)
                         }}
                       >
                         <ShoppingCart className='h-3.5 w-3.5' />

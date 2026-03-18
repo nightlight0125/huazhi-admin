@@ -20,23 +20,15 @@ interface InventoryBulkActionsProps {
 }
 
 export function InventoryBulkActions({ table }: InventoryBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
   const handleBulkExport = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Export inventory items:', selected)
     table.resetRowSelection()
   }
 
   const handleBulkDelete = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Delete inventory items:', selected)
     table.resetRowSelection()
   }
 
-  const handleBulkAction = (action: string) => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on inventory items:`, selected)
+  const handleBulkAction = (_action: string) => {
     table.resetRowSelection()
   }
 
@@ -142,5 +134,3 @@ export function InventoryBulkActions({ table }: InventoryBulkActionsProps) {
     </BulkActionsToolbar>
   )
 }
-
-

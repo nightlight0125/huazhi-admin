@@ -22,23 +22,15 @@ interface LikedProductsBulkActionsProps {
 export function LikedProductsBulkActions({
   table,
 }: LikedProductsBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
   const handleBulkExport = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Export liked products:', selected)
     table.resetRowSelection()
   }
 
   const handleBulkDelete = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Remove from collection:', selected)
     table.resetRowSelection()
   }
 
-  const handleBulkAction = (action: string) => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on liked products:`, selected)
+  const handleBulkAction = (_action: string) => {
     table.resetRowSelection()
   }
 
@@ -144,5 +136,3 @@ export function LikedProductsBulkActions({
     </BulkActionsToolbar>
   )
 }
-
-

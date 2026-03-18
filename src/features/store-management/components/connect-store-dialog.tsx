@@ -84,7 +84,6 @@ export function ConnectStoreDialog({
 
       // 1. 获取 OAuth URL
       const oauthUrl = await shopifyOAuth(shop, state)
-      console.log('OAuth URL:', oauthUrl)
 
       // 2. 打开 OAuth URL（新窗口）
       const authWindow = window.open(
@@ -118,10 +117,6 @@ export function ConnectStoreDialog({
             const codeFromUrl = url.searchParams.get('code')
             const shopFromUrl = url.searchParams.get('shop')
             const stateFromUrl = url.searchParams.get('state')
-
-            console.log('codeFromUrl:', codeFromUrl)
-            console.log('shopFromUrl:', shopFromUrl)
-            console.log('stateFromUrl:', stateFromUrl)
 
             if (codeFromUrl && shopFromUrl && stateFromUrl === state) {
               clearInterval(checkAuthWindow)

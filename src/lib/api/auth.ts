@@ -122,15 +122,12 @@ export async function getToken(
   }
  
   try {
-    console.log('getToken 请求数据:', JSON.stringify(requestData, null, 2))
     
     const response = await apiClient.post<GetTokenResponse>(
       '/oauth2/getToken',
       requestData
     )
     
-    console.log('getToken 响应:', response)
-    console.log('getToken 响应数据:', response.data)
 
     const token =
       response.data.access_token ||
@@ -139,45 +136,17 @@ export async function getToken(
       response.data.data?.token
 
     if (!token) {
-      console.error('Token 未找到，响应数据:', response.data)
       throw new Error('Token not found in response')
     }
 
-    console.log('获取到的 token:', token.substring(0, 50) + '...')
     return token
   } catch (error) {
-    console.error('getToken 错误详情:')
-    console.error('错误对象:', error)
-    
     if (error instanceof Error) {
-      console.error('错误消息:', error.message)
-      console.error('错误堆栈:', error.stack)
     }
     
-    // 如果是 axios 错误，打印详细信息
+    // 如果是 axios 错误，可在此打印 error.response 等详细信息
     if (error && typeof error === 'object' && 'response' in error) {
-      const axiosError = error as {
-        response?: {
-          data?: unknown
-          status?: number
-          statusText?: string
-          headers?: unknown
-        }
-        request?: unknown
-        config?: {
-          url?: string
-          method?: string
-          data?: unknown
-          headers?: unknown
-        }
-      }
-      console.error('Axios 错误详情:', {
-        status: axiosError.response?.status,
-        statusText: axiosError.response?.statusText,
-        data: axiosError.response?.data,
-        url: axiosError.config?.url,
-        method: axiosError.config?.method,
-      })
+      // AxiosError handling placeholder
     }
     
     throw error
@@ -222,7 +191,6 @@ export async function memberSignUp(
     '/v2/hzkj/base/member/add',
     requestData
   )
-  console.log('注册响应:', response.data)
   return response.data
 }
 

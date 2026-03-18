@@ -70,13 +70,6 @@ export function RecommendedListTable() {
     }
   }
 
-  // 添加调试日志
-  useEffect(() => {
-    console.log('数据状态变化 - data:', data)
-    console.log('数据状态变化 - data length:', data.length)
-    console.log('数据状态变化 - totalCount:', totalCount)
-  }, [data, totalCount])
-
   const table = useReactTable({
     data,
     columns: recommendedListColumns,
@@ -107,36 +100,22 @@ export function RecommendedListTable() {
     pageCount: Math.ceil(totalCount / pagination.pageSize),
   })
 
-  // 添加表格行模型的调试日志
-  useEffect(() => {
-    const rows = table.getRowModel().rows
-    console.log('表格行模型更新 - rows length:', rows?.length)
-    console.log('表格行模型更新 - rows:', rows)
-  }, [table, data])
-
-  // 当日期范围或筛选条件变化时，重置到第一页
   useEffect(() => {
     if (formattedDateRange) {
       setPagination((prev) => ({ ...prev, pageIndex: 0 }))
     }
   }, [formattedDateRange])
 
-  // 获取数据
   useEffect(() => {
     const fetchData = async () => {
       const customerId = auth.user?.customerId
 
-      // 如果日期范围不完整，不发送请求（除非没有选择日期范围）
       if (dateRange && !isDateRangeComplete) {
         return
       }
 
       const pageIndex = pagination.pageIndex + 1
       const pageSize = pagination.pageSize
-
-      console.log('开始获取数据 - formattedDateRange:', formattedDateRange)
-      console.log('开始获取数据 - pageIndex:', pageIndex, 'pageSize:', pageSize)
-
       setIsLoading(true)
       try {
         const response = await queryCustomerRecommendList(
@@ -151,28 +130,18 @@ export function RecommendedListTable() {
             : undefined
         )
 
-        console.log('API 响应数据:', response)
-        console.log('原始 rows:', response.rows)
-
         const mappedData = response.rows.map((item, index) =>
           mapToRecommendedListRecord(item, index)
         )
 
-        console.log('映射后的数据:', mappedData)
-        console.log('数据长度:', mappedData.length)
-        console.log('totalCount:', response.totalCount)
-
         // 使用函数式更新确保状态正确更新
         setData(() => {
-          console.log('设置数据到 state:', mappedData)
           return mappedData
         })
         setTotalCount(() => {
-          console.log('设置 totalCount 到 state:', response.totalCount)
           return response.totalCount
         })
       } catch (error) {
-        console.error('获取推荐列表失败:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -230,11 +199,6 @@ export function RecommendedListTable() {
           <TableBody>
             {(() => {
               const rows = table.getRowModel().rows
-              console.log('表格渲染 - isLoading:', isLoading)
-              console.log('表格渲染 - data length:', data.length)
-              console.log('表格渲染 - rows length:', rows?.length)
-              console.log('表格渲染 - rows:', rows)
-
               if (isLoading) {
                 return (
                   <TableRow>

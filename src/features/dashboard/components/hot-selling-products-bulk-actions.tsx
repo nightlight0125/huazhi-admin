@@ -22,25 +22,17 @@ interface HotSellingProductsBulkActionsProps {
 export function HotSellingProductsBulkActions({
   table,
 }: HotSellingProductsBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
   const handleBulkExport = () => {
-    const selectedProducts = selectedRows.map((row) => row.original)
-    console.log('Export products:', selectedProducts)
     // TODO: 实现导出逻辑
     table.resetRowSelection()
   }
 
   const handleBulkDelete = () => {
-    const selectedProducts = selectedRows.map((row) => row.original)
-    console.log('Delete products:', selectedProducts)
     // TODO: 实现删除逻辑
     table.resetRowSelection()
   }
 
-  const handleBulkAction = (action: string) => {
-    const selectedProducts = selectedRows.map((row) => row.original)
-    console.log(`Bulk action: ${action}`, selectedProducts)
+  const handleBulkAction = (_action: string) => {
     // TODO: 实现批量操作逻辑
     table.resetRowSelection()
   }
@@ -126,11 +118,11 @@ export function HotSellingProductsBulkActions({
             title='Export products'
           >
             <Download />
-            <span className='sr-only'>Export products</span>
+            <span className='sr-only'>Export Products</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Export products</p>
+          <p>Export Products</p>
         </TooltipContent>
       </Tooltip>
 

@@ -221,10 +221,6 @@ export const StoreListingTabs = forwardRef<
     // 调试：检查 richTextContent 是否正确传递
     useEffect(() => {
       if (richTextContent) {
-        console.log(
-          'RichTextContent received in StoreListingTabs:',
-          richTextContent.substring(0, 100)
-        )
       }
     }, [richTextContent])
     const [stores, setStores] = useState<
@@ -232,7 +228,7 @@ export const StoreListingTabs = forwardRef<
     >([])
     const [isLoadingStores, setIsLoadingStores] = useState(false)
     const [selectedStore, setSelectedStore] = useState('')
-    const [title, setTitle] = useState(productTitle)
+    const [title, setTitle] = useState('')
     const [tagInput, setTagInput] = useState('')
     const [bulkReviseType, setBulkReviseType] = useState('price-change')
     const [bulkReviseValue, setBulkReviseValue] = useState('')
@@ -290,9 +286,9 @@ export const StoreListingTabs = forwardRef<
 
     const selectedCountry = countryOptions.find((c) => c.value === selectedTo)
 
-    // 当 productTitle prop 变化时，更新 title state
+    // 当 productTitle 变化时重置 title，使原商品名以 placeholder（灰显）展示
     useEffect(() => {
-      setTitle(productTitle)
+      setTitle('')
     }, [productTitle])
 
     // 获取商品详情并处理图片
@@ -434,7 +430,8 @@ export const StoreListingTabs = forwardRef<
         return
       }
 
-      if (!title.trim()) {
+      const finalTitle = title.trim() || productTitle?.trim()
+      if (!finalTitle) {
         toast.error('Please enter a product title')
         return
       }
@@ -497,7 +494,7 @@ export const StoreListingTabs = forwardRef<
             shopId: finalShopId,
             customerId: String(customerId),
             productId: productId || '',
-            title: title.trim(),
+            title: finalTitle,
             tags: selectedTags,
             pictures: selectedPictures,
             description: descriptionContent || '',
@@ -612,6 +609,13 @@ export const StoreListingTabs = forwardRef<
       fetchStores()
     }, [auth.user?.id])
 
+    // 仅有一家店铺时默认选中
+    useEffect(() => {
+      if (!isLoadingStores && stores.length === 1 && !selectedStore) {
+        setSelectedStore(stores[0].value)
+      }
+    }, [isLoadingStores, stores, selectedStore])
+
     return (
       <div className='flex flex-1 flex-col overflow-hidden'>
         <Tabs
@@ -647,7 +651,7 @@ export const StoreListingTabs = forwardRef<
               </TabsTrigger>
             </TabsList>
             <div className='bg-primary/5 border-primary/20 text-foreground rounded-md border px-3 py-2 text-sm'>
-              Product data is provided directly by suppliers. Although CJ is
+              Product data is provided directly by suppliers. Although hz is
               committed to protecting intellectual property rights, it cannot
               ensure that all potential intellectual property disputes are
               avoided.
@@ -701,8 +705,17 @@ export const StoreListingTabs = forwardRef<
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder='Fashion Ozzy Christmas Elf Doll Xmas Trees Decoration Ornaments Music Godfather Classic Sitting Posture Noel Elf Plush Toys'
+                  placeholder={
+                    productTitle ||
+                    'Fashion Ozzy Christmas Elf Doll Xmas Trees Decoration Ornaments Music Godfather Classic Sitting Posture Noel Elf Plush Toys'
+                  }
                   className='h-8'
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !title.trim() && productTitle) {
+                      e.preventDefault()
+                      setTitle(productTitle)
+                    }
+                  }}
                 />
               </div>
 
@@ -750,7 +763,7 @@ export const StoreListingTabs = forwardRef<
             <div className='space-y-3'>
               <div className='border-border bg-muted/30 space-y-1.5 rounded-lg border px-3 py-2'>
                 <div className='text-xs font-semibold'>
-                  Set a Default Shipping Method on CJ
+                  Set a Default Shipping Method on hz
                 </div>
                 <div className='mt-1.5 flex items-start gap-1.5'>
                   <Popover
@@ -765,11 +778,11 @@ export const StoreListingTabs = forwardRef<
                           setIsShipFromSelectOpen(true)
                         }}
                       >
-                        <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                          <Store className='h-3.5 w-3.5 text-gray-600' />
+                        <div className='border-border flex h-6 w-6 shrink-0 items-center justify-center rounded-full border'>
+                          <Store className='text-muted-foreground h-3.5 w-3.5' />
                         </div>
                         <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                          <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                          <div className='text-muted-foreground flex items-center gap-0.5 text-[10px]'>
                             <span className='whitespace-nowrap'>ship from</span>
                             <ChevronDown className='h-2.5 w-2.5 shrink-0' />
                           </div>
@@ -805,7 +818,7 @@ export const StoreListingTabs = forwardRef<
                     </PopoverContent>
                   </Popover>
 
-                  <div className='h-8 w-px shrink-0 bg-gray-200' />
+                  <div className='bg-border h-8 w-px shrink-0' />
 
                   <Popover
                     open={isShipToSelectOpen}
@@ -819,18 +832,18 @@ export const StoreListingTabs = forwardRef<
                           setIsShipToSelectOpen(true)
                         }}
                       >
-                        <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                          <Truck className='h-3.5 w-3.5 text-gray-600' />
+                        <div className='border-border flex h-6 w-6 shrink-0 items-center justify-center rounded-full border'>
+                          <Truck className='text-muted-foreground h-3.5 w-3.5' />
                         </div>
                         <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                          <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                          <div className='text-muted-foreground flex items-center gap-0.5 text-[10px]'>
                             <span className='whitespace-nowrap'>Ship To</span>
                             <ChevronDown className='h-2.5 w-2.5 shrink-0' />
                           </div>
                           {isLoadingFreight ? (
                             <div className='flex items-center gap-1.5'>
-                              <Loader2 className='h-3 w-3 animate-spin text-gray-500' />
-                              <span className='text-xs font-bold text-gray-500'>
+                              <Loader2 className='text-muted-foreground h-3 w-3 animate-spin' />
+                              <span className='text-muted-foreground text-xs font-bold'>
                                 Loading...
                               </span>
                             </div>
@@ -902,7 +915,7 @@ export const StoreListingTabs = forwardRef<
                     </PopoverContent>
                   </Popover>
 
-                  <div className='h-8 w-px shrink-0 bg-gray-200' />
+                  <div className='bg-border h-8 w-px shrink-0' />
 
                   <Popover
                     open={
@@ -929,11 +942,11 @@ export const StoreListingTabs = forwardRef<
                           setIsShippingMethodOpen(true)
                         }}
                       >
-                        <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200'>
-                          <Truck className='h-3.5 w-3.5 text-gray-600' />
+                        <div className='border-border flex h-6 w-6 shrink-0 items-center justify-center rounded-full border'>
+                          <Truck className='text-muted-foreground h-3.5 w-3.5' />
                         </div>
                         <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                          <div className='flex items-center gap-0.5 text-[10px] text-gray-500'>
+                          <div className='text-muted-foreground flex items-center gap-0.5 text-[10px]'>
                             <span className='whitespace-nowrap'>
                               By Shipping Method
                             </span>
@@ -945,7 +958,7 @@ export const StoreListingTabs = forwardRef<
                             </span>
                             <div className='flex shrink-0 items-center gap-0.5'>
                               <div className='h-1.5 w-1.5 rounded-full bg-green-500' />
-                              <span className='text-[10px] whitespace-nowrap text-green-600'>
+                              <span className='text-[10px] whitespace-nowrap text-green-600 dark:text-green-400'>
                                 Available
                               </span>
                             </div>
@@ -954,7 +967,7 @@ export const StoreListingTabs = forwardRef<
                       </div>
                     </PopoverTrigger>
                     <PopoverContent className='w-[450px] p-0' align='start'>
-                      <div className='p-4'>
+                      <div className='border-border bg-popover p-4'>
                         <RadioGroup
                           value={selectedShippingMethod}
                           onValueChange={(value) => {
@@ -962,7 +975,7 @@ export const StoreListingTabs = forwardRef<
                             setIsShippingMethodOpen(false)
                           }}
                         >
-                          <div className='mb-2 grid grid-cols-[24px_1fr_120px_100px] gap-4 border-b pb-2 text-sm font-medium text-gray-700'>
+                          <div className='border-border text-foreground mb-2 grid grid-cols-[24px_1fr_120px_100px] gap-4 border-b pb-2 text-sm font-medium'>
                             <div />
                             <div>Shipping Method</div>
                             <div className='text-center'>
@@ -972,8 +985,8 @@ export const StoreListingTabs = forwardRef<
                           </div>
                           {isLoadingFreight ? (
                             <div className='flex items-center justify-center py-8'>
-                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                              <span className='text-sm text-gray-500'>
+                              <Loader2 className='text-muted-foreground mr-2 h-4 w-4 animate-spin' />
+                              <span className='text-muted-foreground text-sm'>
                                 Loading shipping methods...
                               </span>
                             </div>
@@ -982,7 +995,12 @@ export const StoreListingTabs = forwardRef<
                               {shippingMethodOptions.map((method) => (
                                 <label
                                   key={method.id}
-                                  className='grid cursor-pointer grid-cols-[24px_1fr_120px_100px] items-center gap-4 border-b py-3 text-sm last:border-b-0 hover:bg-gray-50'
+                                  className={cn(
+                                    'border-border text-foreground grid cursor-pointer grid-cols-[24px_1fr_120px_100px] items-center gap-4 border-b py-3 text-sm last:border-b-0',
+                                    method.id === selectedShippingMethod
+                                      ? 'bg-muted'
+                                      : 'hover:bg-muted'
+                                  )}
                                 >
                                   <RadioGroupItem
                                     value={method.id}
@@ -1030,12 +1048,8 @@ export const StoreListingTabs = forwardRef<
                 </div>
               </div>
 
-              {/* Variant pricing table */}
               <div className='space-y-1.5' style={{ marginTop: '30px' }}>
-                {/* <div className='text-xs font-semibold'>Variant Pricing</div> */}
-
                 <div className='space-y-1.5'>
-                  {/* Bulk Revise */}
                   <div className='flex items-center gap-2'>
                     <span className='text-xs font-medium'>Bulk Revise</span>
                     <div className='flex items-center'>
@@ -1191,7 +1205,7 @@ export const StoreListingTabs = forwardRef<
               <div className='text-sm font-semibold'>Images</div>
               <div>
                 It is your responsibility to ensure that the pictures you use in
-                your listings do not violate any copyright laws. CJ does not
+                your listings do not violate any copyright laws. hz does not
                 assume liability for infringement claims related to that.
               </div>
 

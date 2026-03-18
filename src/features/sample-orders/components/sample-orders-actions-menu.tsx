@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { addRMAOrder } from '@/lib/api/orders'
+import { addRMAOrder, getOrderInvoicePdf } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -32,6 +32,7 @@ export function SampleOrdersActionsMenu({
   const { auth } = useAuthStore()
   const [rmaDialogOpen, setRmaDialogOpen] = useState(false)
   const [isCreatingRMA, setIsCreatingRMA] = useState(false)
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
 
   const handleAfterSales = async () => {
     if (!table) {
@@ -86,19 +87,57 @@ export function SampleOrdersActionsMenu({
     switch (action) {
       case 'cancel':
         // TODO: Implement cancel action
-        console.log('Cancel')
         break
-      case 'download_invoice':
-        // TODO: Implement download invoice action
-        console.log('Download Invoice')
+      case 'download_invoice': {
+        if (!table) {
+          toast.error('Table not available')
+          return
+        }
+        const selectedRows = table.getFilteredSelectedRowModel().rows
+        if (selectedRows.length === 0) {
+          toast.error('Please select at least one order')
+          return
+        }
+        const customerId = auth.user?.customerId || auth.user?.id
+        if (!customerId) {
+          toast.error('Customer ID not found')
+          return
+        }
+        const ids = selectedRows.map((r) => r.original.id).filter(Boolean)
+        if (ids.length === 0) {
+          toast.error('Selected orders have no valid IDs')
+          return
+        }
+        void (async () => {
+          setIsDownloadingInvoice(true)
+          try {
+            const blob = await getOrderInvoicePdf(String(customerId), ids, '2')
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `invoice-sample-orders-${Date.now()}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+            toast.success(`Downloaded ${ids.length} invoice(s)`)
+            table.resetRowSelection()
+          } catch (error) {
+            console.error('Failed to download invoice:', error)
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : 'Failed to download invoice. Please try again.'
+            )
+          } finally {
+            setIsDownloadingInvoice(false)
+          }
+        })()
         break
+      }
       case 'export':
         // TODO: Implement export order action
-        console.log('Export Order')
         break
       case 'merge':
         // TODO: Implement merge order action
-        console.log('Merge Order')
         break
       case 'after_sales':
         // 检查是否有选中的行
@@ -132,8 +171,15 @@ export function SampleOrdersActionsMenu({
           <X className='mr-2 h-4 w-4' />
           Cancel
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAction('download_invoice')}>
-          <Download className='mr-2 h-4 w-4' />
+        <DropdownMenuItem
+          onClick={() => handleAction('download_invoice')}
+          disabled={isDownloadingInvoice}
+        >
+          {isDownloadingInvoice ? (
+            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+          ) : (
+            <Download className='mr-2 h-4 w-4' />
+          )}
           Download Invoice
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleAction('export')}>

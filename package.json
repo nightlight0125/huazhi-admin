@@ -53,6 +53,7 @@
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
     "fabric": "^6.9.0",
+    "flag-icons": "^7.5.0",
     "input-otp": "^1.4.2",
     "lexical": "^0.38.2",
     "lucide-react": "^0.542.0",
@@ -70,7 +71,6 @@
     "tailwindcss": "^4.1.12",
     "tw-animate-css": "^1.3.6",
     "world-countries": "^5.1.0",
-    "flag-icons": "^7.5.0",
     "zod": "^4.0.17",
     "zustand": "^5.0.7"
   },
@@ -95,6 +95,7 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.6"
+    "vite": "^7.1.6",
+    "vite-plugin-javascript-obfuscator": "^3.1.0"
   }
 }

@@ -88,14 +88,10 @@ export async function saveBill(
     data: [dataItem],
   }
 
-  console.log('保存询价单请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<SaveBillResponse>(
     '/v2/hzkj/hzkj_customer/hzkj_customer_inquiry/saveBill',
     requestData
   )
-
-  console.log('保存询价单响应:', response.data)
 
   if (response.data.status === false) {
     const errorMessage =
@@ -161,8 +157,6 @@ export async function queryList(
     params
   )
 
-  console.log('查询询价单列表响应:', response.data)
-
   if (response.data.status === false) {
     const errorMessage =
       response.data.message ||
@@ -174,8 +168,6 @@ export async function queryList(
   const responseData = response.data.data
   const rows = responseData?.rows || []
   const totalCount = responseData?.totalCount || 0
-
-  console.log('解析后的数据:', { rows, totalCount })
 
   return {
     rows: (Array.isArray(rows) ? rows : []) as any,
@@ -203,14 +195,10 @@ export async function delBill(
     billId: params.billId,
   }
 
-  console.log('删除询价单请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<DelBillResponse>(
     '/v2/hzkj/hzkj_customer/hzkj_customer_inquiry/delBill',
     requestData
   )
-
-  console.log('删除询价单响应:', response.data)
 
   if (response.data.status === false) {
     const errorMessage =

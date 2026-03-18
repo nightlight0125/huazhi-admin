@@ -1,4 +1,30 @@
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import { useEffect, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { type Table } from '@tanstack/react-table'
+import {
+  ChevronDown,
+  Download,
+  FileDown,
+  Loader2,
+  Merge,
+  Package,
+  Plus,
+  RefreshCw,
+  ShoppingBag,
+  Truck,
+  Upload,
+  X,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { batchUpdOrderLogs } from '@/lib/api/logistics'
+import {
+  addRMAOrder,
+  getOrderInvoicePdf,
+  queryAfterSaleReasonList,
+  type AfterSaleReasonItem,
+} from '@/lib/api/orders'
+import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,32 +50,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
-import { batchUpdOrderLogs } from '@/lib/api/logistics'
-import {
-  addRMAOrder,
-  queryAfterSaleReasonList,
-  type AfterSaleReasonItem,
-} from '@/lib/api/orders'
-import { useAuthStore } from '@/stores/auth-store'
-import { useNavigate } from '@tanstack/react-router'
-import { type Table } from '@tanstack/react-table'
-import {
-  ChevronDown,
-  Download,
-  FileDown,
-  Loader2,
-  Merge,
-  Package,
-  Plus,
-  RefreshCw,
-  ShoppingBag,
-  Truck,
-  Upload,
-  X,
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type Order } from '../data/schema'
 import { useOrders } from './orders-provider'
 
@@ -64,7 +65,9 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
   const [rmaDialogOpen, setRmaDialogOpen] = useState(false)
   const [isCreatingRMA, setIsCreatingRMA] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
-  const [afterSaleReasons, setAfterSaleReasons] = useState<AfterSaleReasonItem[]>([])
+  const [afterSaleReasons, setAfterSaleReasons] = useState<
+    AfterSaleReasonItem[]
+  >([])
   const [isLoadingReasons, setIsLoadingReasons] = useState(false)
   const [selectedReasonId, setSelectedReasonId] = useState<string>('')
   const [dealType, setDealType] = useState<string>('')
@@ -72,14 +75,13 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
 
   // 更改物流渠道弹框
   const [shippingDialogOpen, setShippingDialogOpen] = useState(false)
-  const [selectedOrderIdsForShipping, setSelectedOrderIdsForShipping] = useState<string[]>([])
+  const [selectedOrderIdsForShipping, setSelectedOrderIdsForShipping] =
+    useState<string[]>([])
   const [selectedLogsId, setSelectedLogsId] = useState<string>('')
   const [isSubmittingShipping, setIsSubmittingShipping] = useState(false)
-  const { channels: logisticsChannels, isLoading: isLoadingChannels } = useLogisticsChannels(
-    1,
-    1000,
-    shippingDialogOpen
-  )
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
+  const { channels: logisticsChannels, isLoading: isLoadingChannels } =
+    useLogisticsChannels(1, 1000, shippingDialogOpen)
 
   const dealTypeOptions = [
     { label: 'Return and refund', value: 'A' },
@@ -186,7 +188,6 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
     switch (action) {
       case 'cancel':
         // TODO: Implement cancel action
-        console.log('Cancel')
         break
       case 'change_shipping':
         if (!table) {
@@ -202,17 +203,56 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
         setSelectedLogsId('')
         setShippingDialogOpen(true)
         break
-      case 'download_invoice':
-        // TODO: Implement download invoice action
-        console.log('Download Invoice')
+      case 'download_invoice': {
+        if (!table) {
+          toast.error('Table not available')
+          return
+        }
+        const selectedRows = table.getFilteredSelectedRowModel().rows
+        if (selectedRows.length === 0) {
+          toast.error('Please select at least one order')
+          return
+        }
+        const customerId = auth.user?.customerId || auth.user?.id
+        if (!customerId) {
+          toast.error('Customer ID not found')
+          return
+        }
+        const ids = selectedRows.map((r) => r.original.id).filter(Boolean)
+        if (ids.length === 0) {
+          toast.error('Selected orders have no valid IDs')
+          return
+        }
+        void (async () => {
+          setIsDownloadingInvoice(true)
+          try {
+            const blob = await getOrderInvoicePdf(String(customerId), ids, '1')
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `invoice-store-orders-${Date.now()}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+            toast.success(`Downloaded ${ids.length} invoice(s)`)
+            table.resetRowSelection()
+          } catch (error) {
+            console.error('Failed to download invoice:', error)
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : 'Failed to download invoice. Please try again.'
+            )
+          } finally {
+            setIsDownloadingInvoice(false)
+          }
+        })()
         break
+      }
       case 'export':
         // TODO: Implement export order action
-        console.log('Export Order')
         break
       case 'merge':
         // TODO: Implement merge order action
-        console.log('Merge Order')
         break
       case 'add':
         navigate({ to: '/orders/create' })
@@ -240,7 +280,6 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
         break
       case 'use_stock':
         // TODO: Implement use stock action
-        console.log('Use Your Stock')
         break
       default:
         break
@@ -268,7 +307,9 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
       setSelectedLogsId('')
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Failed to update logistics channel'
+        error instanceof Error
+          ? error.message
+          : 'Failed to update logistics channel'
       )
     } finally {
       setIsSubmittingShipping(false)
@@ -293,8 +334,15 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
             <Truck className='mr-2 h-4 w-4' />
             Change Shipping Method
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleAction('download_invoice')}>
-            <Download className='mr-2 h-4 w-4' />
+          <DropdownMenuItem
+            onClick={() => handleAction('download_invoice')}
+            disabled={isDownloadingInvoice}
+          >
+            {isDownloadingInvoice ? (
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+            ) : (
+              <Download className='mr-2 h-4 w-4' />
+            )}
             Download Invoice
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAction('export')}>
@@ -367,7 +415,11 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
                 disabled={isLoadingReasons || isCreatingRMA}
               >
                 <SelectTrigger id='rma-question-type'>
-                  <SelectValue placeholder={isLoadingReasons ? 'Loading...' : 'Please select'} />
+                  <SelectValue
+                    placeholder={
+                      isLoadingReasons ? 'Loading...' : 'Please select'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {afterSaleReasons.map((item) => {
@@ -375,7 +427,8 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
                       (typeof item.name === 'string' && item.name) ||
                       (typeof item.reason === 'string' && item.reason) ||
                       // 兜底：尽量用后端返回的可读字段
-                      (typeof (item as any).label === 'string' && (item as any).label) ||
+                      (typeof (item as any).label === 'string' &&
+                        (item as any).label) ||
                       item.id ||
                       'Unknown'
 
@@ -432,8 +485,9 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
           <DialogHeader>
             <DialogTitle>Change Shipping Method</DialogTitle>
             <DialogDescription>
-              Update the logistics channel for {selectedOrderIdsForShipping.length} selected
-              order(s). Choose a channel below and confirm.
+              Update the logistics channel for{' '}
+              {selectedOrderIdsForShipping.length} selected order(s). Choose a
+              channel below and confirm.
             </DialogDescription>
           </DialogHeader>
           <div className='grid gap-4 py-4'>
@@ -447,7 +501,9 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
                 <SelectTrigger id='shipping-channel'>
                   <SelectValue
                     placeholder={
-                      isLoadingChannels ? 'Loading channels...' : 'Select logistics channel'
+                      isLoadingChannels
+                        ? 'Loading channels...'
+                        : 'Select logistics channel'
                     }
                   />
                 </SelectTrigger>
@@ -471,7 +527,10 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
             >
               Cancel
             </Button>
-            <Button onClick={handleConfirmShipping} disabled={isSubmittingShipping}>
+            <Button
+              onClick={handleConfirmShipping}
+              disabled={isSubmittingShipping}
+            >
               {isSubmittingShipping ? (
                 <>
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />

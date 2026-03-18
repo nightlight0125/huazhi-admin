@@ -12,7 +12,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { Trash2 } from 'lucide-react'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -21,12 +23,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DataTablePagination, DataTableToolbar, DataTableBulkActions } from '@/components/data-table'
+import {
+  DataTableBulkActions,
+  DataTablePagination,
+  DataTableToolbar,
+} from '@/components/data-table'
 import { shippingFromOptions, shippingMethodsByCountry } from '../data/data'
 import { type ProductConnection } from '../data/schema'
 import { createProductConnectionsColumns } from './product-connections-columns-with-handlers'
-import { Button } from '@/components/ui/button'
-import { Trash2 } from 'lucide-react'
 import { ShippingFromDialog } from './shipping-from-dialog'
 import { ShippingMethodDialog } from './shipping-method-dialog'
 
@@ -41,11 +45,13 @@ export function ProductConnectionsTable({ data }: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  
+
   // Dialog states
   const [shippingFromDialogOpen, setShippingFromDialogOpen] = useState(false)
-  const [shippingMethodDialogOpen, setShippingMethodDialogOpen] = useState(false)
-  const [selectedProductConnection, setSelectedProductConnection] = useState<ProductConnection | null>(null)
+  const [shippingMethodDialogOpen, setShippingMethodDialogOpen] =
+    useState(false)
+  const [selectedProductConnection, setSelectedProductConnection] =
+    useState<ProductConnection | null>(null)
 
   // Synced with URL states
   const {
@@ -63,7 +69,11 @@ export function ProductConnectionsTable({ data }: DataTableProps) {
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [
       { columnId: 'shippingFrom', searchKey: 'shippingFrom', type: 'array' },
-      { columnId: 'shippingMethod', searchKey: 'shippingMethod', type: 'array' },
+      {
+        columnId: 'shippingMethod',
+        searchKey: 'shippingMethod',
+        type: 'array',
+      },
     ],
   })
 
@@ -78,24 +88,31 @@ export function ProductConnectionsTable({ data }: DataTableProps) {
     setShippingMethodDialogOpen(true)
   }
 
-  const handleShippingFromSave = (productId: string, newShippingFrom: string) => {
-    console.log('更新发货地:', productId, newShippingFrom)
+  const handleShippingFromSave = (
+    productId: string,
+    newShippingFrom: string
+  ) => {
     // 这里可以添加实际的更新逻辑
     alert(`产品 ${productId} 的发货地已更新为: ${newShippingFrom}`)
   }
 
-  const handleShippingMethodSave = (productId: string, newShippingMethod: string, newShippingCost: number) => {
-    console.log('更新装运方式:', productId, newShippingMethod, newShippingCost)
+  const handleShippingMethodSave = (
+    productId: string,
+    newShippingMethod: string,
+    newShippingCost: number
+  ) => {
     // 这里可以添加实际的更新逻辑
-    alert(`产品 ${productId} 的装运方式已更新为: ${newShippingMethod}，运费: $${newShippingCost.toFixed(2)}`)
+    alert(
+      `产品 ${productId} 的装运方式已更新为: ${newShippingMethod}，运费: $${newShippingCost.toFixed(2)}`
+    )
   }
 
-  const handleBrandCustomizationClick = (productConnection: ProductConnection) => {
-    console.log('打开品牌定制对话框:', productConnection)
+  const handleBrandCustomizationClick = (
+    productConnection: ProductConnection
+  ) => {
     // 这里应该打开品牌定制对话框
     alert(`打开产品 ${productConnection.id} 的品牌定制对话框`)
   }
-
 
   // Create columns with handlers
   const columns = createProductConnectionsColumns({
@@ -107,12 +124,13 @@ export function ProductConnectionsTable({ data }: DataTableProps) {
   // Create shipping method filter options from all available methods
   const shippingMethodOptions = Object.values(shippingMethodsByCountry)
     .flat()
-    .map(method => ({
+    .map((method) => ({
       value: method.id,
       label: method.name,
     }))
-    .filter((method, index, self) => 
-      index === self.findIndex(m => m.value === method.value)
+    .filter(
+      (method, index, self) =>
+        index === self.findIndex((m) => m.value === method.value)
     )
 
   const table = useReactTable({
@@ -222,19 +240,20 @@ export function ProductConnectionsTable({ data }: DataTableProps) {
         </Table>
       </div>
       <DataTablePagination table={table} />
-      <DataTableBulkActions table={table} entityName="产品连接">
+      <DataTableBulkActions table={table} entityName='产品连接'>
         <Button
-          variant="destructive"
-          size="sm"
+          variant='destructive'
+          size='sm'
           onClick={() => {
             const selectedRows = table.getFilteredSelectedRowModel().rows
-            const selectedProducts = selectedRows.map(row => row.original as ProductConnection)
-            console.log('批量删除产品连接:', selectedProducts)
+            const selectedProducts = selectedRows.map(
+              (row) => row.original as ProductConnection
+            )
             alert(`已删除 ${selectedProducts.length} 个产品连接`)
             table.resetRowSelection()
           }}
         >
-          <Trash2 className="mr-2 h-4 w-4" />
+          <Trash2 className='mr-2 h-4 w-4' />
           删除选中项
         </Button>
       </DataTableBulkActions>
@@ -246,14 +265,13 @@ export function ProductConnectionsTable({ data }: DataTableProps) {
         productConnection={selectedProductConnection}
         onSave={handleShippingFromSave}
       />
-      
+
       <ShippingMethodDialog
         open={shippingMethodDialogOpen}
         onOpenChange={setShippingMethodDialogOpen}
         productConnection={selectedProductConnection}
         onSave={handleShippingMethodSave}
       />
-
     </div>
   )
 }

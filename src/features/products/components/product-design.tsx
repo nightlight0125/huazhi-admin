@@ -90,7 +90,7 @@ export function ProductDesign() {
   const [selectedTextObject, setSelectedTextObject] = useState<Textbox | null>(
     null
   )
-  const [textContent, setTextContent] = useState('Teemdrop')
+  const [textContent, setTextContent] = useState('HyperZone')
   const [fontFamily, setFontFamily] = useState('Arial')
   const [fontSize, setFontSize] = useState(22)
   const [fontOpacity, setFontOpacity] = useState(100)
@@ -631,7 +631,7 @@ export function ProductDesign() {
     if (!fabricCanvasRef.current) return
     const canvas = fabricCanvasRef.current
     const center = canvas.getCenter()
-    const text = new Textbox(textContent || 'Teemdrop', {
+    const text = new Textbox(textContent || 'HyperZone', {
       left: (center.left || 0) - 100,
       top: (center.top || 0) - 15,
       width: 200,
@@ -1254,31 +1254,37 @@ export function ProductDesign() {
                 <Label className='text-sm font-medium'>
                   Font size: {fontSize}
                 </Label>
-                <input
-                  type='range'
-                  min='8'
-                  max='100'
-                  value={fontSize}
-                  onChange={(e) => {
-                    const newValue = Number(e.target.value)
-                    setFontSize(newValue)
-                    // 立即更新到画布
-                    if (selectedTextObject) {
-                      isUpdatingTextRef.current = true
-                      selectedTextObject.set('fontSize', newValue)
-                      selectedTextObject.setCoords()
-                      fabricCanvasRef.current?.renderAll()
-                      setTimeout(() => {
-                        isUpdatingTextRef.current = false
-                        saveState()
-                      }, 200)
-                    }
-                  }}
-                  className='bg-muted accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg'
-                  style={{
-                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${((fontSize - 8) / (100 - 8)) * 100}%, hsl(var(--muted)) ${((fontSize - 8) / (100 - 8)) * 100}%, hsl(var(--muted)) 100%)`,
-                  }}
-                />
+                <div className='relative h-6'>
+                  <div className='bg-muted absolute top-1/2 right-0 left-0 h-2 -translate-y-1/2 rounded-full' />
+                  <div
+                    className='bg-primary absolute top-1/2 h-2 -translate-y-1/2 rounded-full'
+                    style={{
+                      left: 0,
+                      width: `${((fontSize - 8) / (100 - 8)) * 100}%`,
+                    }}
+                  />
+                  <input
+                    type='range'
+                    min='8'
+                    max='100'
+                    value={fontSize}
+                    onChange={(e) => {
+                      const newValue = Number(e.target.value)
+                      setFontSize(newValue)
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('fontSize', newValue)
+                        selectedTextObject.setCoords()
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className='absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer'
+                  />
+                </div>
               </div>
 
               {/* Font Opacity */}
@@ -1286,30 +1292,36 @@ export function ProductDesign() {
                 <Label className='text-sm font-medium'>
                   Font opacity: {fontOpacity}
                 </Label>
-                <input
-                  type='range'
-                  min='0'
-                  max='100'
-                  value={fontOpacity}
-                  onChange={(e) => {
-                    const newValue = Number(e.target.value)
-                    setFontOpacity(newValue)
-                    // 立即更新到画布
-                    if (selectedTextObject) {
-                      isUpdatingTextRef.current = true
-                      selectedTextObject.set('opacity', newValue / 100)
-                      fabricCanvasRef.current?.renderAll()
-                      setTimeout(() => {
-                        isUpdatingTextRef.current = false
-                        saveState()
-                      }, 200)
-                    }
-                  }}
-                  className='bg-muted accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg'
-                  style={{
-                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${fontOpacity}%, hsl(var(--muted)) ${fontOpacity}%, hsl(var(--muted)) 100%)`,
-                  }}
-                />
+                <div className='relative h-6'>
+                  <div className='bg-muted absolute top-1/2 right-0 left-0 h-2 -translate-y-1/2 rounded-full' />
+                  <div
+                    className='bg-primary absolute top-1/2 h-2 -translate-y-1/2 rounded-full'
+                    style={{
+                      left: 0,
+                      width: `${fontOpacity}%`,
+                    }}
+                  />
+                  <input
+                    type='range'
+                    min='0'
+                    max='100'
+                    value={fontOpacity}
+                    onChange={(e) => {
+                      const newValue = Number(e.target.value)
+                      setFontOpacity(newValue)
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('opacity', newValue / 100)
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className='absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer'
+                  />
+                </div>
               </div>
 
               {/* Spacing */}
@@ -1317,31 +1329,37 @@ export function ProductDesign() {
                 <Label className='text-sm font-medium'>
                   Spacing: {textSpacing}
                 </Label>
-                <input
-                  type='range'
-                  min='0'
-                  max='100'
-                  value={textSpacing}
-                  onChange={(e) => {
-                    const newValue = Number(e.target.value)
-                    setTextSpacing(newValue)
-                    // 立即更新到画布
-                    if (selectedTextObject) {
-                      isUpdatingTextRef.current = true
-                      selectedTextObject.set('charSpacing', newValue)
-                      selectedTextObject.setCoords()
-                      fabricCanvasRef.current?.renderAll()
-                      setTimeout(() => {
-                        isUpdatingTextRef.current = false
-                        saveState()
-                      }, 200)
-                    }
-                  }}
-                  className='bg-muted accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg'
-                  style={{
-                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${textSpacing}%, hsl(var(--muted)) ${textSpacing}%, hsl(var(--muted)) 100%)`,
-                  }}
-                />
+                <div className='relative h-6'>
+                  <div className='bg-muted absolute top-1/2 right-0 left-0 h-2 -translate-y-1/2 rounded-full' />
+                  <div
+                    className='bg-primary absolute top-1/2 h-2 -translate-y-1/2 rounded-full'
+                    style={{
+                      left: 0,
+                      width: `${textSpacing}%`,
+                    }}
+                  />
+                  <input
+                    type='range'
+                    min='0'
+                    max='100'
+                    value={textSpacing}
+                    onChange={(e) => {
+                      const newValue = Number(e.target.value)
+                      setTextSpacing(newValue)
+                      if (selectedTextObject) {
+                        isUpdatingTextRef.current = true
+                        selectedTextObject.set('charSpacing', newValue)
+                        selectedTextObject.setCoords()
+                        fabricCanvasRef.current?.renderAll()
+                        setTimeout(() => {
+                          isUpdatingTextRef.current = false
+                          saveState()
+                        }, 200)
+                      }
+                    }}
+                    className='absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer'
+                  />
+                </div>
               </div>
 
               {/* Text Color */}

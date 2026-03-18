@@ -35,22 +35,16 @@ export function VariantPricingBulkActions({
   }
 
   const handleBulkExport = () => {
-    const selectedVariants = selectedRows.map((row) => row.original)
-    console.log('Export variants:', selectedVariants)
     // TODO: 实现导出逻辑
     table.resetRowSelection()
   }
 
   const handleBulkDelete = () => {
-    const selectedVariants = selectedRows.map((row) => row.original)
-    console.log('Delete variants:', selectedVariants)
     // TODO: 实现删除逻辑
     table.resetRowSelection()
   }
 
-  const handleBulkAction = (action: string) => {
-    const selectedVariants = selectedRows.map((row) => row.original)
-    console.log(`Bulk action: ${action}`, selectedVariants)
+  const handleBulkAction = (_action: string) => {
     // TODO: 实现批量操作逻辑（如批量修改价格、运费等）
     table.resetRowSelection()
   }
@@ -115,7 +109,9 @@ export function VariantPricingBulkActions({
           <DropdownMenuItem onClick={() => handleBulkAction('update_price')}>
             Update Price
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleBulkAction('update_shipping_fee')}>
+          <DropdownMenuItem
+            onClick={() => handleBulkAction('update_shipping_fee')}
+          >
             Update Shipping Fee
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleBulkAction('update_color')}>
@@ -197,4 +193,3 @@ export function VariantPricingBulkActions({
     </div>
   )
 }
-

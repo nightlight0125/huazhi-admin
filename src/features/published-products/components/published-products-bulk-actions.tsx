@@ -22,23 +22,15 @@ interface PublishedProductsBulkActionsProps {
 export function PublishedProductsBulkActions({
   table,
 }: PublishedProductsBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
   const handleBulkExport = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Export published products:', selected)
     table.resetRowSelection()
   }
 
   const handleBulkDelete = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Delete published products:', selected)
     table.resetRowSelection()
   }
 
-  const handleBulkAction = (action: string) => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on published products:`, selected)
+  const handleBulkAction = (_action: string) => {
     table.resetRowSelection()
   }
 
@@ -144,5 +136,3 @@ export function PublishedProductsBulkActions({
     </BulkActionsToolbar>
   )
 }
-
-

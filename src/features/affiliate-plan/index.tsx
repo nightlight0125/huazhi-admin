@@ -72,7 +72,7 @@ export function AffiliatePlan() {
 
   const handleCashOut = () => {
     // TODO: Implement cash out logic
-    console.log('Cash out clicked')
+    toast.info('Cash out feature coming soon')
   }
 
   return (
@@ -90,18 +90,6 @@ export function AffiliatePlan() {
             >
               Referral Links
             </TabsTrigger>
-            {/* <TabsTrigger
-              value='commission-records'
-              className='data-[state=active]:text-primary px-4 text-sm'
-            >
-              Commission Records
-            </TabsTrigger> */}
-            {/* <TabsTrigger
-              value='withdraw-records'
-              className='data-[state=active]:text-primary px-4 text-sm'
-            >
-              Withdraw Records
-            </TabsTrigger> */}
             <TabsTrigger
               value='recommended-list'
               className='data-[state=active]:text-primary px-4 text-sm'

@@ -1,12 +1,5 @@
-import { DataTablePagination } from '@/components/data-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { useMemo, useState } from 'react'
+import { format } from 'date-fns'
 import {
   type SortingState,
   type Table as TanstackTable,
@@ -20,8 +13,15 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { format } from 'date-fns'
-import { useMemo, useState } from 'react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { DataTablePagination } from '@/components/data-table'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
 import { PackagingConnectionBulkActions } from './packaging-connection-bulk-actions'
 import { createPackagingConnectionColumns } from './packaging-connection-columns'
@@ -66,13 +66,11 @@ export function PackagingConnectionTable({
     }
   }
 
-  const handleDisconnect = (storeSku: StoreSku) => {
-    console.log('Disconnect:', storeSku)
+  const handleDisconnect = (_storeSku: StoreSku) => {
     // TODO: Implement disconnect logic
   }
 
-  const handleConnect = (storeSku: StoreSku) => {
-    console.log('Connect:', storeSku)
+  const handleConnect = (_storeSku: StoreSku) => {
     // TODO: Implement connect logic
   }
 
@@ -84,12 +82,7 @@ export function PackagingConnectionTable({
       onDisconnect: handleDisconnect,
       onConnect: handleConnect,
     })
-  }, [
-    handleExpand,
-    expandedRows,
-    handleDisconnect,
-    handleConnect,
-  ])
+  }, [handleExpand, expandedRows, handleDisconnect, handleConnect])
 
   // Only create internal table if no external table provided
   const [columnFilters, setColumnFilters] = useState<
@@ -131,10 +124,6 @@ export function PackagingConnectionTable({
 
   const table = externalTable || internalTable
 
-  console.log('internalTable------------8888888888888888:')
-
-  console.log('table------------999999999999:', table)
-
   return (
     <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
       <div className='overflow-hidden rounded-md border'>
@@ -161,121 +150,120 @@ export function PackagingConnectionTable({
             {(() => {
               // 使用 getRowModel() 获取经过过滤、排序和分页后的行
               const rows = table.getRowModel().rows
-              console.log('Rendering table rows:', rows.length, 'from data:', data.length, 'columnFilters:', table.getState().columnFilters)
               return rows?.length ? (
                 rows.map((row) => {
-                const item = row.original
-                const isExpanded = expandedRows.has(row.id)
-                const hasPackagingProducts =
-                  item.packagingProducts && item.packagingProducts.length > 0
+                  const item = row.original
+                  const isExpanded = expandedRows.has(row.id)
+                  const hasPackagingProducts =
+                    item.packagingProducts && item.packagingProducts.length > 0
 
-                return (
-                  <>
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && 'selected'}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                    {isExpanded && hasPackagingProducts && (
+                  return (
+                    <>
                       <TableRow
-                        key={`${row.id}-expanded`}
-                        className='bg-muted/30'
+                        key={row.id}
+                        data-state={row.getIsSelected() && 'selected'}
                       >
-                        <TableCell colSpan={columns.length} className='p-0'>
-                          <div className='bg-background border-t p-4'>
-                            <div className='bg-background overflow-hidden rounded-md'>
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead className='w-[400px]'>
-                                      Packaging Products
-                                    </TableHead>
-                                    <TableHead>Variant</TableHead>
-                                    <TableHead>Price</TableHead>
-                                    <TableHead>Related Time</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {item.packagingProducts?.map(
-                                    (pkg: PackagingProduct) => (
-                                      <TableRow
-                                        key={pkg.id}
-                                        className='hover:bg-muted/50'
-                                      >
-                                        <TableCell>
-                                          <div className='flex items-center gap-3'>
-                                            <div className='bg-muted relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-md border'>
-                                              <img
-                                                src={pkg.image}
-                                                alt={pkg.name}
-                                                className='h-full w-full object-cover'
-                                                onError={(e) => {
-                                                  const target =
-                                                    e.target as HTMLImageElement
-                                                  target.src =
-                                                    '/placeholder-image.png'
-                                                }}
-                                              />
-                                            </div>
-                                            <div className='flex max-w-[300px] flex-col gap-1'>
-                                              <div className='text-sm font-medium break-words whitespace-normal'>
-                                                {pkg.name}
-                                              </div>
-                                              <div className='text-muted-foreground text-xs'>
-                                                SKU: {pkg.sku}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className='text-foreground text-sm'>
-                                            {pkg.variant}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className='text-foreground text-sm font-medium'>
-                                            ${pkg.price.toFixed(2)}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className='text-muted-foreground text-sm'>
-                                            {format(
-                                              pkg.relatedTime,
-                                              'MMM. dd, yyyy HH:mm:ss'
-                                            )}
-                                          </div>
-                                        </TableCell>
-                                      </TableRow>
-                                    )
-                                  )}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          </div>
-                        </TableCell>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
                       </TableRow>
-                    )}
-                  </>
-                )
-              })
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center'
-                >
-                  No data
-                </TableCell>
-              </TableRow>
-            )
+                      {isExpanded && hasPackagingProducts && (
+                        <TableRow
+                          key={`${row.id}-expanded`}
+                          className='bg-muted/30'
+                        >
+                          <TableCell colSpan={columns.length} className='p-0'>
+                            <div className='bg-background border-t p-4'>
+                              <div className='bg-background overflow-hidden rounded-md'>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className='w-[400px]'>
+                                        Packaging Products
+                                      </TableHead>
+                                      <TableHead>Variant</TableHead>
+                                      <TableHead>Price</TableHead>
+                                      <TableHead>Related Time</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {item.packagingProducts?.map(
+                                      (pkg: PackagingProduct) => (
+                                        <TableRow
+                                          key={pkg.id}
+                                          className='hover:bg-muted/50'
+                                        >
+                                          <TableCell>
+                                            <div className='flex items-center gap-3'>
+                                              <div className='bg-muted relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-md border'>
+                                                <img
+                                                  src={pkg.image}
+                                                  alt={pkg.name}
+                                                  className='h-full w-full object-cover'
+                                                  onError={(e) => {
+                                                    const target =
+                                                      e.target as HTMLImageElement
+                                                    target.src =
+                                                      '/placeholder-image.png'
+                                                  }}
+                                                />
+                                              </div>
+                                              <div className='flex max-w-[300px] flex-col gap-1'>
+                                                <div className='text-sm font-medium break-words whitespace-normal'>
+                                                  {pkg.name}
+                                                </div>
+                                                <div className='text-muted-foreground text-xs'>
+                                                  SKU: {pkg.sku}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className='text-foreground text-sm'>
+                                              {pkg.variant}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className='text-foreground text-sm font-medium'>
+                                              ${pkg.price.toFixed(2)}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className='text-muted-foreground text-sm'>
+                                              {format(
+                                                pkg.relatedTime,
+                                                'MMM. dd, yyyy HH:mm:ss'
+                                              )}
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      )
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className='h-24 text-center'
+                  >
+                    No data
+                  </TableCell>
+                </TableRow>
+              )
             })()}
           </TableBody>
         </Table>

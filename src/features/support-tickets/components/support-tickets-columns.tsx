@@ -195,7 +195,6 @@ export const createSupportTicketsColumns = (options?: {
       ),
       cell: ({ row }) => {
         const ticket = row.original
-        console.log('ticket', ticket)
         return <div>{ticket.hzkj_shop_name}</div>
       },
     },

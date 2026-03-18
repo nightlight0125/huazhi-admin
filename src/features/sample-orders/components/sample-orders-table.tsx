@@ -29,20 +29,18 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTableToolbar } from '@/components/data-table'
-import {
-  type AddressData,
-} from '@/components/edit-address-dialog'
+import { type AddressData } from '@/components/edit-address-dialog'
 import {
   OrderPayDialog,
   type OrderPayable,
 } from '@/components/order-pay-dialog'
+import { OrdersEditAddressDialog } from '@/features/orders/components/orders-edit-address-dialog'
 import { sampleOrderStatuses } from '../data/data'
 import { type SampleOrder } from '../data/schema'
 import { SampleOrdersActionsMenu } from './sample-orders-actions-menu'
 import { SampleOrdersBulkActions } from './sample-orders-bulk-actions'
 import { createSampleOrdersColumns } from './sample-orders-columns'
 import { SampleOrdersTableFooter } from './sample-orders-table-footer'
-import { OrdersEditAddressDialog } from '@/features/orders/components/orders-edit-address-dialog'
 
 const route = getRouteApi('/_authenticated/sample-orders/')
 
@@ -214,9 +212,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
-  const handleBatchPay = (
-    selectedRows: { original: any }[]
-  ) => {
+  const handleBatchPay = (selectedRows: { original: any }[]) => {
     if (selectedRows.length === 0) return
     const orderIds = selectedRows.map((r) => r.original.id)
     const totalAmount = selectedRows.reduce(
@@ -297,8 +293,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
-  const handleAddPackage = (orderId: string) => {
-    console.log('Add package for order:', orderId)
+  const handleAddPackage = (_orderId: string) => {
     // TODO: Implement add package logic
   }
 
@@ -419,9 +414,9 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
             )
 
             return (
-              <div className='flex items-center justify-start gap-4 border-b border-border bg-card px-4 py-3'>
+              <div className='border-border bg-card flex items-center justify-start gap-4 border-b px-4 py-3'>
                 <div className='flex flex-col items-start'>
-                  <div className='text-sm text-foreground'>
+                  <div className='text-foreground text-sm'>
                     Total Amount:{' '}
                     <span className='font-medium'>
                       {selectedCount > 0 ? `$${totalAmount.toFixed(2)}` : '---'}

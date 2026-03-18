@@ -14,13 +14,15 @@ interface OrdersDeleteDialogProps {
   onOpenChange: (open: boolean | null) => void
 }
 
-export function OrdersDeleteDialog({ open, onOpenChange }: OrdersDeleteDialogProps) {
+export function OrdersDeleteDialog({
+  open,
+  onOpenChange,
+}: OrdersDeleteDialogProps) {
   const { currentRow } = useOrders()
 
   const handleDelete = () => {
     if (currentRow) {
       // 这里应该调用 API 删除订单
-      console.log('删除订单:', currentRow.id)
       onOpenChange(false)
     }
   }
@@ -33,8 +35,8 @@ export function OrdersDeleteDialog({ open, onOpenChange }: OrdersDeleteDialogPro
         <DialogHeader>
           <DialogTitle>确认删除</DialogTitle>
           <DialogDescription>
-            您确定要删除订单 <strong>{currentRow.platformOrderNumber}</strong> 吗？
-            此操作无法撤销。
+            您确定要删除订单 <strong>{currentRow.platformOrderNumber}</strong>{' '}
+            吗？ 此操作无法撤销。
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

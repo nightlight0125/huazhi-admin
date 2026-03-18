@@ -22,23 +22,15 @@ interface SupportTicketsBulkActionsProps {
 export function SupportTicketsBulkActions({
   table,
 }: SupportTicketsBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
   const handleBulkExport = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Export support tickets:', selected)
     table.resetRowSelection()
   }
 
   const handleBulkDelete = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Delete support tickets:', selected)
     table.resetRowSelection()
   }
 
-  const handleBulkAction = (action: string) => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on support tickets:`, selected)
+  const handleBulkAction = (_action: string) => {
     table.resetRowSelection()
   }
 
@@ -101,9 +93,7 @@ export function SupportTicketsBulkActions({
           <DropdownMenuItem onClick={() => handleBulkAction('sort_by_time')}>
             Sort by Create Time
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => handleBulkAction('sort_by_status')}
-          >
+          <DropdownMenuItem onClick={() => handleBulkAction('sort_by_status')}>
             Sort by Status
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -149,5 +139,3 @@ export function SupportTicketsBulkActions({
     </BulkActionsToolbar>
   )
 }
-
-

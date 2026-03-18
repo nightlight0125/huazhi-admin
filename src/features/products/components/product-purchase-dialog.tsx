@@ -36,6 +36,7 @@ interface ProductPurchaseDialogProps {
   onConfirmOrder?: (payload: ConfirmOrderPayload) => void
   apiProduct?: ApiProductItem | null
   initialSelectedSpecs?: Record<string, string> // 初始已选择的规格值
+  defaultQuantity?: number // 从详情页传入的默认数量（Buy Sample / Buy Stock 时携带）
 }
 
 export function ProductPurchaseDialog({
@@ -46,6 +47,7 @@ export function ProductPurchaseDialog({
   onConfirmOrder,
   apiProduct,
   initialSelectedSpecs = {},
+  defaultQuantity,
 }: ProductPurchaseDialogProps) {
   const navigate = useNavigate()
   const { auth } = useAuthStore()
@@ -177,34 +179,17 @@ export function ProductPurchaseDialog({
         })
         const skuData = response.data
         if (Array.isArray(skuData) && skuData.length > 0) {
+          const initialQty = Math.max(1, defaultQuantity ?? 0)
           const variants = skuData.map((item) => ({
             ...item,
             specValues: selectedSpecs,
-            quantity: item.quantity ?? 0,
+            quantity:
+              defaultQuantity !== undefined ? initialQty : (item.quantity ?? 0),
           }))
-          console.log('Setting selectedVariants:', variants)
           setSelectedVariants(variants)
         } else {
-          console.log('skuData is not an array or is empty')
           setSelectedVariants([])
         }
-
-        // 只使用 API 返回的数据
-        // if (skuData && skuData.id) {
-        //   setSelectedVariants([
-        //     {
-        //       id: skuData.id,
-        //       sku: skuData.sku,
-        //       price: skuData.price,
-        //       image: skuData.image,
-        //       specValues: selectedSpecs,
-        //       quantity: 1,
-        //       loading: false,
-        //     },
-        //   ])
-        // } else {
-        //   setSelectedVariants([])
-        // }
       } catch (error) {
         console.error('Failed to fetch SKU data:', error)
         toast.error(
@@ -217,7 +202,7 @@ export function ProductPurchaseDialog({
       }
     }
     fetchSkuData()
-  }, [open, productId, selectedSpecs, skuSpecs])
+  }, [open, productId, selectedSpecs, skuSpecs, defaultQuantity])
 
   const handleBuyNow = async () => {
     if (!selectedVariants || selectedVariants.length === 0) {

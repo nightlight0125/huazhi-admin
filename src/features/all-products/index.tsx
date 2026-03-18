@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import { getProductsList } from '@/lib/api/products'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { useAuthStore } from '@/stores/auth-store'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -60,11 +60,9 @@ export function AllProducts() {
           productTags: [],
         })
 
-        // 后端返回的数据在 data.products 中
         const apiProducts = response.data?.products || []
         const convertedProducts: Product[] = apiProducts.map(
           (apiProduct: any) => {
-            // 将 API 产品数据转换为 Product schema 格式
             return {
               id: apiProduct.id,
               name: apiProduct.enname || apiProduct.name || '',
@@ -76,7 +74,11 @@ export function AllProducts() {
               sales: 0, // 默认值，API 没有提供
               isPublic: true,
               isRecommended: false,
-              isFavorite: !!(apiProduct.isCollect ?? apiProduct.isFavorite ?? false),
+              isFavorite: !!(
+                apiProduct.isCollect ??
+                apiProduct.isFavorite ??
+                false
+              ),
               isMyStore: false,
               createdAt: new Date(),
               updatedAt: new Date(),

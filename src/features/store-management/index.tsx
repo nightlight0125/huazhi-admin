@@ -8,6 +8,7 @@ import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { TasksProvider } from '../tasks/components/tasks-provider'
+import { BindShopDialog } from './components/bind-shop-dialog'
 import { ConnectStoreDialog } from './components/connect-store-dialog'
 import { StoresTable } from './components/stores-table'
 import { type Store } from './data/schema'
@@ -17,38 +18,44 @@ const route = getRouteApi('/_authenticated/store-management')
 const platformButtons = [
   {
     name: 'Shopify',
-    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/shopify_1764749551392.png',
+    icon: '/src/assets/brand-icons/shopify.png',
     color: 'text-green-600',
   },
   {
     name: 'WooCommerce',
-    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/woocommerce_1764749594778.png',
+    icon: '/src/assets/brand-icons/woocommerce.png',
     color: 'text-purple-600',
   },
   {
     name: 'eBay',
-    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/ebay-copy_1764749627017.png',
+    icon: '/src/assets/brand-icons/ebay.png',
     color: 'text-blue-600',
   },
   {
     name: 'Etsy',
-    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/etsy_1764749608025.png',
+    icon: '/src/assets/brand-icons/etsy.png',
     color: 'text-orange-600',
   },
   {
     name: 'TikTok',
-    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/tiktoklogo_tiktok_1764749645734.png',
+    icon: '/src/assets/brand-icons/tiktok.png',
     color: 'text-orange-600',
   },
   {
     name: 'Amazon',
-    icon: 'https://yinyan-mini.cn-heyuan.oss.aliyuncs.com/20251203/platform-amazon_1764749673988.png',
+    icon: '/src/assets/brand-icons/amazon.png',
+    color: 'text-orange-600',
+  },
+  {
+    name: 'Offline Store',
+    icon: '/src/assets/brand-icons/offline-store.png',
     color: 'text-orange-600',
   },
 ]
 
 export function StoreManagement() {
   const [connectDialogOpen, setConnectDialogOpen] = useState(false)
+  const [bindShopDialogOpen, setBindShopDialogOpen] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
   const [stores, setStores] = useState<Store[]>([])
   const [isInitialLoading, setIsInitialLoading] = useState(true)
@@ -57,7 +64,6 @@ export function StoreManagement() {
 
   // 从 auth store 获取用户信息
   const user = useAuthStore((state) => state.auth.user)
-  console.log('======user', user)
 
   // 从 URL 获取分页参数
   const search = route.useSearch()
@@ -132,14 +138,19 @@ export function StoreManagement() {
     }
   }, [pageNo, pageSize, queryParam]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handlePlatformClick = (platformName: string) => {
-    setSelectedPlatform(platformName)
-    setConnectDialogOpen(true)
+  const handlePlatformClick = (platformName: string, index: number) => {
+    if (index === 0) {
+      setSelectedPlatform(platformName)
+      setConnectDialogOpen(true)
+    } else if (index === platformButtons.length - 1) {
+      setBindShopDialogOpen(true)
+    } else {
+      toast.info(`${platformName} - Coming soon`)
+    }
   }
 
   const handleNext = () => {
     if (selectedPlatform) {
-      console.log('Connect to platform:', selectedPlatform)
       // TODO: 实现实际的连接逻辑
     }
   }
@@ -156,12 +167,12 @@ export function StoreManagement() {
             <div className='text-sm font-medium'>Add Store</div>
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-3 rounded-lg px-4 py-3'>
-                {platformButtons.map((platform) => (
+                {platformButtons.map((platform, index) => (
                   <button
                     key={platform.name}
                     type='button'
                     className='border-border bg-background hover:bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors'
-                    onClick={() => handlePlatformClick(platform.name)}
+                    onClick={() => handlePlatformClick(platform.name, index)}
                   >
                     <img
                       src={platform.icon}
@@ -204,6 +215,11 @@ export function StoreManagement() {
             onNext={handleNext}
           />
         )}
+        <BindShopDialog
+          open={bindShopDialogOpen}
+          onOpenChange={setBindShopDialogOpen}
+          onSuccess={() => fetchUserShops(true)}
+        />
       </Main>
     </TasksProvider>
   )

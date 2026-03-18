@@ -1,22 +1,4 @@
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import { Button } from '@/components/ui/button'
-import {
-  TableBody,
-  TableCell,
-  Table as TableComponent,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { getInvoiceRecords, type ApiInvoiceRecordItem } from '@/lib/api/orders'
-import {
-  getInvoicePdf,
-  getWalletList,
-  type ApiFundRecordItem,
-} from '@/lib/api/wallet'
-import { useAuthStore } from '@/stores/auth-store'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   flexRender,
@@ -27,8 +9,26 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getInvoiceRecords, type ApiInvoiceRecordItem } from '@/lib/api/orders'
+import {
+  getInvoicePdf,
+  getWalletList,
+  type ApiFundRecordItem,
+} from '@/lib/api/wallet'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
+import {
+  TableBody,
+  TableCell,
+  Table as TableComponent,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { walletRecordTypes } from '../data/data'
 import { type WalletRecord, type WalletRecordType } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
@@ -99,9 +99,11 @@ export function WalletTable({ data }: DataTableProps) {
   const [rechargeRecords, setRechargeRecords] = useState<WalletRecord[]>([])
   const [isLoadingRecharge, setIsLoadingRecharge] = useState(false)
   const [totalRechargeCount, setTotalRechargeCount] = useState(0)
-  
+
   // Invoice Records 的状态（使用原始 API 数据）
-  const [invoiceRecords, setInvoiceRecords] = useState<ApiInvoiceRecordItem[]>([])
+  const [invoiceRecords, setInvoiceRecords] = useState<ApiInvoiceRecordItem[]>(
+    []
+  )
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
   const [totalInvoiceCount, setTotalInvoiceCount] = useState(0)
   // Recharge Records 的日期范围过滤（hzkj_datetimefield_start / end）
@@ -181,7 +183,7 @@ export function WalletTable({ data }: DataTableProps) {
         return
       }
 
-      const customerId = auth.user?.customerId 
+      const customerId = auth.user?.customerId
       setIsLoadingRecharge(true)
       try {
         const pageNo = urlPagination.pageIndex + 1
@@ -255,8 +257,7 @@ export function WalletTable({ data }: DataTableProps) {
         return
       }
 
-      const customerId = auth.user?.customerId 
-     
+      const customerId = auth.user?.customerId
 
       setIsLoadingInvoice(true)
       try {
@@ -418,7 +419,9 @@ export function WalletTable({ data }: DataTableProps) {
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel:
-      activeTab === 'recharge' || activeTab === 'invoice' ? undefined : getPaginationRowModel(),
+      activeTab === 'recharge' || activeTab === 'invoice'
+        ? undefined
+        : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onPaginationChange,
     onGlobalFilterChange,
@@ -473,13 +476,7 @@ export function WalletTable({ data }: DataTableProps) {
 
         <TabsContent value={activeTab} className='space-y-4'>
           <div className='flex justify-end gap-2'>
-            <Button
-              variant='outline'
-              className='space-x-1'
-              onClick={() => {
-                console.log('Export wallet records (current tab):', activeTab)
-              }}
-            >
+            <Button variant='outline' className='space-x-1' onClick={() => {}}>
               Export
             </Button>
             <Button
@@ -537,8 +534,8 @@ export function WalletTable({ data }: DataTableProps) {
                 ))}
               </TableHeader>
               <TableBody>
-                {((isLoadingRecharge && activeTab === 'recharge') || 
-                  (isLoadingInvoice && activeTab === 'invoice')) ? (
+                {(isLoadingRecharge && activeTab === 'recharge') ||
+                (isLoadingInvoice && activeTab === 'invoice') ? (
                   <TableRow>
                     <TableCell
                       colSpan={columns.length}

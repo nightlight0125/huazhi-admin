@@ -111,7 +111,6 @@ export function SourcingToolbar<TData>({
           size='sm'
           onClick={() => {
             // Handle new sourcing action
-            console.log('New Sourcing')
           }}
         >
           <Plus className='mr-1 h-3.5 w-3.5' />

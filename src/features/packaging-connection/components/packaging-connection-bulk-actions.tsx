@@ -22,23 +22,15 @@ interface PackagingConnectionBulkActionsProps {
 export function PackagingConnectionBulkActions({
   table,
 }: PackagingConnectionBulkActionsProps) {
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-
   const handleBulkExport = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Export packaging connections:', selected)
     table.resetRowSelection()
   }
 
   const handleBulkDelete = () => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log('Delete packaging connections:', selected)
     table.resetRowSelection()
   }
 
-  const handleBulkAction = (action: string) => {
-    const selected = selectedRows.map((row) => row.original)
-    console.log(`Bulk action [${action}] on packaging connections:`, selected)
+  const handleBulkAction = (_action: string) => {
     table.resetRowSelection()
   }
 

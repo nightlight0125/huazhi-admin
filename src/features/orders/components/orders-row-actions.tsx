@@ -65,11 +65,7 @@ export function OrdersRowActions({
           <Edit3 className='mr-2 h-4 w-4' />
           Edit Address
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            console.log('Add Package for order:', order.id)
-          }}
-        >
+        <DropdownMenuItem onClick={() => {}}>
           <Package className='mr-2 h-4 w-4' />
           Add Package
         </DropdownMenuItem>

@@ -1,18 +1,4 @@
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Table as UITable,
-} from '@/components/ui/table'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { NavigateFn } from '@/hooks/use-table-url-state'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { deleteOrder } from '@/lib/api/orders'
-import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
-import { useAuthStore } from '@/stores/auth-store'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -24,9 +10,23 @@ import {
   type Table,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { useCallback, useEffect, useMemo, useState } from 'react'
 import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { deleteOrder } from '@/lib/api/orders'
+import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
+import type { NavigateFn } from '@/hooks/use-table-url-state'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Table as UITable,
+} from '@/components/ui/table'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type SupportTicket } from '../data/schema'
 import { SupportTicketsBulkActions } from './support-tickets-bulk-actions'
 import { createSupportTicketsColumns } from './support-tickets-columns'
@@ -115,7 +115,7 @@ export function SupportTicketsTable({
   useEffect(() => {
     const storeFilter = columnFilters.find((f) => f.id === 'storeName')
     const typeFilter = columnFilters.find((f) => f.id === 'type')
-    
+
     if (onStoreChange) {
       const storeValue =
         storeFilter &&
@@ -128,7 +128,7 @@ export function SupportTicketsTable({
         onStoreChange(finalStoreValue)
       }
     }
-    
+
     if (onTypeChange) {
       const typeValue =
         typeFilter &&
@@ -173,8 +173,7 @@ export function SupportTicketsTable({
     return data.filter((ticket) => ticket.status === activeTab)
   }, [data, activeTab])
 
-  const handleEdit = (ticket: SupportTicket) => {
-    console.log('Edit ticket:', ticket)
+  const handleEdit = (_ticket: SupportTicket) => {
     // TODO: Implement edit functionality
   }
 
@@ -256,7 +255,7 @@ export function SupportTicketsTable({
     const fetchStores = async () => {
       const userId = auth.user?.id
       if (!userId) return
-      
+
       try {
         const response = await getUserShopList({
           hzkjAccountId: userId,
@@ -364,7 +363,9 @@ export function SupportTicketsTable({
                   className='h-24 text-center'
                 >
                   <div className='flex items-center justify-center py-4'>
-                    <p className='text-muted-foreground'>Loading support tickets...</p>
+                    <p className='text-muted-foreground'>
+                      Loading support tickets...
+                    </p>
                   </div>
                 </TableCell>
               </TableRow>

@@ -1,15 +1,15 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { getRouteApi } from '@tanstack/react-router'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getCollectProductsList } from '@/lib/api/products'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { createLikedProductsColumns } from '@/features/liked-products/components/liked-products-columns'
 import { ProductsTableWithToolbar } from '@/features/liked-products/components/products-table-with-toolbar'
 import type { LikedProduct } from '@/features/liked-products/data/schema'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { getCollectProductsList } from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
-import { getRouteApi } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
 
 const route = getRouteApi('/_authenticated/collection-products/')
 
@@ -37,7 +37,6 @@ export function CollectionProducts() {
 
   // 处理搜索
   const handleSearch = (searchValue: string) => {
-    console.log('handleSearch 被调用，搜索值:', searchValue)
     // onGlobalFilterChange 已经会重置 page 到第一页，不需要再次调用 navigate
     if (onGlobalFilterChange) {
       onGlobalFilterChange(searchValue)
@@ -45,7 +44,11 @@ export function CollectionProducts() {
   }
 
   const columns = useMemo(
-    () => createLikedProductsColumns({ onDeleteSuccess: handleRefresh, useDelCollectApi: true }),
+    () =>
+      createLikedProductsColumns({
+        onDeleteSuccess: handleRefresh,
+        useDelCollectApi: true,
+      }),
     [handleRefresh]
   )
 
@@ -137,7 +140,7 @@ export function useFetchCollectionProducts(
     debounceTimerRef.current = setTimeout(() => {
       // 再次检查请求参数（可能在防抖期间发生了变化）
       const currentRequestKey = `${customerId}-${pageIndex}-${pageSize}-${nameOrCode}-${refreshKey}`
-      
+
       // 如果请求参数没有变化，跳过请求
       if (lastRequestParamsRef.current === currentRequestKey) {
         return
@@ -165,25 +168,28 @@ export function useFetchCollectionProducts(
           })
           const apiProducts =
             (response.data as any)?.data || response.data?.products || []
-          console.log('apiProducts:', apiProducts)
 
           // 获取总数
           const total = response.data?.totalCount || 0
           setTotalCount?.(total)
 
-          const likedProducts: LikedProduct[] = apiProducts.map((item: any) => ({
-            id: item.id || String(item.id) || '',
-            name: item.name || '',
-            enname: item.enname ?? item.hzkj_enname ?? undefined,
-            image: item.picture || '',
-            description: item.description || (typeof item.enname === 'string' ? item.enname : '') || '',
-            spu: item.number || '',
-            priceMin: item.price || 0,
-            priceMax: item.price || 0,
-            addDate: item.date ? new Date(item.date) : new Date(),
-          }))
+          const likedProducts: LikedProduct[] = apiProducts.map(
+            (item: any) => ({
+              id: item.id || String(item.id) || '',
+              name: item.name || '',
+              enname: item.enname ?? item.hzkj_enname ?? undefined,
+              image: item.picture || '',
+              description:
+                item.description ||
+                (typeof item.enname === 'string' ? item.enname : '') ||
+                '',
+              spu: item.number || '',
+              priceMin: item.price || 0,
+              priceMax: item.price || 0,
+              addDate: item.date ? new Date(item.date) : new Date(),
+            })
+          )
 
-          console.log('Mapped likedProducts:', likedProducts)
           setData(likedProducts)
         } catch (error) {
           console.error('获取推荐产品列表失败:', error)

@@ -1,3 +1,15 @@
+import { useEffect, useState } from 'react'
+import {
+  Check,
+  Image as ImageIcon,
+  Loader2,
+  Pencil,
+  Plus,
+  X,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { updateSalOutOrder } from '@/lib/api/orders'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,11 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { updateSalOutOrder } from '@/lib/api/orders'
-import { useAuthStore } from '@/stores/auth-store'
-import { Check, Image as ImageIcon, Loader2, Pencil, Plus, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import { type OrderProduct } from '../data/schema'
 import { OrdersAddProductDialog } from './orders-add-product-dialog'
 
@@ -100,7 +107,6 @@ export function OrdersModifyProductDialog({
   const { auth } = useAuthStore()
   // Use fake products if no products provided
 
-  console.log('initialProducts', initialProducts)
   const productsToUse =
     initialProducts.length > 0 ? initialProducts : generateFakeProducts()
 
@@ -246,9 +252,9 @@ export function OrdersModifyProductDialog({
               entryId,
               skuId: String(
                 item.hzkj_local_sku_id ||
-                item.hzkj_local_sku_id2 ||
-                item.hzkj_local_sku ||
-                ''
+                  item.hzkj_local_sku_id2 ||
+                  item.hzkj_local_sku ||
+                  ''
               ),
               quantity: Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0,
               flag: 0,
@@ -263,9 +269,9 @@ export function OrdersModifyProductDialog({
         const entryId = product.entryId || ''
         const skuId = String(
           product.hzkj_local_sku_id ||
-          (product as any).hzkj_local_sku_id2 ||
-          (product as any).hzkj_local_sku ||
-          ''
+            (product as any).hzkj_local_sku_id2 ||
+            (product as any).hzkj_local_sku ||
+            ''
         )
 
         if (!skuId) {
@@ -302,7 +308,10 @@ export function OrdersModifyProductDialog({
       })
 
       // 合并原有的（已更新的）和新增的明细
-      const detail = [...Array.from(existingDetailMap.values()), ...updatedDetail]
+      const detail = [
+        ...Array.from(existingDetailMap.values()),
+        ...updatedDetail,
+      ]
 
       if (detail.length === 0) {
         toast.error('No valid products to update')
@@ -312,12 +321,18 @@ export function OrdersModifyProductDialog({
       // 获取订单地址信息
       const firstName =
         rawOrder.firstName ||
-        (rawOrder.customerName && typeof rawOrder.customerName === 'string' && rawOrder.customerName.split(' ')[0]) ||
-        (rawOrder.hzkj_customer_name && typeof rawOrder.hzkj_customer_name === 'object' && rawOrder.hzkj_customer_name.zh_CN) ||
+        (rawOrder.customerName &&
+          typeof rawOrder.customerName === 'string' &&
+          rawOrder.customerName.split(' ')[0]) ||
+        (rawOrder.hzkj_customer_name &&
+          typeof rawOrder.hzkj_customer_name === 'object' &&
+          rawOrder.hzkj_customer_name.zh_CN) ||
         ''
       const lastName =
         rawOrder.lastName ||
-        (rawOrder.customerName && typeof rawOrder.customerName === 'string' && rawOrder.customerName.split(' ').slice(1).join(' ')) ||
+        (rawOrder.customerName &&
+          typeof rawOrder.customerName === 'string' &&
+          rawOrder.customerName.split(' ').slice(1).join(' ')) ||
         ''
 
       setIsSubmitting(true)
@@ -327,22 +342,39 @@ export function OrdersModifyProductDialog({
           customerId: String(customerId),
           firstName,
           lastName,
-          phone: rawOrder.phone || rawOrder.hzkj_telephone || rawOrder.phoneNumber || '',
+          phone:
+            rawOrder.phone ||
+            rawOrder.hzkj_telephone ||
+            rawOrder.phoneNumber ||
+            '',
           countryId: rawOrder.countryId || rawOrder.hzkj_country_id || '',
           admindivisionId: rawOrder.admindivisionId,
           city: rawOrder.city || rawOrder.hzkj_address?.split(',')[0] || '',
-          address1: rawOrder.address1 || rawOrder.address || rawOrder.hzkj_address || rawOrder.hzkj_bill_address || '',
+          address1:
+            rawOrder.address1 ||
+            rawOrder.address ||
+            rawOrder.hzkj_address ||
+            rawOrder.hzkj_bill_address ||
+            '',
           address2: rawOrder.address2 || rawOrder.hzkj_sam_address || '',
-          postCode: rawOrder.postCode || rawOrder.postalCode || rawOrder.hzkj_post_code || '',
+          postCode:
+            rawOrder.postCode ||
+            rawOrder.postalCode ||
+            rawOrder.hzkj_post_code ||
+            '',
           taxId: rawOrder.taxId || '',
           customChannelId: rawOrder.customChannelId || '',
           email: rawOrder.email || rawOrder.hzkj_email || '',
-          wareHouse: rawOrder.wareHouse || rawOrder.warehouseId || rawOrder.shippingOrigin || '',
+          wareHouse:
+            rawOrder.wareHouse ||
+            rawOrder.warehouseId ||
+            rawOrder.shippingOrigin ||
+            '',
           detail,
         })
 
         toast.success('Products updated successfully')
-        
+
         // 调用成功回调
         if (onSuccess) {
           onSuccess()

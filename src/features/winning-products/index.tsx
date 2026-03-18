@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import { getProductsList } from '@/lib/api/products'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { useAuthStore } from '@/stores/auth-store'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -66,21 +66,10 @@ export function WinningProducts() {
         // 后端返回的数据在 data.products 中
         const apiProducts = response.data?.products || []
         const products: Product[] = apiProducts.map(
-          (item: any, index: number) => {
-            // 后端可能存在 enname / enName 等不同写法，统一兼容
+          (item: any, _index: number) => {
             const englishName = item.enname || item.enName || item.en_name || ''
-
             const name = englishName || item.name || item.number || ''
 
-            // 便于调试：首条商品在控制台打印一次
-            if (index === 0) {
-              console.log('WinningProducts item sample:', {
-                raw: item,
-                mappedName: name,
-              })
-            }
-
-            // 映射 API 数据到 Product 类型
             return {
               id: item.id || '',
               name,

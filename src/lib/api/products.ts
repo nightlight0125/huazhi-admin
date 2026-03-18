@@ -49,8 +49,6 @@ export async function getProductsList(
     params
   )
 
-  console.log('获取产品列表响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -94,8 +92,6 @@ export async function getRecommendProductsList(
     '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getRecommendProductsList',
     params
   )
-
-  console.log('获取推荐产品列表响应:', response.data)
 
   if (response.data.status === false) {
     const errorMessage =
@@ -223,8 +219,6 @@ export async function getCollectProductsList(
     params
   )
 
-  console.log('获取收藏产品列表响应:', response.data)
-
   if (response.data.status === false) {
     const errorMessage =
       response.data.message ||
@@ -257,8 +251,6 @@ export async function delRecommendProducts(
     '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/delRecommendProducts',
     params
   )
-
-  console.log('删除推荐产品响应:', response.data)
 
   if (response.data.status === false) {
     const errorMessage =
@@ -338,8 +330,6 @@ export async function queryGoodClassList(
     requestData
   )
 
-  console.log('查询商品分类列表响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -408,14 +398,10 @@ export async function querySkuByCustomer(
     pageNo,
   }
 
-  console.log('查询 SKU 记录请求数据:', JSON.stringify(requestData, null, 2))
-
   const response = await apiClient.post<QuerySkuByCustomerResponse>(
     '/v2/hzkj/hzkj_commodity/hzkj_sku_record/querySkuByCustomer',
     requestData
   )
-
-  console.log('查询 SKU 记录响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -475,8 +461,6 @@ export async function queryCustomerBindPackageAPI(
     params
   )
 
-  console.log('查询客户绑定包装响应:', response.data)
-
   if (response.data.status === false) {
     const errorMessage =
       response.data.message ||
@@ -527,8 +511,6 @@ export async function addCuOdPdPackageAPI(
     params
   )
 
-  console.log('addCuOdPdPackageAPI 响应:', response.data)
-
   if (response.data.status === false) {
     const errorMessage =
       response.data.message ||
@@ -563,8 +545,6 @@ export async function getProduct(
     '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getProduct',
     { productId, customerId }
   )
-
-  console.log('获取产品详情响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -604,8 +584,6 @@ export async function collectProduct(
     '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/collectProducts',
     requestData
   )
-
-  console.log('收藏产品响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -677,8 +655,6 @@ export async function queryShopifyConnectedProducts(
     '/v2/hzkj/hzkj_commodity/products/queryShopifyConnectedProducts',
     params
   )
-
-  console.log('查询 Shopify 连接产品响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -753,8 +729,6 @@ export async function queryPushProductsList(
     params
   )
 
-  console.log('查询推送产品列表响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -792,8 +766,6 @@ export async function deletePushProduct(
     '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/deletePushProduct',
     params
   )
-
-  console.log('删除推送产品响应:', response.data)
 
   if (response.data.status === false) {
     const errorMessage =
@@ -841,8 +813,6 @@ export async function selectSpecGetSku(
     '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/selectSpecGetSku',
     params
   )
-
-  console.log('根据规格选择获取 SKU 响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -909,8 +879,6 @@ export async function queryShopifyUnconnectedProducts(
   const dataObj = response.data.data
   const rows = Array.isArray(dataObj?.list) ? dataObj.list : []
   const totalCount = typeof dataObj?.total === 'number' ? dataObj.total : 0
-  console.log('totalCount------------111:', totalCount)
-
   return {
     rows,
     totalCount,
@@ -953,8 +921,6 @@ export async function queryUnconnectedVariants(
     '/v2/hzkj/hzkj_customer/products/queryUnconnectedVariants',
     params
   )
-
-  console.log('查询未连接变体响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -1021,8 +987,6 @@ export async function queryOdPdPackageList(
     params
   )
 
-  console.log('查询包装连接列表响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -1087,8 +1051,6 @@ export async function queryCuShopPackageList(
     params
   )
 
-  console.log('查询客户店铺包装列表响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -1151,8 +1113,6 @@ export async function buyProduct(
     '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/buyProduct',
     params
   )
-
-  console.log('购买产品响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {
@@ -1221,8 +1181,6 @@ export async function deleteShopPackage(
     params
   )
 
-  console.log('删除店铺包装响应:', response.data)
-
   // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
@@ -1258,8 +1216,6 @@ export async function linkProduct(
     params
   )
 
-  console.log('连接店铺商品与本地 SKU 响应:', response.data)
-
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to link product. Please try again.'
@@ -1291,8 +1247,6 @@ export async function unlinkProduct(
     '/v2/hzkj/hzkj_commodity/products/unlinkProduct',
     params
   )
-
-  console.log('解绑店铺商品与本地 SKU 响应:', response.data)
 
   if (response.data.status === false) {
     const errorMessage =
@@ -1342,8 +1296,6 @@ export async function pushProductToShopifyNew(
     '/v2/hzkj/hzkj_commodity/products/pushProductToShopifyNew',
     params
   )
-
-  console.log('推送产品到 Shopify 响应:', response.data)
 
   if (response.data.status === false) {
     const errorMessage =
@@ -1395,8 +1347,6 @@ export async function queryBindMaterialApi(
     params
   )
 
-  console.log('查询绑定材料响应:', response.data)
-
   if (response.data.status === false) {
     const errorMessage =
       response.data.message ||
@@ -1439,8 +1389,6 @@ export async function unBindOdPdPackage(
     '/v2/hzkj/hzkj_customer/bindPackage/unBindOdPdPackage',
     params
   )
-
-  console.log('解绑订单产品包装响应:', response.data)
 
   // 检查响应状态
   if (response.data.status === false) {

@@ -1022,10 +1022,6 @@ export function OrdersTable({
                 ) : table.getCoreRowModel().rows?.length ? (
                   table.getCoreRowModel().rows.map((row) => {
                     const order = row.original
-                    console.log('order', order)
-                    console.log(
-                      'expandedRows=================================='
-                    )
                     const isExpanded = expandedRows.has(row.id)
                     const hasProducts =
                       order.productList && order.productList.length > 0

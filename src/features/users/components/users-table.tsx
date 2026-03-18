@@ -1,16 +1,4 @@
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
-import { queryRole } from '@/lib/api/users'
-import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/stores/auth-store'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -23,7 +11,19 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { Loader2 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAuthStore } from '@/stores/auth-store'
+import { queryRole } from '@/lib/api/users'
+import { cn } from '@/lib/utils'
+import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type User } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { usersColumns as columns } from './users-columns'
@@ -40,11 +40,14 @@ type DataTableProps = {
   navigate: NavigateFn
   totalCount: number
   isLoading?: boolean
-  onFiltersChange?: (filters: {
-    role?: string[]
-    status?: string[]
-    username?: string
-  }, forceRefresh?: boolean) => void
+  onFiltersChange?: (
+    filters: {
+      role?: string[]
+      status?: string[]
+      username?: string
+    },
+    forceRefresh?: boolean
+  ) => void
 }
 
 export function UsersTable({
@@ -62,7 +65,7 @@ export function UsersTable({
   const prevColumnFiltersRef = useRef<string>('')
   const isInitialMount = useRef(true)
   const onFiltersChangeRef = useRef(onFiltersChange)
-  
+
   // 更新 ref 中的回调函数
   useEffect(() => {
     onFiltersChangeRef.current = onFiltersChange
@@ -186,11 +189,10 @@ export function UsersTable({
     ensurePageInRange(pageCount)
   }, [pageCount, ensurePageInRange])
 
-
   // 监听筛选器变化并触发请求
   useEffect(() => {
     const currentFiltersStr = JSON.stringify(columnFilters)
-    
+
     // 如果是初始挂载，只更新 ref，不触发请求（初始加载由父组件处理）
     if (isInitialMount.current) {
       isInitialMount.current = false
@@ -205,7 +207,7 @@ export function UsersTable({
 
     // 更新 ref
     prevColumnFiltersRef.current = currentFiltersStr
-    
+
     // 重新计算 filters，确保使用最新的值
     const roleFilter = columnFilters.find((f) => f.id === 'role')
     const statusFilter = columnFilters.find((f) => f.id === 'status')
@@ -220,39 +222,26 @@ export function UsersTable({
           : undefined,
       username: searchInputValue || undefined,
     }
-    
-    console.log('Filters changed, triggering request:', filters)
-    
-    // 使用 setTimeout 延迟执行，避免在快速连续变化时触发多次请求
+
     const timeoutId = setTimeout(() => {
       onFiltersChangeRef.current?.(filters)
     }, 100)
-    
+
     return () => {
       clearTimeout(timeoutId)
     }
   }, [columnFilters, searchInputValue])
 
   const handleSearchClick = (searchValue?: string) => {
-    // 使用传入的 searchValue，如果没有则使用 searchInputValue
     const currentSearchValue = searchValue ?? searchInputValue
-    
-    console.log('handleSearchClick called with:', {
-      searchValue,
-      searchInputValue,
-      currentSearchValue,
-    })
-    
+
     const usernameColumn = table.getColumn('username')
     if (usernameColumn) {
       usernameColumn.setFilterValue(currentSearchValue)
     }
-    
-    // 更新 searchInputValue 状态，确保同步
+
     setSearchInputValue(currentSearchValue)
-    
-    // 搜索按钮点击时，立即触发请求更新列表
-    // 重新计算 filters，确保使用最新的搜索值
+
     const roleFilter = columnFilters.find((f) => f.id === 'role')
     const statusFilter = columnFilters.find((f) => f.id === 'status')
     const filters = {
@@ -267,31 +256,18 @@ export function UsersTable({
       // 确保 username 字段正确传递，使用当前搜索值
       username: currentSearchValue.trim() || undefined,
     }
-    
-    console.log('Search button clicked, triggering request:', {
-      currentSearchValue,
-      'filters.username': filters.username,
-      filters,
-    })
-    console.log('onFiltersChangeRef.current:', onFiltersChangeRef.current)
-    
-    // 更新 prevColumnFiltersRef，防止 useEffect 再次触发请求
-    // 构建一个包含 username 的 filters 字符串来更新 ref
+
     const filtersWithUsername = JSON.stringify([
       ...columnFilters.filter((f) => f.id !== 'username'),
       { id: 'username', value: currentSearchValue },
     ])
     prevColumnFiltersRef.current = filtersWithUsername
-    
-    // 直接调用，确保搜索按钮点击时立即更新列表
-    // 使用 setTimeout 确保在下一个事件循环中执行，避免与 setFilterValue 冲突
+
     setTimeout(() => {
       if (onFiltersChangeRef.current) {
-        console.log('Calling onFiltersChange from search button with filters:', filters)
         // 传递第二个参数 forceRefresh=true 来强制刷新
         onFiltersChangeRef.current(filters, true)
       } else {
-        console.warn('onFiltersChangeRef.current is null or undefined')
       }
     }, 0)
   }

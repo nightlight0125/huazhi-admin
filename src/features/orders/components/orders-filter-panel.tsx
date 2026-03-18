@@ -50,20 +50,7 @@ export function OrdersFilterPanel() {
   const [endTime, setEndTime] = useState<Date | undefined>(undefined)
 
   const handleSearch = () => {
-    // TODO: Implement search logic
-    console.log('Search with filters:', {
-      searchType,
-      searchValue,
-      country,
-      shop,
-      logistics,
-      platformOrderStatus,
-      hzOrderStatus,
-      location,
-      invoiceStatus,
-      startTime,
-      endTime,
-    })
+    // TODO: Trigger search with current filter values
   }
 
   const handleReset = () => {
@@ -192,7 +179,9 @@ export function OrdersFilterPanel() {
             <SelectItem value='partially_paid'>Partially Paid</SelectItem>
             <SelectItem value='paid'>Paid</SelectItem>
             <SelectItem value='refunded'>Refunded</SelectItem>
-            <SelectItem value='partially_refunded'>Partially Refunded</SelectItem>
+            <SelectItem value='partially_refunded'>
+              Partially Refunded
+            </SelectItem>
             <SelectItem value='voided'>Voided</SelectItem>
             <SelectItem value='expired'>Expired</SelectItem>
           </SelectContent>

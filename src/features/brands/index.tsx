@@ -1,14 +1,14 @@
+import { useState } from 'react'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { AddBrandItemDialog } from './components/add-brand-item-dialog'
+import { BrandItemsTable } from './components/brand-items-table'
 import { BrandsDialogs } from './components/brands-dialogs'
 import { BrandsProvider } from './components/brands-provider'
-import { BrandItemsTable } from './components/brand-items-table'
-import { AddBrandItemDialog } from './components/add-brand-item-dialog'
 import { brandTypeGroups } from './data/data'
 import { type BrandType } from './data/schema'
 
@@ -21,9 +21,7 @@ export function Brands() {
   }
 
   const handleAddBrandItem = (data: any) => {
-    console.log('添加品牌项目:', data)
     alert(`成功添加${data.brandType}项目: ${data.name}`)
-    // 这里可以调用API添加品牌项目
   }
 
   return (
@@ -45,27 +43,30 @@ export function Brands() {
             添加品牌项目
           </Button>
         </div>
-        
+
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BrandType)}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as BrandType)}
+          >
             <TabsList className='grid w-full grid-cols-4'>
               <TabsTrigger value='logo'>Logo</TabsTrigger>
               <TabsTrigger value='card'>卡片</TabsTrigger>
               <TabsTrigger value='product_packaging'>产品包装</TabsTrigger>
               <TabsTrigger value='shipping_packaging'>运输包装</TabsTrigger>
             </TabsList>
-            
+
             {brandTypeGroups.map((group) => (
               <TabsContent key={group.type} value={group.type} className='mt-6'>
                 <div className='space-y-4'>
                   <div className='flex items-center justify-between'>
                     <div>
                       <h3 className='text-lg font-semibold'>{group.label}</h3>
-                      <p className='text-sm text-muted-foreground'>
+                      <p className='text-muted-foreground text-sm'>
                         管理您的{group.label}设计文件
                       </p>
                     </div>
-                    <div className='text-sm text-muted-foreground'>
+                    <div className='text-muted-foreground text-sm'>
                       共 {group.items.length} 个项目
                     </div>
                   </div>

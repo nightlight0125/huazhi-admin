@@ -1,17 +1,17 @@
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import {
   addCuOdPdPackageAPI,
   queryBindMaterialApi,
   queryCustomerBindPackageAPI,
   type PackMaterialItem,
 } from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
-import { useEffect, useMemo, useState } from 'react'
-import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
 
 interface ApplyPackagingDialogProps {
@@ -19,7 +19,6 @@ interface ApplyPackagingDialogProps {
   onOpenChange: (open: boolean) => void
   storeSku: StoreSku | null
   onConfirm?: (selectedProducts: PackagingProduct[]) => void
-  /** Order tab 的 Add New Packaging 模式下隐藏产品详情区域 */
   hideProductDetails?: boolean
 }
 
@@ -104,10 +103,11 @@ export function ApplyPackagingDialog({
         const result = await queryCustomerBindPackageAPI({
           data: {
             number: skuSearch.trim() || undefined,
-            hzkj_pack_material_id: materialIds.length > 0 ? materialIds : undefined,
+            hzkj_pack_material_id:
+              materialIds.length > 0 ? materialIds : undefined,
             hzkj_cus_id: String(customerId),
             // hzkj_good_hzkj_goodtype_id: storeSku.id,
-            hzkj_good_hzkj_goodtype_id:'2355273729791020032'
+            hzkj_good_hzkj_goodtype_id: '2355273729791020032',
           },
           pageSize: 100,
           pageNo: 1,
@@ -137,7 +137,8 @@ export function ApplyPackagingDialog({
     if (skuSearch.trim()) {
       const searchTerm = skuSearch.toLowerCase()
       filtered = filtered.filter((product: any) => {
-        const productSku = product.sku || product.number || product.hzkj_sku || ''
+        const productSku =
+          product.sku || product.number || product.hzkj_sku || ''
         const productName = product.name || product.hzkj_name || ''
         return (
           productSku.toLowerCase().includes(searchTerm) ||
@@ -243,56 +244,68 @@ export function ApplyPackagingDialog({
         </div>
 
         <div className='flex-1 space-y-6 overflow-y-auto px-4 py-4'>
-          {/* 产品详情区域 - Order 的 Add New Packaging 模式下不展示 */}
           {!hideProductDetails && (
-          <div className='bg-muted/50 space-y-3 rounded-lg p-4'>
-            <div className='flex items-center gap-3'>
-              <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
-                <img
-                  src={storeSku.hzkj_variant_picture || storeSku.image || ''}
-                  alt={storeSku.hzkj_local_sku_hzkj_name || storeSku.hzkj_shop_package_hzkj_name || storeSku.name || ''}
-                  className='h-full w-full object-cover'
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.src = '/placeholder-image.png'
-                  }}
-                />
-              </div>
-              <div className='flex flex-col gap-1'>
-                <div className='text-sm font-medium'>
-                  {storeSku.hzkj_local_sku_hzkj_name || storeSku.hzkj_shop_package_hzkj_name || storeSku.name}
-                </div>
-                <div className='text-muted-foreground text-xs'>
-                  SKU: {storeSku.hzkj_shop_sku || storeSku.hzkj_shop_package_number || storeSku.sku}
-                </div>
-                <div className='text-muted-foreground text-xs'>
-                  Variant ID: {storeSku.hzkj_variantid || storeSku.variantId || '---'}
-                </div>
-                <div className='flex items-center gap-2 mt-2'>
-                  <Checkbox
-                    id='apply-to-spu'
-                    checked={applyToSpu}
-                    onCheckedChange={(checked) =>
-                      setApplyToSpu(checked === true)
+            <div className='bg-muted/50 space-y-3 rounded-lg p-4'>
+              <div className='flex items-center gap-3'>
+                <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
+                  <img
+                    src={storeSku.hzkj_variant_picture || storeSku.image || ''}
+                    alt={
+                      storeSku.hzkj_local_sku_hzkj_name ||
+                      storeSku.hzkj_shop_package_hzkj_name ||
+                      storeSku.name ||
+                      ''
                     }
+                    className='h-full w-full object-cover'
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.src = '/placeholder-image.png'
+                    }}
                   />
-                  <Label
-                    htmlFor='apply-to-spu'
-                    className='cursor-pointer text-sm'
-                  >
-                    Apply to SPU
-                  </Label>
+                </div>
+                <div className='flex flex-col gap-1'>
+                  <div className='text-sm font-medium'>
+                    {storeSku.hzkj_local_sku_hzkj_name ||
+                      storeSku.hzkj_shop_package_hzkj_name ||
+                      storeSku.name}
+                  </div>
+                  <div className='text-muted-foreground text-xs'>
+                    SKU:{' '}
+                    {storeSku.hzkj_shop_sku ||
+                      storeSku.hzkj_shop_package_number ||
+                      storeSku.sku}
+                  </div>
+                  <div className='text-muted-foreground text-xs'>
+                    Variant ID:{' '}
+                    {storeSku.hzkj_variantid || storeSku.variantId || '---'}
+                  </div>
+                  <div className='mt-2 flex items-center gap-2'>
+                    <Checkbox
+                      id='apply-to-spu'
+                      checked={applyToSpu}
+                      onCheckedChange={(checked) =>
+                        setApplyToSpu(checked === true)
+                      }
+                    />
+                    <Label
+                      htmlFor='apply-to-spu'
+                      className='cursor-pointer text-sm'
+                    >
+                      Apply to SPU
+                    </Label>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
           )}
 
           {/* 包装产品类型选择区域 */}
           <div className='space-y-2'>
             <h3 className='text-sm font-medium'>Packaging Products Type</h3>
             {isLoadingTypes ? (
-              <div className='text-muted-foreground text-sm'>Loading types...</div>
+              <div className='text-muted-foreground text-sm'>
+                Loading types...
+              </div>
             ) : (
               <div className='flex flex-wrap gap-3'>
                 {packagingTypes.map((type) => (
@@ -337,50 +350,56 @@ export function ApplyPackagingDialog({
           <div className='space-y-3'>
             <h3 className='text-sm font-medium'>Packaging Products</h3>
             {isLoadingProducts ? (
-              <div className='text-muted-foreground text-center py-8 text-sm'>
+              <div className='text-muted-foreground py-8 text-center text-sm'>
                 Loading products...
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className='text-muted-foreground text-center py-8 text-sm'>
+              <div className='text-muted-foreground py-8 text-center text-sm'>
                 {selectedTypes.size === 0
                   ? 'Please select packaging types to view products'
                   : 'No products found'}
               </div>
             ) : (
               <div className='grid max-h-[400px] grid-cols-2 gap-4 overflow-y-auto md:grid-cols-3'>
-              {filteredProducts.map((product: any) => {
-                  const productId = String(product.id || product.hzkj_sku_record_id)
+                {filteredProducts.map((product: any) => {
+                  const productId = String(
+                    product.id || product.hzkj_sku_record_id
+                  )
                   const isSelected = selectedProducts.has(productId)
                   return (
-                  <div
-                    key={productId}
-                    className={`space-y-2 rounded-lg border p-3 transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'border-orange-500 ring-2 ring-orange-500 ring-offset-1'
-                        : 'hover:bg-muted/50'
-                    }`}
-                    onClick={() => handleProductSelect(productId)}
-                  >
-                    <div className='relative h-32 w-full overflow-hidden rounded-md border'>
-                      <img
-                        src={product.hzkj_picturefield || ''}
-                        className='h-full w-full object-cover'
-                      />
-                    </div>
-                    <div className='space-y-1'>
-                       <div>{product.hzkj_name || '---'}</div>
-                      <div className='text-sm font-medium'>
-                          ${typeof product.hzkj_pur_price === 'number' ? product.hzkj_pur_price.toFixed(2) : '0.00'}
+                    <div
+                      key={productId}
+                      className={`cursor-pointer space-y-2 rounded-lg border p-3 transition-colors ${
+                        isSelected
+                          ? 'border-orange-500 ring-2 ring-orange-500 ring-offset-1'
+                          : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => handleProductSelect(productId)}
+                    >
+                      <div className='relative h-32 w-full overflow-hidden rounded-md border'>
+                        <img
+                          src={product.hzkj_picturefield || ''}
+                          className='h-full w-full object-cover'
+                        />
+                      </div>
+                      <div className='space-y-1'>
+                        <div>{product.hzkj_name || '---'}</div>
+                        <div className='text-sm font-medium'>
+                          $
+                          {typeof product.hzkj_pur_price === 'number'
+                            ? product.hzkj_pur_price.toFixed(2)
+                            : '0.00'}
                         </div>
-                      <div className='text-muted-foreground line-clamp-1 text-xs'>
-                        SKU: {product.hzkj_sku_value || '---'}
-                      </div>
-                      <div className='text-muted-foreground line-clamp-1 text-xs'>
-                        SPU: {product.number || '---'}
+                        <div className='text-muted-foreground line-clamp-1 text-xs'>
+                          SKU: {product.hzkj_sku_value || '---'}
+                        </div>
+                        <div className='text-muted-foreground line-clamp-1 text-xs'>
+                          SPU: {product.number || '---'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )})}
+                  )
+                })}
               </div>
             )}
           </div>

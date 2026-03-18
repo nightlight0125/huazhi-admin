@@ -75,9 +75,8 @@ export function StoreProductsTable({ data }: DataTableProps) {
   }
 
   const handleConnectionConfirm = (
-    connections: Array<{ storeProductId: string; teemDropProductId: string }>
+    _connections: Array<{ storeProductId: string; teemDropProductId: string }>
   ) => {
-    console.log('Product connections:', connections)
     // TODO: 实现连接产品的逻辑
     setConnectionDialogOpen(false)
   }
