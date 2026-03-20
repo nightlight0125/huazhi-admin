@@ -172,9 +172,11 @@ export const createOrdersColumns = (options?: {
       header: 'Store Name',
       cell: ({ row }) => {
         const order = row.original
-        const shopName = toDisplayString(
-          (order as any).hzkj_shop_name
-        ) || toDisplayString(order.storeName) || toDisplayString(order.store) || '---'
+        const shopName =
+          toDisplayString((order as any).hzkj_shop_name) ||
+          toDisplayString(order.storeName) ||
+          toDisplayString(order.store) ||
+          '---'
         return (
           <div className='flex items-center gap-2'>
             <span className='font-medium'>{shopName}</span>
@@ -225,13 +227,13 @@ export const createOrdersColumns = (options?: {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className='cursor-default space-y-1 text-sm'>
-                <div>Total: ${(order.hzkj_order_amount || 0).toFixed(2)}</div>
+                <div>Total: ${(order.hzkj_total_amount ?? 0).toFixed(2)}</div>
               </div>
             </TooltipTrigger>
             <TooltipContent className='space-y-0.5 text-xs'>
-              {/* <div>Product: ${productTotal.toFixed(2)}</div> */}
-              {/* <div>Shipping: ${order.shippingCost.toFixed(2)}</div> */}
-              {/* <div>Qty: {order.hzkj_netweight_total || 0}</div> */}
+              <div>Product: ${(order.hzkj_order_amount ?? 0).toFixed(2)}</div>
+              <div>Shipping: ${(order.hzkj_fre_quo_amount ?? 0).toFixed(2)}</div>
+              <div>Qty: {order.totalQty ?? 0}</div>
             </TooltipContent>
           </Tooltip>
         )

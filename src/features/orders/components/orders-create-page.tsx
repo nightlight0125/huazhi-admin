@@ -86,14 +86,14 @@ const productFormSchema = z.object({
   rawItem: z.record(z.string(), z.unknown()).optional(), // 完整后端对象
 })
 
-// 表单验证模式（country/provinceLevel/province 为 address-form 级联结构）
+// 表单验证模式（country/divisionPath/province 与 address-form 级联结构一致）
 const formSchema = z.object({
   store: z.string().min(1, '店铺为必填项'),
   orderNo: z.string().min(1, '订单号为必填项'),
   customerName: z.string().min(1, '客户名称为必填项'),
   country: z.string().min(1, '国家为必填项'),
-  provinceLevel: z.string().optional(), // 第二级：级别 id
-  province: z.string().optional(), // 第三级：行政区 id
+  divisionPath: z.array(z.string()).optional(), // 多级行政区路径 [省id, 市id, ..., 叶节点id]
+  province: z.string().optional(), // 叶子节点行政区 id（提交用 admindivisionId）
   city: z.string().min(1, '城市为必填项'),
   address: z.string().min(1, '地址为必填项'),
   phoneNumber: z.string().min(1, '电话号码为必填项'),
@@ -137,13 +137,14 @@ export function OrdersCreatePage() {
     void fetchShops()
   }, [auth.user?.id])
 
-  // 国家/省/地区级联（与 address-form 一致：queryCountry + queryAdmindivisionLevel + queryAdmindivision）
+  // 国家/多级行政区级联（与 address-form 一致：动态级数）
   const [regionCountries, setRegionCountries] = useState<CascaderOption[]>([])
-  const [regionProvinces, setRegionProvinces] = useState<CascaderOption[]>([])
-  const [regionDivisions, setRegionDivisions] = useState<CascaderOption[]>([])
+  const [regionLevels, setRegionLevels] = useState<AdmindivisionLevelItem[]>([])
+  const [divisionColumns, setDivisionColumns] = useState<CascaderOption[][]>([])
   const [isLoadingCountries, setIsLoadingCountries] = useState(true)
-  const [isLoadingProvinces, setIsLoadingProvinces] = useState(false)
-  const [isLoadingDivisions, setIsLoadingDivisions] = useState(false)
+  const [loadingLevelIndex, setLoadingLevelIndex] = useState<number | null>(
+    null
+  )
   const [regionOpen, setRegionOpen] = useState(false)
 
   useEffect(() => {
@@ -186,57 +187,94 @@ export function OrdersCreatePage() {
     void loadCountries()
   }, [])
 
-  const loadProvinces = async (countryId: string) => {
+  const loadDivision = async (
+    countryId: string,
+    levelIndex: number,
+    parentId: string | undefined,
+    levelsOverride?: AdmindivisionLevelItem[]
+  ) => {
     if (!countryId) return
-    setRegionProvinces([])
-    setRegionDivisions([])
-    form.setValue('provinceLevel', '')
-    form.setValue('province', '')
-    setIsLoadingProvinces(true)
-    try {
-      const levels: AdmindivisionLevelItem[] = await queryAdmindivisionLevel(
-        countryId,
-        1,
-        100
-      )
-      setRegionProvinces(
-        levels.map((l) => ({
-          value: l.id,
-          label: l.name ?? String(l.id),
-        }))
-      )
-    } catch (error) {
-      console.error('Failed to load provinces:', error)
-      toast.error('Failed to load provinces')
-    } finally {
-      setIsLoadingProvinces(false)
-    }
-  }
+    const levels = levelsOverride ?? regionLevels
+    if (levelIndex >= levels.length) return
 
-  const loadDivisions = async (countryId: string, provinceLevelId: string) => {
-    if (!countryId || !provinceLevelId) return
-    setRegionDivisions([])
-    form.setValue('province', '')
-    setIsLoadingDivisions(true)
+    if (levelIndex === 0) {
+      form.setValue('divisionPath', [])
+      form.setValue('province', '')
+    }
+    setLoadingLevelIndex(levelIndex)
+    setDivisionColumns((prev) => {
+      const next = prev.slice(0, levelIndex)
+      return [...next, [], ...Array(Math.max(0, prev.length - levelIndex - 1))]
+    })
+
     try {
+      const levelId = levels[levelIndex].id
       const rows: AdmindivisionItem[] = await queryAdmindivision(
         countryId,
-        provinceLevelId,
-        undefined,
+        levelId,
+        parentId,
         1,
         500
       )
-      setRegionDivisions(
-        rows.map((item) => ({
-          value: item.id,
-          label: item.name ?? String(item.id),
-        }))
-      )
+      const options: CascaderOption[] = rows.map((item) => ({
+        value: item.id,
+        label: item.name ?? String(item.id),
+      }))
+      setDivisionColumns((prev) => {
+        const next = [...prev]
+        next[levelIndex] = options
+        return next
+      })
+      const divisionPath: string[] = form.getValues('divisionPath') ?? []
+      if (divisionPath.length > levelIndex + 1) {
+        void loadDivision(
+          countryId,
+          levelIndex + 1,
+          divisionPath[levelIndex],
+          levels
+        )
+      }
     } catch (error) {
       console.error('Failed to load divisions:', error)
       toast.error('Failed to load divisions')
     } finally {
-      setIsLoadingDivisions(false)
+      setLoadingLevelIndex(null)
+    }
+  }
+
+  const onCountryChange = async (countryId: string) => {
+    if (!countryId) return
+    setDivisionColumns([])
+    form.setValue('divisionPath', [])
+    form.setValue('province', '')
+    try {
+      const levels = await queryAdmindivisionLevel(countryId, 1, 100)
+      setRegionLevels(levels)
+      if (levels.length > 0) {
+        await loadDivision(countryId, 0, undefined, levels)
+      }
+    } catch (error) {
+      console.error('Failed to load division levels:', error)
+      toast.error('Failed to load divisions')
+    }
+  }
+
+  const onDivisionSelect = (levelIndex: number, divisionId: string) => {
+    const newPath = (form.getValues('divisionPath') ?? []).slice(0, levelIndex)
+    newPath[levelIndex] = divisionId
+    form.setValue('divisionPath', newPath)
+    const levelCount = regionLevels.length
+    const isLastLevel = levelIndex === levelCount - 1
+    if (isLastLevel) {
+      form.setValue('province', divisionId)
+      setRegionOpen(false)
+    } else {
+      void loadDivision(
+        form.getValues('country'),
+        levelIndex + 1,
+        divisionId,
+        regionLevels
+      )
     }
   }
 
@@ -247,7 +285,7 @@ export function OrdersCreatePage() {
       orderNo: 'U0169552511111021',
       customerName: '',
       country: '',
-      provinceLevel: '',
+      divisionPath: [],
       province: '',
       city: '',
       address: '',
@@ -279,18 +317,22 @@ export function OrdersCreatePage() {
 
     const detail = values.products
       .map((p) => {
+        const raw = p.rawItem as Record<string, unknown> | undefined
         const skuId =
-          p.rawItem &&
-          typeof p.rawItem === 'object' &&
-          (p.rawItem.id ?? p.rawItem.skuId)
-            ? String(
-                (p.rawItem as Record<string, unknown>).id ??
-                  (p.rawItem as Record<string, unknown>).skuId
-              )
+          raw && typeof raw === 'object' && (raw.id ?? raw.skuId)
+            ? String(raw.id ?? raw.skuId)
             : ''
-        return skuId ? { skuId, quantity: p.quantity } : null
+        if (!skuId) return null
+        const variantIdRaw = raw?.variantId ?? raw?.variant_id
+        const variantId =
+          variantIdRaw != null && variantIdRaw !== ''
+            ? String(variantIdRaw)
+            : undefined
+        return { skuId, quantity: p.quantity, ...(variantId && { variantId }) }
       })
-      .filter((d): d is { skuId: string; quantity: number } => !!d)
+      .filter(
+        (d): d is { skuId: string; quantity: number; variantId?: string } => !!d
+      )
 
     if (detail.length === 0 || detail.length !== values.products.length) {
       toast.error(
@@ -333,7 +375,7 @@ export function OrdersCreatePage() {
     items.forEach((item) => {
       appendProduct({
         id: crypto.randomUUID(),
-        productName: String(item.skuEName ?? ''),
+        productName: String(item.skuCName ?? ''),
         productVariants: String(item.skuNumber ?? ''),
         quantity: 1,
         productPicUrl: String(item.picture ?? ''),
@@ -380,13 +422,11 @@ export function OrdersCreatePage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-          {/* Base Info Card */}
           <Card>
             <CardHeader>
               <CardTitle className='text-xl font-bold'>Base Info</CardTitle>
             </CardHeader>
             <CardContent className='space-y-4'>
-              {/* Row 1: Store, OrderNo, Customer Name */}
               <div className='grid grid-cols-3 gap-4'>
                 <FormField
                   control={form.control}
@@ -410,7 +450,6 @@ export function OrdersCreatePage() {
                           {shopList.map((shop) => (
                             <SelectItem key={shop.id} value={shop.id}>
                               {shop.name}
-                              {/* {shop.platform ? ` (${shop.platform})` : ''} */}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -451,204 +490,192 @@ export function OrdersCreatePage() {
                 />
               </div>
 
-              {/* Row 2: Country/Province/Region（与 address-form 级联逻辑一致）, City */}
               <div className='grid grid-cols-2 gap-4'>
                 <FormField
                   control={form.control}
                   name='country'
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>
-                        Country / Province{' '}
-                        <span className='text-red-500'>*</span>
-                      </FormLabel>
-                      <Popover
-                        open={regionOpen}
-                        onOpenChange={(open) => {
-                          setRegionOpen(open)
-                          if (open) {
-                            const countryId = form.getValues('country')
-                            const levelId = form.getValues('provinceLevel')
-                            if (countryId && regionProvinces.length === 0)
-                              loadProvinces(countryId)
-                            else if (
-                              countryId &&
-                              levelId &&
-                              regionDivisions.length === 0
+                  render={() => {
+                    const selectedCountryId = form.watch('country')
+                    const divisionPath: string[] =
+                      form.watch('divisionPath') ?? []
+                    const selectedCountry = regionCountries.find(
+                      (c) => String(c.value) === String(selectedCountryId)
+                    )
+                    const displayRegionLabel =
+                      selectedCountry && divisionPath.length > 0
+                        ? `${selectedCountry.label} / ${divisionPath
+                            .map(
+                              (id, i) =>
+                                divisionColumns[i]?.find(
+                                  (d) => String(d.value) === String(id)
+                                )?.label
                             )
-                              loadDivisions(countryId, levelId)
-                          }
-                        }}
-                      >
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              type='button'
-                              variant='outline'
-                              className={cn(
-                                'w-full justify-between font-normal',
-                                !form.watch('country') &&
-                                  'text-muted-foreground'
-                              )}
-                            >
-                              <span className='truncate'>
-                                {(() => {
-                                  const countryId = form.watch('country')
-                                  const levelId = form.watch('provinceLevel')
-                                  const divisionId = form.watch('province')
-                                  const c = regionCountries.find(
-                                    (x) => String(x.value) === String(countryId)
+                            .filter(Boolean)
+                            .join(' / ')}`
+                        : (selectedCountry?.label ??
+                          'Please select country / province / city')
+                    const levelCount = regionLevels.length
+                    return (
+                      <FormItem>
+                        <FormLabel>
+                          Country / Province{' '}
+                          <span className='text-red-500'>*</span>
+                        </FormLabel>
+                        <Popover
+                          open={regionOpen}
+                          onOpenChange={(open) => {
+                            setRegionOpen(open)
+                            if (
+                              open &&
+                              selectedCountryId &&
+                              loadingLevelIndex === null
+                            ) {
+                              if (
+                                divisionColumns.length === 0 ||
+                                divisionColumns[0]?.length === 0
+                              )
+                                onCountryChange(selectedCountryId)
+                              else if (divisionPath.length > 0) {
+                                const nextLevel = divisionPath.length
+                                if (
+                                  nextLevel < levelCount &&
+                                  (!divisionColumns[nextLevel] ||
+                                    divisionColumns[nextLevel].length === 0)
+                                )
+                                  onDivisionSelect(
+                                    nextLevel - 1,
+                                    divisionPath[nextLevel - 1]
                                   )
-                                  const p = regionProvinces.find(
-                                    (x) => String(x.value) === String(levelId)
-                                  )
-                                  const d = regionDivisions.find(
-                                    (x) =>
-                                      String(x.value) === String(divisionId)
-                                  )
-                                  if (c && p && d)
-                                    return `${c.label} / ${p.label} / ${d.label}`
-                                  if (c && p) return `${c.label} / ${p.label}`
-                                  if (c) return c.label
-                                  return 'Please select country / province / city'
-                                })()}
-                              </span>
-                              <ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          className='w-[720px] p-2'
-                          align='start'
-                          onOpenAutoFocus={(e) => e.preventDefault()}
+                              }
+                            }
+                          }}
                         >
-                          <div className='flex gap-2'>
-                            <div className='max-h-64 flex-1 overflow-y-auto border-r pr-1'>
-                              <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                                Country/Region
-                              </div>
-                              {isLoadingCountries ? (
-                                <div className='text-muted-foreground py-2 text-xs'>
-                                  Loading...
-                                </div>
-                              ) : (
-                                regionCountries.map((c) => {
-                                  const isActive =
-                                    String(c.value) ===
-                                    String(form.watch('country'))
-                                  return (
-                                    <button
-                                      key={c.value}
-                                      type='button'
-                                      className={cn(
-                                        'hover:bg-muted flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm',
-                                        isActive && 'bg-muted font-medium'
-                                      )}
-                                      onClick={() => {
-                                        form.setValue('country', c.value)
-                                        form.setValue('provinceLevel', '')
-                                        form.setValue('province', '')
-                                        loadProvinces(c.value)
-                                      }}
-                                    >
-                                      <span className='flex items-center gap-2 truncate'>
-                                        {c.icon && (
-                                          <c.icon className='h-4 w-4 shrink-0' />
-                                        )}
-                                        <span>{c.label}</span>
-                                      </span>
-                                    </button>
-                                  )
-                                })
-                              )}
-                            </div>
-                            {(regionProvinces.length > 0 ||
-                              isLoadingProvinces) && (
-                              <div className='max-h-64 flex-1 overflow-y-auto border-r px-1'>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                type='button'
+                                variant='outline'
+                                className={cn(
+                                  'w-full justify-between font-normal',
+                                  !selectedCountryId && 'text-muted-foreground'
+                                )}
+                              >
+                                <span className='truncate'>
+                                  {displayRegionLabel}
+                                </span>
+                                <ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className='w-[720px] p-2'
+                            align='start'
+                            onOpenAutoFocus={(e) => e.preventDefault()}
+                          >
+                            <div className='flex gap-2'>
+                              <div className='border-border max-h-64 flex-1 overflow-y-auto border-r pr-1'>
                                 <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                                  Province
+                                  Country/Region
                                 </div>
-                                {isLoadingProvinces ? (
+                                {isLoadingCountries ? (
                                   <div className='text-muted-foreground py-2 text-xs'>
                                     Loading...
                                   </div>
                                 ) : (
-                                  regionProvinces.map((p) => {
+                                  regionCountries.map((c) => {
                                     const isActive =
-                                      String(p.value) ===
-                                      String(form.watch('provinceLevel'))
+                                      String(c.value) ===
+                                      String(selectedCountryId)
                                     return (
                                       <button
-                                        key={p.value}
+                                        key={c.value}
                                         type='button'
                                         className={cn(
                                           'hover:bg-muted flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm',
                                           isActive && 'bg-muted font-medium'
                                         )}
                                         onClick={() => {
-                                          form.setValue(
-                                            'provinceLevel',
-                                            p.value
-                                          )
+                                          form.setValue('country', c.value)
+                                          form.setValue('divisionPath', [])
                                           form.setValue('province', '')
-                                          loadDivisions(
-                                            form.getValues('country'),
-                                            p.value
+                                          onCountryChange(c.value)
+                                        }}
+                                      >
+                                        <span className='flex items-center gap-2 truncate'>
+                                          {c.icon && (
+                                            <c.icon className='h-4 w-4 shrink-0' />
+                                          )}
+                                          <span>{c.label}</span>
+                                        </span>
+                                      </button>
+                                    )
+                                  })
+                                )}
+                              </div>
+                              {Array.from(
+                                { length: levelCount },
+                                (_, levelIndex) => {
+                                  const column = divisionColumns[levelIndex]
+                                  const isLoading =
+                                    loadingLevelIndex === levelIndex
+                                  const hasData = column && column.length > 0
+                                  if (!hasData && !isLoading) return null
+                                  const selectedId = divisionPath[levelIndex]
+                                  return (
+                                    <div
+                                      key={levelIndex}
+                                      className={cn(
+                                        'max-h-64 flex-1 overflow-y-auto pl-1',
+                                        levelIndex < levelCount - 1 &&
+                                          'border-border border-r pr-1'
+                                      )}
+                                    >
+                                      <div className='text-muted-foreground mb-2 text-xs font-medium'>
+                                        Level {levelIndex + 1}
+                                      </div>
+                                      {isLoading ? (
+                                        <div className='text-muted-foreground py-2 text-xs'>
+                                          Loading...
+                                        </div>
+                                      ) : (
+                                        (column ?? []).map((opt) => {
+                                          const isActive =
+                                            String(opt.value) ===
+                                            String(selectedId)
+                                          return (
+                                            <button
+                                              key={opt.value}
+                                              type='button'
+                                              className={cn(
+                                                'hover:bg-muted flex w-full items-center rounded px-2 py-1 text-left text-sm',
+                                                isActive &&
+                                                  'bg-muted font-medium'
+                                              )}
+                                              onClick={() =>
+                                                onDivisionSelect(
+                                                  levelIndex,
+                                                  opt.value
+                                                )
+                                              }
+                                            >
+                                              <span className='truncate'>
+                                                {opt.label}
+                                              </span>
+                                            </button>
                                           )
-                                        }}
-                                      >
-                                        <span className='truncate'>
-                                          {p.label}
-                                        </span>
-                                      </button>
-                                    )
-                                  })
-                                )}
-                              </div>
-                            )}
-                            {(regionDivisions.length > 0 ||
-                              isLoadingDivisions) && (
-                              <div className='max-h-64 flex-1 overflow-y-auto pl-1'>
-                                <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                                  Region
-                                </div>
-                                {isLoadingDivisions ? (
-                                  <div className='text-muted-foreground py-2 text-xs'>
-                                    Loading...
-                                  </div>
-                                ) : (
-                                  regionDivisions.map((d) => {
-                                    const isActive =
-                                      String(d.value) ===
-                                      String(form.watch('province'))
-                                    return (
-                                      <button
-                                        key={d.value}
-                                        type='button'
-                                        className={cn(
-                                          'hover:bg-muted flex w-full items-center rounded px-2 py-1 text-left text-sm',
-                                          isActive && 'bg-muted font-medium'
-                                        )}
-                                        onClick={() => {
-                                          form.setValue('province', d.value)
-                                          setRegionOpen(false)
-                                        }}
-                                      >
-                                        <span className='truncate'>
-                                          {d.label}
-                                        </span>
-                                      </button>
-                                    )
-                                  })
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                                        })
+                                      )}
+                                    </div>
+                                  )
+                                }
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
                 <FormField
                   control={form.control}
@@ -895,13 +922,11 @@ export function OrdersCreatePage() {
         </form>
       </Form>
 
-      {/* Select My Product Dialog */}
       <SelectMyProductDialog
         open={selectMyProductOpen}
         onOpenChange={setSelectMyProductOpen}
         onSelect={handleSelectMyProduct}
       />
-      {/* Select Store Product Dialog */}
       <SelectStoreProductDialog
         open={selectStoreProductOpen}
         onOpenChange={setSelectStoreProductOpen}

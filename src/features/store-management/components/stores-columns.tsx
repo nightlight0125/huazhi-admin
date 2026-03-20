@@ -66,7 +66,7 @@ export const createStoresColumns = (
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store Type' />
     ),
-    cell: ({ row }) => <div>{row.getValue('platform') || '-'}</div>,
+    cell: ({ row }) => <div>{row.getValue('platform') || 'Offline store'}</div>,
   },
   {
     accessorKey: 'id',
@@ -80,7 +80,7 @@ export const createStoresColumns = (
   {
     accessorKey: 'bindtime',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Authorization Time' />
+      <DataTableColumnHeader column={column} title='Authorization' />
     ),
     cell: ({ row }) => {
       const bindtime = row.getValue('bindtime') as string | undefined
@@ -104,33 +104,6 @@ export const createStoresColumns = (
       }
     },
   },
-  // {
-  //   accessorKey: 'createtime',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title='Create Time' />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const createtime = row.getValue('createtime') as string | undefined
-  //     if (!createtime) {
-  //       return <div className='text-muted-foreground text-sm'>-</div>
-  //     }
-
-  //     // 格式化时间显示
-  //     try {
-  //       const date = new Date(createtime)
-  //       const dateStr = date.toLocaleDateString()
-  //       const timeStr = date.toLocaleTimeString()
-  //       return (
-  //         <div className='flex flex-col text-sm'>
-  //           <span>{dateStr}</span>
-  //           <span className='text-muted-foreground'>{timeStr}</span>
-  //         </div>
-  //       )
-  //     } catch {
-  //       return <div className='text-sm'>{createtime}</div>
-  //     }
-  //   },
-  // },
   {
     accessorKey: 'enable',
     header: ({ column }) => (
@@ -155,7 +128,6 @@ export const createStoresColumns = (
       )
     },
   },
-
   {
     id: 'actions',
     size: 120,

@@ -1,6 +1,6 @@
+import { type RoleItem } from '@/lib/api/users'
 import { getCookie, removeCookie, setCookie } from '@/lib/cookies'
 import { create } from 'zustand'
-import { type RoleItem } from '@/lib/api/users'
 
 const ACCESS_TOKEN = 'thisisjustarandomstring'
 const ROLES_STORAGE_KEY = 'roles_storage'
@@ -72,7 +72,6 @@ export const useAuthStore = create<AuthState>()((set) => {
               const expiryTime = Date.now() + 3 * 60 * 60 * 1000 // 3小时
               localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiryTime))
             } catch (error) {
-              console.warn('Failed to save user to localStorage:', error)
             }
           } else {
             localStorage.removeItem(USER_STORAGE_KEY)
@@ -110,7 +109,6 @@ export const useAuthStore = create<AuthState>()((set) => {
           try {
             localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(roles))
           } catch (error) {
-            console.warn('Failed to save roles to localStorage:', error)
           }
           return { ...state, auth: { ...state.auth, roles } }
         }),

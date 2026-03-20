@@ -254,7 +254,7 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
                   <div className='flex items-center justify-between'>
                     <span className='font-medium'>
                       ${tier.min.toFixed(0)}-{tier.max}
-                      {'11 '}Benefits
+                      Benefits
                     </span>
                     <Badge variant='secondary' className='text-xs'>
                       {tier.percentage.toFixed(1)}%

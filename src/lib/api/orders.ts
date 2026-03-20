@@ -199,6 +199,8 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     providers: apiOrder.hzkj_deliveryway,
     hzkj_fre_quo_amount: apiOrder.hzkj_fre_quo_amount,
     hzkj_customer_channel_name: apiOrder.hzkj_customer_channel_name,
+    hzkj_total_amount: (apiOrder as any).hzkj_total_amount,
+    totalQty: (apiOrder as any).totalQty,
     // 额外挂载编辑地址需要用到的原始字段（保持原始命名，方便直接读取）
     // 收货地址行信息
     hzkj_address1: (apiOrder as any).hzkj_address1,
@@ -319,7 +321,11 @@ export interface AddBTOrderRequest {
     email?: string
     postCode: string
     taxId?: string
-    detail: Array<{ skuId: string; quantity: number }>
+    detail: Array<{
+      skuId: string
+      quantity: number
+      variantId?: string
+    }>
   }
 }
 
@@ -786,6 +792,8 @@ export interface RequestPaymentRequest {
   type: number // 2 表示库存订单
   // 支付完成后返回的地址（回调 URL，可选）
   returnUrl?: string
+  // 支付失败/取消后返回的地址
+  returnFailUrl?: string
 }
 
 /** 获取客户余额请求 */
@@ -837,9 +845,18 @@ export async function requestPayment(
   // 支付服务商会将 {CHECKOUT_SESSION_ID} 替换为真实的会话 ID，并重定向回该地址
   const payload: RequestPaymentRequest = {
     ...request,
-    ...(typeof window !== 'undefined' && !request.returnUrl
+    ...(typeof window !== 'undefined'
       ? {
-          returnUrl: `${window.location.origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`,
+          ...(!request.returnUrl
+            ? {
+                returnUrl: `${window.location.origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`,
+              }
+            : {}),
+          ...(!request.returnFailUrl
+            ? {
+                returnFailUrl: `${window.location.origin}/order/payment-fail`,
+              }
+            : {}),
         }
       : {}),
   }

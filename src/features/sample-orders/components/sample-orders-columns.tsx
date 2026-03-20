@@ -194,20 +194,31 @@ export const createSampleOrdersColumns = (options?: {
       id: 'cost',
       header: 'Cost',
       cell: ({ row }) => {
-        const order = row.original
-        const total = order.hzkj_order_amount ?? order.cost.total
+        const order = row.original as SampleOrder & {
+          hzkj_total_amount?: number
+          hzkj_fre_quo_amount?: number
+          totalQty?: number
+        }
+        const total =
+          order.hzkj_total_amount ??
+          order.hzkj_order_amount ??
+          order.cost?.total ??
+          0
+        const product = order.hzkj_order_amount ?? order.cost?.product ?? 0
+        const shipping =
+          order.hzkj_fre_quo_amount ?? order.cost?.shipping ?? 0
+        const qty = order.totalQty ?? order.cost?.qty ?? 0
         return (
           <Tooltip>
             <TooltipTrigger asChild>
               <div className='cursor-default space-y-1 text-sm'>
-                <div>Total: ${total.toFixed(2)}</div>
+                <div>Total: ${Number(total).toFixed(2)}</div>
               </div>
             </TooltipTrigger>
             <TooltipContent className='space-y-0.5 text-xs'>
-              {/* <div>Product: {order.cost.product.toFixed(2)}</div>
-              <div>Shipping: {order.cost.shipping.toFixed(2)}</div>
-              <div>Other: {order.cost.other.toFixed(2)}</div>
-              <div>Qty: {order.cost.qty}</div> */}
+              <div>Product: ${Number(product).toFixed(2)}</div>
+              <div>Shipping: ${Number(shipping).toFixed(2)}</div>
+              <div>Qty: {qty}</div>
             </TooltipContent>
           </Tooltip>
         )

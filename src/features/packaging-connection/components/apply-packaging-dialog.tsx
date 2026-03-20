@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import {
-  addCuOdPdPackageAPI,
+  addCuShopPackage,
   queryBindMaterialApi,
   queryCustomerBindPackageAPI,
   type PackMaterialItem,
@@ -178,22 +178,29 @@ export function ApplyPackagingDialog({
     }
 
     try {
+      const raw = storeSku as Record<string, unknown>
+      const shopId = String(
+        raw.hzkj_od_pd_shop_id ??
+          raw.hzkj_pk_shop_id ??
+          raw.hzkj_shop_id ??
+          storeSku.id
+      )
+      const packageId = String(
+        selectedProduct.id ||
+          selectedProduct.hzkj_shop_package_id ||
+          selectedProduct.hzkj_shop_pd_package_id
+      )
+
       const payload = {
         data: [
           {
-            id: String(storeSku.id), // 行 id：当前店铺 SKU 行的 id
-            hzkj_shop_pd_package_id: String(
-              selectedProduct.id || selectedProduct.hzkj_shop_pd_package_id
-            ),
-            // 1 = 某种包装类型；按你的要求固定为 1
-            hzkj_package_type: '1',
-            // 默认 1
-            hzkj_order_pd_pk_qty: 1,
+            hzkj_shop_id: shopId,
+            hzkj_shop_pk_entry: [{ hzkj_shop_package_id: packageId }],
           },
         ],
       }
 
-      await addCuOdPdPackageAPI(payload)
+      await addCuShopPackage(payload)
 
       toast.success('Packaging applied successfully')
 

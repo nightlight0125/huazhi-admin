@@ -8,16 +8,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { querySkuByCustomer, type SkuRecordItem } from '@/lib/api/products'
 import { useAuthStore } from '@/stores/auth-store'
-import { Image as ImageIcon, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { type OrderProduct } from '../data/schema'
@@ -41,24 +33,9 @@ export function OrdersAddProductDialog({
 }: OrdersAddProductDialogProps) {
   const { auth } = useAuthStore()
   const [sku, setSku] = useState('')
-  const [title, setTitle] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [skuOptions, setSkuOptions] = useState<SkuRecordItem[]>([])
   const [isLoadingSku, setIsLoadingSku] = useState(false)
-
-  // 根据选择的SKU获取图片URL
-  const getImageUrlFromSku = (selectedSku: string): string => {
-    if (!selectedSku) return ''
-    const selectedSkuItem = skuOptions.find(
-      (item) =>
-        ((item as any).number || item.hzkj_sku_number) === selectedSku
-    )
-    if (selectedSkuItem) {
-      return (selectedSkuItem as any).hzkj_picturefield || ''
-    }
-    return ''
-  }
 
   // 获取 SKU 列表
   useEffect(() => {
@@ -100,49 +77,40 @@ export function OrdersAddProductDialog({
   }, [open, auth.user?.customerId])
 
   const handleConfirm = () => {
-    if (!sku.trim() || !title.trim()) return
+    if (!sku.trim()) return
 
-    // 获取选择的SKU记录，保存skuId信息
     const selectedSkuItem = skuOptions.find(
       (item) =>
-        ((item as any).number || item.hzkj_sku_number) === sku
+        ((item as any).number || item.hzkj_sku_number) === sku.trim()
     )
 
     const newProduct: OrderProduct = {
       id: sku.trim(),
-      productName: title.trim(),
+      productName: (selectedSkuItem as any)?.hzkj_name || sku.trim(),
       productVariant: [],
       quantity,
-      productImageUrl: imageUrl.trim(),
+      productImageUrl: '',
       productLink: '',
       price: 0,
       totalPrice: 0,
-      // 保存 SKU ID 信息，用于后续调用 API
       hzkj_local_sku_id: selectedSkuItem?.id ? String(selectedSkuItem.id) : undefined,
     }
 
     onConfirm(newProduct)
     setSku('')
-    setTitle('')
-    setImageUrl('')
     setQuantity(1)
     onOpenChange(false)
   }
 
   const handleCancel = () => {
     setSku('')
-    setTitle('')
-    setImageUrl('')
     setQuantity(1)
     onOpenChange(false)
   }
 
-  // 当对话框关闭时重置状态
   useEffect(() => {
     if (!open) {
       setSku('')
-      setTitle('')
-      setImageUrl('')
       setQuantity(1)
     }
   }, [open])
@@ -161,73 +129,13 @@ export function OrdersAddProductDialog({
                 <Label htmlFor='sku'>
                   SKU <span className='text-orange-500'>*</span>
                 </Label>
-                <Select
+                <Input
+                  id='sku'
+                  placeholder='Please enter SKU'
                   value={sku}
-                  onValueChange={(value) => {
-                    setSku(value)
-                    // 根据选择的SKU自动设置图片URL
-                    const pictureUrl = getImageUrlFromSku(value)
-                    setImageUrl(pictureUrl)
-                    // 根据选择的SKU自动设置title（使用hzkj_name字段）
-                    const selectedSkuItem = skuOptions.find(
-                      (item) =>
-                        ((item as any).number || item.hzkj_sku_number) === value
-                    )
-                    if (selectedSkuItem) {
-                      const skuName = (selectedSkuItem as any).hzkj_name || ''
-                      setTitle(String(skuName))
-                    }
-                  }}
+                  onChange={(e) => setSku(e.target.value)}
                   disabled={isLoadingSku}
-                >
-                  <SelectTrigger id='sku' className='w-full'>
-                    <SelectValue
-                      placeholder={
-                        isLoadingSku
-                          ? 'Loading SKUs...'
-                          : skuOptions.length === 0
-                            ? 'No SKUs available'
-                            : 'Please select a SKU'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className='max-w-[var(--radix-select-trigger-width)]'>
-                    {isLoadingSku ? (
-                      <div className='flex items-center justify-center py-2'>
-                        <Loader2 className='h-4 w-4 animate-spin' />
-                      </div>
-                    ) : skuOptions.length === 0 ? (
-                      <div className='text-muted-foreground px-2 py-1.5 text-sm'>
-                        No SKUs available
-                      </div>
-                    ) : (
-                      skuOptions
-                        .filter(
-                          (item) =>
-                            (item as any).number || item.hzkj_sku_number
-                        )
-                        .map((item) => {
-                          const number =
-                            (item as any).number || item.hzkj_sku_number || ''
-                          const name =
-                            (item as any).name ||
-                            item.hzkj_sku_name ||
-                            'Unknown SKU'
-                          return (
-                            <SelectItem
-                              key={item.id || number}
-                              value={number}
-                              className='max-w-full'
-                            >
-                              <span className='block truncate max-w-full'>
-                                {String(name)}
-                              </span>
-                            </SelectItem>
-                          )
-                        })
-                    )}
-                  </SelectContent>
-                </Select>
+                />
               </div>
 
               <div className='space-y-2'>
@@ -245,49 +153,6 @@ export function OrdersAddProductDialog({
                 />
               </div>
             </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='title'>
-                Title <span className='text-orange-500'>*</span>
-              </Label>
-              <Input
-                id='title'
-                placeholder='Please enter the product title'
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-
-            <div className='space-y-2'>
-              <Label>Product Image</Label>
-              <div className='flex items-center gap-3'>
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt='Product Image'
-                    className='h-12 w-12 rounded object-cover'
-                    onError={(e) => {
-                      // 如果图片加载失败，隐藏图片元素
-                      ;(e.target as HTMLImageElement).style.display = 'none'
-                    }}
-                  />
-                ) : (
-                  <div className='bg-muted flex h-12 w-12 items-center justify-center rounded'>
-                    <ImageIcon className='text-muted-foreground h-6 w-6' />
-                  </div>
-                )}
-                {!imageUrl && sku && (
-                  <span className='text-muted-foreground text-sm'>
-                    No image available for selected SKU
-                  </span>
-                )}
-                {!sku && (
-                  <span className='text-muted-foreground text-sm'>
-                    Please select a SKU to view the product image
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -298,7 +163,7 @@ export function OrdersAddProductDialog({
           <Button
             type='button'
             onClick={handleConfirm}
-            disabled={!sku.trim() || !title.trim()}
+            disabled={!sku.trim()}
             className='bg-orange-500 text-white hover:bg-orange-600'
           >
             Confirm

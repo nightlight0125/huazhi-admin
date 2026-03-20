@@ -858,8 +858,7 @@ export function ProductDesign() {
       link.click()
       document.body.removeChild(link)
     } catch (error) {
-      console.error('Failed to save image:', error)
-      alert('保存图片失败。请确保所有图片都已正确加载。')
+      // alert('保存图片失败。请确保所有图片都已正确加载。')
     }
   }
 
@@ -1057,7 +1056,11 @@ export function ProductDesign() {
             onClick={handleSaveDesign}
             disabled={isSaving || !product}
           >
-            <Save className='h-4 w-4' />
+            {isSaving ? (
+              <Loader2 className='h-4 w-4 animate-spin' />
+            ) : (
+              <Save className='h-4 w-4' />
+            )}
           </Button>
         </div>
       </div>
@@ -1282,7 +1285,7 @@ export function ProductDesign() {
                         }, 200)
                       }
                     }}
-                    className='absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer'
+                    className='[&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:bg-primary absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full'
                   />
                 </div>
               </div>
@@ -1319,7 +1322,7 @@ export function ProductDesign() {
                         }, 200)
                       }
                     }}
-                    className='absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer'
+                    className='[&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:bg-primary absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full'
                   />
                 </div>
               </div>
@@ -1357,7 +1360,7 @@ export function ProductDesign() {
                         }, 200)
                       }
                     }}
-                    className='absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer'
+                    className='[&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:bg-primary absolute top-1/2 left-0 h-6 w-full -translate-y-1/2 cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full'
                   />
                 </div>
               </div>

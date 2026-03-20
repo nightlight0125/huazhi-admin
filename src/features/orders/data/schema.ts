@@ -109,7 +109,9 @@ export const orderSchema = z.object({
   hzkj_country_code: z.string().optional().nullable(), // 国家二字码
   hzkj_orderstatus: z.string().optional(), // 订单状态（原始字段）
   hzkj_fulfillment_status: z.string().optional().nullable(), // 履行状态（原始字段）
-  hzkj_order_amount: z.number().optional(), // 订单金额
+  hzkj_order_amount: z.number().optional(), // 订单金额（产品金额）
+  hzkj_total_amount: z.number().optional(), // 订单总金额
+  totalQty: z.number().optional(), // 数量
   hzkj_pack_weight_total: z.number().optional(), // 包装重量总计
   // API 原始字段（用于兼容）
   lingItems: z.array(z.any()).optional(), // 产品列表（原始字段）

@@ -135,7 +135,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'description',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='description' />
+      <DataTableColumnHeader column={column} title='Description' />
     ),
     cell: ({ row }) => {
       const value = row.original.description as string
@@ -149,7 +149,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'paymentMethod',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='paymentMethod' />
+      <DataTableColumnHeader column={column} title='Payment Method' />
     ),
     cell: ({ row }) => {
       const paymentMethod = row.original.paymentMethod as string
@@ -159,7 +159,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'date',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='date' />
+      <DataTableColumnHeader column={column} title='Date' />
     ),
     cell: ({ row }) => {
       const date = row.original.date as Date
@@ -179,7 +179,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'amount',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='amount' />
+      <DataTableColumnHeader column={column} title='Amount' />
     ),
     cell: ({ row }) => {
       const amount = row.original.amount as number
@@ -202,7 +202,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'cashback',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='cashback' />
+      <DataTableColumnHeader column={column} title='Cashback' />
     ),
     cell: ({ row }) => {
       const cashback = row.original.cashback as number | undefined
@@ -224,7 +224,7 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
   {
     accessorKey: 'status',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='status' />
+      <DataTableColumnHeader column={column} title='Status' />
     ),
     cell: ({ row }) => {
       const status = row.original.hzkj_status ?? '---'

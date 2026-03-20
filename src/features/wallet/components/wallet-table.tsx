@@ -13,8 +13,8 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getInvoiceRecords, type ApiInvoiceRecordItem } from '@/lib/api/orders'
 import {
+  getFundRecord,
   getInvoicePdf,
-  getWalletList,
   type ApiFundRecordItem,
 } from '@/lib/api/wallet'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
@@ -188,7 +188,6 @@ export function WalletTable({ data }: DataTableProps) {
       try {
         const pageNo = urlPagination.pageIndex + 1
         const pageSize = urlPagination.pageSize
-        const masterId = rechargeSearch.trim() || undefined
         const start =
           rechargeDateRange?.from != null
             ? formatDateTimeForApi(rechargeDateRange.from, false)
@@ -204,20 +203,18 @@ export function WalletTable({ data }: DataTableProps) {
           pageSize,
           start,
           end,
-          masterId,
         })
         if (lastRechargeRequestKeyRef.current === requestKey) {
           return
         }
         lastRechargeRequestKeyRef.current = requestKey
 
-        const result = await getWalletList(
+        const result = await getFundRecord(
           String(customerId),
           pageNo,
           pageSize,
           start,
-          end,
-          masterId
+          end
         )
         const mappedRecords = result.rows.map((item, index) =>
           mapApiWalletItemToWalletRecord(item, index)

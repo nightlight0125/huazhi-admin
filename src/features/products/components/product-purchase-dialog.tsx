@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Minus, Plus } from 'lucide-react'
+import { Loader2, Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { addStock } from '@/lib/api/orders'
@@ -49,15 +49,29 @@ export function ProductPurchaseDialog({
   initialSelectedSpecs = {},
   defaultQuantity,
 }: ProductPurchaseDialogProps) {
+  void defaultQuantity
   const navigate = useNavigate()
   const { auth } = useAuthStore()
 
-  const processedVariantIdsRef = useRef<Set<string>>(new Set())
+  // 左侧规格多选：Record<specId, valueId[]>
+  const [selectedSpecs, setSelectedSpecs] = useState<Record<string, string[]>>(
+    () =>
+      Object.fromEntries(
+        Object.entries(initialSelectedSpecs || {}).map(([k, v]) => [
+          k,
+          v ? [v] : [],
+        ])
+      )
+  )
 
-  const [selectedSpecs, setSelectedSpecs] =
-    useState<Record<string, string>>(initialSelectedSpecs)
+  // 全部 SKU 列表（弹框打开时一次性拉取）
+  const [allSkus, setAllSkus] = useState<any[]>([])
+  const [isLoadingAllSkus, setIsLoadingAllSkus] = useState(false)
 
-  const [selectedVariants, setSelectedVariants] = useState<any[]>([])
+  // 每个 SKU 独立数量，key 为 skuId，切换时保持
+  const [variantQuantities, setVariantQuantities] = useState<
+    Record<string, number>
+  >({})
 
   const extractName = (name: unknown): string => {
     if (typeof name === 'string') {
@@ -76,21 +90,55 @@ export function ProductPurchaseDialog({
     return ''
   }
 
+  // 根据左侧规格多选筛选右侧 SKU：未选规格时显示全部，选了则过滤
+  const displayedVariants = useMemo(() => {
+    if (!allSkus.length) return []
+    const hasAnySpec = Object.values(selectedSpecs).some(
+      (arr) => Array.isArray(arr) && arr.length > 0
+    )
+    if (!hasAnySpec) return allSkus
+    return allSkus.filter((sku) => {
+      const skuSpecValues = sku.specValues as Record<string, string> | undefined
+      if (!skuSpecValues) return true
+      for (const [specId, selectedVals] of Object.entries(selectedSpecs)) {
+        if (!Array.isArray(selectedVals) || selectedVals.length === 0) continue
+        if (!selectedVals.includes(skuSpecValues[specId])) return false
+      }
+      return true
+    })
+  }, [allSkus, selectedSpecs])
+
   const totalPrice = (
-    selectedVariants.reduce((sum, v) => {
-      if (v.loading) return sum
-      const variantPrice =
-        v.price ??
-        (typeof apiProduct?.hzkj_pur_price === 'number'
-          ? apiProduct.hzkj_pur_price
-          : 0)
-      return (
-        sum +
-        (v.quantity ?? 0) *
-          (typeof variantPrice === 'number' ? variantPrice : 0)
-      )
-    }, 0) || 0
-  ).toFixed(2)
+    displayedVariants.length === 1
+      ? (() => {
+          const v = displayedVariants[0]
+          const skuId = v?.id ? String(v.id) : ''
+          const qty = Math.max(1, variantQuantities[skuId] ?? 1)
+          const variantPrice =
+            v?.price ??
+            (typeof apiProduct?.hzkj_pur_price === 'number'
+              ? apiProduct.hzkj_pur_price
+              : 0)
+          return (qty * (typeof variantPrice === 'number' ? variantPrice : 0)).toFixed(2)
+        })()
+      : '0.00'
+  )
+
+  const updateQuantity = (
+    skuId: string,
+    deltaOrValue: number | 'set',
+    value?: number
+  ) => {
+    setVariantQuantities((prev) => {
+      const current = prev[skuId] ?? 0
+      const next =
+        deltaOrValue === 'set' && value !== undefined
+          ? Math.max(0, value)
+          : Math.max(0, current + (deltaOrValue as number))
+      if (next === 0 && !(skuId in prev)) return prev
+      return { ...prev, [skuId]: next }
+    })
+  }
 
   // 获取规格数据
   const skuSpecs =
@@ -119,115 +167,151 @@ export function ProductPurchaseDialog({
 
   const hasShippingAddress = false
 
+  // 弹框打开时：保留外层传入的规格筛选，重置数量
   useEffect(() => {
     if (open) {
-      if (Object.keys(initialSelectedSpecs).length > 0) {
-        setSelectedSpecs(initialSelectedSpecs)
+      if (
+        initialSelectedSpecs &&
+        Object.keys(initialSelectedSpecs).length > 0
+      ) {
+        setSelectedSpecs(
+          Object.fromEntries(
+            Object.entries(initialSelectedSpecs).map(([k, v]) => [
+              k,
+              v ? [v] : [],
+            ])
+          )
+        )
       } else {
         setSelectedSpecs({})
       }
-      setSelectedVariants([])
+      setVariantQuantities({})
     }
-  }, [open, initialSelectedSpecs])
+  }, [open])
 
+  // 弹框打开时拉取全部 SKU（遍历所有规格组合）
   useEffect(() => {
-    if (!open) {
-      processedVariantIdsRef.current = new Set()
+    if (!open || !productId || !apiProduct) {
+      setAllSkus([])
       return
     }
 
-    const fetchSkuData = async () => {
-      // 检查是否所有规格都已选择
-      const allSpecsSelected = skuSpecs.every(
-        (s) =>
-          s.hzkj_sku_spec_id &&
-          selectedSpecs[s.hzkj_sku_spec_id] !== undefined &&
-          selectedSpecs[s.hzkj_sku_spec_id] !== ''
-      )
-
-      if (!allSpecsSelected || skuSpecs.length === 0) {
-        setSelectedVariants([])
+    const fetchAllSkus = async () => {
+      if (skuSpecs.length === 0) {
+        // 无规格时尝试空 specIds
+        setIsLoadingAllSkus(true)
+        try {
+          const res = await selectSpecGetSku({ productId, specIds: [] })
+          const data = Array.isArray(res.data) ? res.data : []
+          const withSpec = data.map((item: any) => ({
+            ...item,
+            specValues: {} as Record<string, string>,
+          }))
+          setAllSkus(withSpec)
+        } catch {
+          setAllSkus([])
+        } finally {
+          setIsLoadingAllSkus(false)
+        }
         return
       }
 
-      // 提取规格值ID列表（specIds）
-      const specIds = Object.values(selectedSpecs).filter(
-        (id): id is string => typeof id === 'string' && id !== ''
-      )
+      // 生成所有规格组合的笛卡尔积
+      const valueArrays = skuSpecs
+        .filter(
+          (s) => s.hzkj_sku_spec_id && Array.isArray(s.hzkj_sku_specvalue_e)
+        )
+        .map((s) =>
+          (s.hzkj_sku_specvalue_e || []).map((v) => ({
+            specId: s.hzkj_sku_spec_id!,
+            valueId: v.hzkj_sku_specvalue_id || '',
+          }))
+        )
+        .filter((arr) => arr.length > 0)
 
-      if (specIds.length === 0) {
-        setSelectedVariants([])
+      if (valueArrays.length === 0) {
+        setAllSkus([])
         return
       }
 
-      // 检查是否已经处理过这个规格组合
-      const specKey = specIds.join('-')
-      if (processedVariantIdsRef.current.has(specKey)) {
-        return
-      }
+      const cartesian = <T,>(arrays: T[][]): T[][] =>
+        arrays.reduce(
+          (acc, curr) => acc.flatMap((a) => curr.map((c) => [...a, c])),
+          [[]] as T[][]
+        )
 
-      processedVariantIdsRef.current.add(specKey)
+      const combinations = cartesian(valueArrays) as {
+        specId: string
+        valueId: string
+      }[][]
 
-      // 设置加载状态
-      setSelectedVariants([{ loading: true }])
+      setIsLoadingAllSkus(true)
+      const seenIds = new Set<string>()
+      const merged: any[] = []
 
       try {
-        // 调用 API 获取 SKU 数据
-        const response = await selectSpecGetSku({
-          productId,
-          specIds,
-        })
-        const skuData = response.data
-        if (Array.isArray(skuData) && skuData.length > 0) {
-          const initialQty = Math.max(1, defaultQuantity ?? 0)
-          const variants = skuData.map((item) => ({
-            ...item,
-            specValues: selectedSpecs,
-            quantity:
-              defaultQuantity !== undefined ? initialQty : (item.quantity ?? 0),
-          }))
-          setSelectedVariants(variants)
-        } else {
-          setSelectedVariants([])
-        }
+        await Promise.all(
+          combinations.map(async (combo) => {
+            const specIds = combo.map((c) => c.valueId).filter(Boolean)
+            if (specIds.length === 0) return
+            const specValues = combo.reduce(
+              (acc, c) => ({ ...acc, [c.specId]: c.valueId }),
+              {} as Record<string, string>
+            )
+            try {
+              const res = await selectSpecGetSku({ productId, specIds })
+              const data = Array.isArray(res.data) ? res.data : []
+              for (const item of data) {
+                const id = item?.id ? String(item.id) : ''
+                if (id && !seenIds.has(id)) {
+                  seenIds.add(id)
+                  merged.push({ ...item, specValues })
+                }
+              }
+            } catch {
+              // 单个组合失败忽略
+            }
+          })
+        )
+        setAllSkus(merged)
       } catch (error) {
-        console.error('Failed to fetch SKU data:', error)
+        console.error('Failed to fetch all SKUs:', error)
         toast.error(
           error instanceof Error
             ? error.message
-            : 'Failed to load SKU data. Please try again.'
+            : 'Failed to load SKUs. Please try again.'
         )
-        processedVariantIdsRef.current.delete(specKey)
-        setSelectedVariants([])
+        setAllSkus([])
+      } finally {
+        setIsLoadingAllSkus(false)
       }
     }
-    fetchSkuData()
-  }, [open, productId, selectedSpecs, skuSpecs, defaultQuantity])
 
-  const handleBuyNow = async () => {
-    if (!selectedVariants || selectedVariants.length === 0) {
-      toast.error('Please select a variant')
+    void fetchAllSkus()
+  }, [open, productId, apiProduct, skuSpecs])
+
+  const canBuyNow = displayedVariants.length === 1
+
+  const handleBuyNow = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+
+    if (!canBuyNow) {
+      toast.error('Please select complete SKU')
       return
     }
 
-    // 过滤掉 loading 占位项，只保留有效变体
-    const validVariants = selectedVariants.filter(
-      (v: any) => v && !v.loading && v.id
-    )
-    if (validVariants.length === 0) {
-      toast.error('Please select a variant')
-      return
-    }
+    const singleVariant = displayedVariants[0]
+    const skuId = String(singleVariant?.id ?? '')
+    const qty = Math.max(1, variantQuantities[skuId] ?? 1)
+    const validVariants = [
+      { ...singleVariant, quantity: qty },
+    ]
 
-    // 至少有一个变体数量大于 0 才能继续
-    const hasPositiveQuantity = validVariants.some((v: any) => {
-      const qty = Number(v.quantity) || 0
-      return qty > 0
-    })
-    if (!hasPositiveQuantity) {
-      toast.error('Please set quantity greater than 0 for at least one variant')
-      return
-    }
+    void doBuyNow(validVariants)
+  }
+
+  const doBuyNow = async (validVariants: any[]) => {
 
     if (mode === 'stock') {
       if (!selectedWarehouse) {
@@ -269,9 +353,8 @@ export function ProductPurchaseDialog({
     // 构建确认订单数据（sample 模式或走确认订单流程）
 
     const orderItems: ConfirmOrderItem[] = validVariants.map((variant: any) => {
-      // 根据选中的规格值构建显示名称
+      const specValues = variant.specValues || {}
       const specNames: string[] = []
-      const specValues = variant.specValues || selectedSpecs
       for (const spec of skuSpecs) {
         const selectedValueId = specValues[spec.hzkj_sku_spec_id || '']
         if (selectedValueId) {
@@ -425,63 +508,78 @@ export function ProductPurchaseDialog({
             </div>
 
             <div className='mt-4 grid grid-cols-[240px_minmax(0,1fr)] gap-0 border-t pt-4'>
+              {/* 左侧：规格多选筛选（可选，用于过滤右侧 SKU） */}
               <div className='max-h-[320px] overflow-y-auto border-r pr-4'>
-                {skuSpecs.map((spec) => (
-                  <div key={spec.hzkj_sku_spec_id || ''} className='mb-6'>
-                    <h3 className='mb-2 text-xs font-semibold'>
-                      {spec.hzkj_sku_spec_enname || ''}
-                    </h3>
-                    <div className='space-y-2'>
-                      {Array.isArray(spec.hzkj_sku_specvalue_e) &&
-                        spec.hzkj_sku_specvalue_e.map((value) => (
-                          <button
-                            key={value.hzkj_sku_specvalue_id || ''}
-                            onClick={() => {
-                              const newSelectedSpecs = {
-                                ...selectedSpecs,
-                                [spec.hzkj_sku_spec_id || '']:
-                                  value.hzkj_sku_specvalue_id || '',
-                              }
-                              setSelectedSpecs(newSelectedSpecs)
-                            }}
-                            className={`flex w-full items-center rounded-md border px-3 py-2 text-left text-xs transition-colors ${
-                              selectedSpecs[spec.hzkj_sku_spec_id || ''] ===
-                              value.hzkj_sku_specvalue_id
-                                ? 'border-primary bg-primary/5 text-primary'
-                                : 'border-border bg-background hover:bg-accent'
-                            }`}
-                          >
-                            {value.hzkj_sku_specvalue_enname || ''}
-                          </button>
-                        ))}
+                <p className='text-muted-foreground mb-2 text-xs'>
+                  Filter by spec (optional, multi-select)
+                </p>
+                {skuSpecs.map((spec) => {
+                  const specId = spec.hzkj_sku_spec_id || ''
+                  const selectedVals = selectedSpecs[specId] ?? []
+                  return (
+                    <div key={specId} className='mb-6'>
+                      <h3 className='mb-2 text-xs font-semibold'>
+                        {spec.hzkj_sku_spec_enname || ''}
+                      </h3>
+                      <div className='space-y-2'>
+                        {Array.isArray(spec.hzkj_sku_specvalue_e) &&
+                          spec.hzkj_sku_specvalue_e.map((value) => {
+                            const valueId = value.hzkj_sku_specvalue_id || ''
+                            const isChecked = selectedVals.includes(valueId)
+                            return (
+                              <button
+                                key={valueId}
+                                onClick={() => {
+                                  setSelectedSpecs((prev) => {
+                                    const curr = prev[specId] ?? []
+                                    const next = isChecked
+                                      ? curr.filter((id) => id !== valueId)
+                                      : [...curr, valueId]
+                                    return { ...prev, [specId]: next }
+                                  })
+                                }}
+                                className={`flex w-full items-center rounded-md border px-3 py-2 text-left text-xs transition-colors ${
+                                  isChecked
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-border bg-background hover:bg-accent'
+                                }`}
+                              >
+                                {value.hzkj_sku_specvalue_enname || ''}
+                              </button>
+                            )
+                          })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
-              {/* 右侧：已选变体列表（可滚动） + 列表内部总价 */}
+              {/* 右侧：全部/筛选后的 SKU 列表，每个 SKU 独立数量 */}
               <div className='flex max-h-[320px] flex-col overflow-y-auto pl-4'>
                 <div className='space-y-2 pr-1'>
-                  <h3 className='text-xs font-semibold'>Selected Variants</h3>
+                  <h3 className='text-xs font-semibold'>
+                    {Object.values(selectedSpecs).some(
+                      (arr) => Array.isArray(arr) && arr.length > 0
+                    )
+                      ? 'Filtered Variants'
+                      : 'All Variants'}
+                  </h3>
                   <div className='space-y-2'>
-                    {selectedVariants.length === 0 ? (
+                    {isLoadingAllSkus ? (
+                      <div className='flex items-center justify-center gap-2 rounded-lg border p-6'>
+                        <Loader2 className='h-5 w-5 animate-spin' />
+                        <span className='text-muted-foreground text-sm'>
+                          Loading SKUs...
+                        </span>
+                      </div>
+                    ) : displayedVariants.length === 0 ? (
                       <div className='text-muted-foreground py-4 text-center text-sm'>
-                        No variant selected
+                        No variant available
                       </div>
                     ) : (
-                      selectedVariants.map((variant: any) => {
-                        if (variant.loading) {
-                          return (
-                            <div
-                              key='loading'
-                              className='flex items-center justify-center rounded-lg border p-3'
-                            >
-                              <div className='text-muted-foreground text-sm'>
-                                Loading...
-                              </div>
-                            </div>
-                          )
-                        }
+                      displayedVariants.map((variant: any) => {
+                        const skuId = String(variant.id ?? '')
+                        const qty = variantQuantities[skuId] ?? 0
                         return (
                           <div
                             key={variant.id}
@@ -490,6 +588,7 @@ export function ProductPurchaseDialog({
                             {variant.pic ? (
                               <img
                                 src={variant.pic}
+                                alt=''
                                 className='h-12 w-12 rounded object-cover'
                               />
                             ) : (
@@ -516,42 +615,20 @@ export function ProductPurchaseDialog({
                                 variant='outline'
                                 size='icon'
                                 className='h-7 w-7'
-                                onClick={() => {
-                                  setSelectedVariants((prev: any[]) => {
-                                    if (!Array.isArray(prev)) return prev
-                                    return prev.map((v) =>
-                                      v.id === variant.id
-                                        ? {
-                                            ...v,
-                                            quantity: Math.max(
-                                              0,
-                                              (v.quantity ?? 0) - 1
-                                            ),
-                                          }
-                                        : v
-                                    )
-                                  })
-                                }}
-                                disabled={(variant.quantity ?? 0) <= 0}
+                                onClick={() => updateQuantity(skuId, -1)}
+                                disabled={qty <= 0}
                               >
                                 <Minus className='h-4 w-4' />
                               </Button>
                               <Input
                                 type='number'
-                                value={variant.quantity ?? 0}
+                                value={qty}
                                 onChange={(e) => {
-                                  const newQuantity = Math.max(
+                                  const v = Math.max(
                                     0,
                                     parseInt(e.target.value, 10) || 0
                                   )
-                                  setSelectedVariants((prev: any[]) => {
-                                    if (!Array.isArray(prev)) return prev
-                                    return prev.map((v) =>
-                                      v.id === variant.id
-                                        ? { ...v, quantity: newQuantity }
-                                        : v
-                                    )
-                                  })
+                                  updateQuantity(skuId, 'set', v)
                                 }}
                                 className='h-7 w-14 text-center text-xs'
                                 min={0}
@@ -560,19 +637,7 @@ export function ProductPurchaseDialog({
                                 variant='outline'
                                 size='icon'
                                 className='h-7 w-7'
-                                onClick={() => {
-                                  setSelectedVariants((prev: any[]) => {
-                                    if (!Array.isArray(prev)) return prev
-                                    return prev.map((v) =>
-                                      v.id === variant.id
-                                        ? {
-                                            ...v,
-                                            quantity: (v.quantity ?? 0) + 1,
-                                          }
-                                        : v
-                                    )
-                                  })
-                                }}
+                                onClick={() => updateQuantity(skuId, 1)}
                               >
                                 <Plus className='h-4 w-4' />
                               </Button>
@@ -584,7 +649,6 @@ export function ProductPurchaseDialog({
                   </div>
                 </div>
 
-                {/* 列表下方：总价条（在右侧列表内部底部） */}
                 <div className='mt-3 border-t pt-2'>
                   <div className='flex items-center justify-between text-sm font-semibold'>
                     <span>Total:</span>
@@ -636,9 +700,12 @@ export function ProductPurchaseDialog({
           </div>
           <div className='flex flex-wrap justify-end gap-2'>
             <Button
+              type='button'
               size='sm'
-              className='min-w-[120px] bg-orange-500 text-white hover:bg-orange-600'
-              onClick={handleBuyNow}
+              className='min-w-[120px] bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50'
+              onClick={(e) => handleBuyNow(e)}
+              disabled={!canBuyNow}
+              title={!canBuyNow ? 'Please select complete SKU' : undefined}
             >
               Buy Now
             </Button>

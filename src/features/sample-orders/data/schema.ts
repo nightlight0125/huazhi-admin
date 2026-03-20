@@ -58,7 +58,10 @@ export const sampleOrderSchema = z.object({
   // API 原始字段（用于兼容）
   billno: z.string().optional(), // 订单号（原始字段）
   createtime: z.string().optional(), // 创建时间（原始字段）
-  hzkj_order_amount: z.number().optional(), // 订单金额
+  hzkj_order_amount: z.number().optional(), // 订单金额（产品金额）
+  hzkj_total_amount: z.number().optional(), // 订单总金额
+  hzkj_fre_quo_amount: z.number().optional(), // 运费
+  totalQty: z.number().optional(), // 数量
   // 客户名称（原始字段），结构较为动态，这里使用 any 保持兼容
   hzkj_customer_name: z.any().optional(),
   hzkj_country_code: z.string().optional().nullable(), // 国家代码

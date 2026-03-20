@@ -1052,9 +1052,29 @@ export function OrdersTable({
                                   orderStatus={order.hzkj_orderstatus}
                                   onDelete={handleDelete}
                                   onModifyProduct={() => {
+                                    const rawItems = (order as any).lingItems || []
+                                    const products = rawItems.map((item: any, idx: number) => {
+                                      const qtyVal = item.hzkj_src_qty ?? item.hzkj_qty ?? item.qty ?? 0
+                                      const qtyNum = Number(qtyVal) || 0
+                                      return {
+                                        ...item,
+                                        id: item.entryId || (order.productList?.[idx] as any)?.id || `product-${idx}`,
+                                        productName: item.hzkj_product_name_en?.GLang || (order.productList?.[idx] as any)?.productName || '',
+                                        productVariant: [],
+                                        quantity: qtyNum,
+                                        productImageUrl: item.hzkj_picture || '',
+                                        productLink: '',
+                                        price: Number(item.hzkj_shop_price ?? item.hzkj_amount ?? 0) || 0,
+                                        totalPrice: Number(item.hzkj_amount ?? 0) || 0,
+                                        hzkj_shop_sku: item.hzkj_shop_sku ?? item.hzkj_local_sku,
+                                        hzkj_src_qty: qtyVal != null && qtyVal !== '' ? String(qtyVal) : (qtyNum > 0 ? String(qtyNum) : ''),
+                                        hzkj_shop_price: item.hzkj_shop_price != null ? String(item.hzkj_shop_price) : (item.hzkj_amount != null ? String(item.hzkj_amount) : undefined),
+                                        hzkj_local_sku_id: item.hzkj_local_sku_id ?? (item as any).hzkj_local_sku_id2,
+                                      }
+                                    })
                                     setModifyProductDialog({
                                       open: true,
-                                      products: order.lingItems || [],
+                                      products,
                                       orderId: order.id,
                                       order,
                                     })

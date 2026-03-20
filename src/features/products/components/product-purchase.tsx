@@ -78,7 +78,7 @@ export function ProductPurchase() {
   const handleBuyNow = () => {
     if (mode === 'sample') {
       if (!hasShippingAddress) {
-        navigate({ to: '/settings' })
+        navigate({ to: '/settings', search: { tab: 'address', returnTo: undefined } })
         return
       }
       navigate({ to: '/sample-orders' })
@@ -313,7 +313,9 @@ export function ProductPurchase() {
                 <button
                   type='button'
                   className='text-primary text-left text-sm underline underline-offset-2'
-                  onClick={() => navigate({ to: '/settings' })}
+                  onClick={() =>
+                    navigate({ to: '/settings', search: { tab: 'address', returnTo: undefined } })
+                  }
                 >
                   Please go to Settings to set your shipping address
                 </button>

@@ -136,10 +136,10 @@ export function OrdersModifyProductDialog({
 
         // 初始编辑值来源：优先使用后端字段，其次使用原有字段
         const initialSku = p.hzkj_shop_sku || p.id || ''
-        const initialQty =
-          (p.hzkj_src_qty && parseInt(String(p.hzkj_src_qty))) ||
-          p.quantity ||
-          1
+        const qtyFromSrc = p.hzkj_src_qty != null && p.hzkj_src_qty !== '' ? parseInt(String(p.hzkj_src_qty)) : NaN
+        const qtyFromQuantity = p.quantity != null && p.quantity > 0 ? p.quantity : NaN
+        const qtyFromHzkj = (p as any).hzkj_qty != null ? parseInt(String((p as any).hzkj_qty)) : NaN
+        const initialQty = !isNaN(qtyFromSrc) ? qtyFromSrc : (!isNaN(qtyFromQuantity) ? qtyFromQuantity : (!isNaN(qtyFromHzkj) ? qtyFromHzkj : 1))
 
         return {
           ...p,
@@ -384,7 +384,6 @@ export function OrdersModifyProductDialog({
         onConfirm(cleanedProducts)
         onOpenChange(false)
       } catch (error) {
-        console.error('Failed to update products:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -499,12 +498,20 @@ export function OrdersModifyProductDialog({
                             <Input
                               type='number'
                               min={1}
-                              value={
-                                product.tempQuantity ??
-                                (product.hzkj_src_qty
-                                  ? parseInt(String(product.hzkj_src_qty))
-                                  : 1)
-                              }
+                              value={(() => {
+                                if (product.tempQuantity != null) return product.tempQuantity
+                                if (product.hzkj_src_qty != null && product.hzkj_src_qty !== '') {
+                                  const v = parseInt(String(product.hzkj_src_qty))
+                                  return !isNaN(v) ? v : 1
+                                }
+                                if (product.quantity != null && product.quantity > 0) return product.quantity
+                                const hzQty = (product as any).hzkj_qty
+                                if (hzQty != null) {
+                                  const v = parseInt(String(hzQty))
+                                  return !isNaN(v) ? v : 1
+                                }
+                                return 1
+                              })()}
                               onChange={(e) =>
                                 handleQuantityChange(
                                   index,
@@ -515,7 +522,7 @@ export function OrdersModifyProductDialog({
                             />
                           ) : (
                             <span className='text-sm'>
-                              {product.hzkj_src_qty ?? product.quantity}
+                              {product.hzkj_src_qty ?? product.quantity ?? product.hzkj_qty ?? '--'}
                             </span>
                           )}
                         </TableCell>

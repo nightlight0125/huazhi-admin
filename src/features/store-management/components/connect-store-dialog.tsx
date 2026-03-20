@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { shopifyCallback, shopifyOAuth } from '@/lib/api/shop'
@@ -29,14 +29,13 @@ export function ConnectStoreDialog({
   const [shopDomain, setShopDomain] = useState('')
   const user = useAuthStore((state) => state.auth.user)
 
-  // 处理 OAuth 回调
+  // 处理 OAuth 回调（传入完整 query string，后端自行解析校验）
   const handleCallback = useCallback(
-    async (code: string, shop: string, state: string) => {
+    async (queryString: string) => {
       try {
         setIsLoading(true)
 
-        // 调用回调接口
-        await shopifyCallback(code, shop, state)
+        await shopifyCallback(queryString)
 
         toast.success('Store connected successfully!')
         onNext()
@@ -122,12 +121,11 @@ export function ConnectStoreDialog({
               clearInterval(checkAuthWindow)
               setIsLoading(false)
 
-              // 关闭监听并关闭窗口
               window.removeEventListener('message', messageHandler)
               authWindow.close()
 
-              // 调用回调逻辑
-              handleCallback(codeFromUrl, shopFromUrl, stateFromUrl)
+              // 传递完整 query string 给后端
+              handleCallback(url.search || `?code=${codeFromUrl}&shop=${shopFromUrl}&state=${stateFromUrl}`)
             }
           }
         } catch (error) {
@@ -143,12 +141,12 @@ export function ConnectStoreDialog({
         }
 
         if (event.data.type === 'shopify-oauth-callback') {
-          const { code } = event.data
-          if (code) {
+          const { queryString } = event.data
+          if (queryString) {
             clearInterval(checkAuthWindow)
             window.removeEventListener('message', messageHandler)
             authWindow.close()
-            handleCallback(code, shop, state)
+            handleCallback(queryString)
           }
         }
       }
@@ -176,23 +174,7 @@ export function ConnectStoreDialog({
     }
   }
 
-  // 检查 URL 参数中是否有 code（如果是从回调页面返回的）
-  useEffect(() => {
-    if (!open || platformName !== 'Shopify' || !user?.id) {
-      return
-    }
-
-    const urlParams = new URLSearchParams(window.location.search)
-    const code = urlParams.get('code')
-    const shop = urlParams.get('shop')
-    const state = urlParams.get('state')
-
-    if (code && shop && state && user.id === state) {
-      // 清除 URL 参数
-      window.history.replaceState({}, '', window.location.pathname)
-      handleCallback(code, shop, state)
-    }
-  }, [open, platformName, user?.id, handleCallback])
+  // 重定向场景由 store-management 页面统一处理（无需在 dialog 中重复）
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

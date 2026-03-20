@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import {
   type ColumnDef,
@@ -431,6 +431,32 @@ export function ProductsGrid({
     }
   }
 
+  // 使用 rAF 合并父级+子级联动时的多次调用，避免重复请求
+  const categoryChangePendingRef = useRef<{ ids: string[] } | null>(null)
+  const categoryChangeRafRef = useRef<number | null>(null)
+
+  const flushCategoryChange = useCallback(() => {
+    categoryChangeRafRef.current = null
+    const pending = categoryChangePendingRef.current
+    categoryChangePendingRef.current = null
+    if (pending) {
+      onCategoryChange?.(pending.ids)
+      onPaginationChange({
+        pageIndex: 0,
+        pageSize: pagination.pageSize,
+      })
+    }
+  }, [onCategoryChange, onPaginationChange, pagination.pageSize])
+
+  useEffect(
+    () => () => {
+      if (categoryChangeRafRef.current !== null) {
+        cancelAnimationFrame(categoryChangeRafRef.current)
+      }
+    },
+    []
+  )
+
   const handleCategoryChange = (value: string, checked: boolean) => {
     setSelectedCategories((prev) => {
       const next = new Set(prev)
@@ -439,14 +465,12 @@ export function ProductsGrid({
       } else {
         next.delete(value)
       }
-      // 将选中的分类ID转换为数组并传递给父组件
       const categoryIds = Array.from(next)
-      onCategoryChange?.(categoryIds)
-      // 分类变化时重置到第一页
-      onPaginationChange({
-        pageIndex: 0,
-        pageSize: pagination.pageSize,
-      })
+      categoryChangePendingRef.current = { ids: categoryIds }
+      if (categoryChangeRafRef.current === null) {
+        categoryChangeRafRef.current =
+          requestAnimationFrame(flushCategoryChange)
+      }
       return next
     })
   }

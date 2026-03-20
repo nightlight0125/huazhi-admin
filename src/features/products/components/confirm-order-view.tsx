@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { calcuFreight } from '@/lib/api/logistics'
 import { buyProduct } from '@/lib/api/products'
 import { getAddress, type AddressItem } from '@/lib/api/users'
 import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
@@ -55,6 +56,8 @@ export interface ConfirmOrderPayload {
   discountedTotalPrice?: number
   selectedWarehouse?: string
   hasShippingAddress: boolean
+  /** 运费（来自 Recap 中的 Shipping Price） */
+  shippingCost?: number
 }
 
 interface ConfirmOrderViewProps {
@@ -72,6 +75,10 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const [shippingAddress, setShippingAddress] = useState<AddressItem | null>(
     null
   )
+  const [shippingCostFromApi, setShippingCostFromApi] = useState<number | null>(
+    null
+  )
+  const [isLoadingFreight, setIsLoadingFreight] = useState(false)
 
   // 使用 hook 获取物流渠道数据
   const { channels: shippingMethodOptions, isLoading: isLoadingChannels } =
@@ -109,16 +116,18 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     }
 
     try {
-      const returnUrl =
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`
-          : undefined
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const returnUrl = origin
+        ? `${origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`
+        : undefined
+      const returnFailUrl = origin ? `${origin}/order/payment-fail` : undefined
 
       const response = await buyProduct({
         customerId: String(customerId),
         customChannelId: selectedShippingMethod,
         // 支付完成后回调地址（带 session_id 占位符，支付平台会替换为真实 ID）
         ...(returnUrl ? { returnUrl } : {}),
+        ...(returnFailUrl ? { returnFailUrl } : {}),
         // 地址信息映射
         firstName: shippingAddress.hzkj_customer_first_name ?? '',
         lastName: shippingAddress.hzkj_customer_last_name ?? '',
@@ -179,13 +188,57 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     void fetchAddress()
   }, [])
 
-  const totalAmount = orderData.discountedTotalPrice || orderData.totalPrice
+  // 选中物流方式后调用 calcuFreight 获取运费，更新 Total
+  useEffect(() => {
+    if (!selectedShippingMethod || !shippingAddress || !orderData.productId) {
+      setShippingCostFromApi(null)
+      return
+    }
+    const destinationId =
+      String(shippingAddress.hzkj_admindivision2_id ?? '').trim() ||
+      String(shippingAddress.hzkj_country2_id ?? '').trim()
+    if (!destinationId) {
+      setShippingCostFromApi(null)
+      return
+    }
+    const fetchFreight = async () => {
+      setIsLoadingFreight(true)
+      setShippingCostFromApi(null)
+      try {
+        const options = await calcuFreight({
+          spuId: orderData.productId,
+          destinationId,
+        })
+        const matched = options.find(
+          (opt) => opt.logsId === selectedShippingMethod
+        )
+        if (matched != null && typeof matched.freight === 'number') {
+          setShippingCostFromApi(matched.freight)
+        } else {
+          setShippingCostFromApi(0)
+        }
+      } catch (error) {
+        console.error('Failed to calculate freight:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to calculate freight.'
+        )
+        setShippingCostFromApi(null)
+      } finally {
+        setIsLoadingFreight(false)
+      }
+    }
+    void fetchFreight()
+  }, [selectedShippingMethod, shippingAddress, orderData.productId])
+
   // 计算产品总价（所有商品费用之和）
   const productTotal = orderData.items.reduce((sum, item) => sum + item.fee, 0)
-  // 运费（可以根据选择的配送方式计算，这里先设为0）
-  const shippingCost = 0
-  // 最终总价
+  // 运费：选中物流方式后优先使用 calcuFreight 接口返回，否则用 Recap 传入的
+  const shippingCost = shippingCostFromApi ?? orderData.shippingCost ?? 0
+  // 最终总价 = 商品价格 + 运费
   const finalTotal = productTotal + shippingCost
+  const totalAmount = finalTotal
 
   return (
     <div className='container mx-auto px-4 py-6'>
@@ -210,7 +263,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       <div className='space-y-6'>
         <div className='rounded-lg border p-6'>
           <h3 className='mb-4 text-lg font-semibold'>Delivery information</h3>
-          {!shippingAddress?.hzkj_textfield ? (
+          {!shippingAddress?.hzkj_address2 ? (
             <div className='flex flex-col items-center justify-center py-8'>
               <p className='text-muted-foreground mb-4 text-sm'>No address</p>
               <Button
@@ -225,7 +278,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
               <div className='text-sm'>
                 <span className='font-medium'>Shipping Address:</span>{' '}
                 <span className='text-muted-foreground'>
-                  {shippingAddress?.hzkj_textfield || 'No address available'}
+                  {shippingAddress?.hzkj_address2 || 'No address available'}
                 </span>
               </div>
             </div>
@@ -335,8 +388,19 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                     <TableCell>${item.discountedPrice.toFixed(2)}</TableCell>
                     <TableCell>{item.weight}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
-                    <TableCell className='font-medium'>
-                      Total: ${item.fee.toFixed(2)}
+                    <TableCell
+                      className='cursor-pointer font-medium hover:underline'
+                      onClick={() => setIsDetailDialogOpen(true)}
+                    >
+                      Total: $
+                      {isLoadingFreight
+                        ? '...'
+                        : (
+                            item.fee +
+                            (orderData.items.length > 0
+                              ? shippingCost / orderData.items.length
+                              : 0)
+                          ).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -351,7 +415,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             <div className='flex items-center gap-2'>
               <span className='text-sm font-semibold'>Total Amounts:</span>
               <span className='text-lg font-bold text-orange-600'>
-                ${totalAmount.toFixed(2)}
+                ${isLoadingFreight ? '...' : totalAmount.toFixed(2)}
               </span>
               <Button
                 variant='ghost'
@@ -366,6 +430,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
               onClick={handlePay}
               className='bg-orange-600 px-8 text-white hover:bg-orange-700'
               size='lg'
+              disabled={isLoadingFreight}
             >
               Pay
             </Button>
@@ -386,7 +451,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             </div>
             <div className='flex items-center justify-between text-sm'>
               <span className='text-muted-foreground'>Shipping Cost:</span>
-              <span className='font-medium'>${shippingCost.toFixed(2)}</span>
+              <span className='font-medium'>
+                ${isLoadingFreight ? '...' : shippingCost.toFixed(2)}
+              </span>
             </div>
             <Separator />
             <div className='flex items-center justify-between text-base font-semibold'>
