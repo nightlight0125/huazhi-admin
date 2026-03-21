@@ -31,16 +31,6 @@ export function OrdersTableFooter({
     }
   }
 
-  const handleAllSelect = (checked: boolean) => {
-    // Select all rows across all pages
-    if (checked) {
-      table.toggleAllPageRowsSelected(true)
-      // TODO: Implement select all across pages
-    } else {
-      table.toggleAllPageRowsSelected(false)
-    }
-  }
-
   return (
     <div className='border-border bg-card flex items-center justify-between border-t px-4 py-3'>
       {/* Left: Selection checkboxes and count */}
@@ -63,7 +53,7 @@ export function OrdersTableFooter({
             Page
           </label>
         </div>
-        <div className='flex items-center gap-2'>
+        {/* <div className='flex items-center gap-2'>
           <Checkbox
             id='all-select'
             checked={false}
@@ -75,17 +65,20 @@ export function OrdersTableFooter({
           >
             All Orders
           </label>
-        </div>
+        </div> */}
         <div className='text-sm'>
           Selected:{' '}
-          <span className='font-semibold text-orange-500 dark:text-orange-400'>{selectedCount}</span>
+          <span className='font-semibold text-orange-500 dark:text-orange-400'>
+            {selectedCount}
+          </span>
         </div>
       </div>
 
       {/* Center: Pagination */}
       <div className='flex items-center gap-4'>
-        <div className='text-sm text-muted-foreground'>
-          Showing {totalRows === 0 ? 0 : paginationState.pageIndex * pageSize + 1} to{' '}
+        <div className='text-muted-foreground text-sm'>
+          Showing{' '}
+          {totalRows === 0 ? 0 : paginationState.pageIndex * pageSize + 1} to{' '}
           {Math.min((paginationState.pageIndex + 1) * pageSize, totalRows)} of{' '}
           {totalRows} orders
         </div>

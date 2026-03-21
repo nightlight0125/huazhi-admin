@@ -13,6 +13,11 @@ import {
 import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { DataTableToolbar } from '@/components/data-table'
 import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
@@ -53,16 +58,19 @@ const tabs = [
     value: 'products' as TabType,
     label: 'Products',
     icon: Package,
+    tip: 'The package will be used for each connected product and as many units as there are SKU.',
   },
   {
     value: 'order' as TabType,
     label: 'Order',
     icon: Store,
+    tip: 'The package will be used for the order. All orders includes this SKU will be packaged with the package( one piece only).',
   },
   {
     value: 'stores' as TabType,
     label: 'Store',
     icon: Package,
+    tip: 'The package will be used for the store. All orders from this store will be packaged with the package( one piece only).',
   },
 ]
 
@@ -300,7 +308,7 @@ export function PackagingConnection() {
       try {
         const response = await getUserShopList({
           hzkjAccountId: userId,
-          queryParam: 'w',
+          queryParam: '',
           pageNo: 0,
           pageSize: 100, // 获取足够多的店铺
         })
@@ -555,7 +563,14 @@ export function PackagingConnection() {
                     value={tab.value}
                     className='data-[state=active]:text-primary flex h-8 items-center gap-2 px-3 py-1.5 text-sm'
                   >
-                    {tab.label}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className='inline-flex items-center'>{tab.label}</span>
+                      </TooltipTrigger>
+                      <TooltipContent side='bottom' className='max-w-xs'>
+                        <p>{tab.tip}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </TabsTrigger>
                 )
               })}

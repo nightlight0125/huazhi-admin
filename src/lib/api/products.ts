@@ -521,6 +521,42 @@ export async function addCuOdPdPackageAPI(
   return response.data
 }
 
+// 绑定店铺包装：addCuShopPackage
+export interface AddCuShopPackageItem {
+  hzkj_shop_id: string
+  hzkj_shop_pk_entry: Array<{ hzkj_shop_package_id: string }>
+}
+
+export interface AddCuShopPackageRequest {
+  data: AddCuShopPackageItem[]
+}
+
+export interface AddCuShopPackageResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+export async function addCuShopPackage(
+  params: AddCuShopPackageRequest
+): Promise<AddCuShopPackageResponse> {
+  const response = await apiClient.post<AddCuShopPackageResponse>(
+    '/v2/hzkj/hzkj_customer/hzkj_shop_package_bind/addCuShopPackage',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to apply packaging. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
 // 获取产品详情请求参数
 export interface GetProductRequest {
   productId: string
@@ -1076,6 +1112,8 @@ export interface BuyProductRequest {
   customChannelId: string
   // 支付完成后返回的地址（回调 URL）
   returnUrl?: string
+  // 支付失败/取消后返回的地址
+  returnFailUrl?: string
   // 收货地址相关信息
   firstName: string
   lastName: string

@@ -32,19 +32,8 @@ export function SampleOrdersTableFooter({
     }
   }
 
-  const handleAllSelect = (checked: boolean) => {
-    // Select all rows across all pages
-    if (checked) {
-      table.toggleAllPageRowsSelected(true)
-      // TODO: Implement select all across pages
-    } else {
-      table.toggleAllPageRowsSelected(false)
-    }
-  }
-
-
   return (
-    <div className='flex items-center justify-between border-t border-border bg-background px-4 py-3'>
+    <div className='border-border bg-background flex items-center justify-between border-t px-4 py-3'>
       {/* Left: Selection checkboxes and count */}
       <div className='flex items-center gap-4'>
         <div className='flex items-center gap-2'>
@@ -65,7 +54,7 @@ export function SampleOrdersTableFooter({
             Page
           </label>
         </div>
-        <div className='flex items-center gap-2'>
+        {/* <div className='flex items-center gap-2'>
           <Checkbox
             id='all-select'
             checked={false}
@@ -77,7 +66,7 @@ export function SampleOrdersTableFooter({
           >
             All Orders
           </label>
-        </div>
+        </div> */}
         <div className='text-sm'>
           Selected:{' '}
           <span className='font-semibold text-orange-500'>{selectedCount}</span>
@@ -86,52 +75,52 @@ export function SampleOrdersTableFooter({
 
       {/* Center: Pagination and row count */}
       <div className='flex items-center gap-4'>
-        <div className='text-sm text-muted-foreground'>
-          Showing {totalRows === 0 ? 0 : paginationState.pageIndex * pageSize + 1} to{' '}
+        <div className='text-muted-foreground text-sm'>
+          Showing{' '}
+          {totalRows === 0 ? 0 : paginationState.pageIndex * pageSize + 1} to{' '}
           {Math.min((paginationState.pageIndex + 1) * pageSize, totalRows)} of{' '}
           {totalRows} orders
         </div>
-      <div className='flex items-center gap-2'>
-        <Button
-          variant='outline'
-          size='icon'
-          className='h-8 w-8'
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          <ChevronLeft className='h-4 w-4' />
-        </Button>
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='outline'
+            size='icon'
+            className='h-8 w-8'
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronLeft className='h-4 w-4' />
+          </Button>
 
-        {/* Page number buttons */}
-        {pageNumbers.map((pageNumber, index) => (
-          <div key={`${pageNumber}-${index}`} className='flex items-center'>
-            {pageNumber === '...' ? (
-              <span className='text-muted-foreground px-2 text-sm'>...</span>
-            ) : (
-              <Button
-                variant={currentPage === pageNumber ? 'default' : 'outline'}
-                size='sm'
-                className='h-8 min-w-8 px-2'
-                onClick={() => table.setPageIndex((pageNumber as number) - 1)}
-              >
-                {pageNumber}
-              </Button>
-            )}
-          </div>
-        ))}
+          {/* Page number buttons */}
+          {pageNumbers.map((pageNumber, index) => (
+            <div key={`${pageNumber}-${index}`} className='flex items-center'>
+              {pageNumber === '...' ? (
+                <span className='text-muted-foreground px-2 text-sm'>...</span>
+              ) : (
+                <Button
+                  variant={currentPage === pageNumber ? 'default' : 'outline'}
+                  size='sm'
+                  className='h-8 min-w-8 px-2'
+                  onClick={() => table.setPageIndex((pageNumber as number) - 1)}
+                >
+                  {pageNumber}
+                </Button>
+              )}
+            </div>
+          ))}
 
-        <Button
-          variant='outline'
-          size='icon'
-          className='h-8 w-8'
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          <ChevronRight className='h-4 w-4' />
-        </Button>
+          <Button
+            variant='outline'
+            size='icon'
+            className='h-8 w-8'
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronRight className='h-4 w-4' />
+          </Button>
+        </div>
       </div>
-      </div>
-
     </div>
   )
 }

@@ -88,7 +88,8 @@ export function SelectStoreProductDialog({
           pageSize,
         }
         if (appliedSkuId.trim()) params.skuId = appliedSkuId.trim()
-        if (appliedProductName.trim()) params.productName = appliedProductName.trim()
+        if (appliedProductName.trim())
+          params.productName = appliedProductName.trim()
         const res = await queryStoreSKUList(params)
         const data = res.data as Record<string, unknown> | undefined
         let rows: Record<string, unknown>[] = []
@@ -170,7 +171,6 @@ export function SelectStoreProductDialog({
           </div>
         </DialogHeader>
 
-        {/* Search and Filter Section */}
         <div className='flex items-end gap-4 border-b pb-4'>
           <div className='flex-1 space-y-2'>
             <Label htmlFor='sku-id'>SKU ID</Label>
@@ -270,7 +270,7 @@ export function SelectStoreProductDialog({
                       {item.picture ? (
                         <img
                           src={resolvePictureUrl(item.picture)}
-                          alt={String(item.skuEName ?? '')}
+                          alt={String(item.skuCName ?? '')}
                           className='h-full w-full object-contain'
                           referrerPolicy='no-referrer'
                           onError={(e) => {
@@ -289,7 +289,7 @@ export function SelectStoreProductDialog({
                       )}
                     </div>
                     <div className='line-clamp-2 max-h-[2.5rem] overflow-hidden text-xs leading-tight font-medium text-gray-900'>
-                      {String(item.skuEName ?? '')}
+                      {String(item.skuCName ?? '')}
                     </div>
                     <div className='font-mono text-[14px] text-gray-600'>
                       {String(item.skuNumber ?? '')}

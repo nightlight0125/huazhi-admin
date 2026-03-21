@@ -1,4 +1,9 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type HotSellingProduct } from '../data/schema'
@@ -36,10 +41,7 @@ export const createHotSellingProductsColumns =
       enableHiding: true,
       enableSorting: false,
       filterFn: (_row, _id, value) => {
-        // 如果未选择任何值，显示所有数据
         if (!value || value.length === 0) return true
-        // TODO: 根据实际数据中的 store 字段进行筛选
-        // 目前返回 true 表示所有产品都匹配
         return true
       },
     },
@@ -57,9 +59,21 @@ export const createHotSellingProductsColumns =
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='Product Name' />
       ),
-      cell: ({ row }) => (
-        <div className='text-sm'>{row.getValue('productName')}</div>
-      ),
+      cell: ({ row }) => {
+        const productName = String(row.getValue('productName') || '')
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='max-w-[180px] truncate cursor-default text-sm'>
+                {productName}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side='top' className='max-w-sm break-words'>
+              {productName}
+            </TooltipContent>
+          </Tooltip>
+        )
+      },
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const productName = String(row.getValue(id)).toLowerCase()

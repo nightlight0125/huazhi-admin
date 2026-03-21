@@ -16,27 +16,27 @@ export const sampleOrderStatuses = [
   },
   {
     label: 'Pending',
-    value: 'pending' as const,
+    value: '1',
     icon: DollarSign,
   },
   {
     label: 'Paid',
-    value: 'paid' as const,
+    value: '2',
     icon: CheckCircle,
   },
   {
     label: 'Processing',
-    value: 'processing' as const,
+    value: '3',
     icon: ShoppingCart,
   },
   {
     label: 'Shipped',
-    value: 'shipped' as const,
+    value: '4',
     icon: Truck,
   },
   {
     label: 'Cancelled',
-    value: 'cancelled' as const,
+    value: '0',
     icon: XCircle,
   },
 ]

@@ -560,7 +560,6 @@ export function ProductDetails() {
   }
 
   const handleBuyStockButtonClick = () => {
-    // 检查是否所有规格都已选择
     if (!areAllSpecsSelected()) {
       toast.error('Please select attribute values')
       return
@@ -630,9 +629,12 @@ export function ProductDetails() {
     }
   }
 
-  // 处理确认订单回调
+  // 处理确认订单回调（携带 Recap 中的运费）
   const handleConfirmOrder = (payload: ConfirmOrderPayload) => {
-    setConfirmOrderPayload(payload)
+    const shippingCost = selectedShippingMethodData?.cost
+      ? parseFloat(selectedShippingMethodData.cost.replace(/[$,]/g, '')) || 0
+      : 0
+    setConfirmOrderPayload({ ...payload, shippingCost })
     setIsPurchaseDialogOpen(false)
     setViewMode('confirm')
   }
@@ -974,7 +976,6 @@ export function ProductDetails() {
       toast.error('Product data is not available')
       return
     }
-
 
     setIsPublishDialogOpen(false)
     setIsStoreListingOpen(true)

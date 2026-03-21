@@ -41,6 +41,10 @@ export const storeSkuSchema = z.object({
   hzkj_shop_package_number: z.string().optional(),
   hzkj_local_sku_hzkj_picturefield: z.string().optional(),
   hzkj_pk_shop_name: z.string().optional(),
+  // 店铺 ID（Products/Order 用 hzkj_od_pd_shop_id，Store 用 hzkj_pk_shop_id）
+  hzkj_od_pd_shop_id: z.string().optional(),
+  hzkj_pk_shop_id: z.string().optional(),
+  hzkj_shop_id: z.string().optional(),
 })
 
 export type PackagingProduct = z.infer<typeof packagingProductSchema>

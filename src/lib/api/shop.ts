@@ -162,13 +162,6 @@ export async function shopifyOAuth(
   return url
 }
 
-// Shopify 回调请求参数
-export interface ShopifyCallbackRequest {
-  code: string
-  shop: string
-  state: string
-}
-
 // Shopify 回调响应
 export interface ShopifyCallbackResponse {
   data?: unknown
@@ -178,24 +171,19 @@ export interface ShopifyCallbackResponse {
   [key: string]: unknown
 }
 
-// 处理 Shopify OAuth 回调
+/**
+ * 处理 Shopify OAuth 回调
+ * @param queryString - URL 中 ? 后面的完整 query 字符串，例如 ?code=xxx&hmac=xxx&host=xxx&shop=xxx&state=xxx&timestamp=xxx
+ *                      后端自行解析、校验（如 hmac）
+ */
 export async function shopifyCallback(
-  code: string,
-  shop: string,
-  state: string
+  queryString: string
 ): Promise<ShopifyCallbackResponse> {
+  const search = queryString.startsWith('?') ? queryString : `?${queryString}`
   const response = await apiClient.get<ShopifyCallbackResponse>(
-    '/v2/hzkj/hzkj_thirdparty/shop/callback',
-    {
-      params: {
-        code,
-        shop,
-        state,
-      },
-    }
+    `/v2/hzkj/hzkj_thirdparty/shop/callback${search}`
   )
 
-  // 检查响应状态
   if (!response.data.status) {
     const errorMessage =
       response.data.message || 'Failed to complete OAuth. Please try again.'

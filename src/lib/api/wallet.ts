@@ -96,12 +96,85 @@ export async function getWalletList(
   const rows = response.data.data?.rows || []
   const totalCount = response.data.data?.totalCount || 0
 
-  // 从rows中提取hzkj_fund_record数组中的数据
   const fundRecords: ApiFundRecordItem[] = []
   if (Array.isArray(rows)) {
     rows.forEach((row) => {
       if (Array.isArray(row.hzkj_fund_record)) {
         fundRecords.push(...row.hzkj_fund_record)
+      }
+    })
+  }
+
+  return {
+    rows: fundRecords,
+    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+  }
+}
+
+// 获取资金记录请求参数（getFundRecord 接口）
+export interface GetFundRecordRequest {
+  hzkj_customer: string
+  hzkj_datetimefield_start?: string
+  hzkj_datetimefield_end?: string
+  pageNo: number
+  pageSize: number
+}
+
+// 获取资金记录响应
+export interface GetFundRecordResponse {
+  data?: {
+    rows?: ApiFundRecordItem[] | ApiWalletItem[]
+    totalCount?: number
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 获取资金记录 API（GET /v2/hzkj/hzkj_customer/wallet/getFundRecord）
+export async function getFundRecord(
+  customerId: string,
+  pageNo: number = 1,
+  pageSize: number = 10,
+  hzkj_datetimefield_start?: string,
+  hzkj_datetimefield_end?: string
+): Promise<{ rows: ApiFundRecordItem[]; totalCount: number }> {
+  const params: GetFundRecordRequest = {
+    hzkj_customer: customerId,
+    pageNo,
+    pageSize,
+  }
+  if (hzkj_datetimefield_start) {
+    params.hzkj_datetimefield_start = hzkj_datetimefield_start
+  }
+  if (hzkj_datetimefield_end) {
+    params.hzkj_datetimefield_end = hzkj_datetimefield_end
+  }
+
+  const response = await apiClient.post<GetFundRecordResponse>(
+    '/v2/hzkj/hzkj_customer/wallet/getFundRecord',
+    { params }
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to get fund records. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const rows = response.data.data?.rows ?? []
+  const totalCount = response.data.data?.totalCount ?? 0
+
+  const fundRecords: ApiFundRecordItem[] = []
+  if (Array.isArray(rows)) {
+    rows.forEach((row: ApiWalletItem | ApiFundRecordItem) => {
+      if (Array.isArray((row as ApiWalletItem).hzkj_fund_record)) {
+        fundRecords.push(...(row as ApiWalletItem).hzkj_fund_record!)
+      } else if ((row as ApiFundRecordItem).hzkj_datetimefield != null) {
+        fundRecords.push(row as ApiFundRecordItem)
       }
     })
   }
@@ -193,6 +266,8 @@ export interface RequestWalletPaymentRequest {
   currencyNumber: string
   // 支付完成后返回的地址（回调 URL，可选）
   returnUrl?: string
+  // 支付失败/取消后返回的地址
+  returnFailUrl?: string
 }
 
 // 请求支付接口响应
@@ -212,9 +287,18 @@ export async function requestWalletPayment(
   // 支付服务商会将 {CHECKOUT_SESSION_ID} 替换为真实的会话 ID，并重定向回该地址
   const payload: RequestWalletPaymentRequest = {
     ...request,
-    ...(typeof window !== 'undefined' && !request.returnUrl
+    ...(typeof window !== 'undefined'
       ? {
-          returnUrl: `${window.location.origin}/wallet/paymentcallback?session_id={CHECKOUT_SESSION_ID}`,
+          ...(!request.returnUrl
+            ? {
+                returnUrl: `${window.location.origin}/wallet/paymentcallback?session_id={CHECKOUT_SESSION_ID}`,
+              }
+            : {}),
+          ...(!request.returnFailUrl
+            ? {
+                returnFailUrl: `${window.location.origin}/wallet/payment-fail`,
+              }
+            : {}),
         }
       : {}),
   }
