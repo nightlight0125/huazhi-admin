@@ -190,13 +190,15 @@ export const createOrdersColumns = (options?: {
       header: 'Store/No.',
       cell: ({ row }) => {
         const order = row.original
-        const billno =
-          (order as any).billno ||
-          order.platformOrderNumber ||
-          order.orderNumber
+        const sourceNo = toDisplayString((order as any).hzkj_source_number)
+        const billNo =
+          toDisplayString((order as any).billno) ||
+          toDisplayString(order.platformOrderNumber) ||
+          toDisplayString(order.orderNumber)
         return (
           <div className='space-y-1 text-sm'>
-            <div>{billno || '---'}</div>
+            <div>{sourceNo || '---'}</div>
+            <div className='text-muted-foreground'>{billNo || '---'}</div>
           </div>
         )
       },
@@ -304,9 +306,26 @@ export const createOrdersColumns = (options?: {
       header: 'Platform/Status',
       cell: ({ row }) => {
         const order = row.original
+        const orderStatus = (order as any).hzkj_orderstatus
+        const orderStatusMap: Record<string, string> = {
+          '': '',
+          no: 'Unconnected',
+          '1': 'Awaiting Payment',
+          '2': 'Paid',
+          '3': 'Processing',
+          '4': 'Shipped',
+          '0': 'Cancelled',
+        }
+        const mappedOrderStatus =
+          orderStatus != null && orderStatusMap[String(orderStatus)]
+            ? orderStatusMap[String(orderStatus)]
+            : toDisplayString(orderStatus)
         return (
           <div className='space-y-1 text-sm'>
             <div>{toDisplayString(order.hzkj_fulfillment_status) || '---'}</div>
+            <div className='text-muted-foreground'>
+              {mappedOrderStatus || '---'}
+            </div>
           </div>
         )
       },

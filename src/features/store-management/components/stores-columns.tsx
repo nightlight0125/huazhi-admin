@@ -1,13 +1,6 @@
-import { useState } from 'react'
-import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { Loader2, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { unbindShop } from '@/lib/api/shop'
+import { type ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type Store } from '../data/schema'
 
@@ -17,7 +10,7 @@ type StoresColumnsOptions = {
 }
 
 export const createStoresColumns = (
-  options?: StoresColumnsOptions
+  _options?: StoresColumnsOptions
 ): ColumnDef<Store>[] => [
   {
     id: 'select',
@@ -128,109 +121,109 @@ export const createStoresColumns = (
       )
     },
   },
-  {
-    id: 'actions',
-    size: 120,
-    header: () => <span className='sr-only'>Actions</span>,
-    cell: ({ row }) => (
-      <StoreDeleteCell row={row} onUnbindSuccess={options?.onUnbindSuccess} />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+  // {
+  //   id: 'actions',
+  //   size: 120,
+  //   header: () => <span className='sr-only'>Actions</span>,
+  //   cell: ({ row }) => (
+  //     <StoreDeleteCell row={row} onUnbindSuccess={options?.onUnbindSuccess} />
+  //   ),
+  //   enableSorting: false,
+  //   enableHiding: false,
+  // },
 ]
 
 // 单行删除弹框
-interface StoreDeleteCellProps {
-  row: Row<Store>
-  onUnbindSuccess?: () => void
-}
+// interface StoreDeleteCellProps {
+//   row: Row<Store>
+//   onUnbindSuccess?: () => void
+// }
 
-function StoreDeleteCell({ row, onUnbindSuccess }: StoreDeleteCellProps) {
-  const [open, setOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const store = row.original
-  const user = useAuthStore((state) => state.auth.user)
+// function StoreDeleteCell({ row, onUnbindSuccess }: StoreDeleteCellProps) {
+//   const [open, setOpen] = useState(false)
+//   const [isLoading, setIsLoading] = useState(false)
+//   const store = row.original
+//   const user = useAuthStore((state) => state.auth.user)
 
-  const handleConfirmUnbind = async () => {
-    if (!user?.id || !store.id) {
-      toast.error('Missing user ID or store ID')
-      return
-    }
+//   const handleConfirmUnbind = async () => {
+//     if (!user?.id || !store.id) {
+//       toast.error('Missing user ID or store ID')
+//       return
+//     }
 
-    setIsLoading(true)
-    try {
-      await unbindShop({
-        accountId: user.id,
-        shopId: store.id,
-        flag: 0, // 0 表示解绑 1 表示绑定
-      })
+//     setIsLoading(true)
+//     try {
+//       await unbindShop({
+//         accountId: user.id,
+//         shopId: store.id,
+//         flag: 0, // 0 表示解绑 1 表示绑定
+//       })
 
-      toast.success('Store unbound successfully')
-      setOpen(false)
-      // 触发刷新列表
-      onUnbindSuccess?.()
-    } catch (error) {
-      console.error('Failed to unbind store:', error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to unbind store. Please try again.'
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }
+//       toast.success('Store unbound successfully')
+//       setOpen(false)
+//       // 触发刷新列表
+//       onUnbindSuccess?.()
+//     } catch (error) {
+//       console.error('Failed to unbind store:', error)
+//       toast.error(
+//         error instanceof Error
+//           ? error.message
+//           : 'Failed to unbind store. Please try again.'
+//       )
+//     } finally {
+//       setIsLoading(false)
+//     }
+//   }
 
-  return (
-    <>
-      <Button
-        variant='outline'
-        size='sm'
-        className='h-7 border-gray-200 px-2 text-xs text-gray-500'
-        onClick={(e) => {
-          e.stopPropagation()
-          setOpen(true)
-        }}
-        disabled={isLoading}
-      >
-        <Trash2 className='mr-1 h-3.5 w-3.5' />
-      </Button>
+//   return (
+//     <>
+//       <Button
+//         variant='outline'
+//         size='sm'
+//         className='h-7 border-gray-200 px-2 text-xs text-gray-500'
+//         onClick={(e) => {
+//           e.stopPropagation()
+//           setOpen(true)
+//         }}
+//         disabled={isLoading}
+//       >
+//         <Trash2 className='mr-1 h-3.5 w-3.5' />
+//       </Button>
 
-      <ConfirmDialog
-        open={open}
-        onOpenChange={(newOpen) => {
-          if (!isLoading) {
-            setOpen(newOpen)
-          }
-        }}
-        handleConfirm={handleConfirmUnbind}
-        destructive
-        isLoading={isLoading}
-        title={<span className='text-destructive'>Unbind Store</span>}
-        desc={
-          <>
-            <p className='mb-2'>
-              Are you sure you want to unbind this store?
-              <br />
-              This action cannot be undone.
-            </p>
-            <p className='text-muted-foreground text-sm'>
-              Store: <strong>{store.name || store.id}</strong>
-            </p>
-          </>
-        }
-        confirmText={
-          isLoading ? (
-            <>
-              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-              Unbinding...
-            </>
-          ) : (
-            'Unbind'
-          )
-        }
-      />
-    </>
-  )
-}
+//       <ConfirmDialog
+//         open={open}
+//         onOpenChange={(newOpen) => {
+//           if (!isLoading) {
+//             setOpen(newOpen)
+//           }
+//         }}
+//         handleConfirm={handleConfirmUnbind}
+//         destructive
+//         isLoading={isLoading}
+//         title={<span className='text-destructive'>Unbind Store</span>}
+//         desc={
+//           <>
+//             <p className='mb-2'>
+//               Are you sure you want to unbind this store?
+//               <br />
+//               This action cannot be undone.
+//             </p>
+//             <p className='text-muted-foreground text-sm'>
+//               Store: <strong>{store.name || store.id}</strong>
+//             </p>
+//           </>
+//         }
+//         confirmText={
+//           isLoading ? (
+//             <>
+//               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+//               Unbinding...
+//             </>
+//           ) : (
+//             'Unbind'
+//           )
+//         }
+//       />
+//     </>
+//   )
+// }

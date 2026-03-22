@@ -46,6 +46,7 @@ type DataTableProps = {
 
 export function StockOrdersTable({ data: _data }: DataTableProps) {
   const { auth } = useAuthStore()
+  const navigate = route.useNavigate()
   const [data, setData] = useState<StockOrder[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
@@ -71,7 +72,7 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     ensurePageInRange,
   } = useTableUrlState({
     search: route.useSearch(),
-    navigate: route.useNavigate(),
+    navigate: navigate as any,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
@@ -223,6 +224,13 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
+  const handleBuyStock = (orderId?: string) => {
+    void navigate({
+      to: '/stock-orders/buy-stock',
+      search: { orderId: orderId || undefined },
+    })
+  }
+
   const columns = useMemo(
     () =>
       createStockOrdersColumns({
@@ -231,7 +239,7 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    [auth.user?.customerId, handleDelete]
+    [auth.user?.customerId, handleDelete, navigate]
   )
 
   const table = useReactTable({
@@ -279,7 +287,15 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
         table={table}
         searchPlaceholder='Enter Order Number,SKU,Product Name'
       />
-      <div className='mb-2 flex items-center justify-end'>
+      <div className='mb-2 flex items-center justify-end gap-2'>
+        <Button
+          variant='outline'
+          onClick={() => {
+            handleBuyStock()
+          }}
+        >
+          Buy stock
+        </Button>
         <StockOrdersActionsMenu table={table} />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>

@@ -123,8 +123,8 @@ export interface GetFundRecordRequest {
 // 获取资金记录响应
 export interface GetFundRecordResponse {
   data?: {
-    rows?: ApiFundRecordItem[] | ApiWalletItem[]
-    totalCount?: number
+    items?: ApiFundRecordItem[] | ApiWalletItem[]
+    total?: number
     [key: string]: unknown
   }
   errorCode?: string
@@ -155,7 +155,7 @@ export async function getFundRecord(
 
   const response = await apiClient.post<GetFundRecordResponse>(
     '/v2/hzkj/hzkj_customer/wallet/getFundRecord',
-    { params }
+    params
   )
 
   if (response.data.status === false) {
@@ -165,12 +165,13 @@ export async function getFundRecord(
     throw new Error(errorMessage)
   }
 
-  const rows = response.data.data?.rows ?? []
-  const totalCount = response.data.data?.totalCount ?? 0
+  const data = response.data.data
+  const rawItems = Array.isArray(data?.items) ? data.items : []
+  const totalCount = typeof data?.total === 'number' ? data.total : 0
 
   const fundRecords: ApiFundRecordItem[] = []
-  if (Array.isArray(rows)) {
-    rows.forEach((row: ApiWalletItem | ApiFundRecordItem) => {
+  if (Array.isArray(rawItems)) {
+    rawItems.forEach((row: ApiWalletItem | ApiFundRecordItem) => {
       if (Array.isArray((row as ApiWalletItem).hzkj_fund_record)) {
         fundRecords.push(...(row as ApiWalletItem).hzkj_fund_record!)
       } else if ((row as ApiFundRecordItem).hzkj_datetimefield != null) {

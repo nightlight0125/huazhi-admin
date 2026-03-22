@@ -781,9 +781,10 @@ export async function queryPushProductsList(
   }
 }
 
-// 删除推送产品请求参数
+// 删除推送产品请求参数（支持批量）
 export interface DeletePushProductRequest {
-  productId: string
+  pushProductIds: string[]
+  customerId: string
 }
 
 // 删除推送产品响应
@@ -1191,6 +1192,62 @@ export async function saveCustomization(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to save customization. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 查询我的包装列表请求参数
+export interface GetCustomizationListRequest {
+  pageSize: number
+  pageNo: number
+  customerId: string
+  brandName?: string
+  size?: string
+  type?: string
+}
+
+// 我的包装项（直接使用后端字段，不做映射）
+export interface CustomizationListItem {
+  name?: string
+  oldNumber?: string
+  newNumber?: string
+  size?: string
+  type?: string
+  picture?: string
+  remark?: string
+  [key: string]: unknown
+}
+
+// 查询我的包装列表响应
+export interface GetCustomizationListResponse {
+  data?: {
+    pageNo?: number
+    pageSize?: number
+    totalCount?: number
+    list?: CustomizationListItem[]
+    [key: string]: unknown
+  }
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 查询我的包装列表 API
+export async function getCustomizationList(
+  params: GetCustomizationListRequest
+): Promise<GetCustomizationListResponse> {
+  const response = await apiClient.post<GetCustomizationListResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getCustomizationList',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to query customization list. Please try again.'
     throw new Error(errorMessage)
   }
 

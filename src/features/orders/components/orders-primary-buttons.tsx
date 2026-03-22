@@ -275,7 +275,7 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
           return
         }
         const order = selectedRows[0].original
-        setSelectedOrderId(order.id)
+        setSelectedOrderId(order.billno || '')
         setRmaDialogOpen(true)
         break
       case 'use_stock':
@@ -403,19 +403,20 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
       >
         <div className='mt-4 space-y-4'>
           <div className='grid grid-cols-2 gap-6'>
-            <div className='space-y-2'>
+            <div className='space-y-2 min-w-0'>
               <Label htmlFor='rma-order-no'>Order No</Label>
               <Input id='rma-order-no' value={selectedOrderId} disabled />
             </div>
-            <div className='space-y-2'>
+            <div className='space-y-2 min-w-0'>
               <Label htmlFor='rma-question-type'>Question type</Label>
               <Select
                 value={selectedReasonId}
                 onValueChange={setSelectedReasonId}
                 disabled={isLoadingReasons || isCreatingRMA}
               >
-                <SelectTrigger id='rma-question-type'>
+                <SelectTrigger id='rma-question-type' className='w-full min-w-0'>
                   <SelectValue
+                    className='block max-w-full truncate'
                     placeholder={
                       isLoadingReasons ? 'Loading...' : 'Please select'
                     }
@@ -435,8 +436,10 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
                     const value = item.id ?? String((item as any).id || label)
 
                     return (
-                      <SelectItem key={value} value={value}>
-                        {label}
+                      <SelectItem key={value} value={value} className='max-w-80'>
+                        <span className='block truncate' title={label}>
+                          {label}
+                        </span>
                       </SelectItem>
                     )
                   })}

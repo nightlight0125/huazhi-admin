@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { type Row } from '@tanstack/react-table'
 import { AlertTriangle, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import { deletePushProduct } from '@/lib/api/products'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -17,6 +18,7 @@ export function PublishedProductsRowActions({
   onDeleteSuccess,
 }: PublishedProductsRowActionsProps) {
   const product = row.original
+  const { auth } = useAuthStore()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -30,11 +32,17 @@ export function PublishedProductsRowActions({
       toast.error('Product ID is required')
       return
     }
+    const customerId = auth.user?.customerId || auth.user?.id
+    if (!customerId) {
+      toast.error('Customer ID is required')
+      return
+    }
 
     setIsDeleting(true)
     try {
       await deletePushProduct({
-        productId: product.id,
+        pushProductIds: [product.id],
+        customerId: String(customerId),
       })
 
       toast.success('Product deleted successfully')

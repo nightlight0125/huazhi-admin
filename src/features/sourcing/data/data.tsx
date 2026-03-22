@@ -1,10 +1,10 @@
 export const sourcingStatuses = [
   {
     value: '0',
-    label: 'accepted',
+    label: 'not accepted',
   },
   {
     value: '1',
-    label: 'not accepted',
+    label: 'accepted',
   },
 ] as const

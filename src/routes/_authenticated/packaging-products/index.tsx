@@ -6,7 +6,7 @@ export const Route = createFileRoute('/_authenticated/packaging-products/')({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       page: Number(search.page) || 1,
-      pageSize: Number(search.pageSize) || 18,
+      pageSize: Number(search.pageSize) || 10,
       filter: (search.filter as string) || '',
       tab: (search.tab === 'my-packaging' ? 'my-packaging' : 'packaging-products') as 'packaging-products' | 'my-packaging',
     }

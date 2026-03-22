@@ -262,6 +262,7 @@ export function OrdersTable({
   countryOptions = [],
 }: DataTableProps) {
   const searchParams = route.useSearch() as Record<string, unknown>
+  const navigate = route.useNavigate()
   const { auth } = useAuthStore()
   const [data, setData] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -332,7 +333,7 @@ export function OrdersTable({
     ensurePageInRange,
   } = useTableUrlState({
     search: searchParams,
-    navigate: route.useNavigate(),
+    navigate: navigate as any,
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [
@@ -931,7 +932,21 @@ export function OrdersTable({
           },
         ]}
       />
-      <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          setActiveTab(value)
+          // 同步写回 URL，避免从外部带参进入后 tab 被旧参数锁死
+          navigate({
+            search: (prev: Record<string, unknown>) => ({
+              ...prev,
+              orderStatus: value || undefined,
+              page: 1,
+            }),
+          })
+        }}
+        className='w-full'
+      >
         <TabsList className='grid w-full grid-cols-7'>
           {orderStatuses.map((status) => (
             <TabsTrigger

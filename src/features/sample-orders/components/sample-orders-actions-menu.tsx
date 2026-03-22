@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { type Table } from '@tanstack/react-table'
 import {
   ChevronDown,
@@ -11,7 +11,12 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { addRMAOrder, getOrderInvoicePdf } from '@/lib/api/orders'
+import {
+  addRMAOrder,
+  getOrderInvoicePdf,
+  queryAfterSaleReasonList,
+  type AfterSaleReasonItem,
+} from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -19,6 +24,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type SampleOrder } from '../data/schema'
 
@@ -33,6 +48,43 @@ export function SampleOrdersActionsMenu({
   const [rmaDialogOpen, setRmaDialogOpen] = useState(false)
   const [isCreatingRMA, setIsCreatingRMA] = useState(false)
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
+  const [selectedOrderNo, setSelectedOrderNo] = useState('')
+  const [selectedReasonId, setSelectedReasonId] = useState('')
+  const [dealType, setDealType] = useState('')
+  const [description, setDescription] = useState('')
+  const [afterSaleReasons, setAfterSaleReasons] = useState<AfterSaleReasonItem[]>(
+    []
+  )
+  const [isLoadingReasons, setIsLoadingReasons] = useState(false)
+  const dealTypeOptions = [
+    { label: 'Return and refund', value: 'A' },
+    { label: 'Refund only', value: 'B' },
+    { label: 'Reshipment', value: 'C' },
+    { label: 'Returns only', value: 'D' },
+  ] as const
+
+  useEffect(() => {
+    if (!rmaDialogOpen || afterSaleReasons.length > 0) return
+
+    const fetchReasons = async () => {
+      try {
+        setIsLoadingReasons(true)
+        const rows = await queryAfterSaleReasonList(1, 50)
+        setAfterSaleReasons(rows)
+      } catch (error) {
+        console.error('获取售后原因列表失败:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load question types. Please try again.'
+        )
+      } finally {
+        setIsLoadingReasons(false)
+      }
+    }
+
+    void fetchReasons()
+  }, [rmaDialogOpen, afterSaleReasons.length])
 
   const handleAfterSales = async () => {
     if (!table) {
@@ -58,17 +110,30 @@ export function SampleOrdersActionsMenu({
     }
 
     const order = selectedRows[0].original
+    if (!selectedReasonId) {
+      toast.error('Question type is required')
+      return
+    }
+    if (!dealType) {
+      toast.error('Deal type is required')
+      return
+    }
     setIsCreatingRMA(true)
 
     try {
       await addRMAOrder({
         customerId: String(customerId),
         orderId: order.id,
-        salesType: 'A', // 默认值：A-Return and refund
-        reason: '', // 默认值：空字符串，实际使用时应该从对话框获取
+        salesType: dealType,
+        reason: selectedReasonId,
+        cusNote: description || undefined,
       })
       toast.success('RMA order created successfully')
       setRmaDialogOpen(false)
+      setSelectedReasonId('')
+      setSelectedOrderNo('')
+      setDealType('')
+      setDescription('')
       // 刷新订单列表
       table.resetRowSelection()
     } catch (error) {
@@ -150,7 +215,15 @@ export function SampleOrdersActionsMenu({
           toast.error('Please select')
           return
         }
-        // 打开弹框
+        if (selectedRows.length > 1) {
+          toast.error('Please select only one order')
+          return
+        }
+        const order = selectedRows[0].original
+        setSelectedOrderNo(order.billno || order.orderNumber || order.id)
+        setSelectedReasonId('')
+        setDealType('')
+        setDescription('')
         setRmaDialogOpen(true)
         break
       default:
@@ -205,7 +278,7 @@ export function SampleOrdersActionsMenu({
         handleConfirm={handleAfterSales}
         isLoading={isCreatingRMA}
         title='Create RMA Order'
-        desc='Creating order...'
+        desc=''
         confirmText={
           isCreatingRMA ? (
             <>
@@ -216,7 +289,87 @@ export function SampleOrdersActionsMenu({
             'Confirm'
           )
         }
-      />
+      >
+        <div className='mt-4 space-y-4'>
+          <div className='grid grid-cols-2 gap-6'>
+            <div className='space-y-2 min-w-0'>
+            <Label htmlFor='sample-rma-order-no'>Order No</Label>
+            <Input id='sample-rma-order-no' value={selectedOrderNo} disabled />
+            </div>
+            <div className='space-y-2 min-w-0'>
+              <Label htmlFor='sample-rma-question-type'>Question type</Label>
+              <Select
+                value={selectedReasonId}
+                onValueChange={setSelectedReasonId}
+                disabled={isLoadingReasons || isCreatingRMA}
+              >
+                <SelectTrigger
+                  id='sample-rma-question-type'
+                  className='w-full min-w-0'
+                >
+                  <SelectValue
+                    className='block max-w-full truncate'
+                    placeholder={isLoadingReasons ? 'Loading...' : 'Please select'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {afterSaleReasons.map((item) => {
+                    const label =
+                      (typeof item.name === 'string' && item.name) ||
+                      (typeof item.reason === 'string' && item.reason) ||
+                      (typeof (item as any).label === 'string' &&
+                        (item as any).label) ||
+                      item.id ||
+                      'Unknown'
+                    const value = item.id ?? String((item as any).id || label)
+
+                    return (
+                      <SelectItem key={value} value={value} className='max-w-80'>
+                        <span className='block truncate' title={label}>
+                          {label}
+                        </span>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className='grid grid-cols-2 gap-6'>
+            <div className='space-y-2'>
+              <Label htmlFor='sample-rma-deal-type'>Deal type</Label>
+              <Select
+                value={dealType}
+                onValueChange={setDealType}
+                disabled={isCreatingRMA}
+              >
+                <SelectTrigger id='sample-rma-deal-type'>
+                  <SelectValue placeholder='Please select' />
+                </SelectTrigger>
+                <SelectContent>
+                  {dealTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='sample-rma-description'>Problem Description</Label>
+            <Textarea
+              id='sample-rma-description'
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder='Optional'
+              disabled={isCreatingRMA}
+            />
+          </div>
+        </div>
+      </ConfirmDialog>
     </DropdownMenu>
   )
 }

@@ -56,7 +56,6 @@ export interface ConfirmOrderPayload {
   discountedTotalPrice?: number
   selectedWarehouse?: string
   hasShippingAddress: boolean
-  /** 运费（来自 Recap 中的 Shipping Price） */
   shippingCost?: number
 }
 
@@ -132,7 +131,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
         firstName: shippingAddress.hzkj_customer_first_name ?? '',
         lastName: shippingAddress.hzkj_customer_last_name ?? '',
         phone: shippingAddress.hzkj_phone ?? '',
-        countryId: String(shippingAddress.hzkj_country2_id ?? ''),
+        countryId: String(shippingAddress.hzkj_country_id ?? ''),
         admindivisionId: String(shippingAddress.hzkj_admindivision2_id ?? ''),
         city: shippingAddress.hzkj_city ?? '',
         address1: shippingAddress.hzkj_textfield ?? '',
@@ -194,8 +193,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       setShippingCostFromApi(null)
       return
     }
-    const destinationId =
-      String(shippingAddress.hzkj_admindivision2_id ?? '').trim() ||
+    const destinationId = 
       String(shippingAddress.hzkj_country2_id ?? '').trim()
     if (!destinationId) {
       setShippingCostFromApi(null)
@@ -232,11 +230,8 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     void fetchFreight()
   }, [selectedShippingMethod, shippingAddress, orderData.productId])
 
-  // 计算产品总价（所有商品费用之和）
   const productTotal = orderData.items.reduce((sum, item) => sum + item.fee, 0)
-  // 运费：选中物流方式后优先使用 calcuFreight 接口返回，否则用 Recap 传入的
   const shippingCost = shippingCostFromApi ?? orderData.shippingCost ?? 0
-  // 最终总价 = 商品价格 + 运费
   const finalTotal = productTotal + shippingCost
   const totalAmount = finalTotal
 

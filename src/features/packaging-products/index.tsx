@@ -3,6 +3,7 @@ import { HeaderActions } from '@/components/header-actions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { PackagingProductsGrid } from './components/packaging-products-grid'
+import { MyPackagingTable } from './components/my-packaging-table'
 import { getRouteApi } from '@tanstack/react-router'
 
 const route = getRouteApi('/_authenticated/packaging-products/')
@@ -54,7 +55,7 @@ export function PackagingProducts() {
             </TabsContent>
 
             <TabsContent value='my-packaging' className='mt-0'>
-              <PackagingProductsGrid tab='my-packaging' />
+              <MyPackagingTable />
             </TabsContent>
           </Tabs>
         </div>

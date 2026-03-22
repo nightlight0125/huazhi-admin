@@ -159,16 +159,43 @@ export const createSourcingColumns = (
     ),
     cell: ({ row }) => {
       const sourcing = row.original
-      const productId = sourcing.productId
-      const image = sourcing.images?.[0] || '/placeholder-image.png'
-      const productName = sourcing.productName || '-'
-      const result = sourcing.result || '-'
+      const rawStatus = String(
+        (sourcing as any).hzkj_accept_status ?? sourcing.status ?? ''
+      ).trim()
+      const rawStatusTitle = String(
+        (sourcing as any).hzkj_accept_status_title ?? ''
+      ).trim()
+      // 仅“已采纳”时展示结果：当前接口中 1=accepted，兼容中文标题
+      const isAccepted =
+        rawStatus === '1' || rawStatusTitle === '已采纳' || rawStatus === 'accepted'
 
-      const spuMatch =
-        result.match(/SU\d+/i) || result.match(/TD\s+SPU:\s*(.+)/i)
-      const spu = spuMatch ? spuMatch[1] || spuMatch[0] : result
+      const entryList = Array.isArray(sourcing.entryentity)
+        ? (sourcing.entryentity as Array<Record<string, unknown>>)
+        : []
+      const acceptedEntry = isAccepted
+        ? entryList.find((entry) => String((entry as any).hzkj_accept ?? '') === '1')
+        : undefined
 
-      const priceRange = (sourcing as any).priceRange || '-'
+      if (!acceptedEntry) {
+        return <div className='text-xs text-muted-foreground'>-</div>
+      }
+
+      const productId =
+        typeof acceptedEntry.hzkj_spu_id === 'string'
+          ? acceptedEntry.hzkj_spu_id
+          : sourcing.productId
+      const image =
+        (acceptedEntry.hzkj_spu_hzkj_picturefield as string) || ''
+      const productName =
+        (acceptedEntry.hzkj_spu_hzkj_enname as string)  || '-'
+      const spu =
+        (acceptedEntry.hzkj_spu_number as string) ||
+        '-'
+      const rawPrice = (acceptedEntry as any).hzkj_spu_hzkj_pur_price
+      const price =
+        rawPrice !== undefined && rawPrice !== null && rawPrice !== ''
+          ? Number(rawPrice)
+          : undefined
 
       return (
         <div
@@ -177,10 +204,9 @@ export const createSourcingColumns = (
             window.open(sourcing.url, '_blank')
           }}
         >
-          <div className='relative h-10 w-10 flex-shrink-0 overflow-hidden rounded border'>
+          <div className='border-border relative h-10 w-10 flex-shrink-0 overflow-hidden rounded border'>
             <img
               src={image}
-              alt={productName}
               className='h-full w-full object-cover'
               onError={(e) => {
                 const target = e.target as HTMLImageElement
@@ -190,17 +216,21 @@ export const createSourcingColumns = (
           </div>
 
           <div className='min-w-0 flex-1'>
-            <div className='truncate text-[10px] leading-tight font-medium text-gray-900'>
-              {sourcing.spuName || productName}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className='text-foreground max-w-[220px] truncate text-[10px] leading-tight font-medium'>
+                  {productName}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className='max-w-xs break-words text-xs'>
+                {productName}
+              </TooltipContent>
+            </Tooltip>
+            <div className='text-muted-foreground mt-0.5 text-[10px] leading-tight'>
+              SPU: {spu}
             </div>
-            <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
-              SPU: {sourcing.spuName || spu}
-            </div>
-            <div className='mt-0.5 text-[10px] leading-tight text-gray-500'>
-              Price:{' '}
-              {sourcing.price !== undefined
-                ? `$${sourcing.price.toFixed(2)}`
-                : priceRange}
+            <div className='text-muted-foreground mt-0.5 text-[10px] leading-tight'>
+              Price: {typeof price === 'number' && !Number.isNaN(price) ? `$${price.toFixed(2)}` : '-'}
             </div>
           </div>
         </div>

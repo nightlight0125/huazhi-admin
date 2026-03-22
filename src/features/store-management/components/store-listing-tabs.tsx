@@ -58,7 +58,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { RichTextEditor } from '@/components/rich-text-editor'
-import { VariantPricingBulkActions } from './variant-pricing-bulk-actions'
 import { type VariantPricing } from './variant-pricing-schema'
 
 // 国家选项类型
@@ -1191,7 +1190,6 @@ export const StoreListingTabs = forwardRef<
                     </Table>
                   </div>
 
-                  <VariantPricingBulkActions table={variantPricingTable} />
                 </div>
               </div>
             </div>
