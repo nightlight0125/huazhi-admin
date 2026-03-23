@@ -85,6 +85,9 @@ export function ProductDesign() {
   const historyIndexRef = useRef(-1)
   const isUpdatingTextRef = useRef(false)
   const [noteText, setNoteText] = useState('')
+  const [brandName, setBrandName] = useState('')
+  const [customizationType, setCustomizationType] = useState<string>('')
+  const [customizationSize, setCustomizationSize] = useState<string>('')
 
   // Text editing state
   const [selectedTextObject, setSelectedTextObject] = useState<Textbox | null>(
@@ -877,6 +880,23 @@ export function ProductDesign() {
       return
     }
 
+    if (!brandName.trim()) {
+      toast.error('Please enter Name (brand name)')
+      return
+    }
+    if (!customizationType) {
+      toast.error('Please select Type')
+      return
+    }
+    if (!customizationSize) {
+      toast.error('Please select Specs')
+      return
+    }
+    if (!noteText.trim()) {
+      toast.error('Please enter Notes (remark)')
+      return
+    }
+
     try {
       setIsSaving(true)
       const canvas = fabricCanvasRef.current
@@ -891,8 +911,10 @@ export function ProductDesign() {
         customerId: String(customerId),
         skuId: String(skuId),
         image: imageData,
-        brandName: noteText || '',
-        size: '1',
+        brandName: brandName.trim(),
+        size: customizationSize,
+        type: customizationType,
+        remark: noteText.trim(),
       })
 
       toast.success('Design saved successfully')
@@ -1113,6 +1135,61 @@ export function ProductDesign() {
                 <Pencil className='h-5 w-5' />
                 <span>Notes</span>
               </button>
+            </div>
+
+            {/* Type, Specs, Name - required fields */}
+            <div className='space-y-3 border-border border-t pt-3'>
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>
+                  Type <span className='text-destructive'>*</span>
+                </Label>
+                <Select
+                  value={customizationType}
+                  onValueChange={setCustomizationType}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select type' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='My Logo'>My Logo</SelectItem>
+                    <SelectItem value='My Cards'>My Cards</SelectItem>
+                    <SelectItem value='My Product Packaging'>
+                      My Product Packaging
+                    </SelectItem>
+                    <SelectItem value='My Shipping Packaging'>
+                      My Shipping Packaging
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>
+                  Specs <span className='text-destructive'>*</span>
+                </Label>
+                <Select
+                  value={customizationSize}
+                  onValueChange={setCustomizationSize}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select specs' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='Large'>Large</SelectItem>
+                    <SelectItem value='Medium'>Medium</SelectItem>
+                    <SelectItem value='Small'>Small</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className='space-y-2'>
+                <Label className='text-sm font-medium'>
+                  Name <span className='text-destructive'>*</span>
+                </Label>
+                <Input
+                  placeholder='Enter brand name'
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
@@ -1575,7 +1652,9 @@ export function ProductDesign() {
           {activeTab === 'notes' && (
             <div className='space-y-4'>
               <div className='space-y-2'>
-                <div className='text-foreground text-sm font-medium'>Notes</div>
+                <div className='text-foreground text-sm font-medium'>
+                  Notes <span className='text-destructive'>*</span>
+                </div>
                 <div className='relative'>
                   <Textarea
                     placeholder='Enter notes'

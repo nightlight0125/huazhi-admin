@@ -71,7 +71,7 @@ export function useLogisticsChannels(
         const channelList = await getLogsList(pageNo, pageSize)
         const channelOptions: LogisticsChannelOption[] = channelList.map(
           (channel: CustomChannelItem) => ({
-            label: channel.name || '',
+            label: channel.number || channel.name || '',
             value: channel.id || '',
           })
         )

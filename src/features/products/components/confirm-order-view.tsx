@@ -3,10 +3,9 @@ import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { calcuFreight } from '@/lib/api/logistics'
+import { calcuNewOrderFreight, type FreightOption } from '@/lib/api/logistics'
 import { buyProduct } from '@/lib/api/products'
 import { getAddress, type AddressItem } from '@/lib/api/users'
-import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -77,11 +76,8 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const [shippingCostFromApi, setShippingCostFromApi] = useState<number | null>(
     null
   )
+  const [freightOptions, setFreightOptions] = useState<FreightOption[]>([])
   const [isLoadingFreight, setIsLoadingFreight] = useState(false)
-
-  // 使用 hook 获取物流渠道数据
-  const { channels: shippingMethodOptions, isLoading: isLoadingChannels } =
-    useLogisticsChannels()
 
   const handleAddAddress = () => {
     // 保存确认订单数据，返回后可恢复视图
@@ -187,34 +183,44 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     void fetchAddress()
   }, [])
 
-  // 选中物流方式后调用 calcuFreight 获取运费，更新 Total
   useEffect(() => {
-    if (!selectedShippingMethod || !shippingAddress || !orderData.productId) {
+    const customerId = auth.user?.customerId
+    if (!customerId || !shippingAddress || orderData.items.length === 0) {
+      setFreightOptions([])
+      setSelectedShippingMethod(undefined)
       setShippingCostFromApi(null)
       return
     }
-    const destinationId = 
-      String(shippingAddress.hzkj_country2_id ?? '').trim()
-    if (!destinationId) {
+    const countryId = String(
+      shippingAddress.hzkj_country_id ?? shippingAddress.hzkj_country2_id ?? ''
+    ).trim()
+    if (!countryId) {
+      setFreightOptions([])
+      setSelectedShippingMethod(undefined)
       setShippingCostFromApi(null)
       return
     }
+    // 运费 API 使用 variant/SKU id (item.id) 作为 skuId
+    const skuIdToQty: Record<string, string> = orderData.items.reduce(
+      (acc, item) => {
+        const id = item.id
+        acc[id] = String((Number(acc[id] ?? 0) + item.quantity))
+        return acc
+      },
+      {} as Record<string, string>
+    )
     const fetchFreight = async () => {
       setIsLoadingFreight(true)
+      setFreightOptions([])
+      setSelectedShippingMethod(undefined)
       setShippingCostFromApi(null)
       try {
-        const options = await calcuFreight({
-          spuId: orderData.productId,
-          destinationId,
+        const options = await calcuNewOrderFreight({
+          skuIdToQty,
+          countryId,
+          customerId: String(customerId),
         })
-        const matched = options.find(
-          (opt) => opt.logsId === selectedShippingMethod
-        )
-        if (matched != null && typeof matched.freight === 'number') {
-          setShippingCostFromApi(matched.freight)
-        } else {
-          setShippingCostFromApi(0)
-        }
+        setFreightOptions(options)
       } catch (error) {
         console.error('Failed to calculate freight:', error)
         toast.error(
@@ -222,13 +228,28 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             ? error.message
             : 'Failed to calculate freight.'
         )
-        setShippingCostFromApi(null)
       } finally {
         setIsLoadingFreight(false)
       }
     }
     void fetchFreight()
-  }, [selectedShippingMethod, shippingAddress, orderData.productId])
+  }, [shippingAddress, orderData.items, auth.user?.customerId, auth.user?.id])
+
+  // 选中物流方式后从 freightOptions 中取运费
+  useEffect(() => {
+    if (!selectedShippingMethod || freightOptions.length === 0) {
+      setShippingCostFromApi(null)
+      return
+    }
+    const matched = freightOptions.find(
+      (opt) => opt.logsId === selectedShippingMethod
+    )
+    setShippingCostFromApi(
+      matched != null && typeof matched.freight === 'number'
+        ? matched.freight
+        : 0
+    )
+  }, [selectedShippingMethod, freightOptions])
 
   const productTotal = orderData.items.reduce((sum, item) => sum + item.fee, 0)
   const shippingCost = shippingCostFromApi ?? orderData.shippingCost ?? 0
@@ -290,14 +311,17 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                 <SelectValue placeholder='Please select' />
               </SelectTrigger>
               <SelectContent>
-                {isLoadingChannels ? (
+                {isLoadingFreight ? (
                   <SelectItem value='loading' disabled>
                     Loading...
                   </SelectItem>
-                ) : shippingMethodOptions.length > 0 ? (
-                  shippingMethodOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                ) : freightOptions.length > 0 ? (
+                  freightOptions.map((opt) => (
+                    <SelectItem key={opt.logsId} value={opt.logsId}>
+                      {opt.logsNumber || opt.logsId} - $
+                      {typeof opt.freight === 'number'
+                        ? opt.freight.toFixed(2)
+                        : '0.00'}
                     </SelectItem>
                   ))
                 ) : (

@@ -29,10 +29,12 @@ export async function getUserShopOptions(
       pageSize,
     })
 
-    return response.list.map((shop: ShopListItem) => ({
-      value: shop.id,
-      label: shop.name || shop.platform || shop.id,
-    }))
+    return response.list
+      .filter((shop) => shop.enable !== '0')
+      .map((shop: ShopListItem) => ({
+        value: shop.id,
+        label: shop.name || shop.platform || shop.id,
+      }))
   } catch (error) {
     console.error('获取店铺列表失败:', error)
     return []

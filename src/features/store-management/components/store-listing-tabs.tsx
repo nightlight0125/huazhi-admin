@@ -290,6 +290,26 @@ export const StoreListingTabs = forwardRef<
       setTitle('')
     }, [productTitle])
 
+    // 当选择 Shipping Fee 批量修订时，输入框默认填充当前所选物流方式的运费
+    useEffect(() => {
+      if (bulkReviseType === 'shipping-fee' && selectedShippingMethodData?.cost) {
+        setBulkReviseValue(selectedShippingMethodData.cost)
+      }
+    }, [bulkReviseType, selectedShippingMethodData?.cost])
+
+    // 当所选物流方式变化时，将运费同步到表格 Shipping Fee 列，使两处数值一致
+    useEffect(() => {
+      const cost = selectedShippingMethodData?.cost
+      if (cost) {
+        const rows = variantPricingTable.getRowModel().rows
+        rows.forEach((row) => {
+          const variant = row.original as VariantPricing
+          variant.shippingFee = cost
+        })
+        setUpdateTrigger((prev) => prev + 1)
+      }
+    }, [selectedShippingMethodData?.cost, variantPricingTable])
+
     // 获取商品详情并处理图片
     useEffect(() => {
       const fetchProductImages = async () => {
@@ -582,7 +602,7 @@ export const StoreListingTabs = forwardRef<
 
         setIsLoadingStores(true)
         try {
-          const shopOptions = await getUserShopOptions(userId)
+          const shopOptions = await getUserShopOptions(userId, 0, 100)
 
           // 将店铺选项转换为下拉框需要的格式
           const storeOptions = shopOptions.map((shop) => ({
@@ -977,9 +997,7 @@ export const StoreListingTabs = forwardRef<
                           <div className='border-border text-foreground mb-2 grid grid-cols-[24px_1fr_120px_100px] gap-4 border-b pb-2 text-sm font-medium'>
                             <div />
                             <div>Shipping Method</div>
-                            <div className='text-center'>
-                              Total Shipping Cost
-                            </div>
+                            <div className='text-center'>Shipping Cost</div>
                             <div className='text-right'>Delivery Time</div>
                           </div>
                           {isLoadingFreight ? (
@@ -1087,7 +1105,6 @@ export const StoreListingTabs = forwardRef<
                     >
                       Confirm
                     </Button>
-                    {/* 主要的确认按钮 - 用于推送产品到 Shopify */}
                     {shopId && (
                       <Button
                         onClick={handleConfirmInternal}
@@ -1189,7 +1206,6 @@ export const StoreListingTabs = forwardRef<
                       </TableBody>
                     </Table>
                   </div>
-
                 </div>
               </div>
             </div>

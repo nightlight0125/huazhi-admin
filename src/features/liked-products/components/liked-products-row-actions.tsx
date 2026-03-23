@@ -194,7 +194,16 @@ export function LikedProductsRowActions({
               setSelectedTags={setStoreListingSelectedTags}
               variantPricingTable={variantPricingTable}
               columns={variantPricingColumns}
-              productTitle={product.name}
+              productTitle={
+                (() => {
+                  const en = (apiProduct as Record<string, unknown> | null)?.hzkj_enname
+                  if (en != null) {
+                    const val = typeof en === 'string' ? en : (en as Record<string, unknown>)?.GLang
+                    if (val != null && String(val).trim()) return String(val)
+                  }
+                  return product.name
+                })()
+              }
               productId={product.id}
               apiProduct={apiProduct}
               richTextContent={richTextContent}

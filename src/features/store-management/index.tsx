@@ -104,7 +104,6 @@ export function StoreManagement() {
     [user?.id, pageNo, pageSize, queryParam]
   )
 
-  // 用户ID、分页、搜索变化时加载（100ms 内同 key 去重，避免 StrictMode 双挂载导致两次请求）
   useEffect(() => {
     if (!user?.id) return
     const fetchKey = `${user.id}-${pageNo}-${pageSize}-${queryParam}`
@@ -120,7 +119,6 @@ export function StoreManagement() {
     void fetchUserShops(isSearch)
   }, [user?.id, pageNo, pageSize, queryParam, fetchUserShops])
 
-  // Shopify OAuth 回调：授权完成后重定向到此页时，将完整 query string 传给后端
   useEffect(() => {
     if (typeof window === 'undefined') return
     const search = window.location.search
@@ -168,7 +166,6 @@ export function StoreManagement() {
 
   const handleNext = () => {
     if (selectedPlatform) {
-      // TODO: 实现实际的连接逻辑
     }
   }
 

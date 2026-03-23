@@ -299,7 +299,6 @@ export function ProductsConnectionDialog({
 
         setTeemDropProducts(formatted)
       } catch (error) {
-        console.error('Failed to load HyperZone products in dialog:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -321,18 +320,14 @@ export function ProductsConnectionDialog({
     leftProductId,
   ])
 
-  /* ---------- core logic ---------- */
-
   const handleConnect = (teemDropProductId: string) => {
     if (!selectedStoreProductId) return
 
     setConnections((prev) => {
-      // 1. 移除当前左侧 variant 的旧连接
       const withoutStore = prev.filter(
         (c) => c.storeProductId !== selectedStoreProductId
       )
 
-      // 2. 保证 TD SKU 只能被连接一次
       const withoutTeemDrop = withoutStore.filter(
         (c) => c.teemDropProductId !== teemDropProductId
       )

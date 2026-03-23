@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react'
+import { useCountries } from '@/hooks/use-countries'
+import { useWarehouses } from '@/hooks/use-warehouses'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,25 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { useWarehouses } from '@/hooks/use-warehouses'
-import {
-  queryAdmindivision,
-  queryAdmindivisionLevel,
-  type AdmindivisionItem,
-  type AdmindivisionLevelItem,
-} from '@/lib/api/users'
-import { cn } from '@/lib/utils'
-import { ChevronDown } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useCountries } from '@/hooks/use-countries'
-
-type CascaderOption = {
-  value: string
-  label: string
-  icon?: (props: { className?: string }) => React.ReactElement
-  number?: string
-}
 
 export interface AddressData {
   customerName: string
@@ -99,8 +83,6 @@ export function EditAddressDialog({
   const [address2, setAddress2] = useState('')
   const [city, setCity] = useState('')
   const [country, setCountry] = useState('')
-  const [divisionPath, setDivisionPath] = useState<string[]>([])
-  const [province, setProvince] = useState('') // 叶节点 id，用于提交
   const [postcode, setPostcode] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -110,144 +92,14 @@ export function EditAddressDialog({
     initialData?.countryId
   )
 
-  const [levelsData, setLevelsData] = useState<AdmindivisionLevelItem[]>([])
-  const [divisionColumns, setDivisionColumns] = useState<CascaderOption[][]>([])
-  const [loadingLevelIndex, setLoadingLevelIndex] = useState<number | null>(null)
-  const [regionOpen, setRegionOpen] = useState(false)
-  
   // 使用 useWarehouses hook 获取仓库数据
   const { warehouses: warehouseOptions, isLoading: isLoadingWarehouses } =
     useWarehouses()
   // 使用 useCountries 从后端加载国家列表（仅在弹框打开时加载）
-  const {
-    countries: countryOptions,
-    isLoading: isLoadingCountries,
-  } = useCountries(1, 1000, open)
+  const { countries: countryOptions, isLoading: isLoadingCountries } =
+    useCountries(1, 1000, open)
 
-  const selectedCountryOption = countryOptions.find((c) => c.value === country)
-  const displayRegionLabel =
-    selectedCountryOption && divisionPath.length > 0
-      ? `${selectedCountryOption.label} / ${divisionPath
-          .map((id, i) =>
-            divisionColumns[i]?.find((d) => String(d.value) === String(id))
-              ?.label
-          )
-          .filter(Boolean)
-          .join(' / ')}`
-      : selectedCountryOption?.label ?? 'Select country / province / city'
-
-  // 根据 divisionId 和 parent_id 递归构建完整路径
-  const buildDivisionPath = async (
-    countryIdNum: number,
-    divisionId: string
-  ): Promise<string[]> => {
-    if (!divisionId) return []
-    const levels = await queryAdmindivisionLevel(countryIdNum, 1, 100)
-    for (const level of levels) {
-      const divisions = await queryAdmindivision(
-        countryIdNum,
-        level.id,
-        undefined,
-        1,
-        500
-      )
-      const found = divisions.find((d) => String(d.id) === String(divisionId))
-      if (found) {
-        const parentId = found.parent_id
-        if (
-          parentId == null ||
-          parentId === '' ||
-          String(parentId) === '0'
-        ) {
-          return [String(divisionId)]
-        }
-        const parentPath = await buildDivisionPath(
-          countryIdNum,
-          String(parentId)
-        )
-        return [...parentPath, String(divisionId)]
-      }
-    }
-    return []
-  }
-
-  const loadDivision = async (
-    countryIdNum: number,
-    levelIndex: number,
-    parentId: string | undefined,
-    preservePath?: boolean,
-    pathOverride?: string[],
-    levelsOverride?: AdmindivisionLevelItem[]
-  ) => {
-    const levels = levelsOverride ?? levelsData
-    if (levelIndex >= levels.length) return
-    if (levelIndex === 0 && !preservePath) {
-      setDivisionPath([])
-      setProvince('')
-    }
-    setLoadingLevelIndex(levelIndex)
-    setDivisionColumns((prev) => {
-      const next = prev.slice(0, levelIndex)
-      return [...next, [], ...Array(Math.max(0, prev.length - levelIndex - 1))]
-    })
-    try {
-      const levelId = levels[levelIndex].id
-      const rows: AdmindivisionItem[] = await queryAdmindivision(
-        countryIdNum,
-        levelId,
-        parentId,
-        1,
-        500
-      )
-      const options: CascaderOption[] = rows.map((item) => ({
-        value: item.id,
-        label: item.name ?? String(item.id),
-        number: item.number,
-      }))
-      setDivisionColumns((prev) => {
-        const next = [...prev]
-        next[levelIndex] = options
-        return next
-      })
-      const path = pathOverride ?? divisionPath
-      if (path.length > levelIndex + 1) {
-        const nextParentId = path[levelIndex]
-        void loadDivision(
-          countryIdNum,
-          levelIndex + 1,
-          nextParentId,
-          preservePath,
-          pathOverride,
-          levels
-        )
-      }
-    } catch (error) {
-      console.error('Failed to load divisions:', error)
-    } finally {
-      setLoadingLevelIndex(null)
-    }
-  }
-
-  const onCountryChange = async (countryValue: string) => {
-    if (!countryValue) return
-    const countryIdNum = getCountryId(countryValue)
-    if (!countryIdNum) return
-    setDivisionColumns([])
-    setDivisionPath([])
-    setProvince('')
-    setCountryId(countryIdNum)
-    try {
-      const levels = await queryAdmindivisionLevel(countryIdNum, 1, 100)
-      setLevelsData(levels)
-      if (levels.length > 0) {
-        await loadDivision(countryIdNum, 0, undefined, false, undefined, levels)
-      }
-    } catch (error) {
-      console.error('Failed to load division levels:', error)
-    }
-  }
-
-  // Initialize form with initial data & 回填 divisionPath
+  // Initialize form with initial data
   useEffect(() => {
     if (initialData && open && countryOptions.length > 0) {
       const fullName = initialData.customerName || ''
@@ -262,47 +114,27 @@ export function EditAddressDialog({
       setAddress2(initialData.address2 || '')
       setCity(initialData.city || '')
       const countryValue =
-        (initialData.countryId != null &&
-          countryOptions.find((c) => c.value === String(initialData.countryId)))
+        initialData.countryId != null &&
+        countryOptions.find((c) => c.value === String(initialData.countryId))
           ? String(initialData.countryId)
-          : countryOptions.find((c) => c.label === initialData.country)?.value ||
+          : countryOptions.find((c) => c.label === initialData.country)
+              ?.value ||
             initialData.country ||
             ''
       setCountry(countryValue)
+      setCountryId(
+        initialData.countryId ?? getCountryId(countryValue) ?? undefined
+      )
       setPostcode(initialData.postalCode || '')
       setPhone(initialData.phoneNumber || '')
       setEmail(initialData.email || '')
       const warehouseValue =
         warehouseOptions.find((o) => o.label === initialData.shippingOrigin)
-          ?.value || initialData.shippingOrigin || ''
+          ?.value ||
+        initialData.shippingOrigin ||
+        ''
       setWarehouse(warehouseValue)
       setTaxId(initialData.taxId || '')
-      setCountryId(initialData.countryId)
-
-      const divisionId = initialData.province || ''
-      setProvince(divisionId)
-
-      if (countryValue && divisionId) {
-        const countryIdNum = getCountryId(countryValue) ?? initialData.countryId
-        if (countryIdNum) {
-          void (async () => {
-            const path = await buildDivisionPath(countryIdNum, divisionId)
-            const finalPath = path.length > 0 ? path : [divisionId]
-            setDivisionPath(finalPath)
-            const levels = await queryAdmindivisionLevel(countryIdNum, 1, 100)
-            setLevelsData(levels)
-            if (levels.length > 0 && finalPath.length > 0) {
-              void loadDivision(countryIdNum, 0, undefined, true, finalPath, levels)
-            }
-          })()
-        }
-      } else {
-        setDivisionPath([])
-        if (countryValue) {
-          const countryIdNum = getCountryId(countryValue) ?? initialData.countryId
-          if (countryIdNum) void onCountryChange(countryValue)
-        }
-      }
     }
   }, [initialData, open, warehouseOptions, countryOptions])
 
@@ -334,18 +166,13 @@ export function EditAddressDialog({
       address2: address2.trim() || undefined,
       city: city.trim(),
       country: countryLabel,
-      province:
-        divisionColumns
-          .flat()
-          .find((d) => String(d.value) === String(province))?.label ||
-        province.trim() ||
-        undefined,
+      province: undefined,
       postalCode: postcode.trim(),
       phoneNumber: phone.trim(),
       email: email.trim() || undefined,
       shippingOrigin: warehouseLabel,
       countryId: countryId ?? getCountryId(country),
-      admindivisionId: province || undefined,
+      admindivisionId: undefined,
       cityId: undefined,
       warehouseId: warehouse || undefined,
       taxId: taxId.trim() || undefined,
@@ -367,15 +194,14 @@ export function EditAddressDialog({
       setAddress2(initialData.address2 || '')
       setCity(initialData.city || '')
       const countryValue =
-        (initialData.countryId != null &&
-          countryOptions.find((c) => c.value === String(initialData.countryId)))
+        initialData.countryId != null &&
+        countryOptions.find((c) => c.value === String(initialData.countryId))
           ? String(initialData.countryId)
-          : countryOptions.find((c) => c.label === initialData.country)?.value ||
+          : countryOptions.find((c) => c.label === initialData.country)
+              ?.value ||
             initialData.country ||
             ''
       setCountry(countryValue)
-      setDivisionPath([])
-      setProvince(initialData.province || '')
       setPostcode(initialData.postalCode || '')
       setPhone(initialData.phoneNumber || '')
       setEmail(initialData.email || '')
@@ -438,179 +264,34 @@ export function EditAddressDialog({
             </div>
             <div className='space-y-2'>
               <Label htmlFor='country'>
-                Country / Province <span className='text-red-500'>*</span>
+                Country / Region <span className='text-red-500'>*</span>
               </Label>
-              <Popover
-                open={regionOpen}
-                onOpenChange={(open) => {
-                  setRegionOpen(open)
-                  if (
-                    open &&
-                    country &&
-                    loadingLevelIndex === null &&
-                    (divisionColumns.length === 0 ||
-                      divisionColumns[0]?.length === 0)
-                  ) {
-                    onCountryChange(country)
-                  } else if (
-                    open &&
-                    country &&
-                    loadingLevelIndex === null &&
-                    divisionPath.length > 0
-                  ) {
-                    const nextLevel = divisionPath.length
-                    if (
-                      nextLevel < levelsData.length &&
-                      (!divisionColumns[nextLevel] ||
-                        divisionColumns[nextLevel].length === 0)
-                    ) {
-                      const countryIdNum = getCountryId(country)
-                      if (countryIdNum)
-                        loadDivision(
-                          countryIdNum,
-                          nextLevel,
-                          divisionPath[nextLevel - 1],
-                          true,
-                          divisionPath,
-                          levelsData
-                        )
-                    }
-                  }
+              <Select
+                value={country}
+                onValueChange={(value) => {
+                  setCountry(value)
+                  setCountryId(getCountryId(value))
                 }}
+                disabled={isLoadingCountries}
               >
-                <PopoverTrigger asChild>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    className={cn(
-                      'w-full justify-between font-normal',
-                      !country && 'text-muted-foreground'
-                    )}
-                  >
-                    <span className='truncate'>{displayRegionLabel}</span>
-                    <ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className='w-[720px] p-2'
-                  align='start'
-                  onOpenAutoFocus={(e) => e.preventDefault()}
-                >
-                  <div className='flex gap-2'>
-                    <div className='max-h-64 flex-1 overflow-y-auto border-r border-border pr-1'>
-                      <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                        Country/Region
-                      </div>
-                      {isLoadingCountries ? (
-                        <div className='text-muted-foreground py-2 text-xs'>
-                          Loading...
-                        </div>
-                      ) : (
-                        countryOptions.map((c) => {
-                          const isActive = String(c.value) === String(country)
-                          return (
-                            <button
-                              key={c.value}
-                              type='button'
-                              className={cn(
-                                'hover:bg-muted flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm',
-                                isActive && 'bg-muted font-medium'
-                              )}
-                              onClick={() => {
-                                setCountry(c.value)
-                                setDivisionPath([])
-                                setProvince('')
-                                setCountryId(getCountryId(c.value))
-                                onCountryChange(c.value)
-                              }}
-                            >
-                              <span className='flex items-center gap-2 truncate'>
-                                {c.icon && <c.icon className='h-4 w-4 shrink-0' />}
-                                <span>{c.label}</span>
-                              </span>
-                            </button>
-                          )
-                        })
-                      )}
-                    </div>
-                    {Array.from(
-                      { length: levelsData.length },
-                      (_, levelIndex) => {
-                        const column = divisionColumns[levelIndex]
-                        const isLoading = loadingLevelIndex === levelIndex
-                        const hasData = column && column.length > 0
-                        if (!hasData && !isLoading) return null
-                        const selectedId = divisionPath[levelIndex]
-                        const isLastLevel =
-                          levelIndex === levelsData.length - 1
-                        return (
-                          <div
-                            key={levelIndex}
-                            className={cn(
-                              'max-h-64 flex-1 overflow-y-auto pl-1',
-                              levelIndex < levelsData.length - 1 &&
-                                'border-r border-border pr-1'
-                            )}
-                          >
-                            <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                              Level {levelIndex + 1}
-                            </div>
-                            {isLoading ? (
-                              <div className='text-muted-foreground py-2 text-xs'>
-                                Loading...
-                              </div>
-                            ) : (
-                              (column ?? []).map((opt) => {
-                                const isActive =
-                                  String(opt.value) === String(selectedId)
-                                return (
-                                  <button
-                                    key={opt.value}
-                                    type='button'
-                                    className={cn(
-                                      'hover:bg-muted flex w-full items-center rounded px-2 py-1 text-left text-sm',
-                                      isActive && 'bg-muted font-medium'
-                                    )}
-                                    onClick={() => {
-                                      const newPath = divisionPath.slice(
-                                        0,
-                                        levelIndex
-                                      )
-                                      newPath[levelIndex] = opt.value
-                                      setDivisionPath(newPath)
-                                      if (isLastLevel) {
-                                        setProvince(opt.value)
-                                        setRegionOpen(false)
-                                      } else {
-                                        const countryIdNum = getCountryId(
-                                          country
-                                        )
-                                        if (countryIdNum)
-                                          loadDivision(
-                                            countryIdNum,
-                                            levelIndex + 1,
-                                            opt.value,
-                                            false,
-                                            undefined,
-                                            levelsData
-                                          )
-                                      }
-                                    }}
-                                  >
-                                    <span className='truncate'>
-                                      {opt.label}
-                                    </span>
-                                  </button>
-                                )
-                              })
-                            )}
-                          </div>
-                        )
-                      }
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                <SelectTrigger id='country'>
+                  <SelectValue
+                    placeholder={
+                      isLoadingCountries ? 'Loading...' : 'Select country'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {countryOptions.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      <span className='flex items-center gap-2'>
+                        {c.icon && <c.icon className='h-4 w-4 shrink-0' />}
+                        {c.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className='space-y-2'>
@@ -648,8 +329,6 @@ export function EditAddressDialog({
               />
             </div>
 
-
-
             <div className='space-y-2'>
               <Label htmlFor='phone'>
                 Phone <span className='text-red-500'>*</span>
@@ -675,9 +354,17 @@ export function EditAddressDialog({
               <Label htmlFor='warehouse'>
                 Warehouse <span className='text-red-500'>*</span>
               </Label>
-              <Select value={warehouse} onValueChange={setWarehouse} disabled={isLoadingWarehouses}>
+              <Select
+                value={warehouse}
+                onValueChange={setWarehouse}
+                disabled={isLoadingWarehouses}
+              >
                 <SelectTrigger id='warehouse'>
-                  <SelectValue placeholder={isLoadingWarehouses ? 'Loading...' : 'Select warehouse'} />
+                  <SelectValue
+                    placeholder={
+                      isLoadingWarehouses ? 'Loading...' : 'Select warehouse'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouseOptions.length > 0 ? (
@@ -688,7 +375,9 @@ export function EditAddressDialog({
                     ))
                   ) : (
                     <SelectItem value='__no_warehouse__' disabled>
-                      {isLoadingWarehouses ? 'Loading...' : 'No warehouse available'}
+                      {isLoadingWarehouses
+                        ? 'Loading...'
+                        : 'No warehouse available'}
                     </SelectItem>
                   )}
                 </SelectContent>
@@ -723,4 +412,3 @@ export function EditAddressDialog({
     </Dialog>
   )
 }
-

@@ -86,7 +86,7 @@ export function OrdersAddProductDialog({
 
     const newProduct: OrderProduct = {
       id: sku.trim(),
-      productName: (selectedSkuItem as any)?.hzkj_name || sku.trim(),
+      productName: (selectedSkuItem as any)?.hzkj_name || '',
       productVariant: [],
       quantity,
       productImageUrl: '',
@@ -94,6 +94,10 @@ export function OrdersAddProductDialog({
       price: 0,
       totalPrice: 0,
       hzkj_local_sku_id: selectedSkuItem?.id ? String(selectedSkuItem.id) : undefined,
+      hzkj_shop_sku: sku.trim(),
+      hzkj_local_sku: (selectedSkuItem as any)?.number ?? (selectedSkuItem as any)?.hzkj_sku_number ?? sku.trim(),
+      hzkj_qty: String(quantity),
+      hzkj_src_qty: String(quantity),
     }
 
     onConfirm(newProduct)

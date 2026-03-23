@@ -24,13 +24,9 @@ import { Textarea } from '@/components/ui/textarea'
 type SourcingFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** 标题，例如 "New Sourcing" / "Edit Sourcing" */
   title: string
-  /** 提交按钮文案，例如 "Submit" / "Save" */
   submitLabel: string
-  /** 是否必须上传图片（新建时 true，编辑时可为 false） */
   requireImage?: boolean
-  /** 初始值（编辑时传入） */
   initialValues?: {
     productName?: string
     productLink?: string
@@ -41,7 +37,7 @@ type SourcingFormDialogProps = {
   /** 表单提交 */
   onSubmit: (values: {
     productName: string
-    productLink: string
+    productLink?: string
     price?: string
     remark?: string
     productImage?: string
@@ -62,9 +58,10 @@ export function SourcingFormDialog({
       productName: z.string().min(1, 'Product name is required'),
       productLink: z
         .string()
-        .min(1, 'Product link is required')
-        .url('Please enter a valid URL'),
-      // Price stored as string for easier input handling
+        .optional()
+        .refine((val) => !val || z.string().url().safeParse(val).success, {
+          message: 'Please enter a valid URL',
+        }),
       price: z
         .string()
         .optional()
@@ -122,7 +119,7 @@ export function SourcingFormDialog({
   const internalSubmit = (values: FormValues) => {
     onSubmit({
       productName: values.productName,
-      productLink: values.productLink,
+      productLink: values.productLink || undefined,
       price: values.price,
       remark: values.remark,
       productImage: values.productImage as string | undefined,
@@ -169,15 +166,12 @@ export function SourcingFormDialog({
               )}
             />
 
-            {/* Product Link */}
             <FormField
               control={form.control}
               name='productLink'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
-                    <span className='text-red-500'>*</span> Product Link
-                  </FormLabel>
+                  <FormLabel>Product Link</FormLabel>
                   <FormControl>
                     <Input
                       placeholder='Please enter your product link...'
@@ -189,7 +183,6 @@ export function SourcingFormDialog({
               )}
             />
 
-            {/* Product Price */}
             <FormField
               control={form.control}
               name='price'

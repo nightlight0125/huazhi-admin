@@ -7,10 +7,18 @@ import {
   queryCustomerBindPackageAPI,
   type PackMaterialItem,
 } from '@/lib/api/products'
+import { getUserShopOptions, type ShopOption } from '@/lib/utils/shop-utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
 
@@ -39,6 +47,9 @@ export function ApplyPackagingDialog({
   const [isLoadingTypes, setIsLoadingTypes] = useState(false)
   const [packagingProducts, setPackagingProducts] = useState<any[]>([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
+  const [shopOptions, setShopOptions] = useState<ShopOption[]>([])
+  const [selectedShopId, setSelectedShopId] = useState<string>('')
+  const [isLoadingShops, setIsLoadingShops] = useState(false)
   const { auth } = useAuthStore()
 
   // 获取包装材料类型列表
@@ -69,6 +80,44 @@ export function ApplyPackagingDialog({
 
     void fetchPackagingTypes()
   }, [open])
+
+  // 加载店铺列表
+  useEffect(() => {
+    if (!open) return
+
+    const userId = auth.user?.id
+    if (!userId) return
+
+    const fetchShops = async () => {
+      setIsLoadingShops(true)
+      try {
+        const options = await getUserShopOptions(String(userId), 0, 100)
+        setShopOptions(options)
+        if (options.length > 0) {
+          const raw = storeSku as Record<string, unknown>
+          const storeShopId = String(
+            raw.hzkj_od_pd_shop_id ??
+              raw.hzkj_pk_shop_id ??
+              raw.hzkj_shop_id ??
+              ''
+          )
+          const match = options.find((o) => o.value === storeShopId)
+          setSelectedShopId(match ? storeShopId : options[0].value)
+        }
+      } catch (error) {
+        console.error('Failed to fetch shops:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load shops. Please try again.'
+        )
+      } finally {
+        setIsLoadingShops(false)
+      }
+    }
+
+    void fetchShops()
+  }, [open, auth.user?.id, storeSku])
 
   // 处理类型选择切换
   const handleTypeToggle = (typeId: string) => {
@@ -168,6 +217,11 @@ export function ApplyPackagingDialog({
       return
     }
 
+    if (!selectedShopId?.trim()) {
+      toast.error('Please select a store')
+      return
+    }
+
     const [selectedProduct] = filteredProducts.filter((p: any) =>
       selectedProducts.has(String(p.id || p.hzkj_sku_record_id))
     )
@@ -178,13 +232,7 @@ export function ApplyPackagingDialog({
     }
 
     try {
-      const raw = storeSku as Record<string, unknown>
-      const shopId = String(
-        raw.hzkj_od_pd_shop_id ??
-          raw.hzkj_pk_shop_id ??
-          raw.hzkj_shop_id ??
-          storeSku.id
-      )
+      const shopId = selectedShopId
       const packageId = String(
         selectedProduct.id ||
           selectedProduct.hzkj_shop_package_id ||
@@ -214,6 +262,7 @@ export function ApplyPackagingDialog({
       setSelectedTypes(new Set())
       setSelectedProducts(new Set())
       setApplyToSpu(false)
+      setSelectedShopId('')
       onOpenChange(false)
     } catch (error) {
       console.error('Failed to apply packaging:', error)
@@ -231,6 +280,7 @@ export function ApplyPackagingDialog({
     setSelectedTypes(new Set())
     setSelectedProducts(new Set())
     setApplyToSpu(false)
+    setSelectedShopId('')
     onOpenChange(false)
   }
 
@@ -305,6 +355,35 @@ export function ApplyPackagingDialog({
               </div>
             </div>
           )}
+
+          {/* 店铺选择 */}
+          <div className='space-y-2'>
+            <Label htmlFor='store-select'>Store</Label>
+            <Select
+              value={selectedShopId}
+              onValueChange={setSelectedShopId}
+              disabled={isLoadingShops}
+            >
+              <SelectTrigger id='store-select'>
+                <SelectValue
+                  placeholder={
+                    isLoadingShops
+                      ? 'Loading stores...'
+                      : shopOptions.length === 0
+                        ? 'No stores available'
+                        : 'Please select a store'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {shopOptions.map((shop) => (
+                  <SelectItem key={shop.value} value={shop.value}>
+                    {shop.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* 包装产品类型选择区域 */}
           <div className='space-y-2'>
@@ -418,6 +497,7 @@ export function ApplyPackagingDialog({
           </Button>
           <Button
             onClick={handleConfirm}
+            disabled={!selectedShopId?.trim()}
             className='bg-orange-600 text-white hover:bg-orange-700'
           >
             Confirm

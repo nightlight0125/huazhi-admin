@@ -2,10 +2,10 @@ import { apiClient } from '../api-client'
 
 // 保存询价单请求参数
 export interface SaveBillRequest {
-  id?: number | string // 编辑时传入，新建时为 0
+  id?: number | string // 仅编辑时传入，新增时不传
   createtime?: string // 编辑时传入，格式: "YYYY-MM-DD HH:mm:ss"
   hzkj_goodname: string
-  hzkj_url: string
+  hzkj_url?: string // 选填
   hzkj_amount?: string
   hzkj_textfield?: string
   hzkj_picturefield?: string
@@ -52,13 +52,15 @@ export async function saveBill(
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
   }
 
-  // 构建请求数据对象
+  // 构建请求数据对象（新增不传 id，编辑时传入 id）
   const dataItem: Record<string, unknown> = {
-    id: params.id !== undefined ? Number(params.id) : 0,
     createtime: params.createtime || formatDateTime(new Date()),
     hzkj_goodname: params.hzkj_goodname,
-    hzkj_url: params.hzkj_url,
+    hzkj_url: params.hzkj_url ?? '',
     hzkj_api: params.hzkj_api !== undefined ? params.hzkj_api : true,
+  }
+  if (params.id !== undefined && params.id !== null && params.id !== '') {
+    dataItem.id = String(params.id)
   }
 
   // 添加可选字段

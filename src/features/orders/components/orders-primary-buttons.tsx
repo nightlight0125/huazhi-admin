@@ -297,14 +297,16 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
     }
     try {
       setIsSubmittingShipping(true)
-      await batchUpdOrderLogs({
+      const { data, status } = await batchUpdOrderLogs({
         orderId: selectedOrderIdsForShipping,
         logsId: selectedLogsId,
       })
-      toast.success('Logistics channel updated successfully')
-      setShippingDialogOpen(false)
-      setSelectedOrderIdsForShipping([])
-      setSelectedLogsId('')
+      if (status === true) {
+        toast.success(data)
+        setShippingDialogOpen(false)
+        setSelectedOrderIdsForShipping([])
+        setSelectedLogsId('')
+      }
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -403,18 +405,21 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
       >
         <div className='mt-4 space-y-4'>
           <div className='grid grid-cols-2 gap-6'>
-            <div className='space-y-2 min-w-0'>
+            <div className='min-w-0 space-y-2'>
               <Label htmlFor='rma-order-no'>Order No</Label>
               <Input id='rma-order-no' value={selectedOrderId} disabled />
             </div>
-            <div className='space-y-2 min-w-0'>
+            <div className='min-w-0 space-y-2'>
               <Label htmlFor='rma-question-type'>Question type</Label>
               <Select
                 value={selectedReasonId}
                 onValueChange={setSelectedReasonId}
                 disabled={isLoadingReasons || isCreatingRMA}
               >
-                <SelectTrigger id='rma-question-type' className='w-full min-w-0'>
+                <SelectTrigger
+                  id='rma-question-type'
+                  className='w-full min-w-0'
+                >
                   <SelectValue
                     className='block max-w-full truncate'
                     placeholder={
@@ -436,7 +441,11 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
                     const value = item.id ?? String((item as any).id || label)
 
                     return (
-                      <SelectItem key={value} value={value} className='max-w-80'>
+                      <SelectItem
+                        key={value}
+                        value={value}
+                        className='max-w-80'
+                      >
                         <span className='block truncate' title={label}>
                           {label}
                         </span>

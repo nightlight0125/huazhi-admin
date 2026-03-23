@@ -1169,7 +1169,9 @@ export interface SaveCustomizationRequest {
   skuId: string
   image: string
   brandName: string
-  size: string
+  size: string // Large | Medium | Small
+  type: string // My Logo | My Cards | My Product Packaging | My Shipping Packaging
+  remark: string
 }
 
 // 保存自定义设计响应

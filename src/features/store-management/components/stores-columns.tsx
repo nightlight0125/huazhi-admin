@@ -1,16 +1,112 @@
+import { useState } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
+import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type Store } from '../data/schema'
 
 type StoresColumnsOptions = {
   onEditStoreName?: (store: Store) => void
   onUnbindSuccess?: () => void
+  onStatusChange?: (store: Store, newStatus: string) => Promise<void>
+}
+
+function StoreStatusCell({
+  store,
+  onStatusChange,
+}: {
+  store: Store
+  onStatusChange?: (store: Store, newStatus: string) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const enable = store.enable
+  const enableValue =
+    typeof enable === 'string' ? enable : String(enable ?? '')
+  const isActive = enableValue === '1' || enable === 1
+
+  const currentStatus = isActive ? 'Success' : 'Failed'
+  const newStatus = isActive ? 'Failed' : 'Success'
+  const newValue = isActive ? '0' : '1'
+
+  const variant = isActive ? 'default' : 'secondary'
+  const customClassName = isActive
+    ? 'border-transparent bg-green-600 text-white dark:bg-green-600 dark:text-white'
+    : 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+
+  const handleConfirm = async () => {
+    if (!onStatusChange) return
+    setIsLoading(true)
+    try {
+      await onStatusChange(store, newValue)
+      toast.success('Store status updated successfully')
+      setOpen(false)
+    } catch (error) {
+      console.error('Failed to update store status:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update store status. Please try again.'
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        type='button'
+        onClick={(e) => {
+          e.stopPropagation()
+          if (onStatusChange) setOpen(true)
+        }}
+        className={onStatusChange ? 'cursor-pointer' : 'cursor-default'}
+      >
+        <Badge variant={variant} className={customClassName || undefined}>
+          {currentStatus}
+        </Badge>
+      </button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) setOpen(newOpen)
+        }}
+        handleConfirm={handleConfirm}
+        isLoading={isLoading}
+        title='Change Store Status'
+        desc={
+          <>
+            <p className='mb-2'>
+              Are you sure you want to change the status from{' '}
+              <strong>{currentStatus}</strong> to <strong>{newStatus}</strong>?
+            </p>
+            <p className='text-muted-foreground text-sm'>
+              Store: <strong>{store.name || store.id}</strong>
+            </p>
+          </>
+        }
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Updating...
+            </>
+          ) : (
+            'Confirm'
+          )
+        }
+      />
+    </>
+  )
 }
 
 export const createStoresColumns = (
-  _options?: StoresColumnsOptions
+  options?: StoresColumnsOptions
 ): ColumnDef<Store>[] => [
   {
     id: 'select',
@@ -102,24 +198,12 @@ export const createStoresColumns = (
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Store Status' />
     ),
-    cell: ({ row }) => {
-      const enable = row.getValue('enable')
-      const enableValue =
-        typeof enable === 'string' ? enable : String(enable ?? '')
-      const isActive = enableValue === '1' || enable === 1
-
-      const status = isActive ? 'Success' : 'Failed'
-      const variant = isActive ? 'default' : 'secondary'
-      const customClassName = isActive
-        ? 'border-transparent bg-green-600 text-white dark:bg-green-600 dark:text-white'
-        : 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-
-      return (
-        <Badge variant={variant} className={customClassName || undefined}>
-          {status}
-        </Badge>
-      )
-    },
+    cell: ({ row }) => (
+      <StoreStatusCell
+        store={row.original}
+        onStatusChange={options?.onStatusChange}
+      />
+    ),
   },
   // {
   //   id: 'actions',

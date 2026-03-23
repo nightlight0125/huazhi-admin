@@ -125,6 +125,7 @@ export const orderSchema = z.object({
   hzkj_actual_cost: z.number().optional(), // 实际成本
   hzkj_fre_quo_amount: z.number().optional(), // 运费
   hzkj_customer_channel_name: z.string().optional(), // 客户渠道名称
+  hzkj_customer_channel_number: z.string().optional(), // 客户渠道编号
 })
 
 export type Order = z.infer<typeof orderSchema>

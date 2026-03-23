@@ -10,14 +10,9 @@ import { useAuthStore } from '@/stores/auth-store'
 import { queryCountry, type CountryItem } from '@/lib/api/logistics'
 import {
   getAddress,
-  queryAdmindivision,
-  queryAdmindivisionLevel,
   updateAddress,
   updateBillAddress,
-  type AdmindivisionItem,
-  type AdmindivisionLevelItem,
 } from '@/lib/api/users'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -31,10 +26,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 // 账单地址 Schema
 const invoiceAddressSchema = z.object({
@@ -134,49 +131,19 @@ const createFlagIcon = (countryCode: string) => {
   return FlagIcon
 }
 
-// 地址字段组件（级数由 queryAdmindivisionLevel 动态决定，不写死）
+// 地址字段组件（仅选择国家）
 function AddressFields(props: {
   form: any
   showTaxId?: boolean
   countries: CascaderOption[]
-  divisionColumns: CascaderOption[][] // 每级一列，[0]=第一级省/州...[1]=第二级...
-  levelCount: number // 当前国家的级次数
   isLoadingCountries?: boolean
-  loadingLevelIndex?: number | null // 正在加载的级次索引
-  onCountryChange?: (countryId: string) => void
-  onDivisionSelect?: (levelIndex: number, divisionId: string) => void
 }) {
   const {
     form,
     showTaxId = false,
     countries,
-    divisionColumns,
-    levelCount,
     isLoadingCountries = false,
-    loadingLevelIndex = null,
-    onCountryChange,
-    onDivisionSelect,
   } = props
-
-  const [regionOpen, setRegionOpen] = useState(false)
-
-  const selectedCountryId = form.watch('country')
-  const divisionPath: string[] = form.watch('divisionPath') ?? []
-
-  const selectedCountry = countries.find(
-    (c) => String(c.value) === String(selectedCountryId)
-  )
-
-  const displayRegionLabel =
-    selectedCountry && divisionPath.length > 0
-      ? `${selectedCountry.label} / ${divisionPath
-          .map((id, i) =>
-            divisionColumns[i]?.find((d) => String(d.value) === String(id))
-              ?.label
-          )
-          .filter(Boolean)
-          .join(' / ')}`
-      : selectedCountry?.label ?? 'Please select country / province / city'
   return (
     <>
       <div className='grid grid-cols-2 gap-4'>
@@ -282,156 +249,40 @@ function AddressFields(props: {
       <FormField
         control={form.control}
         name='country'
-        render={() => (
+        render={({ field }) => (
           <FormItem>
             <FormLabel>
-              Country / Province <span className='text-red-500'>*</span>
+              Country / Region <span className='text-red-500'>*</span>
             </FormLabel>
-            <Popover
-              open={regionOpen}
-              onOpenChange={(open) => {
-                setRegionOpen(open)
-                if (open && selectedCountryId && loadingLevelIndex === null) {
-                  if (
-                    divisionColumns.length === 0 ||
-                    divisionColumns[0]?.length === 0
-                  )
-                    onCountryChange?.(selectedCountryId)
-                  else if (divisionPath.length > 0) {
-                    const nextLevel = divisionPath.length
-                    if (
-                      nextLevel < levelCount &&
-                      (!divisionColumns[nextLevel] ||
-                        divisionColumns[nextLevel].length === 0)
-                    )
-                      onDivisionSelect?.(
-                        nextLevel - 1,
-                        divisionPath[nextLevel - 1]
-                      )
-                  }
-                }
+            <Select
+              value={field.value}
+              onValueChange={(value) => {
+                field.onChange(value)
+                form.setValue('divisionPath', [])
+                form.setValue('province', '')
               }}
+              disabled={isLoadingCountries}
             >
-              <PopoverTrigger asChild>
-                <FormControl>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    className={cn(
-                      'w-full justify-between font-normal',
-                      !selectedCountryId && 'text-muted-foreground'
-                    )}
-                  >
-                    <span className='truncate'>{displayRegionLabel}</span>
-                    <ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
-                  </Button>
-                </FormControl>
-              </PopoverTrigger>
-              <PopoverContent
-                className='w-[720px] p-2'
-                align='start'
-                onOpenAutoFocus={(e) => e.preventDefault()}
-              >
-                <div className='flex gap-2'>
-                  <div className='max-h-64 flex-1 overflow-y-auto border-r border-border pr-1'>
-                    <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                      Country/Region
-                    </div>
-                    {isLoadingCountries ? (
-                      <div className='text-muted-foreground py-2 text-xs'>
-                        Loading...
-                      </div>
-                    ) : (
-                      countries.map((c) => {
-                        const isActive =
-                          String(c.value) === String(selectedCountryId)
-                        return (
-                          <button
-                            key={c.value}
-                            type='button'
-                            className={cn(
-                              'hover:bg-muted flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm',
-                              isActive && 'bg-muted font-medium'
-                            )}
-                            onClick={() => {
-                              form.setValue('country', c.value)
-                              form.setValue('divisionPath', [])
-                              form.setValue('province', '')
-                              onCountryChange?.(c.value)
-                            }}
-                          >
-                            <span className='flex items-center gap-2 truncate'>
-                              {c.icon && <c.icon className='h-4 w-4 shrink-0' />}
-                              <span>{c.label}</span>
-                            </span>
-                          </button>
-                        )
-                      })
-                    )}
-                  </div>
-                  {Array.from({ length: levelCount }, (_, levelIndex) => {
-                    const column = divisionColumns[levelIndex]
-                    const isLoading =
-                      loadingLevelIndex === levelIndex
-                    const hasData =
-                      column && column.length > 0
-                    if (!hasData && !isLoading) return null
-                    const selectedId = divisionPath[levelIndex]
-                    const isLastLevel = levelIndex === levelCount - 1
-                    return (
-                      <div
-                        key={levelIndex}
-                        className={cn(
-                          'max-h-64 flex-1 overflow-y-auto pl-1',
-                          levelIndex < levelCount - 1 &&
-                            'border-r border-border pr-1'
-                        )}
-                      >
-                        <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                          Level {levelIndex + 1}
-                        </div>
-                        {isLoading ? (
-                          <div className='text-muted-foreground py-2 text-xs'>
-                            Loading...
-                          </div>
-                        ) : (
-                          (column ?? []).map((opt) => {
-                            const isActive =
-                              String(opt.value) === String(selectedId)
-                            return (
-                              <button
-                                key={opt.value}
-                                type='button'
-                                className={cn(
-                                  'hover:bg-muted flex w-full items-center rounded px-2 py-1 text-left text-sm',
-                                  isActive && 'bg-muted font-medium'
-                                )}
-                                onClick={() => {
-                                  const newPath = divisionPath.slice(
-                                    0,
-                                    levelIndex
-                                  )
-                                  newPath[levelIndex] = opt.value
-                                  form.setValue('divisionPath', newPath)
-                                  if (isLastLevel) {
-                                    form.setValue('province', opt.value)
-                                    setRegionOpen(false)
-                                  } else {
-                                    onDivisionSelect?.(levelIndex, opt.value)
-                                  }
-                                }}
-                              >
-                                <span className='truncate'>{opt.label}</span>
-                              </button>
-                            )
-                          })
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      isLoadingCountries ? 'Loading...' : 'Select country'
+                    }
+                  />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {countries.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    <span className='flex items-center gap-2'>
+                      {c.icon && <c.icon className='h-4 w-4 shrink-0' />}
+                      {c.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}
@@ -499,23 +350,8 @@ export function AddressForm() {
 
   // 第一级：国家 - queryCountry
   const [countries, setCountries] = useState<CascaderOption[]>([])
-  const [invoiceLevels, setInvoiceLevels] = useState<AdmindivisionLevelItem[]>([])
-  const [consigneeLevels, setConsigneeLevels] = useState<
-    AdmindivisionLevelItem[]
-  >([])
-  const [invoiceDivisionColumns, setInvoiceDivisionColumns] = useState<
-    CascaderOption[][]
-  >([])
-  const [consigneeDivisionColumns, setConsigneeDivisionColumns] = useState<
-    CascaderOption[][]
-  >([])
 
   const [isLoadingCountries, setIsLoadingCountries] = useState(true)
-  const [invoiceLoadingLevelIndex, setInvoiceLoadingLevelIndex] = useState<
-    number | null
-  >(null)
-  const [consigneeLoadingLevelIndex, setConsigneeLoadingLevelIndex] =
-    useState<number | null>(null)
   const [isLoadingAddressData, setIsLoadingAddressData] = useState(true)
 
   const invoiceForm = useForm<InvoiceAddressValues>({
@@ -594,141 +430,10 @@ export function AddressForm() {
         addressData.hzkj_country2_id != null
           ? String(addressData.hzkj_country2_id)
           : findCountryIdByNumber(addressData.hzkj_country2_number)
-      const consigneeCountryId = findCountryIdByNumber(
-        addressData.hzkj_country_number
-      )
-
-      const findLevelIdForDivision = async (
-        countryId: string,
-        divisionId: string
-      ): Promise<string> => {
-        const levels = await queryAdmindivisionLevel(countryId, 1, 100)
-        for (const level of levels) {
-          const divisions = await queryAdmindivision(
-            countryId,
-            level.id,
-            undefined,
-            1,
-            500
-          )
-          if (divisions.some((d) => String(d.id) === String(divisionId))) {
-            return level.id
-          }
-        }
-        return ''
-      }
-
-      // 根据 divisionId 和 parent_id 递归构建完整路径 [省id, 市id, ..., 叶节点id]
-      const buildDivisionPath = async (
-        countryId: string,
-        divisionId: string
-      ): Promise<string[]> => {
-        if (!divisionId) return []
-        const levels = await queryAdmindivisionLevel(countryId, 1, 100)
-        for (const level of levels) {
-          const divisions = await queryAdmindivision(
-            countryId,
-            level.id,
-            undefined,
-            1,
-            500
-          )
-          const found = divisions.find(
-            (d) => String(d.id) === String(divisionId)
-          )
-          if (found) {
-            const parentId = found.parent_id
-            if (
-              parentId == null ||
-              parentId === '' ||
-              String(parentId) === '0'
-            ) {
-              return [String(divisionId)]
-            }
-            const parentPath = await buildDivisionPath(
-              countryId,
-              String(parentId)
-            )
-            return [...parentPath, String(divisionId)]
-          }
-        }
-        return []
-      }
-
-      // 根据 number 查找 division id（当只有 number 无 id 时）
-      const findDivisionIdByNumber = async (
-        countryId: string,
-        divisionNumber: string | undefined
-      ): Promise<string> => {
-        if (!divisionNumber) return ''
-        const levels = await queryAdmindivisionLevel(countryId, 1, 100)
-        for (const level of levels) {
-          const divisions = await queryAdmindivision(
-            countryId,
-            level.id,
-            undefined,
-            1,
-            500
-          )
-          const found = divisions.find(
-            (d) => String((d as { number?: string }).number ?? '') === String(divisionNumber)
-          )
-          if (found) return String(found.id)
-        }
-        return ''
-      }
-
-      const invoiceDivisionId = addressData.hzkj_admindivision2_id
-        ? String(addressData.hzkj_admindivision2_id)
-        : invoiceCountryId
-          ? await findDivisionIdByNumber(
-              invoiceCountryId,
-              addressData.hzkj_admindivision2_number
-            )
-          : ''
-      const consigneeDivisionId = addressData.hzkj_admindivision_id
-        ? String(addressData.hzkj_admindivision_id)
-        : consigneeCountryId
-          ? await findDivisionIdByNumber(
-              consigneeCountryId,
-              addressData.hzkj_admindivision_number
-            )
-          : ''
-
-      let invoiceLevelId = ''
-      let consigneeLevelId = ''
-      if (invoiceCountryId && invoiceDivisionId) {
-        invoiceLevelId = await findLevelIdForDivision(
-          invoiceCountryId,
-          invoiceDivisionId
-        )
-      }
-      if (consigneeCountryId && consigneeDivisionId) {
-        consigneeLevelId = await findLevelIdForDivision(
-          consigneeCountryId,
-          consigneeDivisionId
-        )
-      }
-
-      // 构建完整 divisionPath（省/市/区等多级路径），若构建失败则退化为单级
-      const invoiceDivisionPathRaw = invoiceCountryId
-        ? await buildDivisionPath(invoiceCountryId, invoiceDivisionId)
-        : []
-      const invoiceDivisionPath =
-        invoiceDivisionPathRaw.length > 0
-          ? invoiceDivisionPathRaw
-          : invoiceDivisionId
-            ? [invoiceDivisionId]
-            : []
-      const consigneeDivisionPathRaw = consigneeCountryId
-        ? await buildDivisionPath(consigneeCountryId, consigneeDivisionId)
-        : []
-      const consigneeDivisionPath =
-        consigneeDivisionPathRaw.length > 0
-          ? consigneeDivisionPathRaw
-          : consigneeDivisionId
-            ? [consigneeDivisionId]
-            : []
+      const consigneeCountryId =
+        addressData.hzkj_country_id != null
+          ? String(addressData.hzkj_country_id)
+          : findCountryIdByNumber(addressData.hzkj_country_number)
 
       invoiceForm.reset({
         firstName: addressData.hzkj_customer_first_name2 ?? '',
@@ -738,9 +443,9 @@ export function AddressForm() {
         address1: addressData.hzkj_bill_adress ?? '',
         address2: addressData.hzkj_bill_adress2 ?? '',
         country: invoiceCountryId,
-        province: invoiceDivisionId,
-        provinceLevel: invoiceLevelId,
-        divisionPath: invoiceDivisionPath,
+        province: '',
+        provinceLevel: '',
+        divisionPath: [],
         city: addressData.hzkj_bill_city ?? '',
         postcode: addressData.hzkj_textfield3 ?? '',
         taxId: addressData.hzkj_tax_id2 ?? '',
@@ -758,50 +463,12 @@ export function AddressForm() {
         address1: addressData.hzkj_textfield ?? '',
         address2: addressData.hzkj_address2 ?? '',
         country: consigneeCountryId,
-        province: consigneeDivisionId,
-        provinceLevel: consigneeLevelId,
-        divisionPath: consigneeDivisionPath,
+        province: '',
+        provinceLevel: '',
+        divisionPath: [],
         city: addressData.hzkj_city ?? '',
         postcode: addressData.hzkj_textfield1 ?? '',
       })
-
-      // 加载行政区级联列并回填
-      if (invoiceCountryId) {
-        const levels = await queryAdmindivisionLevel(invoiceCountryId, 1, 100)
-        setInvoiceLevels(levels)
-        if (levels.length > 0 && invoiceDivisionPath.length > 0) {
-          void loadDivision(
-            invoiceCountryId,
-            0,
-            undefined,
-            true,
-            levels,
-            true
-          )
-        } else {
-          setInvoiceDivisionColumns([])
-        }
-      }
-      if (consigneeCountryId) {
-        const levels = await queryAdmindivisionLevel(
-          consigneeCountryId,
-          1,
-          100
-        )
-        setConsigneeLevels(levels)
-        if (levels.length > 0 && consigneeDivisionPath.length > 0) {
-          void loadDivision(
-            consigneeCountryId,
-            0,
-            undefined,
-            false,
-            levels,
-            true
-          )
-        } else {
-          setConsigneeDivisionColumns([])
-        }
-      }
 
       if (!options?.silent) {
         toast.success('Address data loaded successfully')
@@ -822,112 +489,6 @@ export function AddressForm() {
     void loadAddressData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.user?.id, countries.length])
-
-  // 通用加载：按 levelIndex 动态加载第 N 级行政区（1～5 级等皆可）
-  const loadDivision = async (
-    countryId: string,
-    levelIndex: number,
-    parentId: string | undefined,
-    isInvoice: boolean,
-    levelsOverride?: AdmindivisionLevelItem[],
-    preservePath?: boolean // 回填时保留已设置的 divisionPath
-  ) => {
-    if (!countryId) return
-    const levels =
-      levelsOverride ?? (isInvoice ? invoiceLevels : consigneeLevels)
-    if (levelIndex >= levels.length) return
-
-    const setColumns = isInvoice
-      ? setInvoiceDivisionColumns
-      : setConsigneeDivisionColumns
-    const setLoading = isInvoice
-      ? setInvoiceLoadingLevelIndex
-      : setConsigneeLoadingLevelIndex
-
-    if (levelIndex === 0 && !preservePath) {
-      if (isInvoice) {
-        invoiceForm.setValue('divisionPath', [])
-        invoiceForm.setValue('province', '')
-      } else {
-        consigneeForm.setValue('divisionPath', [])
-        consigneeForm.setValue('province', '')
-      }
-    }
-    setLoading(levelIndex)
-    setColumns((prev) => {
-      const next = prev.slice(0, levelIndex)
-      return [...next, [], ...Array(Math.max(0, prev.length - levelIndex - 1))]
-    })
-
-    try {
-      const levelId = levels[levelIndex].id
-      const rows: AdmindivisionItem[] = await queryAdmindivision(
-        countryId,
-        levelId,
-        parentId,
-        1,
-        500
-      )
-      const options: CascaderOption[] = rows.map((item) => ({
-        value: item.id,
-        label: item.name ?? String(item.id),
-      }))
-      setColumns((prev) => {
-        const next = [...prev]
-        next[levelIndex] = options
-        return next
-      })
-      // 回填时：若 divisionPath 有后续级，继续加载下一列
-      const divisionPath: string[] =
-        (isInvoice
-          ? invoiceForm.getValues('divisionPath')
-          : consigneeForm.getValues('divisionPath')) ?? []
-      if (divisionPath.length > levelIndex + 1) {
-        const nextParentId = divisionPath[levelIndex]
-        void loadDivision(
-          countryId,
-          levelIndex + 1,
-          nextParentId,
-          isInvoice,
-          levels,
-          preservePath
-        )
-      }
-    } catch (error) {
-      console.error('Failed to load division:', error)
-      toast.error('Failed to load divisions')
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  // 国家变更：先取级次，再加载第一级
-  const onCountryChange = async (countryId: string, isInvoice: boolean) => {
-    if (!countryId) return
-    const setColumns = isInvoice
-      ? setInvoiceDivisionColumns
-      : setConsigneeDivisionColumns
-    setColumns([])
-    if (isInvoice) {
-      invoiceForm.setValue('divisionPath', [])
-      invoiceForm.setValue('province', '')
-    } else {
-      consigneeForm.setValue('divisionPath', [])
-      consigneeForm.setValue('province', '')
-    }
-
-    try {
-      const levels = await queryAdmindivisionLevel(countryId, 1, 100)
-      if (isInvoice) setInvoiceLevels(levels)
-      else setConsigneeLevels(levels)
-      if (levels.length > 0) {
-        await loadDivision(countryId, 0, undefined, isInvoice, levels)
-      }
-    } catch (error) {
-      console.error('Failed to load division levels:', error)
-      toast.error('Failed to load divisions')
-    }
-  }
 
   const handleInvoiceSubmit = async (data: InvoiceAddressValues) => {
     try {
@@ -977,13 +538,12 @@ export function AddressForm() {
           address1: data.address1,
           address2: data.address2,
           country: data.country,
-          province: data.province,
-          provinceLevel: data.provinceLevel,
-          divisionPath: data.divisionPath ?? [],
+          province: '',
+          provinceLevel: '',
+          divisionPath: [],
           city: data.city,
           postcode: data.postcode,
         })
-        if (data.country) void onCountryChange(data.country, false)
       }
     } catch (error) {
       console.error('Failed to save billing address:', error)
@@ -1092,23 +652,7 @@ export function AddressForm() {
                     form={invoiceForm}
                     showTaxId={true}
                     countries={countries}
-                    divisionColumns={invoiceDivisionColumns}
-                    levelCount={invoiceLevels.length}
                     isLoadingCountries={isLoadingCountries}
-                    loadingLevelIndex={invoiceLoadingLevelIndex}
-                    onCountryChange={(countryId) =>
-                      onCountryChange(countryId, true)
-                    }
-                    onDivisionSelect={(levelIndex, divisionId) => {
-                      const countryId = invoiceForm.getValues('country')
-                      if (countryId)
-                        loadDivision(
-                          countryId,
-                          levelIndex + 1,
-                          divisionId,
-                          true
-                        )
-                    }}
                   />
 
                   <FormField
@@ -1188,23 +732,7 @@ export function AddressForm() {
                     form={consigneeForm}
                     showTaxId={false}
                     countries={countries}
-                    divisionColumns={consigneeDivisionColumns}
-                    levelCount={consigneeLevels.length}
                     isLoadingCountries={isLoadingCountries}
-                    loadingLevelIndex={consigneeLoadingLevelIndex}
-                    onCountryChange={(countryId) =>
-                      onCountryChange(countryId, false)
-                    }
-                    onDivisionSelect={(levelIndex, divisionId) => {
-                      const countryId = consigneeForm.getValues('country')
-                      if (countryId)
-                        loadDivision(
-                          countryId,
-                          levelIndex + 1,
-                          divisionId,
-                          false
-                        )
-                    }}
                   />
 
                   <Button

@@ -31,6 +31,9 @@ apiClient.interceptors.request.use(
     const token = auth.accessToken
 
     const isLoginRequest = config.url?.includes('/v2/hzkj/base/member/login')
+    const isIdLoginRequest = config.url?.includes(
+      '/v2/hzkj/hzkj_im_ext/member/idLogin'
+    )
     const isSignUpRequest = config.url?.includes('/v2/hzkj/base/member/add')
     const isForgotPasswordRequest =
       config.url?.includes('/hzkj_member/member/getResetPassWordCode') ||
@@ -43,6 +46,7 @@ apiClient.interceptors.request.use(
 
     if (
       isLoginRequest ||
+      isIdLoginRequest ||
       isSignUpRequest ||
       isForgotPasswordRequest ||
       isPaymentCallbackRequest
@@ -106,16 +110,24 @@ apiClient.interceptors.response.use(
     if (hasLogical401) {
       const isLoginOrGetToken =
         config?.url?.includes('/v2/hzkj/base/member/login') ||
-        config?.url?.includes('/oauth2/getToken')
+        config?.url?.includes('/oauth2/getToken') ||
+        config?.url?.includes('/v2/hzkj/hzkj_im_ext/member/idLogin')
       if (isLoginOrGetToken) {
-        // 401 来自 login 或 getToken 时不再重试，直接登出，避免死循环
+        // 401 来自 login、getToken 或 idLogin 时不再重试，直接登出，避免死循环
         const authStore = useAuthStore.getState()
         authStore.auth.reset()
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname
-          if (!currentPath.includes('/sign-in') && !currentPath.includes('/sign-up')) {
-            const redirectPath = window.location.pathname + window.location.search
-            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
+          const isAuthPage =
+            currentPath.includes('/sign-in') ||
+            currentPath.includes('/sign-up') ||
+            currentPath.includes('/staff-login')
+          if (!isAuthPage) {
+            const redirectPath =
+              window.location.pathname + window.location.search
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(
+              redirectPath
+            )}`
           }
         }
         return Promise.reject(
@@ -191,7 +203,8 @@ apiClient.interceptors.response.use(
 
       const isLoginOrGetTokenReq =
         originalRequest?.url?.includes('/v2/hzkj/base/member/login') ||
-        originalRequest?.url?.includes('/oauth2/getToken')
+        originalRequest?.url?.includes('/oauth2/getToken') ||
+        originalRequest?.url?.includes('/v2/hzkj/hzkj_im_ext/member/idLogin')
       if (has401Code && isLoginOrGetTokenReq) {
         const authStore = useAuthStore.getState()
         authStore.auth.reset()
@@ -258,7 +271,8 @@ apiClient.interceptors.response.use(
     if (isAuthError) {
       const isLoginOrGetTokenReq =
         originalRequest?.url?.includes('/v2/hzkj/base/member/login') ||
-        originalRequest?.url?.includes('/oauth2/getToken')
+        originalRequest?.url?.includes('/oauth2/getToken') ||
+        originalRequest?.url?.includes('/v2/hzkj/hzkj_im_ext/member/idLogin')
       if (isLoginOrGetTokenReq) {
         const authStore = useAuthStore.getState()
         authStore.auth.reset()
