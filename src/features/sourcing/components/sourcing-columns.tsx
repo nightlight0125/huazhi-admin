@@ -167,30 +167,30 @@ export const createSourcingColumns = (
       ).trim()
       // 仅“已采纳”时展示结果：当前接口中 1=accepted，兼容中文标题
       const isAccepted =
-        rawStatus === '1' || rawStatusTitle === '已采纳' || rawStatus === 'accepted'
+        rawStatus === '1' ||
+        rawStatusTitle === '已采纳' ||
+        rawStatus === 'accepted'
 
       const entryList = Array.isArray(sourcing.entryentity)
         ? (sourcing.entryentity as Array<Record<string, unknown>>)
         : []
       const acceptedEntry = isAccepted
-        ? entryList.find((entry) => String((entry as any).hzkj_accept ?? '') === '1')
+        ? entryList.find(
+            (entry) => String((entry as any).hzkj_accept ?? '') === '1'
+          )
         : undefined
 
       if (!acceptedEntry) {
-        return <div className='text-xs text-muted-foreground'>-</div>
+        return <div className='text-muted-foreground text-xs'>-</div>
       }
 
       const productId =
         typeof acceptedEntry.hzkj_spu_id === 'string'
           ? acceptedEntry.hzkj_spu_id
           : sourcing.productId
-      const image =
-        (acceptedEntry.hzkj_spu_hzkj_picturefield as string) || ''
-      const productName =
-        (acceptedEntry.hzkj_spu_hzkj_enname as string)  || '-'
-      const spu =
-        (acceptedEntry.hzkj_spu_number as string) ||
-        '-'
+      const image = (acceptedEntry.hzkj_spu_hzkj_picturefield as string) || ''
+      const productName = (acceptedEntry.hzkj_spu_hzkj_enname as string) || '-'
+      const spu = (acceptedEntry.hzkj_spu_number as string) || '-'
       const rawPrice = (acceptedEntry as any).hzkj_spu_hzkj_pur_price
       const price =
         rawPrice !== undefined && rawPrice !== null && rawPrice !== ''
@@ -222,7 +222,7 @@ export const createSourcingColumns = (
                   {productName}
                 </div>
               </TooltipTrigger>
-              <TooltipContent className='max-w-xs break-words text-xs'>
+              <TooltipContent className='max-w-xs text-xs break-words'>
                 {productName}
               </TooltipContent>
             </Tooltip>
@@ -230,7 +230,10 @@ export const createSourcingColumns = (
               SPU: {spu}
             </div>
             <div className='text-muted-foreground mt-0.5 text-[10px] leading-tight'>
-              Price: {typeof price === 'number' && !Number.isNaN(price) ? `$${price.toFixed(2)}` : '-'}
+              Price:{' '}
+              {typeof price === 'number' && !Number.isNaN(price)
+                ? `$${price.toFixed(2)}`
+                : '-'}
             </div>
           </div>
         </div>
@@ -248,7 +251,18 @@ export const createSourcingColumns = (
       const remark = (row.getValue('remark') as string | undefined) || ''
       const sourcing = row.original
 
-      if (!remark) {
+      const rawStatus = String(
+        (sourcing as any).hzkj_accept_status ?? sourcing.status ?? ''
+      ).trim()
+      const rawStatusTitle = String(
+        (sourcing as any).hzkj_accept_status_title ?? ''
+      ).trim()
+      const isAccepted =
+        rawStatus === '1' ||
+        rawStatusTitle === '已采纳' ||
+        rawStatus === 'accepted'
+
+      if (!isAccepted || !remark) {
         return <div className='text-muted-foreground text-xs'>-</div>
       }
 
@@ -312,15 +326,30 @@ export const createSourcingColumns = (
       const hzkjDate = entryEntity?.hzkj_date
 
       if (!hzkjDate) {
-        return <div className='text-xs'>-</div>
+        return (
+          <div className='text-muted-foreground min-w-[10px] text-xs'>-</div>
+        )
       }
 
-      return <div className='text-xs'>{String(hzkjDate)}</div>
+      const dateStr = String(hzkjDate)
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className='max-w-[140px] truncate text-xs'>{dateStr}</div>
+          </TooltipTrigger>
+          <TooltipContent className='max-w-xs text-xs'>
+            {dateStr}
+          </TooltipContent>
+        </Tooltip>
+      )
     },
     enableHiding: false,
   },
   {
     id: 'actions',
+    header: () => <span className='text-xs font-medium'>Actions</span>,
+    size: 80,
+    minSize: 70,
     cell: ({ row }) => {
       const sourcing = row.original
       return (

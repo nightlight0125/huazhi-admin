@@ -104,7 +104,6 @@ export function SourcingToolbar<TData>({
         </Button>
       </div>
 
-      {/* New Sourcing Button */}
       <div>
         <Button
           className='h-8 bg-purple-600 text-xs hover:bg-purple-700'

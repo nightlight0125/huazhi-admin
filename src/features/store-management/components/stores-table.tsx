@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
+import { useAuthStore } from '@/stores/auth-store'
+import { updateShopStatus } from '@/lib/api/shop'
 import {
   type SortingState,
   type VisibilityState,
@@ -77,13 +79,32 @@ export function StoresTable({
     }
   }
 
+  const { auth } = useAuthStore()
+  const customerId = auth.user?.customerId || auth.user?.id
+
+  const handleStatusChange = useCallback(
+    async (store: Store, newStatus: string) => {
+      if (!customerId) {
+        throw new Error('Please login first')
+      }
+      await updateShopStatus({
+        customerId: String(customerId),
+        shopId: store.id,
+        status: newStatus,
+      })
+      onRefresh?.()
+    },
+    [customerId, onRefresh]
+  )
+
   const columns = useMemo(
     () =>
       createStoresColumns({
         onEditStoreName: handleEditStoreName,
         onUnbindSuccess: onRefresh,
+        onStatusChange: handleStatusChange,
       }),
-    [onRefresh]
+    [onRefresh, handleStatusChange]
   )
 
   // 计算总页数（服务端分页）

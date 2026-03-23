@@ -146,6 +146,14 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
   }, [fetchOrders])
 
   const getOrderAmount = (order: any) => {
+    if (order.hzkj_total_amount !== undefined && order.hzkj_total_amount !== null) {
+      const amount = order.hzkj_total_amount
+      return typeof amount === 'string'
+        ? parseFloat(amount) || 0
+        : typeof amount === 'number'
+          ? amount
+          : 0
+    }
     if (order.hzkj_order_amount !== undefined) {
       const amount = order.hzkj_order_amount
       return typeof amount === 'string'

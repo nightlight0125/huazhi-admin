@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { addShop } from '@/lib/api/shop'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -51,7 +51,7 @@ export function BindShopDialog({
           shopName: shopName.trim(),
         },
       })
-      toast.success('Shop bound successfully')
+      toast.success('Shop created successfull')
       setShopName('')
       onOpenChange(false)
       onSuccess?.()

@@ -20,7 +20,7 @@ export function NewSourcingDialog({
 
   const handleSubmit = async (values: {
     productName: string
-    productLink: string
+    productLink?: string
     price?: string
     remark?: string
     productImage?: string

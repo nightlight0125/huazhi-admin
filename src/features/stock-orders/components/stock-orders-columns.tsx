@@ -6,6 +6,11 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { toDisplayString } from '@/features/orders/utils'
 import { type StockOrder } from '../data/schema'
@@ -167,9 +172,16 @@ export const createStockOrdersColumns = (options?: {
                 <ImageIcon className='text-muted-foreground h-5 w-5' />
               </div>
             )}
-            <div className='text-sm'>
-              <div className='font-medium'>{productName || '—'}</div>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className='max-w-[140px] truncate text-sm'>
+                  <div className='font-medium'>{productName || '—'}</div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className='max-w-xs break-words'>{productName || '—'}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         )
       },

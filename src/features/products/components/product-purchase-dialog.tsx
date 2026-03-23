@@ -49,7 +49,6 @@ export function ProductPurchaseDialog({
   initialSelectedSpecs = {},
   defaultQuantity,
 }: ProductPurchaseDialogProps) {
-  void defaultQuantity
   const navigate = useNavigate()
   const { auth } = useAuthStore()
 
@@ -108,7 +107,7 @@ export function ProductPurchaseDialog({
     })
   }, [allSkus, selectedSpecs])
 
-  const totalPrice = (
+  const totalPrice =
     displayedVariants.length === 1
       ? (() => {
           const v = displayedVariants[0]
@@ -119,10 +118,11 @@ export function ProductPurchaseDialog({
             (typeof apiProduct?.hzkj_pur_price === 'number'
               ? apiProduct.hzkj_pur_price
               : 0)
-          return (qty * (typeof variantPrice === 'number' ? variantPrice : 0)).toFixed(2)
+          return (
+            qty * (typeof variantPrice === 'number' ? variantPrice : 0)
+          ).toFixed(2)
         })()
       : '0.00'
-  )
 
   const updateQuantity = (
     skuId: string,
@@ -139,6 +139,20 @@ export function ProductPurchaseDialog({
       return { ...prev, [skuId]: next }
     })
   }
+
+  // 从详情页 Buy Sample/Buy Stock 传入的 defaultQuantity 初始化数量
+  useEffect(() => {
+    if (!open || defaultQuantity == null || defaultQuantity < 1) return
+    if (displayedVariants.length === 1) {
+      const skuId = String(displayedVariants[0]?.id ?? '')
+      if (skuId) {
+        setVariantQuantities((prev) => {
+          if (prev[skuId] !== undefined) return prev
+          return { ...prev, [skuId]: Math.max(1, defaultQuantity) }
+        })
+      }
+    }
+  }, [open, defaultQuantity, displayedVariants])
 
   // 获取规格数据
   const skuSpecs =
@@ -304,15 +318,12 @@ export function ProductPurchaseDialog({
     const singleVariant = displayedVariants[0]
     const skuId = String(singleVariant?.id ?? '')
     const qty = Math.max(1, variantQuantities[skuId] ?? 1)
-    const validVariants = [
-      { ...singleVariant, quantity: qty },
-    ]
+    const validVariants = [{ ...singleVariant, quantity: qty }]
 
     void doBuyNow(validVariants)
   }
 
   const doBuyNow = async (validVariants: any[]) => {
-
     if (mode === 'stock') {
       if (!selectedWarehouse) {
         toast.error('Please select warehouse')

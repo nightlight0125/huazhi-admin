@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select'
 import { ProductsConnectionDialog } from './products-connection-dialog'
 import { StoreProductsPrimaryButtons } from './store-products-primary-buttons'
+import { getPageNumbers } from '@/lib/utils'
 import { useStoreProducts } from './store-products-provider'
 
 // StoreProductItem 现在使用 API 返回的类型
@@ -124,13 +125,10 @@ function PaginationControl({
 }: PaginationControlProps) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
 
-  const pageNumbers = useMemo(() => {
-    const numbers: (number | '...')[] = []
-    for (let i = 1; i <= totalPages; i++) {
-      numbers.push(i)
-    }
-    return numbers
-  }, [totalPages])
+  const pageNumbers = useMemo(
+    () => getPageNumbers(page, totalPages),
+    [page, totalPages]
+  )
 
   return (
     <div className='text-muted-foreground mt-4 flex items-center justify-between text-xs'>
@@ -354,7 +352,6 @@ export function NotAssociatedConnectionView() {
     setStorePage(1) // 重置到第一页
   }
 
-  // 加载 HyperZone Products (SKU 记录)
   useEffect(() => {
     const fetchTeemDropProducts = async () => {
       // const customerId = auth.user?.customerId
@@ -369,7 +366,7 @@ export function NotAssociatedConnectionView() {
           tdPage,
           tdPageSize,
           true, // 返回总数
-          searchKeyword // HyperZone Products 的搜索关键词（来自 StoreProductsPrimaryButtons）
+          searchKeyword
         )
 
         // 类型检查：确保返回的是带总数的对象
@@ -380,7 +377,6 @@ export function NotAssociatedConnectionView() {
         setTeemDropProducts(result.rows || [])
         setTotalTeemDropProducts(result.totalCount || 0)
       } catch (error) {
-        console.error('Failed to load HyperZone products:', error)
         toast.error(
           error instanceof Error
             ? error.message
@@ -396,7 +392,6 @@ export function NotAssociatedConnectionView() {
     void fetchTeemDropProducts()
   }, [tdPage, tdPageSize, searchKeyword, auth.user?.customerId])
 
-  // 当 HyperZone Products 搜索关键词变化时，重置到第一页
   useEffect(() => {
     if (searchKeyword) {
       setTdPage(1)
@@ -405,11 +400,12 @@ export function NotAssociatedConnectionView() {
 
   return (
     <>
-      <div className='flex min-h-0 flex-1 gap-6 overflow-hidden px-1'>
+      <div className='flex min-h-0 flex-1 items-start gap-6 overflow-hidden px-1'>
         {/* 左侧：Store Products */}
-        <div className='flex-1 overflow-y-auto pr-6'>
-          <h3 className='mb-4 text-sm font-semibold'>Store Products</h3>
-          <div className='mb-4 flex items-center gap-2'>
+        <div className='flex min-h-0 flex-1 flex-col overflow-y-auto pr-6'>
+          <div className='mb-4 shrink-0'>
+            <h3 className='mb-4 text-sm font-semibold'>Store Products</h3>
+            <div className='flex h-10 items-center gap-2'>
             <Input
               placeholder='enter store product\name\ID'
               value={storeSearchValue}
@@ -424,8 +420,9 @@ export function NotAssociatedConnectionView() {
               <Search className='mr-2 h-4 w-4' />
               Search
             </Button>
+            </div>
           </div>
-          <div className='space-y-3'>
+          <div className='min-h-0 flex-1 space-y-3'>
             {storeProducts.length > 0 ? (
               storeProducts.map((product) => {
                 const productId = (product as any).productId || product.id
@@ -434,17 +431,19 @@ export function NotAssociatedConnectionView() {
                 return (
                   <div
                     key={productId}
-                    className={`relative cursor-pointer rounded-lg border p-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                    className={`relative flex h-[112px] cursor-pointer items-stretch rounded-lg border p-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
                     onClick={() => handleStoreProductSelect(product.id)}
                   >
-                    <div className='flex items-start gap-3'>
+                    <div className='flex min-h-0 flex-1 items-start gap-3'>
                       <img
                         src={product.image}
                         alt={product.description}
                         className='h-16 w-16 shrink-0 rounded object-cover'
                       />
                       <div className='min-w-0 flex-1'>
-                        <p className='mb-1 text-sm'>{product.description}</p>
+                        <p className='mb-1 line-clamp-3 text-sm break-words'>
+                          {product.description}
+                        </p>
                         <p className='text-muted-foreground text-xs'>
                           Product ID:{' '}
                           {typeof productId === 'string'
@@ -481,13 +480,14 @@ export function NotAssociatedConnectionView() {
           ) : null}
         </div>
 
-        {/* 右侧：HyperZone Products */}
-        <div className='flex-1 overflow-y-auto pl-6'>
-          <h3 className='mb-4 text-sm font-semibold'>HyperZone Products</h3>
-          <div className='mb-4'>
-            <StoreProductsPrimaryButtons />
+        <div className='flex min-h-0 flex-1 flex-col overflow-y-auto pl-6'>
+          <div className='mb-4 shrink-0'>
+            <h3 className='mb-4 text-sm font-semibold'>HyperZone Products</h3>
+            <div className='flex h-10 items-center'>
+              <StoreProductsPrimaryButtons />
+            </div>
           </div>
-          <div className='space-y-3'>
+          <div className='min-h-0 flex-1 space-y-3'>
             {isLoadingTeemDropProducts ? (
               <div className='text-muted-foreground mt-4 text-center text-sm'>
                 Loading...
@@ -501,13 +501,13 @@ export function NotAssociatedConnectionView() {
                 return (
                   <div
                     key={product.id}
-                    className={`relative rounded-lg border p-3 transition-colors ${
+                    className={`relative flex h-[112px] items-stretch rounded-lg border p-3 transition-colors ${
                       isConnectedToSelected
                         ? 'border-primary bg-primary/5'
                         : 'border-border hover:border-primary/50'
                     }`}
                   >
-                    <div className='flex items-start gap-3'>
+                    <div className='flex min-h-0 flex-1 items-start gap-3'>
                       {product.hzkj_picturefield ? (
                         <img
                           src={product.hzkj_picturefield}
@@ -519,7 +519,7 @@ export function NotAssociatedConnectionView() {
                         </div>
                       )}
                       <div className='min-w-0 flex-1'>
-                        <p className='mb-1 text-sm'>
+                        <p className='mb-1 line-clamp-3 text-sm break-words'>
                           {typeof product.hzkj_bg_enname === 'string'
                             ? product.hzkj_bg_enname
                             : String(product.hzkj_bg_enname || '')}

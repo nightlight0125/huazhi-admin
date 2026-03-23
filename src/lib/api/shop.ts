@@ -227,7 +227,6 @@ export interface AddShopResponse {
   [key: string]: unknown
 }
 
-// 绑定店铺 API
 export async function addShop(params: AddShopRequest): Promise<AddShopResponse> {
   const response = await apiClient.post<AddShopResponse>(
     '/v2/hzkj/hzkj_customer/shop/addShop',
@@ -237,6 +236,31 @@ export async function addShop(params: AddShopRequest): Promise<AddShopResponse> 
   if (!response.data.status) {
     const errorMessage =
       response.data.message || 'Failed to add shop. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 更新店铺状态请求参数
+export interface UpdateShopStatusRequest {
+  customerId: string
+  shopId: string
+  status: string // "0" 禁用 | "1" 启用
+}
+
+// 更新店铺状态 API
+export async function updateShopStatus(
+  params: UpdateShopStatusRequest
+): Promise<{ status?: boolean; message?: string; [key: string]: unknown }> {
+  const response = await apiClient.post(
+    '/v2/hzkj/hzkj_im_ext/shop/updateShopStatus',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to update shop status. Please try again.'
     throw new Error(errorMessage)
   }
 

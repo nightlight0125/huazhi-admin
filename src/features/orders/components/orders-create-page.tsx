@@ -3,20 +3,13 @@ import { z } from 'zod'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronDown, Loader2, Search } from 'lucide-react'
+import { Loader2, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import worldCountries from 'world-countries'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryCountry, type CountryItem } from '@/lib/api/logistics'
 import { addBTOrder } from '@/lib/api/orders'
 import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
-import {
-  queryAdmindivision,
-  queryAdmindivisionLevel,
-  type AdmindivisionItem,
-  type AdmindivisionLevelItem,
-} from '@/lib/api/users'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -28,11 +21,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -73,23 +61,13 @@ const productFormSchema = z.object({
   productName: z.string().min(1, '产品名称为必填项'),
   productVariants: z.string().optional(),
   quantity: z.number().min(1, '数量必须大于0'),
-  productPicUrl: z.string().optional(),
-  productLink: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || val === '' || z.string().url().safeParse(val).success,
-      {
-        message: '请输入有效的产品链接',
-      }
-    ),
+  unitPrice: z.number().min(0, '单价不能为负'),
   rawItem: z.record(z.string(), z.unknown()).optional(), // 完整后端对象
 })
 
 // 表单验证模式（country/divisionPath/province 与 address-form 级联结构一致）
 const formSchema = z.object({
   store: z.string().min(1, '店铺为必填项'),
-  orderNo: z.string().min(1, '订单号为必填项'),
   customerName: z.string().min(1, '客户名称为必填项'),
   country: z.string().min(1, '国家为必填项'),
   divisionPath: z.array(z.string()).optional(), // 多级行政区路径 [省id, 市id, ..., 叶节点id]
@@ -137,15 +115,9 @@ export function OrdersCreatePage() {
     void fetchShops()
   }, [auth.user?.id])
 
-  // 国家/多级行政区级联（与 address-form 一致：动态级数）
+  // 国家列表
   const [regionCountries, setRegionCountries] = useState<CascaderOption[]>([])
-  const [regionLevels, setRegionLevels] = useState<AdmindivisionLevelItem[]>([])
-  const [divisionColumns, setDivisionColumns] = useState<CascaderOption[][]>([])
   const [isLoadingCountries, setIsLoadingCountries] = useState(true)
-  const [loadingLevelIndex, setLoadingLevelIndex] = useState<number | null>(
-    null
-  )
-  const [regionOpen, setRegionOpen] = useState(false)
 
   useEffect(() => {
     const loadCountries = async () => {
@@ -187,102 +159,10 @@ export function OrdersCreatePage() {
     void loadCountries()
   }, [])
 
-  const loadDivision = async (
-    countryId: string,
-    levelIndex: number,
-    parentId: string | undefined,
-    levelsOverride?: AdmindivisionLevelItem[]
-  ) => {
-    if (!countryId) return
-    const levels = levelsOverride ?? regionLevels
-    if (levelIndex >= levels.length) return
-
-    if (levelIndex === 0) {
-      form.setValue('divisionPath', [])
-      form.setValue('province', '')
-    }
-    setLoadingLevelIndex(levelIndex)
-    setDivisionColumns((prev) => {
-      const next = prev.slice(0, levelIndex)
-      return [...next, [], ...Array(Math.max(0, prev.length - levelIndex - 1))]
-    })
-
-    try {
-      const levelId = levels[levelIndex].id
-      const rows: AdmindivisionItem[] = await queryAdmindivision(
-        countryId,
-        levelId,
-        parentId,
-        1,
-        500
-      )
-      const options: CascaderOption[] = rows.map((item) => ({
-        value: item.id,
-        label: item.name ?? String(item.id),
-      }))
-      setDivisionColumns((prev) => {
-        const next = [...prev]
-        next[levelIndex] = options
-        return next
-      })
-      const divisionPath: string[] = form.getValues('divisionPath') ?? []
-      if (divisionPath.length > levelIndex + 1) {
-        void loadDivision(
-          countryId,
-          levelIndex + 1,
-          divisionPath[levelIndex],
-          levels
-        )
-      }
-    } catch (error) {
-      console.error('Failed to load divisions:', error)
-      toast.error('Failed to load divisions')
-    } finally {
-      setLoadingLevelIndex(null)
-    }
-  }
-
-  const onCountryChange = async (countryId: string) => {
-    if (!countryId) return
-    setDivisionColumns([])
-    form.setValue('divisionPath', [])
-    form.setValue('province', '')
-    try {
-      const levels = await queryAdmindivisionLevel(countryId, 1, 100)
-      setRegionLevels(levels)
-      if (levels.length > 0) {
-        await loadDivision(countryId, 0, undefined, levels)
-      }
-    } catch (error) {
-      console.error('Failed to load division levels:', error)
-      toast.error('Failed to load divisions')
-    }
-  }
-
-  const onDivisionSelect = (levelIndex: number, divisionId: string) => {
-    const newPath = (form.getValues('divisionPath') ?? []).slice(0, levelIndex)
-    newPath[levelIndex] = divisionId
-    form.setValue('divisionPath', newPath)
-    const levelCount = regionLevels.length
-    const isLastLevel = levelIndex === levelCount - 1
-    if (isLastLevel) {
-      form.setValue('province', divisionId)
-      setRegionOpen(false)
-    } else {
-      void loadDivision(
-        form.getValues('country'),
-        levelIndex + 1,
-        divisionId,
-        regionLevels
-      )
-    }
-  }
-
   const form = useForm<OrderForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       store: '',
-      orderNo: 'U0169552511111021',
       customerName: '',
       country: '',
       divisionPath: [],
@@ -347,7 +227,6 @@ export function OrdersCreatePage() {
         orderVo: {
           customerId: String(customerId),
           shopId: values.store,
-          orderNumber: values.orderNo,
           customerName: values.customerName,
           countryId: values.country,
           admindivisionId: values.province || undefined,
@@ -373,13 +252,13 @@ export function OrdersCreatePage() {
 
   const handleSelectStoreProduct = (items: Record<string, unknown>[]) => {
     items.forEach((item) => {
+      const price = Number((item as any).skuPrice ?? 0) || 0
       appendProduct({
         id: crypto.randomUUID(),
         productName: String(item.skuCName ?? ''),
         productVariants: String(item.skuNumber ?? ''),
         quantity: 1,
-        productPicUrl: String(item.picture ?? ''),
-        productLink: '',
+        unitPrice: price,
         rawItem: item, // 保存完整后端对象
       })
     })
@@ -389,13 +268,15 @@ export function OrdersCreatePage() {
   // 映射：Product Name<-spuName, Product Pic Url<-pic，其余无对应字段
   const handleSelectMyProduct = (items: Record<string, unknown>[]) => {
     items.forEach((item) => {
+      const price =
+        Number((item as any).purPrice ?? (item as any).price ?? (item as any).hzkj_pur_price ?? 0) ||
+        0
       appendProduct({
         id: crypto.randomUUID(),
         productName: String(item.spuName ?? ''),
         productVariants: '',
         quantity: 1,
-        productPicUrl: String(item.pic ?? ''),
-        productLink: '',
+        unitPrice: price,
         rawItem: item,
       })
     })
@@ -460,21 +341,6 @@ export function OrdersCreatePage() {
                 />
                 <FormField
                   control={form.control}
-                  name='orderNo'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        OrderNo<span className='text-red-500'>*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
                   name='customerName'
                   render={({ field }) => (
                     <FormItem>
@@ -494,188 +360,48 @@ export function OrdersCreatePage() {
                 <FormField
                   control={form.control}
                   name='country'
-                  render={() => {
-                    const selectedCountryId = form.watch('country')
-                    const divisionPath: string[] =
-                      form.watch('divisionPath') ?? []
-                    const selectedCountry = regionCountries.find(
-                      (c) => String(c.value) === String(selectedCountryId)
-                    )
-                    const displayRegionLabel =
-                      selectedCountry && divisionPath.length > 0
-                        ? `${selectedCountry.label} / ${divisionPath
-                            .map(
-                              (id, i) =>
-                                divisionColumns[i]?.find(
-                                  (d) => String(d.value) === String(id)
-                                )?.label
-                            )
-                            .filter(Boolean)
-                            .join(' / ')}`
-                        : (selectedCountry?.label ??
-                          'Please select country / province / city')
-                    const levelCount = regionLevels.length
-                    return (
-                      <FormItem>
-                        <FormLabel>
-                          Country / Province{' '}
-                          <span className='text-red-500'>*</span>
-                        </FormLabel>
-                        <Popover
-                          open={regionOpen}
-                          onOpenChange={(open) => {
-                            setRegionOpen(open)
-                            if (
-                              open &&
-                              selectedCountryId &&
-                              loadingLevelIndex === null
-                            ) {
-                              if (
-                                divisionColumns.length === 0 ||
-                                divisionColumns[0]?.length === 0
-                              )
-                                onCountryChange(selectedCountryId)
-                              else if (divisionPath.length > 0) {
-                                const nextLevel = divisionPath.length
-                                if (
-                                  nextLevel < levelCount &&
-                                  (!divisionColumns[nextLevel] ||
-                                    divisionColumns[nextLevel].length === 0)
-                                )
-                                  onDivisionSelect(
-                                    nextLevel - 1,
-                                    divisionPath[nextLevel - 1]
-                                  )
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Country / Region{' '}
+                        <span className='text-red-500'>*</span>
+                      </FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          form.setValue('divisionPath', [])
+                          form.setValue('province', '')
+                        }}
+                        disabled={isLoadingCountries}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                isLoadingCountries
+                                  ? 'Loading...'
+                                  : 'Select country'
                               }
-                            }
-                          }}
-                        >
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                type='button'
-                                variant='outline'
-                                className={cn(
-                                  'w-full justify-between font-normal',
-                                  !selectedCountryId && 'text-muted-foreground'
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {regionCountries.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              <span className='flex items-center gap-2'>
+                                {c.icon && (
+                                  <c.icon className='h-4 w-4 shrink-0' />
                                 )}
-                              >
-                                <span className='truncate'>
-                                  {displayRegionLabel}
-                                </span>
-                                <ChevronDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className='w-[720px] p-2'
-                            align='start'
-                            onOpenAutoFocus={(e) => e.preventDefault()}
-                          >
-                            <div className='flex gap-2'>
-                              <div className='border-border max-h-64 flex-1 overflow-y-auto border-r pr-1'>
-                                <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                                  Country/Region
-                                </div>
-                                {isLoadingCountries ? (
-                                  <div className='text-muted-foreground py-2 text-xs'>
-                                    Loading...
-                                  </div>
-                                ) : (
-                                  regionCountries.map((c) => {
-                                    const isActive =
-                                      String(c.value) ===
-                                      String(selectedCountryId)
-                                    return (
-                                      <button
-                                        key={c.value}
-                                        type='button'
-                                        className={cn(
-                                          'hover:bg-muted flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm',
-                                          isActive && 'bg-muted font-medium'
-                                        )}
-                                        onClick={() => {
-                                          form.setValue('country', c.value)
-                                          form.setValue('divisionPath', [])
-                                          form.setValue('province', '')
-                                          onCountryChange(c.value)
-                                        }}
-                                      >
-                                        <span className='flex items-center gap-2 truncate'>
-                                          {c.icon && (
-                                            <c.icon className='h-4 w-4 shrink-0' />
-                                          )}
-                                          <span>{c.label}</span>
-                                        </span>
-                                      </button>
-                                    )
-                                  })
-                                )}
-                              </div>
-                              {Array.from(
-                                { length: levelCount },
-                                (_, levelIndex) => {
-                                  const column = divisionColumns[levelIndex]
-                                  const isLoading =
-                                    loadingLevelIndex === levelIndex
-                                  const hasData = column && column.length > 0
-                                  if (!hasData && !isLoading) return null
-                                  const selectedId = divisionPath[levelIndex]
-                                  return (
-                                    <div
-                                      key={levelIndex}
-                                      className={cn(
-                                        'max-h-64 flex-1 overflow-y-auto pl-1',
-                                        levelIndex < levelCount - 1 &&
-                                          'border-border border-r pr-1'
-                                      )}
-                                    >
-                                      <div className='text-muted-foreground mb-2 text-xs font-medium'>
-                                        Level {levelIndex + 1}
-                                      </div>
-                                      {isLoading ? (
-                                        <div className='text-muted-foreground py-2 text-xs'>
-                                          Loading...
-                                        </div>
-                                      ) : (
-                                        (column ?? []).map((opt) => {
-                                          const isActive =
-                                            String(opt.value) ===
-                                            String(selectedId)
-                                          return (
-                                            <button
-                                              key={opt.value}
-                                              type='button'
-                                              className={cn(
-                                                'hover:bg-muted flex w-full items-center rounded px-2 py-1 text-left text-sm',
-                                                isActive &&
-                                                  'bg-muted font-medium'
-                                              )}
-                                              onClick={() =>
-                                                onDivisionSelect(
-                                                  levelIndex,
-                                                  opt.value
-                                                )
-                                              }
-                                            >
-                                              <span className='truncate'>
-                                                {opt.label}
-                                              </span>
-                                            </button>
-                                          )
-                                        })
-                                      )}
-                                    </div>
-                                  )
-                                }
-                              )}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )
-                  }}
+                                {c.label}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <FormField
                   control={form.control}
@@ -811,10 +537,7 @@ export function OrdersCreatePage() {
                       <TableHead>
                         Quantity<span className='text-red-500'>*</span>
                       </TableHead>
-                      <TableHead>Product Pic Url</TableHead>
-                      <TableHead>
-                        Product Link<span className='text-red-500'>*</span>
-                      </TableHead>
+                      <TableHead>Unit Price</TableHead>
                       <TableHead className='w-[100px]'>Action</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -876,25 +599,23 @@ export function OrdersCreatePage() {
                         <TableCell>
                           <FormField
                             control={form.control}
-                            name={`products.${index}.productPicUrl`}
+                            name={`products.${index}.unitPrice`}
                             render={({ field }) => (
                               <FormItem>
                                 <FormControl>
-                                  <Input {...field} className='min-w-[200px]' />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <FormField
-                            control={form.control}
-                            name={`products.${index}.productLink`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormControl>
-                                  <Input {...field} className='min-w-[200px]' />
+                                  <Input
+                                    type='number'
+                                    min='0'
+                                    step={0.01}
+                                    {...field}
+                                    onChange={(e) => {
+                                      const next = Number(e.target.value)
+                                      field.onChange(
+                                        Number.isNaN(next) || next < 0 ? 0 : next
+                                      )
+                                    }}
+                                    className='min-w-[80px]'
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -917,6 +638,20 @@ export function OrdersCreatePage() {
                   </TableBody>
                 </Table>
               </div>
+              {productFields.length > 0 && (
+                <div className='mt-4 flex justify-end'>
+                  <span className='font-medium'>
+                    Total:{' '}
+                    {(form.watch('products') ?? [])
+                      .reduce(
+                        (sum, p) =>
+                          sum + (p?.unitPrice ?? 0) * (p?.quantity ?? 1),
+                        0
+                      )
+                      .toFixed(2)}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </form>

@@ -1,7 +1,7 @@
+import { useState } from 'react'
+import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search } from 'lucide-react'
-import { useState } from 'react'
 import { useStoreProducts } from './store-products-provider'
 
 export function StoreProductsPrimaryButtons() {
@@ -21,11 +21,11 @@ export function StoreProductsPrimaryButtons() {
           placeholder='enter store product\name\ID'
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className='h-9 flex-1 rounded-md shadow-sm'
+          className='border-border focus-visible:ring-ring h-8 min-w-[200px] flex-1 rounded-md shadow-sm focus-visible:ring-2'
         />
         <Button
           onClick={handleSearch}
-          className='h-9 bg-orange-500 text-white shadow-sm hover:bg-orange-600'
+          className='h-8 rounded-md bg-orange-500 px-4 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2'
         >
           <Search className='mr-2 h-4 w-4' />
           Search

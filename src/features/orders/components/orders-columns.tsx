@@ -234,7 +234,9 @@ export const createOrdersColumns = (options?: {
             </TooltipTrigger>
             <TooltipContent className='space-y-0.5 text-xs'>
               <div>Product: ${(order.hzkj_order_amount ?? 0).toFixed(2)}</div>
-              <div>Shipping: ${(order.hzkj_fre_quo_amount ?? 0).toFixed(2)}</div>
+              <div>
+                Shipping: ${(order.hzkj_fre_quo_amount ?? 0).toFixed(2)}
+              </div>
               <div>Qty: {order.totalQty ?? 0}</div>
             </TooltipContent>
           </Tooltip>
@@ -278,7 +280,7 @@ export const createOrdersColumns = (options?: {
       header: 'Shipping Cost',
       cell: ({ row }) => {
         const order = row.original
-        const hasChannel = order.hzkj_customer_channel_name
+        const hasChannel = order.hzkj_customer_channel_number
         return (
           <button
             type='button'
@@ -291,7 +293,7 @@ export const createOrdersColumns = (options?: {
             <div>{order.hzkj_fre_quo_amount ?? '---'}</div>
             {hasChannel ? (
               <div className='text-muted-foreground text-xs'>
-                {toDisplayString(order.hzkj_customer_channel_name)}
+                {toDisplayString(order.hzkj_customer_channel_number)}
               </div>
             ) : (
               <div className='text-xs text-red-500'>[please select]</div>
@@ -303,7 +305,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'platformHZStatus',
-      header: 'Platform/Status',
+      header: 'Platform/HZ Status',
       cell: ({ row }) => {
         const order = row.original
         const orderStatus = (order as any).hzkj_orderstatus
@@ -337,9 +339,9 @@ export const createOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original
         const fulfillmentStatus = String(
-          order.hzkj_fulfillment_status ?? ''
+          order.hzkj_orderstatus ?? ''
         ).toLowerCase()
-        const isPaid = fulfillmentStatus === 'paid'
+        const isPaid = fulfillmentStatus === '2' || fulfillmentStatus === 'no'
 
         if (isPaid) {
           return <div className='flex items-center gap-0' />

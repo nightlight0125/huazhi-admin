@@ -191,7 +191,7 @@ export function SourcingTable({ data, onRefresh, totalCount }: DataTableProps) {
   return (
     <>
       <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
-        <div className='flex justify-end'>
+        <div className='flex justify-start'>
           <Button
             className='h-8 text-xs'
             size='sm'
@@ -213,7 +213,7 @@ export function SourcingTable({ data, onRefresh, totalCount }: DataTableProps) {
             },
           ]}
         />
-        <div className='overflow-hidden rounded-md border'>
+        <div className='overflow-x-auto rounded-md border'>
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (

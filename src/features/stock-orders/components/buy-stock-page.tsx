@@ -36,6 +36,7 @@ type EditableProductRow = {
   productName: string
   productVariant: string
   quantity: number
+  unitPrice: number
 }
 
 export function BuyStockPage() {
@@ -144,6 +145,7 @@ export function BuyStockPage() {
                     <TableHead>Product Name*</TableHead>
                     <TableHead>Product Variants</TableHead>
                     <TableHead>Quantity*</TableHead>
+                    <TableHead>Unit Price</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -187,6 +189,23 @@ export function BuyStockPage() {
                             className='h-9 w-24'
                           />
                         </TableCell>
+                        <TableCell className='text-sm'>
+                          <Input
+                            type='number'
+                            min={0}
+                            step={0.01}
+                            value={item.unitPrice}
+                            onChange={(e) => {
+                              const next = Number(e.target.value)
+                              updateRow(
+                                item.key,
+                                'unitPrice',
+                                Number.isNaN(next) || next < 0 ? 0 : next
+                              )
+                            }}
+                            className='h-9 w-24'
+                          />
+                        </TableCell>
                         <TableCell className='text-sm text-muted-foreground'>
                           <Button
                             variant='ghost'
@@ -202,7 +221,7 @@ export function BuyStockPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell className='text-muted-foreground' colSpan={4}>
+                      <TableCell className='text-muted-foreground' colSpan={5}>
                         {search.orderId
                           ? `Create Buy Stock from order: ${search.orderId}`
                           : 'Please select product information.'}
@@ -215,7 +234,22 @@ export function BuyStockPage() {
           </div>
         </div>
 
-        <div className='sticky bottom-0 z-10 border-t bg-background px-4 py-3 text-right'>
+        <div className='sticky bottom-0 z-10 border-t bg-background px-4 py-3'>
+          <div className='mb-3 flex items-center justify-end gap-4'>
+            <span className='text-sm font-semibold'>
+              Total:{' '}
+              <span className='text-orange-600'>
+                $
+                {selectedProducts
+                  .reduce(
+                    (sum, p) => sum + (p.unitPrice || 0) * (p.quantity || 1),
+                    0
+                  )
+                  .toFixed(2)}
+              </span>
+            </span>
+          </div>
+          <div className='flex justify-end'>
           <Button
             className='min-w-[120px]'
             disabled={
@@ -266,19 +300,26 @@ export function BuyStockPage() {
           >
             {isSubmitting ? 'Submitting...' : 'Confirm'}
           </Button>
+          </div>
         </div>
 
         <SelectMyProductDialog
           open={isSelectMyProductOpen}
           onOpenChange={setIsSelectMyProductOpen}
           onSelect={(products) => {
-            const rows = (products as Record<string, unknown>[]).map((p, idx) => ({
-              key: String(p.id ?? p.skuId ?? p.number ?? `row-${idx}`),
-              skuId: String(p.id ?? p.skuId ?? ''),
-              productName: String(p.spuName ?? p.name ?? ''),
-              productVariant: String(p.number ?? p.skuCode ?? ''),
-              quantity: 1,
-            }))
+            const rows = (products as Record<string, unknown>[]).map((p, idx) => {
+              const price =
+                Number((p as any).purPrice ?? (p as any).price ?? (p as any).hzkj_pur_price ?? 0) ||
+                0
+              return {
+                key: String(p.id ?? p.skuId ?? p.number ?? `row-${idx}`),
+                skuId: String(p.id ?? p.skuId ?? ''),
+                productName: String(p.spuName ?? p.name ?? ''),
+                productVariant: String(p.number ?? p.skuCode ?? ''),
+                quantity: 1,
+                unitPrice: price,
+              }
+            })
             setSelectedProducts((prev) => {
               const existing = new Set(prev.map((r) => r.key))
               const additions = rows.filter((r) => !existing.has(r.key))
@@ -290,13 +331,18 @@ export function BuyStockPage() {
           open={isSelectStoreProductOpen}
           onOpenChange={setIsSelectStoreProductOpen}
           onSelect={(items) => {
-            const rows = (items as Record<string, unknown>[]).map((item, idx) => ({
-              key: String(item.skuNumber ?? item.id ?? `store-${idx}`),
-              skuId: String(item.id ?? item.skuId ?? ''),
-              productName: String(item.skuCName ?? ''),
-              productVariant: String(item.skuNumber ?? ''),
-              quantity: 1,
-            }))
+            const rows = (items as Record<string, unknown>[]).map((item, idx) => {
+              const price =
+                Number((item as any).skuPrice ?? 0) || 0
+              return {
+                key: String(item.skuNumber ?? item.id ?? `store-${idx}`),
+                skuId: String(item.id ?? item.skuId ?? ''),
+                productName: String(item.skuCName ?? ''),
+                productVariant: String(item.skuNumber ?? ''),
+                quantity: 1,
+                unitPrice: price,
+              }
+            })
             setSelectedProducts((prev) => {
               const existing = new Set(prev.map((r) => r.key))
               const additions = rows.filter((r) => !existing.has(r.key))

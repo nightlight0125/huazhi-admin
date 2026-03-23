@@ -609,7 +609,7 @@ export function AllProductsGrid({
             return (
               <div
                 key={product.id}
-                className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
+                className='group bg-card relative flex cursor-pointer flex-col overflow-hidden rounded-lg border transition-all hover:shadow-md'
                 onClick={() =>
                   navigate({
                     to: '/products/$productId',
@@ -626,7 +626,7 @@ export function AllProductsGrid({
                   />
                 </div>
 
-                <div className='space-y-1.5 p-2.5'>
+                <div className='flex min-h-0 flex-1 flex-col space-y-1.5 p-2.5'>
                   <h3
                     className='overflow-hidden text-sm font-semibold break-words'
                     style={{
@@ -651,7 +651,7 @@ export function AllProductsGrid({
                     ${product.price.toFixed(2)}
                   </div>
 
-                  <div className='flex gap-1.5 pt-1.5'>
+                  <div className='mt-auto flex gap-1.5 pt-1.5'>
                     <Button
                       variant='outline'
                       size='sm'

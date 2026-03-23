@@ -1,7 +1,7 @@
+import { useEffect, useState } from 'react'
+import { type ColumnDef } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { type ColumnDef } from '@tanstack/react-table'
-import { useEffect, useState } from 'react'
 import { type VariantPricing } from './variant-pricing-schema'
 
 // Editable cell component
@@ -88,7 +88,7 @@ export const createVariantPricingColumns = (
                 className='h-full w-full object-cover'
               />
             ) : (
-              <div className='flex h-full w-full items-center justify-center bg-gray-100 text-gray-400 text-[8px]'>
+              <div className='flex h-full w-full items-center justify-center bg-gray-100 text-[8px] text-gray-400'>
                 No Image
               </div>
             )}
@@ -103,7 +103,7 @@ export const createVariantPricingColumns = (
       cell: ({ row }) => {
         const variant = row.original as VariantPricing
         return (
-          <div className='text-xs text-muted-foreground'>
+          <div className='text-muted-foreground text-xs'>
             {variant.sku || '--'}
           </div>
         )
@@ -127,11 +127,10 @@ export const createVariantPricingColumns = (
     })
   }
 
-  // 固定列：TD Price, Shipping Fee, Total TD Price, Your Price
   const fixedColumns: ColumnDef<VariantPricing>[] = [
     {
       accessorKey: 'cjPrice',
-      header: 'TD Price',
+      header: 'HZ Price',
       cell: ({ row }) => {
         const variant = row.original as VariantPricing
         const price = variant.cjPrice
@@ -147,14 +146,12 @@ export const createVariantPricingColumns = (
       header: 'Shipping Fee',
       cell: ({ row }) => {
         const variant = row.original as VariantPricing
-        return (
-          <div className='text-xs'>{variant.shippingFee || '--'}</div>
-        )
+        return <div className='text-xs'>{variant.shippingFee || '--'}</div>
       },
     },
     {
       accessorKey: 'totalDropshippingPrice',
-      header: 'Total TD Price',
+      header: 'Total HZ Price',
       cell: ({ row }) => {
         const variant = row.original as VariantPricing
         return (
@@ -186,4 +183,3 @@ export const createVariantPricingColumns = (
 
   return [...baseColumns, ...specColumns, ...fixedColumns]
 }
-

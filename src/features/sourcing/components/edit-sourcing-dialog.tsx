@@ -1,7 +1,7 @@
-import { saveBill } from '@/lib/api/sourcing'
-import { useAuthStore } from '@/stores/auth-store'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { saveBill } from '@/lib/api/sourcing'
 import { type Sourcing } from '../data/schema'
 import { SourcingFormDialog } from './sourcing-form-dialog'
 
@@ -34,7 +34,7 @@ export function EditSourcingDialog({
 
   const handleSubmit = async (values: {
     productName: string
-    productLink: string
+    productLink?: string
     price?: string
     remark?: string
     productImage?: string
@@ -44,12 +44,7 @@ export function EditSourcingDialog({
       return
     }
 
-    const customerId = auth.user?.customerId || auth.user?.id
-
-    if (!customerId) {
-      toast.error('Please login to save sourcing request')
-      return
-    }
+    const customerId = auth.user?.customerId
 
     setIsSubmitting(true)
     try {

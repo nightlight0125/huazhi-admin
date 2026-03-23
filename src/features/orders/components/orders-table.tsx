@@ -760,19 +760,19 @@ export function OrdersTable({
     if (order) {
       setSelectedOrderForPayment({
         id: order.id,
-        getTotalAmount: () => order.totalCost ?? 0,
+        getTotalAmount: () => order.hzkj_total_amount ?? 0,
       })
       setPayDialogOpen(true)
     }
   }
 
   const handleBatchPay = (
-    selectedRows: { original: { id: string; totalCost?: number } }[]
+    selectedRows: { original: { id: string; hzkj_total_amount?: number } }[]
   ) => {
     if (selectedRows.length === 0) return
     const orderIds = selectedRows.map((r) => r.original.id)
     const totalAmount = selectedRows.reduce(
-      (sum, r) => sum + (r.original.totalCost ?? 0),
+      (sum, r) => sum + (r.original.hzkj_total_amount ?? 0),
       0
     )
     setSelectedOrderForPayment({
@@ -922,7 +922,7 @@ export function OrdersTable({
           },
           {
             columnId: 'platformOrderStatus',
-            title: 'Store Order Status',
+            title: 'Platform Order Status',
             options: platformOrderStatusOptions,
           },
           {
@@ -960,12 +960,11 @@ export function OrdersTable({
         </TabsList>
 
         <TabsContent value={activeTab} className='space-y-4'>
-          {/* Total Amount and Batch Payment - positioned at top left */}
           {(() => {
             const selectedRows = table.getFilteredSelectedRowModel().rows
             const selectedCount = selectedRows.length
             const totalAmount = selectedRows.reduce((sum, row) => {
-              return sum + (row.original.totalCost || 0)
+              return sum + (row.original.hzkj_total_amount ?? 0)
             }, 0)
 
             return (
@@ -1067,26 +1066,62 @@ export function OrdersTable({
                                   orderStatus={order.hzkj_orderstatus}
                                   onDelete={handleDelete}
                                   onModifyProduct={() => {
-                                    const rawItems = (order as any).lingItems || []
-                                    const products = rawItems.map((item: any, idx: number) => {
-                                      const qtyVal = item.hzkj_src_qty ?? item.hzkj_qty ?? item.qty ?? 0
-                                      const qtyNum = Number(qtyVal) || 0
-                                      return {
-                                        ...item,
-                                        id: item.entryId || (order.productList?.[idx] as any)?.id || `product-${idx}`,
-                                        productName: item.hzkj_product_name_en?.GLang || (order.productList?.[idx] as any)?.productName || '',
-                                        productVariant: [],
-                                        quantity: qtyNum,
-                                        productImageUrl: item.hzkj_picture || '',
-                                        productLink: '',
-                                        price: Number(item.hzkj_shop_price ?? item.hzkj_amount ?? 0) || 0,
-                                        totalPrice: Number(item.hzkj_amount ?? 0) || 0,
-                                        hzkj_shop_sku: item.hzkj_shop_sku ?? item.hzkj_local_sku,
-                                        hzkj_src_qty: qtyVal != null && qtyVal !== '' ? String(qtyVal) : (qtyNum > 0 ? String(qtyNum) : ''),
-                                        hzkj_shop_price: item.hzkj_shop_price != null ? String(item.hzkj_shop_price) : (item.hzkj_amount != null ? String(item.hzkj_amount) : undefined),
-                                        hzkj_local_sku_id: item.hzkj_local_sku_id ?? (item as any).hzkj_local_sku_id2,
+                                    const rawItems =
+                                      (order as any).lingItems || []
+                                    const products = rawItems.map(
+                                      (item: any, idx: number) => {
+                                        const qtyVal =
+                                          item.hzkj_src_qty ??
+                                          item.hzkj_qty ??
+                                          item.qty ??
+                                          0
+                                        const qtyNum = Number(qtyVal) || 0
+                                        return {
+                                          ...item,
+                                          id:
+                                            item.entryId ||
+                                            (order.productList?.[idx] as any)
+                                              ?.id ||
+                                            `product-${idx}`,
+                                          productName:
+                                            item.hzkj_product_name_en?.GLang ||
+                                            (order.productList?.[idx] as any)
+                                              ?.productName ||
+                                            '',
+                                          productVariant: [],
+                                          quantity: qtyNum,
+                                          productImageUrl:
+                                            item.hzkj_picture || '',
+                                          productLink: '',
+                                          price:
+                                            Number(
+                                              item.hzkj_shop_price ??
+                                                item.hzkj_amount ??
+                                                0
+                                            ) || 0,
+                                          totalPrice:
+                                            Number(item.hzkj_amount ?? 0) || 0,
+                                          hzkj_shop_sku:
+                                            item.hzkj_shop_sku ??
+                                            item.hzkj_local_sku,
+                                          hzkj_src_qty:
+                                            qtyVal != null && qtyVal !== ''
+                                              ? String(qtyVal)
+                                              : qtyNum > 0
+                                                ? String(qtyNum)
+                                                : '',
+                                          hzkj_shop_price:
+                                            item.hzkj_shop_price != null
+                                              ? String(item.hzkj_shop_price)
+                                              : item.hzkj_amount != null
+                                                ? String(item.hzkj_amount)
+                                                : undefined,
+                                          hzkj_local_sku_id:
+                                            item.hzkj_local_sku_id ??
+                                            (item as any).hzkj_local_sku_id2,
+                                        }
                                       }
-                                    })
+                                    )
                                     setModifyProductDialog({
                                       open: true,
                                       products,

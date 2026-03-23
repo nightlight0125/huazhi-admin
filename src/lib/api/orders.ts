@@ -97,6 +97,7 @@ export interface ApiOrderItem {
   }
   hzkj_fre_quo_amount?: number | string
   hzkj_customer_channel_name?: number | string
+  hzkj_customer_channel_number?: string
 }
 
 // 查询订单响应
@@ -194,11 +195,13 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     lingItems: apiOrder.lingItems,
     hzkj_shop_name: apiOrder.hzkj_shop_name,
     billno: apiOrder.billno,
+    hzkj_source_number: apiOrder.hzkj_source_number,
     createtime: apiOrder.createtime,
     hzkj_customer_name: apiOrder.hzkj_customer_name,
     providers: apiOrder.hzkj_deliveryway,
     hzkj_fre_quo_amount: apiOrder.hzkj_fre_quo_amount,
     hzkj_customer_channel_name: apiOrder.hzkj_customer_channel_name,
+    hzkj_customer_channel_number: apiOrder.hzkj_customer_channel_number,
     hzkj_total_amount: (apiOrder as any).hzkj_total_amount,
     totalQty: (apiOrder as any).totalQty,
     // 额外挂载编辑地址需要用到的原始字段（保持原始命名，方便直接读取）
@@ -311,7 +314,7 @@ export interface AddBTOrderRequest {
   orderVo: {
     customerId: string
     shopId: string
-    orderNumber: string
+    orderNumber?: string // 可选，创建订单时不传
     customerName: string
     countryId: string
     admindivisionId?: string
@@ -533,7 +536,7 @@ export async function queryAfterSaleReasonList(
   }
 
   const response = await apiClient.post<QueryAfterSaleReasonListResponse>(
-    '/v2/hzkj/hzkj_ordercenter/hzkj_after_sales_reason/queryAfterSaleResopnList',
+    '/v2/hzkj/hzkj_ordercenter/hzkj_after_sales_reason2/queryAfterSaleResopn2List',
     requestData
   )
 

@@ -82,7 +82,7 @@ export function OrdersStats({ orders: _orders }: OrdersStatsProps) {
 
       <Card className='@container/card'>
         <CardHeader>
-          <CardDescription>Awaiting Orders</CardDescription>
+          <CardDescription>Pending Orders</CardDescription>
           <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
             {isLoading ? (
               <span className='text-muted-foreground'>Loading...</span>
@@ -95,7 +95,7 @@ export function OrdersStats({ orders: _orders }: OrdersStatsProps) {
 
       <Card className='@container/card'>
         <CardHeader>
-          <CardDescription>Awaiting Payment</CardDescription>
+          <CardDescription>Pending Payment</CardDescription>
           <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
             {isLoading ? (
               <span className='text-muted-foreground'>Loading...</span>

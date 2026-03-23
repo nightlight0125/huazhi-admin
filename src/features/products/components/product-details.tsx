@@ -888,7 +888,6 @@ export function ProductDetails() {
                   skuPrice = rawSouprice
                 }
 
-                // Shipping Fee 默认 0
                 const shippingCost = 0
                 const totalPrice: number = skuPrice + shippingCost
 
@@ -1543,7 +1542,7 @@ export function ProductDetails() {
                                     <div />
                                     <div>Shipping Method</div>
                                     <div className='text-center'>
-                                      Total Shipping Cost
+                                      Shipping Cost
                                     </div>
                                     <div className='text-right'>
                                       Delivery Time

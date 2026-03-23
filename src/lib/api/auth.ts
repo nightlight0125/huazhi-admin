@@ -74,6 +74,27 @@ export interface MemberLoginResponse {
   [key: string]: unknown
 }
 
+// 业务员 ID 登录 API（/v2/hzkj/hzkj_im_ext/member/idLogin）
+export async function idLogin(
+  accountId: string,
+  bizUserId: string
+): Promise<MemberLoginResponse> {
+  const response = await apiClient.post<MemberLoginResponse>(
+    '/v2/hzkj/hzkj_im_ext/member/idLogin',
+    { accountId, bizUserId }
+  )
+
+  const res = response.data
+
+  if (!res.status) {
+    const errorMessage =
+      res.message || 'ID login failed. Please check accountId and bizUserId.'
+    throw new Error(errorMessage)
+  }
+
+  return res
+}
+
 // 会员登录 API
 export async function memberLogin(
   email: string,
@@ -106,7 +127,6 @@ export async function memberLogin(
 
   return res
 }
-
 
 export async function getToken(
 ): Promise<string> {

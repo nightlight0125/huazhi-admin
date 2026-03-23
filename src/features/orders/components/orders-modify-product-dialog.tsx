@@ -134,12 +134,26 @@ export function OrdersModifyProductDialog({
       products.map((p, i) => {
         if (i !== index) return p
 
-        // 初始编辑值来源：优先使用后端字段，其次使用原有字段
-        const initialSku = p.hzkj_shop_sku || p.id || ''
-        const qtyFromSrc = p.hzkj_src_qty != null && p.hzkj_src_qty !== '' ? parseInt(String(p.hzkj_src_qty)) : NaN
-        const qtyFromQuantity = p.quantity != null && p.quantity > 0 ? p.quantity : NaN
-        const qtyFromHzkj = (p as any).hzkj_qty != null ? parseInt(String((p as any).hzkj_qty)) : NaN
-        const initialQty = !isNaN(qtyFromSrc) ? qtyFromSrc : (!isNaN(qtyFromQuantity) ? qtyFromQuantity : (!isNaN(qtyFromHzkj) ? qtyFromHzkj : 1))
+        // 初始编辑值来源：优先使用 lingItems 的 hzkj_local_sku
+        const initialSku =
+          (p as any).hzkj_local_sku ?? p.hzkj_shop_sku ?? p.id ?? ''
+        const qtyFromHzkj =
+          (p as any).hzkj_qty != null && (p as any).hzkj_qty !== ''
+            ? parseInt(String((p as any).hzkj_qty))
+            : NaN
+        const qtyFromSrc =
+          p.hzkj_src_qty != null && p.hzkj_src_qty !== ''
+            ? parseInt(String(p.hzkj_src_qty))
+            : NaN
+        const qtyFromQuantity =
+          p.quantity != null && p.quantity > 0 ? p.quantity : NaN
+        const initialQty = !isNaN(qtyFromHzkj)
+          ? qtyFromHzkj
+          : !isNaN(qtyFromSrc)
+            ? qtyFromSrc
+            : !isNaN(qtyFromQuantity)
+              ? qtyFromQuantity
+              : 1
 
         return {
           ...p,
@@ -161,18 +175,37 @@ export function OrdersModifyProductDialog({
       products.map((p, i) => {
         if (i === index) {
           const qty = product.tempQuantity!
-          const priceNum =
-            (p.hzkj_shop_price && parseFloat(String(p.hzkj_shop_price))) ||
-            p.price ||
-            0
+          const oldQty =
+            parseInt(
+              String((p as any).hzkj_qty ?? p.hzkj_src_qty ?? p.quantity ?? 1)
+            ) || 1
+          const amountFromHz =
+            (p as any).hzkj_amount != null && (p as any).hzkj_amount !== ''
+              ? parseFloat(String((p as any).hzkj_amount))
+              : NaN
+          const unitFromShop =
+            p.hzkj_shop_price != null && p.hzkj_shop_price !== ''
+              ? parseFloat(String(p.hzkj_shop_price))
+              : NaN
+          const unitPrice = !isNaN(unitFromShop)
+            ? unitFromShop
+            : !isNaN(amountFromHz) && oldQty > 0
+              ? amountFromHz / oldQty
+              : (p.price ?? 0)
+          const total = unitPrice * qty
 
           return {
             ...p,
-            // 更新后端字段和本地字段
+            // 更新后端字段：hzkj_local_sku(SKU)、hzkj_qty(数量)、hzkj_amount(金额)
+            hzkj_local_sku: product.tempSku!,
             hzkj_shop_sku: product.tempSku!,
             hzkj_src_qty: String(qty),
+            hzkj_qty: String(qty),
             quantity: qty,
-            totalPrice: priceNum * qty,
+            price: unitPrice,
+            hzkj_shop_price: String(unitPrice),
+            hzkj_amount: String(total),
+            totalPrice: total,
             isEditing: false,
             tempSku: undefined,
             tempQuantity: undefined,
@@ -468,7 +501,10 @@ export function OrdersModifyProductDialog({
                             )}
                             <div className='flex flex-col'>
                               <Badge variant='secondary' className='mb-1 w-fit'>
-                                {product?.hzkj_local_sku || '--'}
+                                {product.tempSku ??
+                                  (product as any).hzkj_local_sku ??
+                                  product.hzkj_shop_sku ??
+                                  '--'}
                               </Badge>
                               <span className='text-sm'>
                                 {product.productName || '--'}
@@ -480,7 +516,10 @@ export function OrdersModifyProductDialog({
                           {isEditing ? (
                             <Input
                               value={
-                                product.tempSku ?? product.hzkj_shop_sku ?? ''
+                                product.tempSku ??
+                                (product as any).hzkj_local_sku ??
+                                product.hzkj_shop_sku ??
+                                ''
                               }
                               onChange={(e) =>
                                 handleSkuChange(index, e.target.value)
@@ -489,7 +528,10 @@ export function OrdersModifyProductDialog({
                             />
                           ) : (
                             <span className='text-sm'>
-                              {product.hzkj_shop_sku || product.tempSku || '--'}
+                              {(product as any).hzkj_local_sku ??
+                                product.hzkj_shop_sku ??
+                                product.tempSku ??
+                                '--'}
                             </span>
                           )}
                         </TableCell>
@@ -499,17 +541,27 @@ export function OrdersModifyProductDialog({
                               type='number'
                               min={1}
                               value={(() => {
-                                if (product.tempQuantity != null) return product.tempQuantity
-                                if (product.hzkj_src_qty != null && product.hzkj_src_qty !== '') {
-                                  const v = parseInt(String(product.hzkj_src_qty))
-                                  return !isNaN(v) ? v : 1
-                                }
-                                if (product.quantity != null && product.quantity > 0) return product.quantity
+                                if (product.tempQuantity != null)
+                                  return product.tempQuantity
                                 const hzQty = (product as any).hzkj_qty
-                                if (hzQty != null) {
+                                if (hzQty != null && hzQty !== '') {
                                   const v = parseInt(String(hzQty))
                                   return !isNaN(v) ? v : 1
                                 }
+                                if (
+                                  product.hzkj_src_qty != null &&
+                                  product.hzkj_src_qty !== ''
+                                ) {
+                                  const v = parseInt(
+                                    String(product.hzkj_src_qty)
+                                  )
+                                  return !isNaN(v) ? v : 1
+                                }
+                                if (
+                                  product.quantity != null &&
+                                  product.quantity > 0
+                                )
+                                  return product.quantity
                                 return 1
                               })()}
                               onChange={(e) =>
@@ -522,7 +574,10 @@ export function OrdersModifyProductDialog({
                             />
                           ) : (
                             <span className='text-sm'>
-                              {product.hzkj_src_qty ?? product.quantity ?? product.hzkj_qty ?? '--'}
+                              {(product as any).hzkj_qty ??
+                                product.hzkj_src_qty ??
+                                product.quantity ??
+                                '--'}
                             </span>
                           )}
                         </TableCell>
@@ -530,11 +585,13 @@ export function OrdersModifyProductDialog({
                           <span className='text-sm'>
                             {(() => {
                               const priceStr =
-                                product.hzkj_shop_price ?? String(product.price)
-                              const priceNum = parseFloat(priceStr)
+                                (product as any).hzkj_amount ??
+                                product.hzkj_shop_price ??
+                                String(product.price ?? '')
+                              const priceNum = parseFloat(String(priceStr))
                               const formatted = !isNaN(priceNum)
                                 ? priceNum.toFixed(2)
-                                : priceStr || '0.00'
+                                : '0.00'
                               return `$${formatted}`
                             })()}
                           </span>

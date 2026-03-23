@@ -314,6 +314,33 @@ export async function calcuFreight(
   return Array.isArray(data) ? data : []
 }
 
+// 计算新订单运费请求参数
+export interface CalcuNewOrderFreightRequest {
+  skuIdToQty: Record<string, string> // { skuId: quantity }
+  countryId: string
+  customerId: string
+}
+
+// 计算新订单运费 API（按 SKU 与数量）
+export async function calcuNewOrderFreight(
+  params: CalcuNewOrderFreightRequest
+): Promise<FreightOption[]> {
+  const response = await apiClient.post<CalcuFreightResponse>(
+    '/v2/hzkj/hzkj_logistics/hzkj_cus_freight/calcuNewOrderFreight',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to calculate freight. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  const data = response.data.data
+  return Array.isArray(data) ? data : []
+}
+
 // 计算订单运费请求参数
 export interface CalcuOrderFreightRequest {
   orderId: string
