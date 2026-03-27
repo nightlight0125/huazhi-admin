@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle, XCircle, Eye, Trash2, Palette, CreditCard, Package, Truck } from 'lucide-react'
+import { TRASH_DELETE_DESTRUCTIVE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { type ProductConnection, type BrandConnection } from '../data/schema'
 import { getAllBrandItems } from '@/features/brands/data/data'
 import { type BrandItem } from '@/features/brands/data/schema'
@@ -178,9 +180,14 @@ export function BrandCustomizationDialog({
                               variant='destructive'
                               size='sm'
                               onClick={() => handleDisconnect(brandType)}
-                              className='flex-1'
+                              className='group flex-1'
                             >
-                              <Trash2 className='h-4 w-4 mr-1' />
+                              <Trash2
+                                className={cn(
+                                  TRASH_DELETE_DESTRUCTIVE_ICON_CLASS,
+                                  'mr-1 h-4 w-4'
+                                )}
+                              />
                               移除
                             </Button>
                           </>

@@ -14,6 +14,8 @@ import { AlertTriangle, Loader2, Store, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { delRecommendProducts, getProduct, type ApiProductItem } from '@/lib/api/products'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -165,12 +167,14 @@ export function RecommendProductsRowActions({
         <Button
           variant='outline'
           size='sm'
-          className='h-7 border-gray-200 px-2 text-xs text-gray-500'
+          className='group h-7 border-gray-200 px-2 text-xs text-gray-500'
           onMouseDown={stopEventPropagation}
           onPointerDown={stopEventPropagation}
           onClick={handleDeleteClick}
         >
-          <Trash2 className='mr-1 h-3.5 w-3.5' />
+          <Trash2
+            className={cn(TRASH_DELETE_ICON_CLASS, 'mr-1 h-3.5 w-3.5')}
+          />
         </Button>
       </div>
 

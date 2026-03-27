@@ -304,6 +304,8 @@ export interface GetProfileInfoResponse {
     pageNo?: number
     pageSize?: number
     rows?: Array<{
+      /** 后端用户编号（展示用） */
+      number?: string | number
       hzkj_whatsapp1?: string
       hzkj_customer_first_name3?: string
       hzkj_customer_last_name3?: string

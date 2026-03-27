@@ -8,6 +8,7 @@ import {
   Loader2,
   Trash2,
 } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,13 +51,13 @@ function SampleOrderDeleteCell({ row, onDelete }: SampleOrderDeleteCellProps) {
       <Button
         variant='ghost'
         size='sm'
-        className='h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+        className='group h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)
         }}
       >
-        <Trash2 className='h-4 w-4' />
+        <Trash2 className={cn(TRASH_DELETE_ICON_CLASS, 'h-4 w-4')} />
       </Button>
 
       <ConfirmDialog
@@ -157,8 +158,27 @@ export const createSampleOrdersColumns = (options?: {
       id: 'sku',
       header: 'SKU',
       cell: ({ row }) => {
-        const order = row.original
+        const order = row.original as SampleOrder & {
+          lingItems?: Array<{
+            hzkj_product_name_en?:
+              | { GLang?: string; zh_CN?: string }
+              | string
+              | null
+            [key: string]: unknown
+          }>
+        }
         const firstProduct = order.productList?.[0]
+        const firstLingItem = Array.isArray(order.lingItems)
+          ? order.lingItems[0]
+          : undefined
+        const localSku = String(
+          firstLingItem?.hzkj_local_sku ?? order.sku ?? ''
+        )
+        const productNameEn = firstLingItem?.hzkj_product_name_en
+        const variantLabel =
+          typeof productNameEn === 'string'
+            ? productNameEn
+            : productNameEn?.GLang || productNameEn?.zh_CN || 'xxxx'
         return (
           <div className='max-w-[200px]'>
             {firstProduct && (
@@ -175,12 +195,9 @@ export const createSampleOrdersColumns = (options?: {
                   </div>
                 )}
                 <div className='min-w-0 flex-1 text-sm leading-snug break-words'>
-                  <div>{order.sku}</div>
+                  <div>{localSku || '---'}</div>
                   <div className='whitespace-normal'>
-                    Variant:{' '}
-                    {firstProduct.productVariant
-                      ?.map((v) => ` ${v.value}`)
-                      .join(', ') || 'xxxx'}
+                    Variant: {variantLabel}
                   </div>
                 </div>
               </div>
@@ -205,8 +222,7 @@ export const createSampleOrdersColumns = (options?: {
           order.cost?.total ??
           0
         const product = order.hzkj_order_amount ?? order.cost?.product ?? 0
-        const shipping =
-          order.hzkj_fre_quo_amount ?? order.cost?.shipping ?? 0
+        const shipping = order.hzkj_fre_quo_amount ?? order.cost?.shipping ?? 0
         const qty = order.totalQty ?? order.cost?.qty ?? 0
         return (
           <Tooltip>
@@ -271,7 +287,6 @@ export const createSampleOrdersColumns = (options?: {
       header: 'Status',
       cell: ({ row }) => {
         const order = row.original as any
-        // 使用后端返回的 hzkj_orderstatus 字段
         // 0=取消，1=待支付，2=已支付，3=处理中，4=已发货
         const orderStatus = order.hzkj_orderstatus
         // 状态映射
@@ -292,12 +307,12 @@ export const createSampleOrdersColumns = (options?: {
               'border-transparent bg-green-500 text-white dark:bg-green-500/25 dark:text-green-400',
           },
           '3': {
-            label: '处理中',
+            label: 'Processing',
             color:
               'border-transparent bg-purple-500 text-white dark:bg-purple-500/25 dark:text-purple-400',
           },
           '4': {
-            label: '已发货',
+            label: 'Shipped',
             color:
               'border-transparent bg-blue-500 text-white dark:bg-blue-500/25 dark:text-blue-400',
           },

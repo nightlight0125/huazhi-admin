@@ -25,13 +25,13 @@ function StoreStatusCell({
   const [isLoading, setIsLoading] = useState(false)
 
   const enable = store.enable
-  const enableValue =
-    typeof enable === 'string' ? enable : String(enable ?? '')
+  const enableValue = typeof enable === 'string' ? enable : String(enable ?? '')
   const isActive = enableValue === '1' || enable === 1
 
   const currentStatus = isActive ? 'Success' : 'Failed'
-  const newStatus = isActive ? 'Failed' : 'Success'
-  const newValue = isActive ? '0' : '1'
+  /** 仅允许从 Failed 重新绑定为 Success，不允许 Success 解绑为 Failed */
+  const canRebind = !isActive && !!onStatusChange
+  const rebindValue = '1'
 
   const variant = isActive ? 'default' : 'secondary'
   const customClassName = isActive
@@ -39,11 +39,11 @@ function StoreStatusCell({
     : 'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
 
   const handleConfirm = async () => {
-    if (!onStatusChange) return
+    if (!onStatusChange || isActive) return
     setIsLoading(true)
     try {
-      await onStatusChange(store, newValue)
-      toast.success('Store status updated successfully')
+      await onStatusChange(store, rebindValue)
+      toast.success('Store re-bound successfully')
       setOpen(false)
     } catch (error) {
       console.error('Failed to update store status:', error)
@@ -63,9 +63,15 @@ function StoreStatusCell({
         type='button'
         onClick={(e) => {
           e.stopPropagation()
-          if (onStatusChange) setOpen(true)
+          if (canRebind) setOpen(true)
         }}
-        className={onStatusChange ? 'cursor-pointer' : 'cursor-default'}
+        className={canRebind ? 'cursor-pointer' : 'cursor-default'}
+        disabled={!canRebind}
+        aria-label={
+          canRebind
+            ? 'Re-bind store'
+            : `Store status: ${currentStatus}`
+        }
       >
         <Badge variant={variant} className={customClassName || undefined}>
           {currentStatus}
@@ -78,12 +84,12 @@ function StoreStatusCell({
         }}
         handleConfirm={handleConfirm}
         isLoading={isLoading}
-        title='Change Store Status'
+        title='Re-bind store'
         desc={
           <>
             <p className='mb-2'>
-              Are you sure you want to change the status from{' '}
-              <strong>{currentStatus}</strong> to <strong>{newStatus}</strong>?
+              This store is currently <strong>Failed</strong> (not bound). Re-bind
+              to restore <strong>Success</strong> status?
             </p>
             <p className='text-muted-foreground text-sm'>
               Store: <strong>{store.name || store.id}</strong>
@@ -94,10 +100,10 @@ function StoreStatusCell({
           isLoading ? (
             <>
               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-              Updating...
+              Re-binding...
             </>
           ) : (
-            'Confirm'
+            'Re-bind'
           )
         }
       />
@@ -177,7 +183,6 @@ export const createStoresColumns = (
         return <div className='text-muted-foreground text-sm'>-</div>
       }
 
-      // 格式化时间显示
       try {
         const date = new Date(bindtime)
         const dateStr = date.toLocaleDateString()
@@ -205,109 +210,4 @@ export const createStoresColumns = (
       />
     ),
   },
-  // {
-  //   id: 'actions',
-  //   size: 120,
-  //   header: () => <span className='sr-only'>Actions</span>,
-  //   cell: ({ row }) => (
-  //     <StoreDeleteCell row={row} onUnbindSuccess={options?.onUnbindSuccess} />
-  //   ),
-  //   enableSorting: false,
-  //   enableHiding: false,
-  // },
 ]
-
-// 单行删除弹框
-// interface StoreDeleteCellProps {
-//   row: Row<Store>
-//   onUnbindSuccess?: () => void
-// }
-
-// function StoreDeleteCell({ row, onUnbindSuccess }: StoreDeleteCellProps) {
-//   const [open, setOpen] = useState(false)
-//   const [isLoading, setIsLoading] = useState(false)
-//   const store = row.original
-//   const user = useAuthStore((state) => state.auth.user)
-
-//   const handleConfirmUnbind = async () => {
-//     if (!user?.id || !store.id) {
-//       toast.error('Missing user ID or store ID')
-//       return
-//     }
-
-//     setIsLoading(true)
-//     try {
-//       await unbindShop({
-//         accountId: user.id,
-//         shopId: store.id,
-//         flag: 0, // 0 表示解绑 1 表示绑定
-//       })
-
-//       toast.success('Store unbound successfully')
-//       setOpen(false)
-//       // 触发刷新列表
-//       onUnbindSuccess?.()
-//     } catch (error) {
-//       console.error('Failed to unbind store:', error)
-//       toast.error(
-//         error instanceof Error
-//           ? error.message
-//           : 'Failed to unbind store. Please try again.'
-//       )
-//     } finally {
-//       setIsLoading(false)
-//     }
-//   }
-
-//   return (
-//     <>
-//       <Button
-//         variant='outline'
-//         size='sm'
-//         className='h-7 border-gray-200 px-2 text-xs text-gray-500'
-//         onClick={(e) => {
-//           e.stopPropagation()
-//           setOpen(true)
-//         }}
-//         disabled={isLoading}
-//       >
-//         <Trash2 className='mr-1 h-3.5 w-3.5' />
-//       </Button>
-
-//       <ConfirmDialog
-//         open={open}
-//         onOpenChange={(newOpen) => {
-//           if (!isLoading) {
-//             setOpen(newOpen)
-//           }
-//         }}
-//         handleConfirm={handleConfirmUnbind}
-//         destructive
-//         isLoading={isLoading}
-//         title={<span className='text-destructive'>Unbind Store</span>}
-//         desc={
-//           <>
-//             <p className='mb-2'>
-//               Are you sure you want to unbind this store?
-//               <br />
-//               This action cannot be undone.
-//             </p>
-//             <p className='text-muted-foreground text-sm'>
-//               Store: <strong>{store.name || store.id}</strong>
-//             </p>
-//           </>
-//         }
-//         confirmText={
-//           isLoading ? (
-//             <>
-//               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-//               Unbinding...
-//             </>
-//           ) : (
-//             'Unbind'
-//           )
-//         }
-//       />
-//     </>
-//   )
-// }

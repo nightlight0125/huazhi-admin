@@ -27,6 +27,7 @@ import {
   saveCustomization,
   type ApiProductItem,
 } from '@/lib/api/products'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -929,7 +930,6 @@ export function ProductDesign() {
         },
       })
     } catch (error) {
-      console.error('Failed to save design:', error)
       toast.error(
         error instanceof Error
           ? error.message
@@ -1039,9 +1039,9 @@ export function ProductDesign() {
             size='icon'
             onClick={handleDelete}
             title='Delete Selected'
-            className='h-8 w-8'
+            className='group h-8 w-8'
           >
-            <Trash2 className='h-4 w-4' />
+            <Trash2 className={cn(TRASH_DELETE_ICON_CLASS, 'h-4 w-4')} />
           </Button>
           <Button
             variant='ghost'
@@ -1138,7 +1138,7 @@ export function ProductDesign() {
             </div>
 
             {/* Type, Specs, Name - required fields */}
-            <div className='space-y-3 border-border border-t pt-3'>
+            <div className='border-border space-y-3 border-t pt-3'>
               <div className='space-y-2'>
                 <Label className='text-sm font-medium'>
                   Type <span className='text-destructive'>*</span>

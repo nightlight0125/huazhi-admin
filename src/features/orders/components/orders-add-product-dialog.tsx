@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -8,7 +9,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { querySkuByCustomer, type SkuRecordItem } from '@/lib/api/products'
+import {
+  getSkuByNumber,
+  querySkuByCustomer,
+  type SkuRecordItem,
+} from '@/lib/api/products'
 import { useAuthStore } from '@/stores/auth-store'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -36,6 +41,7 @@ export function OrdersAddProductDialog({
   const [quantity, setQuantity] = useState(1)
   const [skuOptions, setSkuOptions] = useState<SkuRecordItem[]>([])
   const [isLoadingSku, setIsLoadingSku] = useState(false)
+  const [isConfirming, setIsConfirming] = useState(false)
 
   // 获取 SKU 列表
   useEffect(() => {
@@ -76,34 +82,110 @@ export function OrdersAddProductDialog({
     }
   }, [open, auth.user?.customerId])
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!sku.trim()) return
 
-    const selectedSkuItem = skuOptions.find(
-      (item) =>
-        ((item as any).number || item.hzkj_sku_number) === sku.trim()
-    )
-
-    const newProduct: OrderProduct = {
-      id: sku.trim(),
-      productName: (selectedSkuItem as any)?.hzkj_name || '',
-      productVariant: [],
-      quantity,
-      productImageUrl: '',
-      productLink: '',
-      price: 0,
-      totalPrice: 0,
-      hzkj_local_sku_id: selectedSkuItem?.id ? String(selectedSkuItem.id) : undefined,
-      hzkj_shop_sku: sku.trim(),
-      hzkj_local_sku: (selectedSkuItem as any)?.number ?? (selectedSkuItem as any)?.hzkj_sku_number ?? sku.trim(),
-      hzkj_qty: String(quantity),
-      hzkj_src_qty: String(quantity),
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer information is missing')
+      return
     }
 
-    onConfirm(newProduct)
-    setSku('')
-    setQuantity(1)
-    onOpenChange(false)
+    setIsConfirming(true)
+    try {
+      const res = await getSkuByNumber({
+        number: sku.trim(),
+        cusId: String(customerId),
+      })
+
+      if (res.status !== true) {
+        if (res.errorCode === '1001') {
+          toast.error('Please enter a valid SKU')
+        } else {
+          toast.error(
+            res.message ||
+              'Failed to add product. Please check the SKU and try again.'
+          )
+        }
+        return
+      }
+
+      const selectedSkuItem = skuOptions.find(
+        (item) =>
+          ((item as any).number || item.hzkj_sku_number) === sku.trim()
+      )
+
+      const newProduct: OrderProduct = {
+        id: sku.trim(),
+        productName: (selectedSkuItem as any)?.hzkj_name || '',
+        productVariant: [],
+        quantity,
+        productImageUrl: '',
+        productLink: '',
+        price: 0,
+        totalPrice: 0,
+        hzkj_local_sku_id: selectedSkuItem?.id
+          ? String(selectedSkuItem.id)
+          : undefined,
+        hzkj_shop_sku: sku.trim(),
+        hzkj_local_sku:
+          (selectedSkuItem as any)?.number ??
+          (selectedSkuItem as any)?.hzkj_sku_number ??
+          sku.trim(),
+        hzkj_qty: String(quantity),
+        hzkj_src_qty: String(quantity),
+      }
+
+      const d = res.data as Record<string, unknown> | null | undefined
+      if (d && typeof d === 'object' && !Array.isArray(d)) {
+        if (d.id != null) {
+          newProduct.hzkj_local_sku_id = String(d.id)
+        }
+        if (typeof d.number === 'string') {
+          newProduct.hzkj_local_sku = d.number
+        }
+        const name =
+          (d as { enname?: string }).enname ||
+          (d as { hzkj_name?: string }).hzkj_name ||
+          (d as { name?: string }).name
+        if (typeof name === 'string' && name) {
+          newProduct.productName = name
+        }
+        const pic =
+          (d as { pic?: string }).pic ||
+          (d as { picture?: string }).picture ||
+          (d as { hzkj_picture?: string }).hzkj_picture
+        if (typeof pic === 'string' && pic) {
+          newProduct.productImageUrl = pic
+          ;(newProduct as any).hzkj_picture = pic
+        }
+        const priceVal =
+          (d as { price?: number }).price ??
+          (d as { hzkj_shop_price?: number | string }).hzkj_shop_price
+        if (priceVal != null && priceVal !== '') {
+          const n = Number(priceVal)
+          if (!Number.isNaN(n)) {
+            newProduct.price = n
+            newProduct.totalPrice = n * quantity
+            newProduct.hzkj_shop_price = String(n)
+            newProduct.hzkj_amount = String(n * quantity)
+          }
+        }
+      }
+
+      onConfirm(newProduct)
+      setSku('')
+      setQuantity(1)
+      onOpenChange(false)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'SKU validation failed. Please try again later.'
+      )
+    } finally {
+      setIsConfirming(false)
+    }
   }
 
   const handleCancel = () => {
@@ -166,11 +248,18 @@ export function OrdersAddProductDialog({
           </Button>
           <Button
             type='button'
-            onClick={handleConfirm}
-            disabled={!sku.trim()}
+            onClick={() => void handleConfirm()}
+            disabled={!sku.trim() || isConfirming || isLoadingSku}
             className='bg-orange-500 text-white hover:bg-orange-600'
           >
-            Confirm
+            {isConfirming ? (
+              <>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                Checking...
+              </>
+            ) : (
+              'Confirm'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

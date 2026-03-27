@@ -61,6 +61,9 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
     { label: 'Returns only', value: 'D' },
   ] as const
 
+  const getOrderStatus = (order: StockOrder) =>
+    String((order as any).hzkj_orderstatus ?? '')
+
   useEffect(() => {
     if (!rmaDialogOpen || afterSaleReasons.length > 0) return
 
@@ -98,6 +101,14 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
 
     if (selectedRows.length > 1) {
       toast.error('Please select only one order')
+      return
+    }
+
+    const hasUnpaidOrder = selectedRows.some(
+      (row) => getOrderStatus(row.original) !== '2'
+    )
+    if (hasUnpaidOrder) {
+      toast.error('Unpaid orders do not support after-sales.')
       return
     }
 
@@ -215,6 +226,13 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
         }
         if (selectedRows.length > 1) {
           toast.error('Please select only one order')
+          return
+        }
+        const hasUnpaidOrder = selectedRows.some(
+          (row) => getOrderStatus(row.original) !== '2'
+        )
+        if (hasUnpaidOrder) {
+          toast.error('Unpaid orders do not support after-sales.')
           return
         }
         const order = selectedRows[0].original

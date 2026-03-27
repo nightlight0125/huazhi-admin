@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { addStock } from '@/lib/api/orders'
 import type { ApiProductItem } from '@/lib/api/products'
-import { selectSpecGetSku } from '@/lib/api/products'
+import { querySkuByCustomer, type SkuRecordItem } from '@/lib/api/products'
 import { useWarehouses } from '@/hooks/use-warehouses'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
@@ -27,6 +27,93 @@ import type {
   ConfirmOrderItem,
   ConfirmOrderPayload,
 } from './confirm-order-view'
+
+type SkuSpecDef = {
+  hzkj_sku_spec_id?: string
+  hzkj_sku_spec_enname?: string
+  hzkj_sku_specvalue_e?: Array<{
+    hzkj_sku_specvalue_id?: string
+    hzkj_sku_specvalue_name?: string
+    hzkj_sku_specvalue_enname?: string
+  }>
+}
+
+/** 将 querySkuByCustomer 返回行的 hzkj_sku_values 映射为与左侧规格筛选一致的 specId -> valueId */
+function buildSpecValuesFromHzkjSkuValues(
+  hzkjSkuValues: unknown,
+  skuSpecs: SkuSpecDef[]
+): Record<string, string> {
+  if (!Array.isArray(hzkjSkuValues)) return {}
+  const specValues: Record<string, string> = {}
+  for (const raw of hzkjSkuValues) {
+    if (!raw || typeof raw !== 'object') continue
+    const e = raw as Record<string, unknown>
+    const groupId = String(
+      e.group_id ?? e.hzkj_sku_spec_id ?? e.spec_id ?? ''
+    ).trim()
+    const explicitValueId = String(
+      e.hzkj_sku_specvalue_id ?? e.specvalue_id ?? e.value_id ?? ''
+    ).trim()
+    if (groupId && explicitValueId) {
+      specValues[groupId] = explicitValueId
+      continue
+    }
+    const nameNorm = String(e.name ?? e.value_name ?? '')
+      .trim()
+      .toLowerCase()
+    if (!nameNorm) continue
+    for (const spec of skuSpecs) {
+      const specId = spec.hzkj_sku_spec_id || ''
+      if (!specId) continue
+      const match = spec.hzkj_sku_specvalue_e?.find((v) => {
+        const n = String(v.hzkj_sku_specvalue_name ?? '')
+          .trim()
+          .toLowerCase()
+        const en = String(v.hzkj_sku_specvalue_enname ?? '')
+          .trim()
+          .toLowerCase()
+        return n === nameNorm || en === nameNorm
+      })
+      if (match?.hzkj_sku_specvalue_id) {
+        specValues[specId] = match.hzkj_sku_specvalue_id
+        break
+      }
+    }
+  }
+  return specValues
+}
+
+function normalizeSkuRecordRow(
+  row: Record<string, unknown>,
+  skuSpecs: SkuSpecDef[]
+) {
+  const specValues = buildSpecValuesFromHzkjSkuValues(
+    row.hzkj_sku_values,
+    skuSpecs
+  )
+  const pic =
+    (typeof row.hzkj_picturefield === 'string' && row.hzkj_picturefield) ||
+    (typeof row.pic === 'string' && row.pic) ||
+    ''
+  const priceRaw = row.hzkj_pur_price ?? row.price
+  let price: number | undefined
+  if (typeof priceRaw === 'number' && Number.isFinite(priceRaw)) {
+    price = priceRaw
+  } else if (typeof priceRaw === 'string') {
+    const n = Number(priceRaw)
+    if (Number.isFinite(n)) price = n
+  }
+  const nameStr = String(row.hzkj_name ?? '')
+  return {
+    ...row,
+    id: row.id,
+    pic,
+    price,
+    number: row.number,
+    enname: { GLang: nameStr },
+    specValues,
+  }
+}
 
 interface ProductPurchaseDialogProps {
   open: boolean
@@ -63,8 +150,8 @@ export function ProductPurchaseDialog({
       )
   )
 
-  // 全部 SKU 列表（弹框打开时一次性拉取）
-  const [allSkus, setAllSkus] = useState<any[]>([])
+  // querySkuByCustomer 原始 rows，规范化在 useMemo 中结合 skuSpecs 做属性映射/筛选
+  const [rawSkuRows, setRawSkuRows] = useState<SkuRecordItem[]>([])
   const [isLoadingAllSkus, setIsLoadingAllSkus] = useState(false)
 
   // 每个 SKU 独立数量，key 为 skuId，切换时保持
@@ -89,6 +176,25 @@ export function ProductPurchaseDialog({
     return ''
   }
 
+  const skuSpecs = useMemo((): SkuSpecDef[] => {
+    if (
+      !apiProduct ||
+      !Array.isArray((apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e)
+    ) {
+      return []
+    }
+    return (apiProduct as Record<string, unknown>)
+      .hzkj_sku_spec_e as SkuSpecDef[]
+  }, [apiProduct])
+
+  const allSkus = useMemo(
+    () =>
+      rawSkuRows.map((row) =>
+        normalizeSkuRecordRow(row as Record<string, unknown>, skuSpecs)
+      ),
+    [rawSkuRows, skuSpecs]
+  )
+
   // 根据左侧规格多选筛选右侧 SKU：未选规格时显示全部，选了则过滤
   const displayedVariants = useMemo(() => {
     if (!allSkus.length) return []
@@ -107,22 +213,19 @@ export function ProductPurchaseDialog({
     })
   }, [allSkus, selectedSpecs])
 
-  const totalPrice =
-    displayedVariants.length === 1
-      ? (() => {
-          const v = displayedVariants[0]
-          const skuId = v?.id ? String(v.id) : ''
-          const qty = Math.max(1, variantQuantities[skuId] ?? 1)
-          const variantPrice =
-            v?.price ??
-            (typeof apiProduct?.hzkj_pur_price === 'number'
-              ? apiProduct.hzkj_pur_price
-              : 0)
-          return (
-            qty * (typeof variantPrice === 'number' ? variantPrice : 0)
-          ).toFixed(2)
-        })()
-      : '0.00'
+  const totalPrice = useMemo(() => {
+    const sum = displayedVariants.reduce((acc, v) => {
+      const skuId = String(v?.id ?? '')
+      const qty = Math.max(0, variantQuantities[skuId] ?? 0)
+      const variantPrice =
+        v?.price ??
+        (typeof apiProduct?.hzkj_pur_price === 'number'
+          ? apiProduct.hzkj_pur_price
+          : 0)
+      return acc + qty * (typeof variantPrice === 'number' ? variantPrice : 0)
+    }, 0)
+    return sum.toFixed(2)
+  }, [displayedVariants, variantQuantities, apiProduct?.hzkj_pur_price])
 
   const updateQuantity = (
     skuId: string,
@@ -153,24 +256,6 @@ export function ProductPurchaseDialog({
       }
     }
   }, [open, defaultQuantity, displayedVariants])
-
-  // 获取规格数据
-  const skuSpecs =
-    apiProduct &&
-    Array.isArray((apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e)
-      ? ((apiProduct as Record<string, unknown>).hzkj_sku_spec_e as Array<{
-          hzkj_sku_spec_id?: string
-          hzkj_sku_spec_name?: string
-          hzkj_sku_spec_enname?: string
-          hzkj_sku_specvalue_e?: Array<{
-            hzkj_sku_specvalue_id?: string
-            hzkj_sku_specvalue_name?: string
-            hzkj_sku_specvalue_enname?: string
-            [key: string]: unknown
-          }>
-          [key: string]: unknown
-        }>)
-      : []
 
   // 仓库选择（使用 API 获取）
   const [selectedWarehouse, setSelectedWarehouse] = useState<
@@ -203,124 +288,73 @@ export function ProductPurchaseDialog({
     }
   }, [open])
 
-  // 弹框打开时拉取全部 SKU（遍历所有规格组合）
+  // 弹框打开时一次性拉取该商品下全部 SKU（与 Apifox：hzkj_cus_id=0, hzkj_good_id, hzkj_public=0, pageSize=1000）
   useEffect(() => {
-    if (!open || !productId || !apiProduct) {
-      setAllSkus([])
+    if (!open || !productId) {
+      setRawSkuRows([])
+      setIsLoadingAllSkus(false)
       return
     }
 
-    const fetchAllSkus = async () => {
-      if (skuSpecs.length === 0) {
-        // 无规格时尝试空 specIds
-        setIsLoadingAllSkus(true)
-        try {
-          const res = await selectSpecGetSku({ productId, specIds: [] })
-          const data = Array.isArray(res.data) ? res.data : []
-          const withSpec = data.map((item: any) => ({
-            ...item,
-            specValues: {} as Record<string, string>,
-          }))
-          setAllSkus(withSpec)
-        } catch {
-          setAllSkus([])
-        } finally {
-          setIsLoadingAllSkus(false)
-        }
-        return
-      }
-
-      // 生成所有规格组合的笛卡尔积
-      const valueArrays = skuSpecs
-        .filter(
-          (s) => s.hzkj_sku_spec_id && Array.isArray(s.hzkj_sku_specvalue_e)
-        )
-        .map((s) =>
-          (s.hzkj_sku_specvalue_e || []).map((v) => ({
-            specId: s.hzkj_sku_spec_id!,
-            valueId: v.hzkj_sku_specvalue_id || '',
-          }))
-        )
-        .filter((arr) => arr.length > 0)
-
-      if (valueArrays.length === 0) {
-        setAllSkus([])
-        return
-      }
-
-      const cartesian = <T,>(arrays: T[][]): T[][] =>
-        arrays.reduce(
-          (acc, curr) => acc.flatMap((a) => curr.map((c) => [...a, c])),
-          [[]] as T[][]
-        )
-
-      const combinations = cartesian(valueArrays) as {
-        specId: string
-        valueId: string
-      }[][]
-
-      setIsLoadingAllSkus(true)
-      const seenIds = new Set<string>()
-      const merged: any[] = []
-
+    let cancelled = false
+    setIsLoadingAllSkus(true)
+    void (async () => {
       try {
-        await Promise.all(
-          combinations.map(async (combo) => {
-            const specIds = combo.map((c) => c.valueId).filter(Boolean)
-            if (specIds.length === 0) return
-            const specValues = combo.reduce(
-              (acc, c) => ({ ...acc, [c.specId]: c.valueId }),
-              {} as Record<string, string>
-            )
-            try {
-              const res = await selectSpecGetSku({ productId, specIds })
-              const data = Array.isArray(res.data) ? res.data : []
-              for (const item of data) {
-                const id = item?.id ? String(item.id) : ''
-                if (id && !seenIds.has(id)) {
-                  seenIds.add(id)
-                  merged.push({ ...item, specValues })
-                }
-              }
-            } catch {
-              // 单个组合失败忽略
-            }
-          })
+        const records = await querySkuByCustomer(productId, '0', '0', 1, 1000)
+        let list = Array.isArray(records) ? records : []
+        list = list.filter(
+          (row) =>
+            !row.hzkj_good_id || String(row.hzkj_good_id) === String(productId)
         )
-        setAllSkus(merged)
+        if (!cancelled) setRawSkuRows(list)
       } catch (error) {
-        console.error('Failed to fetch all SKUs:', error)
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load SKUs. Please try again.'
-        )
-        setAllSkus([])
+        console.error('Failed to fetch SKUs:', error)
+        if (!cancelled) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Failed to load SKUs. Please try again.'
+          )
+          setRawSkuRows([])
+        }
       } finally {
-        setIsLoadingAllSkus(false)
+        if (!cancelled) setIsLoadingAllSkus(false)
       }
+    })()
+
+    return () => {
+      cancelled = true
     }
-
-    void fetchAllSkus()
-  }, [open, productId, apiProduct, skuSpecs])
-
-  const canBuyNow = displayedVariants.length === 1
+  }, [open, productId])
 
   const handleBuyNow = (e?: React.MouseEvent) => {
     e?.preventDefault()
     e?.stopPropagation()
 
-    if (!canBuyNow) {
-      toast.error('Please select complete SKU')
+    if (displayedVariants.length === 0) {
+      toast.error('No variant available')
       return
     }
 
-    const singleVariant = displayedVariants[0]
-    const skuId = String(singleVariant?.id ?? '')
-    const qty = Math.max(1, variantQuantities[skuId] ?? 1)
-    const validVariants = [{ ...singleVariant, quantity: qty }]
+    const hasAnyZero = displayedVariants.some((v) => {
+      const skuId = String(v?.id ?? '')
+      return (variantQuantities[skuId] ?? 0) <= 0
+    })
 
-    void doBuyNow(validVariants)
+    if (hasAnyZero) {
+      toast.error(
+        'Please set quantity for every variant. Quantity cannot be 0.'
+      )
+      return
+    }
+
+    const toBuy = displayedVariants.map((v) => {
+      const skuId = String(v?.id ?? '')
+      const qty = Math.max(1, variantQuantities[skuId] ?? 1)
+      return { ...v, quantity: qty }
+    })
+
+    void doBuyNow(toBuy)
   }
 
   const doBuyNow = async (validVariants: any[]) => {
@@ -381,7 +415,10 @@ export function ProductPurchaseDialog({
           }
         }
       }
-      const displayName = specNames.join(' - ') || 'Default'
+      const displayName =
+        specNames.join(' - ') ||
+        (variant as { enname?: { GLang?: string } }).enname?.GLang ||
+        'Default'
 
       // 产品主标题：优先用后端 hzkj_enname 的 GLang 或 zh_CN
       const en = (apiProduct as Record<string, unknown>)?.hzkj_enname
@@ -403,8 +440,8 @@ export function ProductPurchaseDialog({
             : ''),
         name: `${productTitle} - ${displayName}`,
         sku:
+          (typeof variant.number === 'string' && variant.number) ||
           variant.sku ||
-          variant.number ||
           variant.id ||
           `${apiProduct?.number || productId}`,
         price:
@@ -419,7 +456,15 @@ export function ProductPurchaseDialog({
             : typeof apiProduct?.hzkj_pur_price === 'number'
               ? apiProduct.hzkj_pur_price
               : 0,
-        weight: 45,
+        weight: (() => {
+          const w = (variant as Record<string, unknown>).hzkj_pack_weight
+          if (typeof w === 'number' && Number.isFinite(w)) return w
+          if (typeof w === 'string') {
+            const n = Number(w)
+            if (Number.isFinite(n)) return n
+          }
+          return 45
+        })(),
         quantity: variant.quantity ?? 0,
         fee:
           (typeof variant.price === 'number'
@@ -591,6 +636,14 @@ export function ProductPurchaseDialog({
                       displayedVariants.map((variant: any) => {
                         const skuId = String(variant.id ?? '')
                         const qty = variantQuantities[skuId] ?? 0
+                        const unitPrice =
+                          typeof variant.price === 'number'
+                            ? variant.price
+                            : typeof apiProduct?.hzkj_pur_price === 'number'
+                              ? apiProduct.hzkj_pur_price
+                              : 0
+                        const lineSubtotal =
+                          qty * (typeof unitPrice === 'number' ? unitPrice : 0)
                         return (
                           <div
                             key={variant.id}
@@ -612,13 +665,12 @@ export function ProductPurchaseDialog({
                                 {variant.enname?.GLang || ''}
                               </div>
                               <div className='text-muted-foreground mb-1 text-[11px]'>
-                                SKU: {variant.id}
+                                {variant.number
+                                  ? `Code: ${variant.number} · ID: ${variant.id}`
+                                  : `ID: ${variant.id}`}
                               </div>
                               <div className='text-primary text-sm font-semibold'>
-                                $
-                                {typeof variant.price === 'number'
-                                  ? variant.price.toFixed(2)
-                                  : '0.00'}
+                                ${lineSubtotal.toFixed(2)}
                               </div>
                             </div>
                             <div className='flex items-center gap-2'>
@@ -660,12 +712,6 @@ export function ProductPurchaseDialog({
                   </div>
                 </div>
 
-                <div className='mt-3 border-t pt-2'>
-                  <div className='flex items-center justify-between text-sm font-semibold'>
-                    <span>Total:</span>
-                    <span className='text-primary'>${totalPrice}</span>
-                  </div>
-                </div>
               </div>
             </div>
           </CardContent>
@@ -709,14 +755,16 @@ export function ProductPurchaseDialog({
               </div>
             )}
           </div>
-          <div className='flex flex-wrap justify-end gap-2'>
+          <div className='flex flex-wrap items-center justify-end gap-3'>
+            <div className='text-sm font-semibold'>
+              <span>Total: </span>
+              <span className='text-primary'>${totalPrice}</span>
+            </div>
             <Button
               type='button'
               size='sm'
-              className='min-w-[120px] bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50'
+              className='min-w-[120px] bg-orange-500 text-white hover:bg-orange-600'
               onClick={(e) => handleBuyNow(e)}
-              disabled={!canBuyNow}
-              title={!canBuyNow ? 'Please select complete SKU' : undefined}
             >
               Buy Now
             </Button>

@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -44,6 +45,34 @@ type SourcingFormDialogProps = {
   }) => void
 }
 
+const formSchema = z.object({
+  productName: z.string().min(1, 'Product name is required'),
+  productLink: z
+    .string()
+    .optional()
+    .refine((val) => !val || z.string().url().safeParse(val).success, {
+      message: 'Please enter a valid URL',
+    }),
+  productImage: z
+    .string()
+    .optional()
+    .refine(
+      (val) =>
+        !val ||
+        z.string().url().safeParse(val).success ||
+        String(val).startsWith('data:image/'),
+      {
+        message: 'Please upload a valid image',
+      }
+    ),
+  remark: z
+    .string()
+    .max(250, 'Remark must be less than 250 characters')
+    .optional(),
+})
+
+type FormValues = z.infer<typeof formSchema>
+
 export function SourcingFormDialog({
   open,
   onOpenChange,
@@ -53,50 +82,11 @@ export function SourcingFormDialog({
   initialValues,
   onSubmit,
 }: SourcingFormDialogProps) {
-  const formSchema = useMemo(() => {
-    let base = z.object({
-      productName: z.string().min(1, 'Product name is required'),
-      productLink: z
-        .string()
-        .optional()
-        .refine((val) => !val || z.string().url().safeParse(val).success, {
-          message: 'Please enter a valid URL',
-        }),
-      price: z
-        .string()
-        .optional()
-        .refine(
-          (val) => !val || (!Number.isNaN(Number(val)) && Number(val) >= 0),
-          { message: 'Price must be a valid number' }
-        ),
-      productImage: z.string().url('Please enter a valid image URL').optional(),
-      remark: z
-        .string()
-        .max(250, 'Remark must be less than 250 characters')
-        .optional(),
-    })
-
-    if (requireImage) {
-      base = base.refine(
-        (data) => data.productImage !== undefined && data.productImage !== '',
-        {
-          message: 'Product image URL is required',
-          path: ['productImage'],
-        }
-      ) as typeof base
-    }
-
-    return base
-  }, [requireImage])
-
-  type FormValues = z.infer<typeof formSchema>
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       productName: initialValues?.productName ?? '',
       productLink: initialValues?.productLink ?? '',
-      price: initialValues?.price ?? '',
       remark: initialValues?.remark ?? '',
       productImage: initialValues?.imageUrl ?? '',
     },
@@ -107,7 +97,6 @@ export function SourcingFormDialog({
     form.reset({
       productName: initialValues?.productName ?? '',
       productLink: initialValues?.productLink ?? '',
-      price: initialValues?.price ?? '',
       remark: initialValues?.remark ?? '',
       productImage: initialValues?.imageUrl ?? '',
     })
@@ -115,12 +104,20 @@ export function SourcingFormDialog({
 
   const remarkValue = form.watch('remark') || ''
   const remarkLength = remarkValue.length
+  const productImageValue = form.watch('productImage') || ''
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const internalSubmit = (values: FormValues) => {
+    if (requireImage && !values.productImage) {
+      form.setError('productImage', {
+        type: 'manual',
+        message: 'Product image URL is required',
+      })
+      return
+    }
     onSubmit({
       productName: values.productName,
       productLink: values.productLink || undefined,
-      price: values.price,
       remark: values.remark,
       productImage: values.productImage as string | undefined,
     })
@@ -135,7 +132,7 @@ export function SourcingFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className='sm:max-w-lg'>
+      <DialogContent className='sm:max-w-2xl'>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -151,7 +148,7 @@ export function SourcingFormDialog({
               control={form.control}
               name='productName'
               render={({ field }) => (
-                <FormItem>
+                <FormItem className='grid grid-cols-[140px_1fr] items-start gap-3'>
                   <FormLabel>
                     <span className='text-red-500'>*</span> Product Name
                   </FormLabel>
@@ -170,7 +167,7 @@ export function SourcingFormDialog({
               control={form.control}
               name='productLink'
               render={({ field }) => (
-                <FormItem>
+                <FormItem className='grid grid-cols-[140px_1fr] items-start gap-3'>
                   <FormLabel>Product Link</FormLabel>
                   <FormControl>
                     <Input
@@ -183,36 +180,54 @@ export function SourcingFormDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name='price'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Product Price</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder='Please enter your product price...'
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             {/* Product Image */}
             <FormField
               control={form.control}
               name='productImage'
               render={({ field }) => (
-                <FormItem>
+                <FormItem className='grid grid-cols-[140px_1fr] items-start gap-3'>
                   <FormLabel>
                     {requireImage && <span className='text-red-500'>*</span>}{' '}
-                    Product Image URL
+                    Product Image
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder='Please enter image URL...' {...field} />
+                    <div className='space-y-2'>
+                      <input
+                        ref={fileInputRef}
+                        type='file'
+                        accept='image/*'
+                        className='hidden'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          const reader = new FileReader()
+                          reader.onload = () => {
+                            if (typeof reader.result === 'string') {
+                              field.onChange(reader.result)
+                            }
+                          }
+                          reader.readAsDataURL(file)
+                        }}
+                      />
+                      <button
+                        type='button'
+                        onClick={() => fileInputRef.current?.click()}
+                        className='border-border bg-muted/30 flex h-24 w-24 flex-col items-center justify-center rounded-md border text-sm'
+                      >
+                        {productImageValue ? (
+                          <img
+                            src={productImageValue}
+                            alt='Uploaded product'
+                            className='h-full w-full rounded-md object-cover'
+                          />
+                        ) : (
+                          <>
+                            <Plus className='mb-1 h-5 w-5' />
+                            <span>Upload</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -224,7 +239,7 @@ export function SourcingFormDialog({
               control={form.control}
               name='remark'
               render={({ field }) => (
-                <FormItem>
+                <FormItem className='grid grid-cols-[140px_1fr] items-start gap-3'>
                   <FormLabel>Remark</FormLabel>
                   <FormControl>
                     <div className='relative'>

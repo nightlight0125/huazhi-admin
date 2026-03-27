@@ -11,6 +11,7 @@ import 'flag-icons/css/flag-icons.min.css'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 // Styles
+import { redirectToExpiredIfNeeded } from '@/lib/build-expiration'
 import { handleServerError } from '@/lib/handle-server-error'
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
@@ -85,21 +86,47 @@ declare module '@tanstack/react-router' {
   }
 }
 
+function initExpirationGuards() {
+  if (typeof window === 'undefined') return
+
+  // Periodic check so an already-open page is blocked shortly after expiry.
+  window.setInterval(() => {
+    void redirectToExpiredIfNeeded()
+  }, 3000)
+
+  // Intercept user interactions: once expired, any click redirects to /500.
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (redirectToExpiredIfNeeded()) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    },
+    true
+  )
+}
+
 // Render the app
 const rootElement = document.getElementById('root')!
 if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <FontProvider>
-            <DirectionProvider>
-              <RouterProvider router={router} />
-            </DirectionProvider>
-          </FontProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </StrictMode>
-  )
+  initExpirationGuards()
+  if (redirectToExpiredIfNeeded()) {
+    // Build has expired, redirect handled above.
+  } else {
+    const root = ReactDOM.createRoot(rootElement)
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <FontProvider>
+              <DirectionProvider>
+                <RouterProvider router={router} />
+              </DirectionProvider>
+            </FontProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </StrictMode>
+    )
+  }
 }

@@ -106,6 +106,10 @@ export function ProfileForm() {
   const profileIdRef = useRef<string | number | undefined>(undefined)
   const [timezones, setTimezones] = useState<TimezoneItem[]>([])
   const [isLoadingTimezones, setIsLoadingTimezones] = useState(false)
+  /** 后端 getProfileInfo 行里的 number，用于展示 User ID */
+  const [profileUserNumber, setProfileUserNumber] = useState<
+    string | number | undefined
+  >(undefined)
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -149,19 +153,21 @@ export function ProfileForm() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const userId = auth.user?.id
-        if (!userId) {
-          console.warn('User ID is not available')
-          return
-        }
-        const response = await getProfileInfo(userId)
+        const customerId = auth.user?.customerId ?? ''
+
+        const response = await getProfileInfo(customerId)
         const rows = response.data?.rows
         const profile =
           Array.isArray(rows) && rows.length > 0 ? rows[0] : undefined
 
         // 记录 profile 行的 id，用于后续更新
         const profileId = (profile as any)?.id as string | number | undefined
-        profileIdRef.current = profileId ?? userId
+        profileIdRef.current = profileId ?? customerId
+
+        const backendNumber = profile
+          ? (profile as { number?: string | number }).number
+          : undefined
+        setProfileUserNumber(backendNumber)
 
         const firstName =
           (profile?.hzkj_customer_first_name3 as string | undefined) || ''
@@ -191,6 +197,7 @@ export function ProfileForm() {
         })
       } catch (error) {
         console.error('Failed to load profile info:', error)
+        setProfileUserNumber(undefined)
         toast.error(
           error instanceof Error
             ? error.message
@@ -202,7 +209,10 @@ export function ProfileForm() {
     void loadProfile()
   }, [auth.user, form])
 
-  const userId = auth.user?.id
+  const displayUserId =
+    profileUserNumber != null && profileUserNumber !== ''
+      ? String(profileUserNumber)
+      : '-'
   const emailValue = form.watch('email')
   const firstNameValue = form.watch('firstName')
   const lastNameValue = form.watch('lastName')
@@ -282,7 +292,7 @@ export function ProfileForm() {
             <div className='space-y-1'>
               <FormLabel>User ID</FormLabel>
               <div className='bg-muted text-muted-foreground border-border rounded-md border px-3 py-2 text-sm'>
-                {userId ?? '-'}
+                {displayUserId}
               </div>
             </div>
             <div className='space-y-1'>
@@ -302,34 +312,34 @@ export function ProfileForm() {
             </div>
           </div>
 
-          <div className='grid grid-cols-2 gap-4'>
-            <FormField
-              control={form.control}
-              name='firstName'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>First Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder='Please enter first name' {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name='lastName'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Last Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder='Please enter last name' {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <div className='space-y-2'>
+            <FormLabel>Name</FormLabel>
+            <div className='grid grid-cols-2 gap-4'>
+              <FormField
+                control={form.control}
+                name='firstName'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input placeholder='First' {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='lastName'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input placeholder='Last' {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
           <FormField

@@ -154,10 +154,27 @@ export const createVariantPricingColumns = (
       header: 'Total HZ Price',
       cell: ({ row }) => {
         const variant = row.original as VariantPricing
+        const toAmount = (value: unknown): number => {
+          if (typeof value === 'number') return value
+          const raw = String(value ?? '').trim()
+          if (!raw) return NaN
+          const normalized = raw.replace(/[^0-9.-]/g, '')
+          const num = Number(normalized)
+          return Number.isFinite(num) ? num : NaN
+        }
+
+        const hzPrice = toAmount(variant.cjPrice)
+        const shippingFee = toAmount(variant.shippingFee)
+        const hasHzPrice = Number.isFinite(hzPrice)
+        const hasShipping = Number.isFinite(shippingFee)
+
+        if (!hasHzPrice && !hasShipping) {
+          return <div className='text-xs'>--</div>
+        }
+
+        const total = (hasHzPrice ? hzPrice : 0) + (hasShipping ? shippingFee : 0)
         return (
-          <div className='text-xs'>
-            {variant.totalDropshippingPrice || '--'}
-          </div>
+          <div className='text-xs'>${total.toFixed(2)}</div>
         )
       },
     },

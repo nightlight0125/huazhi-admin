@@ -17,14 +17,23 @@ import {
 
 type DataTablePaginationProps<TData> = {
   table: Table<TData>
+  selectedCount?: number
 }
 
 export function DataTablePagination<TData>({
   table,
+  selectedCount,
 }: DataTablePaginationProps<TData>) {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
   const pageNumbers = getPageNumbers(currentPage, totalPages)
+  const enableRowSelection = Boolean(table.options.enableRowSelection)
+  const resolvedSelectedCount =
+    typeof selectedCount === 'number'
+      ? selectedCount
+      : enableRowSelection
+        ? table.getFilteredSelectedRowModel().rows.length
+        : undefined
 
   return (
     <div
@@ -38,25 +47,35 @@ export function DataTablePagination<TData>({
         <div className='flex w-[100px] items-center justify-center text-sm font-medium @2xl/content:hidden'>
           Page {currentPage} of {totalPages}
         </div>
-        <div className='flex items-center gap-2 @max-2xl/content:flex-row-reverse'>
-          <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(value) => {
-              table.setPageSize(Number(value))
-            }}
-          >
-            <SelectTrigger className='h-8 w-[70px]'>
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
-            </SelectTrigger>
-            <SelectContent side='top'>
-              {[10, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className='hidden text-sm font-medium sm:block'>Rows per page</p>
+        <div className='flex items-center gap-3 @max-2xl/content:flex-row-reverse'>
+          {typeof resolvedSelectedCount === 'number' ? (
+            <div className='text-sm'>
+              Selected:{' '}
+              <span className='font-semibold text-orange-500 dark:text-orange-400'>
+                {resolvedSelectedCount}
+              </span>
+            </div>
+          ) : null}
+          <div className='flex items-center gap-2'>
+            <p className='hidden text-sm font-medium sm:block'>Rows per page</p>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value))
+              }}
+            >
+              <SelectTrigger className='h-8 w-[70px]'>
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side='top'>
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 

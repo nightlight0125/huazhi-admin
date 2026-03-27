@@ -261,7 +261,6 @@ export async function delRecommendProducts(
   return response.data
 }
 
-// 删除收藏产品（Collection products 菜单用）
 export async function delCollectProducts(
   params: DelRecommendProductsRequest
 ): Promise<DelRecommendProductsResponse> {
@@ -426,6 +425,28 @@ export async function querySkuByCustomer(
   }
 
   return skuRecords
+}
+
+/** 按 SKU 编码校验客户商品档案（订单改品 / 新增行） */
+export interface GetSkuByNumberResponse {
+  data?: unknown | null
+  errorCode?: string
+  message?: string
+  status?: boolean
+}
+
+export async function getSkuByNumber(params: {
+  number: string
+  cusId: string
+}): Promise<GetSkuByNumberResponse> {
+  const response = await apiClient.post<GetSkuByNumberResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/getSkuByNumber',
+    {
+      number: params.number.trim(),
+      cusId: params.cusId,
+    }
+  )
+  return response.data
 }
 
 // 查询客户已绑定包装 API 请求参数
@@ -700,11 +721,19 @@ export async function queryShopifyConnectedProducts(
     throw new Error(errorMessage)
   }
 
-  // 提取数据
+  // 提取数据（兼容不同后端字段：list/rows, total/totalCount）
   const dataObj = response.data.data
-  const rows = Array.isArray(dataObj?.list
-  ) ? dataObj.list : []
-  const totalCount = typeof dataObj?.total === 'number' ? dataObj.total : 0
+  const rows = Array.isArray(dataObj?.list)
+    ? dataObj.list
+    : Array.isArray(dataObj?.rows)
+      ? dataObj.rows
+      : []
+  const totalCount =
+    typeof dataObj?.total === 'number'
+      ? dataObj.total
+      : typeof dataObj?.totalCount === 'number'
+        ? dataObj.totalCount
+        : 0
 
   return {
     rows,
@@ -912,10 +941,19 @@ export async function queryShopifyUnconnectedProducts(
     throw new Error(errorMessage)
   }
 
-  // 提取数据
+  // 提取数据（兼容不同后端字段：list/rows, total/totalCount）
   const dataObj = response.data.data
-  const rows = Array.isArray(dataObj?.list) ? dataObj.list : []
-  const totalCount = typeof dataObj?.total === 'number' ? dataObj.total : 0
+  const rows = Array.isArray(dataObj?.list)
+    ? dataObj.list
+    : Array.isArray(dataObj?.rows)
+      ? dataObj.rows
+      : []
+  const totalCount =
+    typeof dataObj?.total === 'number'
+      ? dataObj.total
+      : typeof dataObj?.totalCount === 'number'
+        ? dataObj.totalCount
+        : 0
   return {
     rows,
     totalCount,

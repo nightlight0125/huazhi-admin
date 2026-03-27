@@ -180,6 +180,8 @@ export interface SignUpRequest {
     name: string
     phone: string
     password: string
+    customerId?: string
+    operatorId?: string
   }
 }
 
@@ -196,14 +198,20 @@ export async function memberSignUp(
   email: string,
   name: string,
   phone: string,
-  password: string
+  password: string,
+  referral?: {
+    customerId?: string
+    operatorId?: string
+  }
 ): Promise<SignUpResponse> {
   const requestData: SignUpRequest = {
     member: {
       email,
       name,
       phone,
-      password, 
+      password,
+      customerId: referral?.customerId,
+      operatorId: referral?.operatorId,
     },
   }
 

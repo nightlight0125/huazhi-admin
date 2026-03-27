@@ -1,5 +1,7 @@
 import { Trash2 } from 'lucide-react'
 import { type Table } from '@tanstack/react-table'
+import { TRASH_DELETE_OUTLINE_DESTRUCTIVE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useProducts } from './products-provider'
 
@@ -27,13 +29,18 @@ export function DataTableBulkActions<TData>({
       <Button
         variant='outline'
         size='sm'
-        className='h-8 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
+        className='group h-8 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
         onClick={() => {
           // 这里可以实现批量删除逻辑
           setOpen('delete')
         }}
       >
-        <Trash2 className='mr-2 h-4 w-4' />
+        <Trash2
+          className={cn(
+            TRASH_DELETE_OUTLINE_DESTRUCTIVE_ICON_CLASS,
+            'mr-2 h-4 w-4'
+          )}
+        />
         删除 ({selectedRows.length})
       </Button>
     </div>

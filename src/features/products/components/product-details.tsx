@@ -42,9 +42,10 @@ import {
   collectProduct,
   delCollectProducts,
   getProduct,
+  querySkuByCustomer,
   selectSpecGetSku,
   type ApiProductItem,
-  type SelectSpecGetSkuResponseItem,
+  type SkuRecordItem,
 } from '@/lib/api/products'
 import { getUserShop } from '@/lib/api/shop'
 import { cn } from '@/lib/utils'
@@ -140,67 +141,6 @@ function mapCountriesToCountryOptions(
   })
 }
 
-// 处理选择国家并计算运费
-async function handleCountrySelectAndCalculateFreight(
-  productId: string,
-  country: { value: string; id?: string },
-  statesData: StateItem[],
-  setShippingMethodOptions: (
-    options: Array<{
-      id: string
-      title: string
-      cost: string
-      deliveryTime: string
-    }>
-  ) => void,
-  setSelectedDestinationId: (id: string) => void,
-  setIsLoadingFreight: (loading: boolean) => void
-) {
-  if (!productId || !country.value) {
-    return
-  }
-
-  setIsLoadingFreight(true)
-  try {
-    // 获取国家ID
-    const countryId =
-      country.id ||
-      statesData.find(
-        (s) => s.hzkj_code?.toUpperCase() === country.value.toUpperCase()
-      )?.id
-    if (!countryId) {
-      toast.error('Failed to get country ID. Please try again.')
-      return
-    }
-
-    const freightOptions = await calcuFreight({
-      spuId: productId,
-      destinationId: countryId,
-    })
-
-    const formattedOptions = freightOptions.map((option: FreightOption) => ({
-      id: option.logsId || String(Math.random()),
-      title: option.logsNumber || '',
-      cost: `$${option.freight?.toFixed(2) || '0.00'}`,
-      deliveryTime: option.time || '',
-    }))
-
-    setShippingMethodOptions(formattedOptions)
-    setSelectedDestinationId(countryId)
-  } catch (error) {
-    console.error('Failed to calculate freight:', error)
-    toast.error(
-      error instanceof Error
-        ? error.message
-        : 'Failed to calculate freight. Please try again.'
-    )
-    // 发生错误时设置为空数组
-    setShippingMethodOptions([])
-  } finally {
-    setIsLoadingFreight(false)
-  }
-}
-
 export function ProductDetails() {
   const { productId } = useParams({
     from: '/_authenticated/products/$productId',
@@ -220,8 +160,6 @@ export function ProductDetails() {
       : from === 'packaging-products'
         ? 'packaging-products'
         : undefined
-  const shouldShowBuyStockInPackaging =
-    isFromPackagingProducts && packagingTab === 'my-packaging'
   const shouldShowMyPackagingButton = !(
     isFromPackagingProducts && packagingTab === 'my-packaging'
   )
@@ -441,6 +379,43 @@ export function ProductDetails() {
   const [viewMode, setViewMode] = useState<'details' | 'confirm'>('details')
   const [confirmOrderPayload, setConfirmOrderPayload] =
     useState<ConfirmOrderPayload | null>(null)
+  const defaultSpecsInitializedProductRef = useRef<string | null>(null)
+
+  // 详情页默认值：每个规格自动选中第一个可用值（每个商品只初始化一次）
+  useEffect(() => {
+    if (!apiProduct || !productId) return
+    const currentProductId = String(productId)
+    if (defaultSpecsInitializedProductRef.current === currentProductId) return
+
+    const skuSpecs = Array.isArray(
+      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
+    )
+      ? ((apiProduct as Record<string, unknown>).hzkj_sku_spec_e as Array<{
+          hzkj_sku_spec_id?: string
+          hzkj_sku_specvalue_e?: Array<{
+            hzkj_sku_specvalue_id?: string
+            [key: string]: unknown
+          }>
+          [key: string]: unknown
+        }>)
+      : []
+
+    const defaults: Record<string, string> = {}
+    skuSpecs.forEach((spec) => {
+      const specId = spec.hzkj_sku_spec_id || ''
+      if (!specId || !Array.isArray(spec.hzkj_sku_specvalue_e)) return
+      const firstValue = spec.hzkj_sku_specvalue_e.find(
+        (v) =>
+          typeof v.hzkj_sku_specvalue_id === 'string' && v.hzkj_sku_specvalue_id
+      )
+      if (firstValue?.hzkj_sku_specvalue_id) {
+        defaults[specId] = firstValue.hzkj_sku_specvalue_id
+      }
+    })
+
+    defaultSpecsInitializedProductRef.current = currentProductId
+    setSelectedSpecs(defaults)
+  }, [apiProduct, productId])
 
   const selectedCountry = countryOptions.find((c) => c.value === selectedTo)
 
@@ -548,6 +523,73 @@ export function ProductDetails() {
     void fetchSkuBySpecs()
   }, [apiProduct, productId, selectedSpecs])
 
+  // 目的地 + SKU + 数量齐备后拉运费（支持先选国家再选规格，或先规格后国家）
+  useEffect(() => {
+    if (!productId || String(productId).trim() === '') return
+    if (!selectedDestinationId || !selectedTo?.trim()) {
+      setShippingMethodOptions([])
+      return
+    }
+
+    const skuIdStr =
+      selectedSkuId != null && String(selectedSkuId).trim() !== ''
+        ? String(selectedSkuId).trim()
+        : ''
+    if (!skuIdStr) {
+      setShippingMethodOptions([])
+      return
+    }
+
+    const qty = Math.floor(Number(selectedQuantity))
+    if (!Number.isFinite(qty) || qty < 1) {
+      setShippingMethodOptions([])
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingFreight(true)
+    ;(async () => {
+      try {
+        const freightOptions = await calcuFreight({
+          skuId: skuIdStr,
+          destinationId: selectedDestinationId,
+          quantity: qty,
+        })
+        if (cancelled) return
+        const formattedOptions = freightOptions.map(
+          (option: FreightOption) => ({
+            id: option.logsId || String(Math.random()),
+            title: option.logsNumber || '',
+            cost: `$${option.freight?.toFixed(2) || '0.00'}`,
+            deliveryTime: option.time || '',
+          })
+        )
+        setShippingMethodOptions(formattedOptions)
+      } catch (error) {
+        if (cancelled) return
+        console.error('Failed to calculate freight:', error)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to calculate freight. Please try again.'
+        )
+        setShippingMethodOptions([])
+      } finally {
+        if (!cancelled) setIsLoadingFreight(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    productId,
+    selectedSkuId,
+    selectedQuantity,
+    selectedDestinationId,
+    selectedTo,
+  ])
+
   const handleBuySampleButtonClick = () => {
     if (!areAllSpecsSelected()) {
       toast.error('Please select attribute values')
@@ -633,7 +675,23 @@ export function ProductDetails() {
     const shippingCost = selectedShippingMethodData?.cost
       ? parseFloat(selectedShippingMethodData.cost.replace(/[$,]/g, '')) || 0
       : 0
-    setConfirmOrderPayload({ ...payload, shippingCost })
+    const carriedFreightOptions =
+      shippingMethodOptions.length > 0
+        ? shippingMethodOptions.map((m) => ({
+            logsId: m.id,
+            logsNumber: m.title,
+            freight: parseFloat(m.cost.replace(/[$,]/g, '')) || 0,
+            time: m.deliveryTime,
+          }))
+        : undefined
+    const preferredShippingMethodId =
+      selectedShippingMethod?.trim() || undefined
+    setConfirmOrderPayload({
+      ...payload,
+      shippingCost,
+      carriedFreightOptions,
+      preferredShippingMethodId,
+    })
     setIsPurchaseDialogOpen(false)
     setViewMode('confirm')
   }
@@ -695,7 +753,9 @@ export function ProductDetails() {
         }
 
         const storeOptions = shopsData
-          .filter((shop) => shop.id) // 过滤掉没有 id 的店铺
+          .filter(
+            (shop) => !!shop.id && String((shop as any).enable ?? '1') !== '0'
+          )
           .map((shop) => ({
             id: String(shop.id),
             name: shop.name || shop.platform || String(shop.id),
@@ -754,72 +814,7 @@ export function ProductDetails() {
   >([])
   const [isLoadingVariantPricing, setIsLoadingVariantPricing] = useState(false)
 
-  // 生成所有规格组合（笛卡尔积）
-  const generateAllSpecCombinations = (): Array<Record<string, string>> => {
-    if (!apiProduct || specInfo.length === 0) return []
-
-    const skuSpecs = Array.isArray(
-      (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
-    )
-      ? ((apiProduct as Record<string, unknown>).hzkj_sku_spec_e as Array<{
-          hzkj_sku_spec_id?: string
-          hzkj_sku_spec_enname?: string
-          hzkj_sku_specvalue_e?: Array<{
-            hzkj_sku_specvalue_id?: string
-            hzkj_sku_specvalue_enname?: string
-            [key: string]: unknown
-          }>
-          [key: string]: unknown
-        }>)
-      : []
-
-    // 收集所有规格值
-    const specValuesList: Array<
-      Array<{ specId: string; valueId: string; valueName: string }>
-    > = []
-    skuSpecs.forEach((spec) => {
-      if (spec.hzkj_sku_spec_id && Array.isArray(spec.hzkj_sku_specvalue_e)) {
-        const values = spec.hzkj_sku_specvalue_e
-          .map((value) => ({
-            specId: spec.hzkj_sku_spec_id!,
-            valueId: value.hzkj_sku_specvalue_id || '',
-            valueName: value.hzkj_sku_specvalue_enname || '',
-          }))
-          .filter((v) => v.valueId)
-        if (values.length > 0) {
-          specValuesList.push(values)
-        }
-      }
-    })
-
-    // 生成笛卡尔积
-    const combinations: Array<Record<string, string>> = []
-    const generateCombinations = (
-      current: Record<string, string>,
-      index: number
-    ) => {
-      if (index === specValuesList.length) {
-        combinations.push({ ...current })
-        return
-      }
-
-      specValuesList[index].forEach((item) => {
-        generateCombinations(
-          {
-            ...current,
-            [item.specId]: item.valueId,
-            [`${item.specId}_name`]: item.valueName,
-          },
-          index + 1
-        )
-      })
-    }
-
-    generateCombinations({}, 0)
-    return combinations
-  }
-
-  // 仅在打开 Store Listing 抽屉时加载 variant pricing 数据，避免进入详情页时频繁请求
+  // 仅在打开 Store Listing 抽屉时加载 variant pricing 数据（方案A：一次 querySkuByCustomer，前端映射）
   useEffect(() => {
     if (!isStoreListingOpen) return
 
@@ -846,90 +841,69 @@ export function ProductDetails() {
               ? ((apiProduct as Record<string, unknown>).price as number)
               : 0
 
-        // 生成所有规格组合
-        const specCombinations = generateAllSpecCombinations()
-
-        if (specCombinations.length === 0) {
-          setVariantPricingData([])
-          setIsLoadingVariantPricing(false)
-          return
-        }
-
-        const variantDataPromises = specCombinations.map(
-          async (combination) => {
-            // 提取规格值 ID
-            const specIds = Object.keys(combination)
-              .filter((key) => !key.endsWith('_name'))
-              .map((key) => combination[key])
-              .filter((id) => id)
-
-            if (specIds.length === 0) {
-              return null
-            }
-
-            try {
-              const response = await selectSpecGetSku({
-                productId: String(productId),
-                specIds,
-              })
-
-              if (Array.isArray(response.data) && response.data.length > 0) {
-                const skuData = response.data[0] as SelectSpecGetSkuResponseItem
-                const skuNumber = skuData?.number || ''
-                let skuPrice: number = productPrice
-                const rawPrice = (skuData as any).price
-                const rawSouprice = (skuData as any).souprice
-                if (rawPrice !== undefined && typeof rawPrice === 'number') {
-                  skuPrice = rawPrice
-                } else if (
-                  rawSouprice !== undefined &&
-                  typeof rawSouprice === 'number'
-                ) {
-                  skuPrice = rawSouprice
-                }
-
-                const shippingCost = 0
-                const totalPrice: number = skuPrice + shippingCost
-
-                // 构建规格值映射
-                const specValues: Record<string, string> = {}
-                specInfo.forEach((spec) => {
-                  const valueName = combination[`${spec.specId}_name`] || ''
-                  specValues[`spec_${spec.specId}`] = valueName
-                })
-
-                // 使用产品图片
-                const skuImage =
-                  typeof skuData?.pic === 'string' && skuData.pic.trim()
-                    ? skuData.pic
-                    : typeof productImage === 'string'
-                      ? productImage.split(';')[0] || productImage
-                      : ''
-
-                return {
-                  id: skuData?.id || String(Math.random()),
-                  skuId: skuData?.id,
-                  sku: skuNumber,
-                  image: skuImage,
-                  cjPrice: skuPrice,
-                  shippingFee: '$0.00',
-                  totalDropshippingPrice: `$${totalPrice.toFixed(2)}`,
-                  yourPrice: undefined,
-                  ...specValues,
-                } as VariantPricing
-              }
-            } catch (error) {
-              console.error('Failed to get SKU for spec combination:', error)
-              return null
-            }
-
-            return null
-          }
+        const skuRecords = await querySkuByCustomer(
+          String(productId),
+          '0',
+          '0',
+          1,
+          1000
         )
+        const rows = Array.isArray(skuRecords) ? skuRecords : []
 
-        const variantDataResults = await Promise.all(variantDataPromises)
-        const variantData = variantDataResults.filter(
-          (item): item is VariantPricing => item !== null
+        const variantData: VariantPricing[] = rows.map(
+          (item: SkuRecordItem) => {
+            const row = item as Record<string, unknown>
+            const skuNumber =
+              (typeof row.number === 'string' && row.number) ||
+              (typeof row.hzkj_sku_number === 'string' &&
+                row.hzkj_sku_number) ||
+              ''
+            const rawPrice = row.hzkj_pur_price ?? row.price
+            const skuPrice =
+              typeof rawPrice === 'number'
+                ? rawPrice
+                : Number(rawPrice ?? productPrice) || productPrice
+
+            const skuImage =
+              (typeof row.hzkj_picturefield === 'string' &&
+                row.hzkj_picturefield) ||
+              (typeof row.pic === 'string' && row.pic) ||
+              (typeof productImage === 'string'
+                ? productImage.split(';')[0] || productImage
+                : '')
+
+            const specValues: Record<string, string> = {}
+            const skuValues = Array.isArray(row.hzkj_sku_values)
+              ? (row.hzkj_sku_values as Array<Record<string, unknown>>)
+              : []
+            skuValues.forEach((v) => {
+              const specId = String(v.group_id ?? '').trim()
+              const specName = String(v.name ?? '').trim()
+              if (specId) {
+                specValues[`spec_${specId}`] = specName
+              }
+            })
+            // 兜底：确保所有动态规格列都有值（避免空列导致看起来“无数据”）
+            specInfo.forEach((spec) => {
+              const key = `spec_${spec.specId}`
+              if (!(key in specValues)) {
+                specValues[key] = ''
+              }
+            })
+
+            return {
+              id:
+                (typeof row.id === 'string' && row.id) || String(Math.random()),
+              skuId: row.id,
+              sku: skuNumber,
+              image: skuImage,
+              cjPrice: skuPrice,
+              shippingFee: '$0.00',
+              totalDropshippingPrice: `$${skuPrice.toFixed(2)}`,
+              yourPrice: undefined,
+              ...specValues,
+            } as VariantPricing
+          }
         )
 
         setVariantPricingData(variantData)
@@ -1264,34 +1238,30 @@ export function ProductDetails() {
                                 .hzkj_pack_weight
                             : null
 
-                          if (!weight) {
-                            return (
-                              <span className='text-sm text-gray-600'>
-                                158g
-                              </span>
-                            )
+                          if (weight == null) {
+                            return null
                           }
 
+                          // `selectSpecGetSku` 返回的 weight 已经是 kg
                           const singleWeight =
                             typeof weight === 'number'
                               ? weight
                               : parseFloat(
                                   String(weight).replace(/[^0-9.]/g, '')
-                                ) || 0
+                                )
 
-                          if (!singleWeight) {
-                            return (
-                              <span className='text-sm text-gray-600'>
-                                158g
-                              </span>
-                            )
+                          if (
+                            !Number.isFinite(singleWeight) ||
+                            singleWeight <= 0
+                          ) {
+                            return null
                           }
 
-                          const totalWeight = singleWeight * selectedQuantity
+                          const totalWeightKg = singleWeight * selectedQuantity
 
                           return (
                             <span className='text-sm text-gray-600'>
-                              {totalWeight}g
+                              {totalWeightKg.toFixed(3)}kg
                             </span>
                           )
                         })()}
@@ -1433,19 +1403,20 @@ export function ProductDetails() {
                                       <CommandItem
                                         key={country.value}
                                         value={country.label}
-                                        onSelect={async () => {
+                                        onSelect={() => {
                                           setSelectedTo(country.value)
                                           setIsShipToSelectOpen(false)
 
-                                          // 调用运费计算API
-                                          if (productId) {
-                                            await handleCountrySelectAndCalculateFreight(
-                                              productId,
-                                              country,
-                                              statesData,
-                                              setShippingMethodOptions,
-                                              setSelectedDestinationId,
-                                              setIsLoadingFreight
+                                          const destinationId =
+                                            country.id ||
+                                            statesData.find(
+                                              (s) =>
+                                                s.hzkj_code?.toUpperCase() ===
+                                                country.value.toUpperCase()
+                                            )?.id
+                                          if (destinationId) {
+                                            setSelectedDestinationId(
+                                              destinationId
                                             )
                                           }
                                         }}
@@ -1688,26 +1659,24 @@ export function ProductDetails() {
                       </div>
                     </Button>
                   ) : null}
-                  {shouldShowBuyStockInPackaging || !isFromPackagingProducts ? (
-                    <Button
-                      variant='outline'
-                      className={cn(
-                        'w-full',
-                        selectedBuyType === 'stock' && 'bg-muted'
-                      )}
-                      size='lg'
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        handleBuyStockButtonClick()
-                      }}
-                    >
-                      <div className='flex w-full items-center justify-start'>
-                        <Tag className='mr-2 h-4 w-4' />
-                        <span>Buy Stock</span>
-                      </div>
-                    </Button>
-                  ) : null}
+                  <Button
+                    variant='outline'
+                    className={cn(
+                      'w-full',
+                      selectedBuyType === 'stock' && 'bg-muted'
+                    )}
+                    size='lg'
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleBuyStockButtonClick()
+                    }}
+                  >
+                    <div className='flex w-full items-center justify-start'>
+                      <Tag className='mr-2 h-4 w-4' />
+                      <span>Buy Stock</span>
+                    </div>
+                  </Button>
 
                   {shouldShowMyPackagingButton && (
                     <>
@@ -1923,7 +1892,7 @@ export function ProductDetails() {
             side='right'
             className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
           >
-            <div className='flex h-full text-sm'>
+            <div className='flex min-h-0 flex-1 text-sm'>
               {/* 左侧：Listing 类型菜单（与 StoreManagement 保持一致） */}
 
               {/* 右侧：Tabs + 表单内容 */}
@@ -1935,6 +1904,11 @@ export function ProductDetails() {
                 columns={variantPricingColumns}
                 productTitle={productData?.name || ''}
                 productId={productId}
+                skuIdForFreight={
+                  selectedSkuId != null
+                    ? String(selectedSkuId).trim()
+                    : undefined
+                }
                 apiProduct={apiProduct}
                 specInfo={specInfo}
                 selectedSellingPlatform={selectedSellingPlatform}

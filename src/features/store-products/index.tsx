@@ -40,17 +40,19 @@ export function StoreProducts() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value='associated' className='mt-4'>
-            <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-              <AssociatedStoreProductsTable />
-            </div>
-          </TabsContent>
-
-          <TabsContent value='not-associated' className='mt-4'>
-            <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-              <NotAssociatedConnectionView />
-            </div>
-          </TabsContent>
+          {activeTab === 'associated' ? (
+            <TabsContent value='associated' className='mt-4'>
+              <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+                <AssociatedStoreProductsTable key='associated-tab-content' />
+              </div>
+            </TabsContent>
+          ) : (
+            <TabsContent value='not-associated' className='mt-4'>
+              <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+                <NotAssociatedConnectionView key='not-associated-tab-content' />
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </Main>
 

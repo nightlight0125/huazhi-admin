@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/auth-store'
+import { redirectToExpiredIfNeeded } from '@/lib/build-expiration'
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -21,6 +22,10 @@ export const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    if (redirectToExpiredIfNeeded()) {
+      return Promise.reject(new Error('Build expired. Access denied.'))
+    }
+
     const isGetTokenRequest = config.url?.includes('/oauth2/getToken')
 
     if (isGetTokenRequest) {

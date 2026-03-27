@@ -46,6 +46,7 @@ export const walletRecords: WalletRecord[] = Array.from({ length: 100 }, () => {
       : faker.helpers.arrayElement(['支付宝', '微信支付', '银行卡', '信用卡', 'PayPal']),
     date,
     amount,
+    hzkj_amountfield: amount,
     cashback,
     notes,
     status: status.value,

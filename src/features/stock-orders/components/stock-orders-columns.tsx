@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
 import { CreditCard, ImageIcon, Loader2, Trash2 } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,13 +46,13 @@ function StockOrderDeleteCell({ row, onDelete }: StockOrderDeleteCellProps) {
       <Button
         variant='ghost'
         size='sm'
-        className='h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+        className='group h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)
         }}
       >
-        <Trash2 className='h-4 w-4' />
+        <Trash2 className={cn(TRASH_DELETE_ICON_CLASS, 'h-4 w-4')} />
       </Button>
 
       <ConfirmDialog

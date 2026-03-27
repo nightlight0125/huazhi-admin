@@ -1,9 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, ChevronDown } from 'lucide-react'
+import {
+  ArrowLeft,
+  ChevronDown,
+  Coins,
+  CreditCard,
+  Loader2,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  User,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { calcuNewOrderFreight, type FreightOption } from '@/lib/api/logistics'
+import { getCustomerBalance } from '@/lib/api/orders'
 import { buyProduct } from '@/lib/api/products'
 import { getAddress, type AddressItem } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
@@ -56,12 +68,58 @@ export interface ConfirmOrderPayload {
   selectedWarehouse?: string
   hasShippingAddress: boolean
   shippingCost?: number
+  /** 详情页 calcuFreight 返回的选项，与 calcuNewOrderFreight 结果合并去重 */
+  carriedFreightOptions?: FreightOption[]
+  /** 详情页用户选中的物流 logsId，合并后若在列表中则默认选中 */
+  preferredShippingMethodId?: string
+}
+
+/** 以接口列表为准追加携带项：同 logsId 或同 logsNumber（去空白）视为重复 */
+export function mergeCarriedAndApiFreightOptions(
+  apiList: FreightOption[],
+  carried?: FreightOption[]
+): FreightOption[] {
+  const normalize = (o: FreightOption): FreightOption => ({
+    ...o,
+    logsId: String(o.logsId ?? ''),
+    logsNumber: String(o.logsNumber ?? ''),
+    freight: typeof o.freight === 'number' ? o.freight : Number(o.freight) || 0,
+    time: typeof o.time === 'string' ? o.time : String(o.time ?? ''),
+  })
+
+  const apiNorm: FreightOption[] = []
+  const apiSeenIds = new Set<string>()
+  for (const o of apiList.map(normalize)) {
+    if (!o.logsId || apiSeenIds.has(o.logsId)) continue
+    apiSeenIds.add(o.logsId)
+    apiNorm.push(o)
+  }
+  const result: FreightOption[] = [...apiNorm]
+  const seenIds = new Set(apiNorm.map((o) => o.logsId))
+  const seenNumbers = new Set(
+    apiNorm.map((o) => o.logsNumber.trim()).filter(Boolean)
+  )
+
+  for (const raw of carried ?? []) {
+    const c = normalize(raw)
+    const id = c.logsId
+    const num = c.logsNumber.trim()
+    if (id && seenIds.has(id)) continue
+    if (num && seenNumbers.has(num)) continue
+    if (!id && !num) continue
+    result.push(c)
+    if (id) seenIds.add(id)
+    if (num) seenNumbers.add(num)
+  }
+  return result
 }
 
 interface ConfirmOrderViewProps {
   orderData: ConfirmOrderPayload
   onBack: () => void
 }
+
+type PaymentMethod = 'balance' | 'credit_card'
 
 export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const navigate = useNavigate()
@@ -70,6 +128,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     string | undefined
   >()
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [isPayDialogOpen, setIsPayDialogOpen] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<PaymentMethod>('credit_card')
   const [shippingAddress, setShippingAddress] = useState<AddressItem | null>(
     null
   )
@@ -78,6 +139,10 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   )
   const [freightOptions, setFreightOptions] = useState<FreightOption[]>([])
   const [isLoadingFreight, setIsLoadingFreight] = useState(false)
+  const [isPaying, setIsPaying] = useState(false)
+  const [balance, setBalance] = useState<number>(0)
+  const [availableBalance, setAvailableBalance] = useState<number>(0)
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false)
 
   const handleAddAddress = () => {
     // 保存确认订单数据，返回后可恢复视图
@@ -92,14 +157,14 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     })
   }
 
-  const handlePay = async () => {
+  const handlePay = async (
+    paymentMethod: PaymentMethod = selectedPaymentMethod
+  ) => {
     const customerId = auth.user?.customerId
-
     if (!customerId) {
       toast.error('Customer ID not found. Please login again.')
       return
     }
-
     if (!shippingAddress) {
       toast.error('Please add a shipping address before paying')
       return
@@ -110,7 +175,17 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       return
     }
 
+    if (
+      paymentMethod === 'balance' &&
+      !isLoadingBalance &&
+      availableBalance < totalAmount
+    ) {
+      toast.error('Insufficient balance. Please recharge and try again.')
+      return
+    }
+
     try {
+      setIsPaying(true)
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
       const returnUrl = origin
         ? `${origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`
@@ -151,6 +226,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
 
       if (paymentUrl) {
         toast.success('Redirecting to payment page...')
+        setIsPayDialogOpen(false)
         // 在当前窗口中跳转到支付页面
         window.location.href = paymentUrl
       } else if (response.message) {
@@ -165,13 +241,15 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           ? error.message
           : 'Failed to place order. Please try again.'
       )
+    } finally {
+      setIsPaying(false)
     }
   }
 
   // 获取地址信息 - 组件加载时调用
   useEffect(() => {
     const fetchAddress = async () => {
-      const userId = auth.user?.id
+      const userId = auth.user?.customerId
       try {
         const address = await getAddress(String(userId))
         setShippingAddress(address)
@@ -204,7 +282,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     const skuIdToQty: Record<string, string> = orderData.items.reduce(
       (acc, item) => {
         const id = item.id
-        acc[id] = String((Number(acc[id] ?? 0) + item.quantity))
+        acc[id] = String(Number(acc[id] ?? 0) + item.quantity)
         return acc
       },
       {} as Record<string, string>
@@ -220,7 +298,16 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           countryId,
           customerId: String(customerId),
         })
-        setFreightOptions(options)
+        const merged = mergeCarriedAndApiFreightOptions(
+          options,
+          orderData.carriedFreightOptions
+        )
+        setFreightOptions(merged)
+
+        const preferred = orderData.preferredShippingMethodId?.trim()
+        if (preferred && merged.some((o) => String(o.logsId) === preferred)) {
+          setSelectedShippingMethod(preferred)
+        }
       } catch (error) {
         console.error('Failed to calculate freight:', error)
         toast.error(
@@ -228,12 +315,57 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             ? error.message
             : 'Failed to calculate freight.'
         )
+        const fallback = mergeCarriedAndApiFreightOptions(
+          [],
+          orderData.carriedFreightOptions
+        )
+        setFreightOptions(fallback)
+        const preferred = orderData.preferredShippingMethodId?.trim()
+        if (preferred && fallback.some((o) => String(o.logsId) === preferred)) {
+          setSelectedShippingMethod(preferred)
+        }
       } finally {
         setIsLoadingFreight(false)
       }
     }
     void fetchFreight()
-  }, [shippingAddress, orderData.items, auth.user?.customerId, auth.user?.id])
+  }, [
+    shippingAddress,
+    orderData.items,
+    orderData.carriedFreightOptions,
+    orderData.preferredShippingMethodId,
+    auth.user?.customerId,
+    auth.user?.id,
+  ])
+
+  useEffect(() => {
+    const customerId = auth.user?.customerId
+    if (!isPayDialogOpen || !customerId) return
+    let cancelled = false
+    setIsLoadingBalance(true)
+    getCustomerBalance({ customerId: String(customerId) })
+      .then((res) => {
+        if (cancelled) return
+        const toNum = (v: unknown) => {
+          const n = typeof v === 'number' ? v : Number(String(v ?? 0))
+          return Number.isFinite(n) ? n : 0
+        }
+        setBalance(toNum(res.data?.balance))
+        setAvailableBalance(toNum(res.data?.avaliableBalance))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setBalance(0)
+        setAvailableBalance(0)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingBalance(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isPayDialogOpen, auth.user?.customerId])
 
   // 选中物流方式后从 freightOptions 中取运费
   useEffect(() => {
@@ -277,25 +409,141 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
 
       <div className='text-muted-foreground mb-4 text-sm'></div>
       <div className='space-y-6'>
-        <div className='rounded-lg border p-6'>
-          <h3 className='mb-4 text-lg font-semibold'>Delivery information</h3>
-          {!shippingAddress?.hzkj_address2 ? (
+        <div className='border-border rounded-lg border p-6'>
+          <div className='mb-4 flex items-center justify-between'>
+            <h3 className='text-lg font-semibold'>Delivery information</h3>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              onClick={() =>
+                navigate({
+                  to: '/settings',
+                  search: {
+                    tab: 'profile',
+                    returnTo: `/products/${orderData.productId}`,
+                  },
+                })
+              }
+              className='gap-1.5'
+            >
+              <Pencil className='h-3.5 w-3.5' />
+              Edit
+            </Button>
+          </div>
+          {!shippingAddress ||
+          (!shippingAddress.hzkj_address2 &&
+            !shippingAddress.hzkj_textfield &&
+            !shippingAddress.hzkj_city &&
+            !shippingAddress.hzkj_customer_first_name &&
+            !shippingAddress.hzkj_customer_last_name) ? (
             <div className='flex flex-col items-center justify-center py-8'>
               <p className='text-muted-foreground mb-4 text-sm'>No address</p>
               <Button
                 onClick={handleAddAddress}
-                className='bg-orange-600 text-white hover:bg-orange-700'
+                className='bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-600 dark:hover:bg-orange-500'
               >
                 Add address
               </Button>
             </div>
           ) : (
             <div className='space-y-4'>
-              <div className='text-sm'>
-                <span className='font-medium'>Shipping Address:</span>{' '}
-                <span className='text-muted-foreground'>
-                  {shippingAddress?.hzkj_address2 || 'No address available'}
-                </span>
+              <div className='border-border bg-muted/30 dark:bg-muted/20 rounded-lg border p-4'>
+                <div className='mb-3 flex items-center gap-2 text-sm font-medium'>
+                  <MapPin className='h-4 w-4 text-orange-500 dark:text-orange-400' />
+                  Shipping Address
+                </div>
+                <div className='space-y-4'>
+                  {/* Contact info */}
+                  <div className='flex flex-wrap gap-x-8 gap-y-3'>
+                    {(shippingAddress?.hzkj_customer_first_name ||
+                      shippingAddress?.hzkj_customer_last_name) && (
+                      <div className='flex items-center gap-2'>
+                        <User className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                        <span className='text-muted-foreground text-xs'>
+                          Recipient
+                        </span>
+                        <span className='font-medium'>
+                          {[
+                            shippingAddress.hzkj_customer_first_name,
+                            shippingAddress.hzkj_customer_last_name,
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                        </span>
+                      </div>
+                    )}
+                    {shippingAddress?.hzkj_phone && (
+                      <div className='flex items-center gap-2'>
+                        <Phone className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                        <span className='text-muted-foreground text-xs'>
+                          Phone
+                        </span>
+                        <span className='font-medium'>
+                          {shippingAddress.hzkj_phone}
+                        </span>
+                      </div>
+                    )}
+                    {shippingAddress?.hzkj_adress_emailfield && (
+                      <div className='flex items-center gap-2'>
+                        <Mail className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                        <span className='text-muted-foreground text-xs'>
+                          Email
+                        </span>
+                        <span className='font-medium'>
+                          {shippingAddress.hzkj_adress_emailfield}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Address lines */}
+                  <div className='border-border space-y-1.5 border-t pt-3'>
+                    {[
+                      (shippingAddress as Record<string, unknown>)
+                        ?.hzkj_country_name != null && {
+                        label: 'Country',
+                        value: String(
+                          (shippingAddress as Record<string, unknown>)
+                            .hzkj_country_name
+                        ),
+                      },
+                      shippingAddress?.hzkj_admindivision_number && {
+                        label: 'Region',
+                        value: shippingAddress.hzkj_admindivision_number,
+                      },
+                      shippingAddress?.hzkj_city && {
+                        label: 'City',
+                        value: shippingAddress.hzkj_city,
+                      },
+                      shippingAddress?.hzkj_textfield && {
+                        label: 'Address1',
+                        value: shippingAddress.hzkj_textfield,
+                      },
+                      shippingAddress?.hzkj_address2 && {
+                        label: 'Address2',
+                        value: shippingAddress.hzkj_address2,
+                      },
+                      shippingAddress?.hzkj_textfield1 && {
+                        label: 'Postcode',
+                        value: shippingAddress.hzkj_textfield1,
+                      },
+                    ]
+                      .filter(Boolean)
+                      .map((item, i) => (
+                        <div
+                          key={i}
+                          className='flex items-baseline gap-2 text-sm'
+                        >
+                          <span className='text-muted-foreground w-20 shrink-0 text-xs'>
+                            {(item as { label: string }).label}:
+                          </span>
+                          <span className='font-medium'>
+                            {(item as { value: string }).value}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -335,7 +583,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
         </div>
 
         {/* Product 区域 */}
-        <div className='rounded-lg border p-6'>
+        <div className='border-border rounded-lg border p-6'>
           <h3 className='mb-4 text-lg font-semibold'>Product</h3>
           <div className='overflow-x-auto'>
             <Table>
@@ -344,7 +592,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                   <TableHead>Product</TableHead>
                   <TableHead>Price($)</TableHead>
                   <TableHead>Discounted Price($)</TableHead>
-                  <TableHead>Weight(g)</TableHead>
+                  <TableHead>Weight(kg)</TableHead>
                   <TableHead>Qty</TableHead>
                   <TableHead>Fee($)</TableHead>
                 </TableRow>
@@ -433,21 +681,21 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           <div className='flex items-center justify-end gap-4'>
             <div className='flex items-center gap-2'>
               <span className='text-sm font-semibold'>Total Amounts:</span>
-              <span className='text-lg font-bold text-orange-600'>
+              <span className='text-lg font-bold text-orange-600 dark:text-orange-400'>
                 ${isLoadingFreight ? '...' : totalAmount.toFixed(2)}
               </span>
               <Button
                 variant='ghost'
                 size='sm'
-                className='h-6 px-2 text-xs text-orange-600 hover:text-orange-700'
+                className='h-6 px-2 text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300'
                 onClick={() => setIsDetailDialogOpen(true)}
               >
                 Detail <ChevronDown className='ml-1 h-3 w-3' />
               </Button>
             </div>
             <Button
-              onClick={handlePay}
-              className='bg-orange-600 px-8 text-white hover:bg-orange-700'
+              onClick={() => setIsPayDialogOpen(true)}
+              className='bg-orange-600 px-8 text-white hover:bg-orange-700 dark:bg-orange-600 dark:hover:bg-orange-500'
               size='lg'
               disabled={isLoadingFreight}
             >
@@ -477,7 +725,128 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             <Separator />
             <div className='flex items-center justify-between text-base font-semibold'>
               <span>Total:</span>
-              <span className='text-orange-600'>${finalTotal.toFixed(2)}</span>
+              <span className='text-orange-600 dark:text-orange-400'>
+                ${finalTotal.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
+        <DialogContent className='sm:max-w-[600px]'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center justify-between'>
+              Pay for Order
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className='space-y-6 py-4'>
+            <div className='space-y-3'>
+              <div className='text-sm font-medium'>Payment Methods:</div>
+              <div className='grid grid-cols-3 gap-3'>
+                <button
+                  type='button'
+                  onClick={() => setSelectedPaymentMethod('balance')}
+                  className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                    selectedPaymentMethod === 'balance'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                      : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
+                  }`}
+                >
+                  <Coins className='mb-2 h-6 w-6' />
+                  <span className='text-sm font-medium'>Balance</span>
+                </button>
+
+                <button
+                  type='button'
+                  onClick={() => setSelectedPaymentMethod('credit_card')}
+                  className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                    selectedPaymentMethod === 'credit_card'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                      : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
+                  }`}
+                >
+                  <CreditCard className='mb-2 h-6 w-6' />
+                  <span className='text-sm font-medium'>Credit card</span>
+                </button>
+
+                <button
+                  type='button'
+                  disabled
+                  className='relative flex cursor-not-allowed flex-col items-center justify-center rounded-lg border-2 border-gray-200 bg-gray-50 p-4 opacity-60 transition-all dark:bg-gray-800'
+                >
+                  <div className='mb-2 h-6 w-16 rounded bg-gray-400'></div>
+                  <span className='text-sm font-medium text-gray-500'>
+                    Airwallex
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className='space-y-1 rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-950'>
+              <p className='text-sm font-medium text-orange-800 dark:text-orange-200'>
+                Recomended! Get 1~2.5% bonus when recharging with XT and
+                Payoneer.
+              </p>
+              <p className='text-xs text-orange-700 dark:text-orange-300'>
+                Pay without limit on amount or number of orders.
+              </p>
+            </div>
+
+            <div className='space-y-3 border-t pt-4'>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Total Amount :</span>
+                <span className='text-sm font-semibold text-orange-600'>
+                  {isLoadingFreight ? '...' : `Pay $${totalAmount.toFixed(2)}`}
+                </span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Balance:</span>
+                <span className='text-sm font-semibold text-orange-600'>
+                  {isLoadingBalance ? '...' : `$${balance.toFixed(2)}`}
+                </span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Available:</span>
+                <span className='text-sm font-semibold text-orange-600'>
+                  {isLoadingBalance ? '...' : `$${availableBalance.toFixed(2)}`}
+                </span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Bonus:</span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Credits:</span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>No. of Orders:</span>
+                <span className='text-sm font-semibold'>1</span>
+              </div>
+            </div>
+
+            <div className='flex justify-end gap-3 border-t pt-4'>
+              <Button
+                variant='outline'
+                onClick={() => setIsPayDialogOpen(false)}
+                disabled={isPaying}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void handlePay(selectedPaymentMethod)}
+                disabled={isPaying || isLoadingFreight}
+                className='bg-blue-500 hover:bg-blue-600'
+              >
+                {isPaying ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Processing...
+                  </>
+                ) : (
+                  'Confirm Payment'
+                )}
+              </Button>
             </div>
           </div>
         </DialogContent>

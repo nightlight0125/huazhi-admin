@@ -102,7 +102,9 @@ export function OrdersCreatePage() {
           pageNo: 0,
           pageSize: 100,
         })
-        setShopList(list)
+        setShopList(
+          list.filter((shop) => String(shop.enable ?? '1') !== '0')
+        )
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : 'Failed to load shop list.'
@@ -264,17 +266,24 @@ export function OrdersCreatePage() {
     })
   }
 
-  // 从弹框选择收藏产品后加入列表
-  // 映射：Product Name<-spuName, Product Pic Url<-pic，其余无对应字段
   const handleSelectMyProduct = (items: Record<string, unknown>[]) => {
     items.forEach((item) => {
       const price =
-        Number((item as any).purPrice ?? (item as any).price ?? (item as any).hzkj_pur_price ?? 0) ||
-        0
+        Number(
+          (item as any).purPrice ??
+            (item as any).price ??
+            (item as any).hzkj_pur_price ??
+            0
+        ) || 0
+      const sku =
+        (item as any).number ??
+        (item as any).hzkj_local_sku ??
+        (item as any).skuNumber ??
+        ''
       appendProduct({
         id: crypto.randomUUID(),
         productName: String(item.spuName ?? ''),
-        productVariants: '',
+        productVariants: String(sku),
         quantity: 1,
         unitPrice: price,
         rawItem: item,
@@ -363,8 +372,7 @@ export function OrdersCreatePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Country / Region{' '}
-                        <span className='text-red-500'>*</span>
+                        Country / Region <span className='text-red-500'>*</span>
                       </FormLabel>
                       <Select
                         value={field.value}
@@ -533,7 +541,7 @@ export function OrdersCreatePage() {
                       <TableHead>
                         Product Name<span className='text-red-500'>*</span>
                       </TableHead>
-                      <TableHead>Product Variants</TableHead>
+                      <TableHead>SKU</TableHead>
                       <TableHead>
                         Quantity<span className='text-red-500'>*</span>
                       </TableHead>
@@ -551,7 +559,12 @@ export function OrdersCreatePage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormControl>
-                                  <Input {...field} className='min-w-[200px]' />
+                                  <Input
+                                    {...field}
+                                    readOnly
+                                    disabled
+                                    className='min-w-[200px]'
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -565,7 +578,12 @@ export function OrdersCreatePage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormControl>
-                                  <Input {...field} className='min-w-[150px]' />
+                                  <Input
+                                    {...field}
+                                    readOnly
+                                    disabled
+                                    className='min-w-[150px]'
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -608,10 +626,14 @@ export function OrdersCreatePage() {
                                     min='0'
                                     step={0.01}
                                     {...field}
+                                    readOnly
+                                    disabled
                                     onChange={(e) => {
                                       const next = Number(e.target.value)
                                       field.onChange(
-                                        Number.isNaN(next) || next < 0 ? 0 : next
+                                        Number.isNaN(next) || next < 0
+                                          ? 0
+                                          : next
                                       )
                                     }}
                                     className='min-w-[80px]'

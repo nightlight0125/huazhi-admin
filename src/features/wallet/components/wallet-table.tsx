@@ -40,6 +40,21 @@ interface DataTableProps {
   data: WalletRecord[]
 }
 
+/** 解析后端 hzkj_amountfield；无有效值时返回 undefined */
+function parseHzkjAmountField(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? undefined : value
+  }
+  if (typeof value === 'string') {
+    const t = value.trim()
+    if (t === '') return undefined
+    const n = parseFloat(t)
+    return Number.isNaN(n) ? undefined : n
+  }
+  return undefined
+}
+
 // 将API返回的数据映射为WalletRecord格式
 function mapApiWalletItemToWalletRecord(
   item: ApiFundRecordItem,
@@ -73,9 +88,9 @@ function mapApiWalletItemToWalletRecord(
     // 对应后端：hzkj_method
     paymentMethod: item.hzkj_method || '',
     date,
-    // 对应后端：hzkj_amountfield
-    amount:
-      typeof item.hzkj_amountfield === 'number' ? item.hzkj_amountfield : 0,
+    // 对应后端：hzkj_amountfield（字符串/数字均解析）
+    hzkj_amountfield: parseHzkjAmountField(item.hzkj_amountfield),
+    amount: parseHzkjAmountField(item.hzkj_amountfield) ?? 0,
     // 对应后端：hzkj_amountfield2
     cashback:
       typeof item.hzkj_amountfield2 === 'number'
@@ -571,7 +586,10 @@ export function WalletTable({ data }: DataTableProps) {
             </TableComponent>
           </div>
 
-          <DataTablePagination table={table} />
+          <DataTablePagination
+            table={table}
+            selectedCount={table.getFilteredSelectedRowModel().rows.length}
+          />
           <DataTableBulkActions table={table} />
         </TabsContent>
       </Tabs>

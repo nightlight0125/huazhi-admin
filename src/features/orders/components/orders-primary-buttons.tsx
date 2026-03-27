@@ -90,6 +90,9 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
     { label: 'Returns only', value: 'D' },
   ] as const
 
+  const getOrderStatus = (order: Order) =>
+    String((order as any).hzkj_orderstatus ?? '')
+
   // 打开弹框时拉取售后原因列表
   useEffect(() => {
     if (!rmaDialogOpen || afterSaleReasons.length > 0) return
@@ -128,6 +131,14 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
 
     if (selectedRows.length > 1) {
       toast.error('Please select only one order')
+      return
+    }
+
+    const hasUnpaidOrder = selectedRows.some(
+      (row) => getOrderStatus(row.original) !== '2'
+    )
+    if (hasUnpaidOrder) {
+      toast.error('Unpaid orders do not support after-sales.')
       return
     }
 
@@ -272,6 +283,13 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
         }
         if (selectedRows.length > 1) {
           toast.error('Please select only one order')
+          return
+        }
+        const hasUnpaidOrder = selectedRows.some(
+          (row) => getOrderStatus(row.original) !== '2'
+        )
+        if (hasUnpaidOrder) {
+          toast.error('Unpaid orders do not support after-sales.')
           return
         }
         const order = selectedRows[0].original

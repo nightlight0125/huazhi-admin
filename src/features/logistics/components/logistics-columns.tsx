@@ -5,6 +5,7 @@ import { type ColumnDef } from '@tanstack/react-table'
 import { AlertTriangle, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiClient } from '@/lib/api-client'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -186,10 +187,12 @@ function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
       <Button
         variant='outline'
         size='sm'
-        className='h-7 border-gray-200 px-2 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+        className='group h-7 border-gray-200 px-2 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
         onClick={() => setOpen(true)}
       >
-        <Trash2 className='mr-1 h-3.5 w-3.5' />
+        <Trash2
+          className={cn(TRASH_DELETE_ICON_CLASS, 'mr-1 h-3.5 w-3.5')}
+        />
       </Button>
       <ConfirmDialog
         open={open}

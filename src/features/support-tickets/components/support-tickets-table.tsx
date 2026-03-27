@@ -168,10 +168,9 @@ export function SupportTicketsTable({
     }
   }
 
-  const filteredData = useMemo(() => {
-    if (activeTab === 'all') return data
-    return data.filter((ticket) => ticket.status === activeTab)
-  }, [data, activeTab])
+  // Tab 已通过父组件请求参数做后端过滤，这里不再做前端 status 二次过滤，
+  // 避免接口返回字段（如 hzkj_orderstatus）与本地 ticket.status 不一致时被误过滤为空。
+  const filteredData = useMemo(() => data, [data])
 
   const handleEdit = (_ticket: SupportTicket) => {
     // TODO: Implement edit functionality
@@ -265,7 +264,10 @@ export function SupportTicketsTable({
 
         // 将店铺列表映射为选项格式
         const options = response.list
-          .filter((shop: ShopListItem) => shop.id) // 过滤掉没有 id 的店铺
+          .filter(
+            (shop: ShopListItem) =>
+              !!shop.id && String(shop.enable ?? '1') !== '0'
+          )
           .map((shop: ShopListItem) => ({
             label: shop.name || shop.platform || String(shop.id || ''),
             value: String(shop.id || ''),

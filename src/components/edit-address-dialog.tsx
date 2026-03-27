@@ -219,13 +219,14 @@ export function EditAddressDialog({
 
         <div className='flex-1 overflow-y-auto py-4'>
           <div className='space-y-4'>
-            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+            <div className='grid grid-cols-2 gap-4'>
               <div className='space-y-2'>
                 <Label htmlFor='firstName'>
                   First Name <span className='text-red-500'>*</span>
                 </Label>
                 <Input
                   id='firstName'
+                  placeholder='Please enter first name'
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                 />
@@ -236,6 +237,7 @@ export function EditAddressDialog({
                 </Label>
                 <Input
                   id='lastName'
+                  placeholder='Please enter last name'
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                 />

@@ -12,7 +12,9 @@ const reasons = [
 ]
 
 export function SignIn() {
-  const { redirect } = useSearch({ from: '/(auth)/sign-in' })
+  const { redirect, accountId, bizUserId } = useSearch({
+    from: '/(auth)/sign-in',
+  })
 
   return (
     <div className='bg-background min-h-svh'>
@@ -97,7 +99,11 @@ export function SignIn() {
         <div className='flex w-full items-center justify-center px-4 py-10 lg:w-1/2 lg:px-10'>
           <div className='w-full max-w-md space-y-6'>
             <h1 className='text-2xl font-semibold tracking-tight'>Log in</h1>
-            <UserAuthForm redirectTo={redirect} />
+            <UserAuthForm
+              redirectTo={redirect}
+              accountId={accountId}
+              bizUserId={bizUserId}
+            />
           </div>
         </div>
       </div>

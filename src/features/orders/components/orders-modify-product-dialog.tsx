@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { updateSalOutOrder } from '@/lib/api/orders'
+import { getSkuByNumber } from '@/lib/api/products'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -117,6 +118,9 @@ export function OrdersModifyProductDialog({
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [addProductDialogOpen, setAddProductDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [validatingEditIndex, setValidatingEditIndex] = useState<number | null>(
+    null
+  )
 
   // Reset products when dialog opens/closes
   useEffect(() => {
@@ -165,56 +169,126 @@ export function OrdersModifyProductDialog({
     )
   }
 
-  const handleSaveEdit = (index: number) => {
+  const handleSaveEdit = async (index: number) => {
     const product = products[index]
     if (!product.tempSku || !product.tempQuantity || product.tempQuantity < 1) {
       return
     }
 
-    setProducts(
-      products.map((p, i) => {
-        if (i === index) {
-          const qty = product.tempQuantity!
-          const oldQty =
-            parseInt(
-              String((p as any).hzkj_qty ?? p.hzkj_src_qty ?? p.quantity ?? 1)
-            ) || 1
-          const amountFromHz =
-            (p as any).hzkj_amount != null && (p as any).hzkj_amount !== ''
-              ? parseFloat(String((p as any).hzkj_amount))
-              : NaN
-          const unitFromShop =
-            p.hzkj_shop_price != null && p.hzkj_shop_price !== ''
-              ? parseFloat(String(p.hzkj_shop_price))
-              : NaN
-          const unitPrice = !isNaN(unitFromShop)
-            ? unitFromShop
-            : !isNaN(amountFromHz) && oldQty > 0
-              ? amountFromHz / oldQty
-              : (p.price ?? 0)
-          const total = unitPrice * qty
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer information is missing')
+      return
+    }
 
-          return {
-            ...p,
-            // 更新后端字段：hzkj_local_sku(SKU)、hzkj_qty(数量)、hzkj_amount(金额)
-            hzkj_local_sku: product.tempSku!,
-            hzkj_shop_sku: product.tempSku!,
-            hzkj_src_qty: String(qty),
-            hzkj_qty: String(qty),
-            quantity: qty,
-            price: unitPrice,
-            hzkj_shop_price: String(unitPrice),
-            hzkj_amount: String(total),
-            totalPrice: total,
-            isEditing: false,
-            tempSku: undefined,
-            tempQuantity: undefined,
-          }
-        }
-        return p
+    setValidatingEditIndex(index)
+    try {
+      const res = await getSkuByNumber({
+        number: product.tempSku,
+        cusId: String(customerId),
       })
-    )
-    setEditingIndex(null)
+
+      if (res.status !== true) {
+        if (res.errorCode === '1001') {
+          toast.error('Please enter a valid SKU')
+        } else {
+          toast.error(
+            res.message || 'SKU validation failed. Please check and try again.'
+          )
+        }
+        return
+      }
+
+      setProducts(
+        products.map((p, i) => {
+          if (i === index) {
+            const qty = product.tempQuantity!
+            const oldQty =
+              parseInt(
+                String((p as any).hzkj_qty ?? p.hzkj_src_qty ?? p.quantity ?? 1)
+              ) || 1
+            const amountFromHz =
+              (p as any).hzkj_amount != null && (p as any).hzkj_amount !== ''
+                ? parseFloat(String((p as any).hzkj_amount))
+                : NaN
+            const unitFromShop =
+              p.hzkj_shop_price != null && p.hzkj_shop_price !== ''
+                ? parseFloat(String(p.hzkj_shop_price))
+                : NaN
+            let unitPrice = !isNaN(unitFromShop)
+              ? unitFromShop
+              : !isNaN(amountFromHz) && oldQty > 0
+                ? amountFromHz / oldQty
+                : (p.price ?? 0)
+            const total = unitPrice * qty
+
+            const next: EditableProduct = {
+              ...p,
+              hzkj_local_sku: product.tempSku!,
+              hzkj_shop_sku: product.tempSku!,
+              hzkj_src_qty: String(qty),
+              hzkj_qty: String(qty),
+              quantity: qty,
+              price: unitPrice,
+              hzkj_shop_price: String(unitPrice),
+              hzkj_amount: String(total),
+              totalPrice: total,
+              isEditing: false,
+              tempSku: undefined,
+              tempQuantity: undefined,
+            }
+
+            const d = res.data as Record<string, unknown> | null | undefined
+            if (d && typeof d === 'object' && !Array.isArray(d)) {
+              if (d.id != null) {
+                next.hzkj_local_sku_id = String(d.id)
+              }
+            const name =
+              (d as { enname?: string }).enname ||
+              (d as { hzkj_name?: string }).hzkj_name ||
+              (d as { name?: string }).name
+              if (typeof name === 'string' && name) {
+                next.productName = name
+              }
+              const pic =
+              (d as { pic?: string }).pic ||
+              (d as { picture?: string }).picture ||
+              (d as { hzkj_picture?: string }).hzkj_picture
+              if (typeof pic === 'string' && pic) {
+                next.productImageUrl = pic
+                ;(next as any).hzkj_picture = pic
+              }
+              const priceVal =
+                (d as { price?: number }).price ??
+                (d as { hzkj_shop_price?: number | string }).hzkj_shop_price
+              if (priceVal != null && priceVal !== '') {
+                const n = Number(priceVal)
+                if (!Number.isNaN(n)) {
+                  unitPrice = n
+                  next.price = n
+                  next.totalPrice = n * qty
+                  next.hzkj_shop_price = String(n)
+                  next.hzkj_amount = String(n * qty)
+                }
+              }
+            }
+
+            return next
+          }
+          return p
+        })
+      )
+      setEditingIndex(null)
+      toast.success('Updated successfully')
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'SKU validation failed. Please try again later.'
+      )
+    } finally {
+      setValidatingEditIndex(null)
+    }
   }
 
   const handleCancelEdit = (index: number) => {
@@ -275,31 +349,37 @@ export function OrdersModifyProductDialog({
 
       const rawOrder = order as any
 
-      // 获取原有的产品明细（从 order.lingItems）
-      const existingDetailMap = new Map<string, any>()
+      // 构建 entryId -> 原始数量 的映射（从 lingItems）
+      const originalQtyByEntryId = new Map<string, number>()
       if (rawOrder.lingItems && Array.isArray(rawOrder.lingItems)) {
         rawOrder.lingItems.forEach((item: any) => {
           const entryId = String(item.entryId || '')
           if (entryId) {
-            existingDetailMap.set(entryId, {
-              entryId,
-              skuId: String(
-                item.hzkj_local_sku_id ||
-                  item.hzkj_local_sku_id2 ||
-                  item.hzkj_local_sku ||
-                  ''
-              ),
-              quantity: Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0,
-              flag: 0,
-            })
+            const q =
+              Number(item.hzkj_qty ?? item.hzkj_src_qty ?? 0) || 0
+            originalQtyByEntryId.set(entryId, q)
           }
         })
       }
 
-      // 处理界面上显示的产品（包括原有的和新增的）
-      const updatedDetail: any[] = []
+      // 解析 quantity：优先 product.quantity，其次 hzkj_qty、hzkj_src_qty，最后用原始值
+      const resolveQuantity = (p: any, fallback: number = 0): number => {
+        const fromProduct =
+          p.quantity != null && p.quantity !== ''
+            ? Number(p.quantity)
+            : (p.hzkj_qty != null && p.hzkj_qty !== ''
+                ? Number(p.hzkj_qty)
+                : p.hzkj_src_qty != null && p.hzkj_src_qty !== ''
+                  ? Number(p.hzkj_src_qty)
+                  : NaN)
+        if (!Number.isNaN(fromProduct) && fromProduct > 0) return fromProduct
+        return fallback
+      }
+
+      // 按 cleanedProducts 顺序构建 detail，确保每条记录数量正确
+      const detail: any[] = []
       cleanedProducts.forEach((product) => {
-        const entryId = product.entryId || ''
+        const entryId = String(product.entryId || '')
         const skuId = String(
           product.hzkj_local_sku_id ||
             (product as any).hzkj_local_sku_id2 ||
@@ -307,44 +387,20 @@ export function OrdersModifyProductDialog({
             ''
         )
 
-        if (!skuId) {
-          return // 跳过没有 skuId 的产品
-        }
+        if (!skuId) return
 
-        if (entryId) {
-          // 这是原有的产品，更新它
-          if (existingDetailMap.has(entryId)) {
-            existingDetailMap.set(entryId, {
-              entryId,
-              skuId,
-              quantity: product.quantity || 0,
-              flag: 0,
-            })
-          } else {
-            // 如果 entryId 存在但不在原有明细中，也添加
-            updatedDetail.push({
-              entryId,
-              skuId,
-              quantity: product.quantity || 0,
-              flag: 0,
-            })
-          }
-        } else {
-          // 这是新增的产品
-          updatedDetail.push({
-            entryId: '', // 新增时为空
-            skuId,
-            quantity: product.quantity || 0,
-            flag: 0,
-          })
-        }
+        const originalQty = entryId
+          ? originalQtyByEntryId.get(entryId) ?? 0
+          : 0
+        const quantity = resolveQuantity(product, originalQty)
+
+        detail.push({
+          entryId: entryId || '',
+          skuId,
+          quantity: quantity > 0 ? quantity : 1,
+          flag: 0,
+        })
       })
-
-      // 合并原有的（已更新的）和新增的明细
-      const detail = [
-        ...Array.from(existingDetailMap.values()),
-        ...updatedDetail,
-      ]
 
       if (detail.length === 0) {
         toast.error('No valid products to update')
@@ -489,9 +545,12 @@ export function OrdersModifyProductDialog({
                       <TableRow key={productId}>
                         <TableCell>
                           <div className='flex items-center gap-3'>
-                            {product.hzkj_picture ? (
+                            {(product as any).hzkj_picture || product.productImageUrl ? (
                               <img
-                                src={product.hzkj_picture}
+                                src={
+                                  (product as any).hzkj_picture ||
+                                  product.productImageUrl
+                                }
                                 className='h-12 w-12 rounded object-cover'
                               />
                             ) : (
@@ -507,7 +566,9 @@ export function OrdersModifyProductDialog({
                                   '--'}
                               </Badge>
                               <span className='text-sm'>
-                                {product.productName || '--'}
+                                {product.productName ||
+                                  ((product as any).enname as string | undefined) ||
+                                  '--'}
                               </span>
                             </div>
                           </div>
@@ -604,14 +665,19 @@ export function OrdersModifyProductDialog({
                                 variant='outline'
                                 size='icon'
                                 className='h-7 w-7 text-green-600 hover:text-green-700'
-                                onClick={() => handleSaveEdit(index)}
+                                onClick={() => void handleSaveEdit(index)}
                                 disabled={
+                                  validatingEditIndex === index ||
                                   !product.tempSku ||
                                   !product.tempQuantity ||
                                   product.tempQuantity < 1
                                 }
                               >
-                                <Check className='h-4 w-4' />
+                                {validatingEditIndex === index ? (
+                                  <Loader2 className='h-4 w-4 animate-spin' />
+                                ) : (
+                                  <Check className='h-4 w-4' />
+                                )}
                               </Button>
                               <Button
                                 type='button'

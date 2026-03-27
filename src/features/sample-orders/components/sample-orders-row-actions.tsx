@@ -6,6 +6,8 @@ import {
   Package,
   Trash2,
 } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -74,12 +76,12 @@ export function SampleOrdersRowActions({
           Add Package
         </DropdownMenuItem>
         <DropdownMenuItem
-          className='text-red-600 focus:text-red-700'
+          className='group text-gray-700 focus:text-gray-700 data-[highlighted]:text-red-600'
           onClick={() => {
             onDelete?.(order.id)
           }}
         >
-          <Trash2 className='mr-2 h-4 w-4' />
+          <Trash2 className={cn(TRASH_DELETE_ICON_CLASS, 'mr-2 h-4 w-4')} />
           Delete
         </DropdownMenuItem>
       </DropdownMenuContent>

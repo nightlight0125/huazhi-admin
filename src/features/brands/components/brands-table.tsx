@@ -13,6 +13,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { Trash2 } from 'lucide-react'
+import { TRASH_DELETE_DESTRUCTIVE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -175,8 +177,15 @@ export function BrandsTable({ data }: DataTableProps) {
       </div>
       <DataTablePagination table={table} />
       <DataTableBulkActions table={table} entityName='品牌'>
-        <Button variant='destructive' size='sm' onClick={handleBulkDelete}>
-          <Trash2 className='mr-2 h-4 w-4' />
+        <Button
+          variant='destructive'
+          size='sm'
+          className='group'
+          onClick={handleBulkDelete}
+        >
+          <Trash2
+            className={cn(TRASH_DELETE_DESTRUCTIVE_ICON_CLASS, 'mr-2 h-4 w-4')}
+          />
           删除选中项
         </Button>
       </DataTableBulkActions>

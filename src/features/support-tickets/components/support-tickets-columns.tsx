@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
 import { Loader2, Trash2 } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -45,13 +47,13 @@ function SupportTicketDeleteCell({
       <Button
         variant='outline'
         size='sm'
-        className='h-7 border-red-200 px-2 text-xs text-red-500'
+        className='group h-7 border-gray-200 px-2 text-xs text-gray-500 hover:border-red-200 hover:text-red-600'
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)
         }}
       >
-        <Trash2 className='mr-1 h-3.5 w-3.5' />
+        <Trash2 className={cn(TRASH_DELETE_ICON_CLASS, 'mr-1 h-3.5 w-3.5')} />
       </Button>
 
       <ConfirmDialog
@@ -160,10 +162,9 @@ export const createSupportTicketsColumns = (options?: {
               </div>
             )}
             <div className='space-y-0.5 text-sm'>
-              <div>Order NO: {ticket.hzkj_localsku_number || '--'}</div>
-              <div>SKU: {ticket.hzkj_localsku_hzkj_name || '--'}</div>
-              <div>Variant: {ticket.hzkj_localsku_number || '--'}</div>
-              <div>QTY: {ticket.hzkj_qty || 0}</div>
+              <div>Order NO: {row.original.hzkj_src_number || '--'}</div>
+              <div>SKU: {ticket.hzkj_localsku_number || '--'}</div>
+              <div>Variant: {ticket.hzkj_localsku_hzkj_name || '--'}</div>
               <div>
                 Total Price: $
                 {(ticket.hzkj_localsku_hzkj_pur_price || 0).toFixed(2)}
@@ -180,9 +181,12 @@ export const createSupportTicketsColumns = (options?: {
         <DataTableColumnHeader column={column} title='Qty' />
       ),
       cell: ({ row }) => {
+        const entryEntity = row.original.hzkj_after_entryentity
+        const ticket = entryEntity?.item?.[0] || (entryEntity as any)?.[0] || {}
+        const qty = Number(ticket.hzkj_qty ?? 0)
         return (
           <div className='w-10 text-center text-xs'>
-            {row.getValue('returnQty') || 0}
+            {Number.isFinite(qty) ? qty : 0}
           </div>
         )
       },
