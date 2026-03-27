@@ -379,11 +379,10 @@ export async function deleteOrder(
   params: DeleteOrderRequest
 ): Promise<DeleteOrderResponse> {
   const response = await apiClient.post<DeleteOrderResponse>(
-    '/v2/hzkj/hzkj_ordercenter/order/deleteSalOutOrder',
+    '/v2/hzkj/hzkj_ordercenter/order/deleteAfterSOrder',
     params
   )
 
-  // 检查响应状态
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to delete order. Please try again.'
@@ -393,12 +392,11 @@ export async function deleteOrder(
   return response.data
 }
 
-// ---------- 更新发货订单（修改地址等） ----------
-
 export interface UpdateSalOutOrderDetailItem {
   entryId: string
   skuId: string
   quantity: number
+  /** 0 = 保留该行，1 = 删除该行（逻辑删除） */
   flag: number
 }
 

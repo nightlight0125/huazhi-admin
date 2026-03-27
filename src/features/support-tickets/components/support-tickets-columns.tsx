@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/tooltip'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTableColumnHeader } from '@/components/data-table'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { type SupportTicket } from '../data/schema'
 
 interface SupportTicketDeleteCellProps {
@@ -45,13 +47,15 @@ function SupportTicketDeleteCell({
       <Button
         variant='outline'
         size='sm'
-        className='h-7 border-red-200 px-2 text-xs text-red-500'
+        className='group h-7 border-gray-200 px-2 text-xs text-gray-500 hover:border-red-200 hover:text-red-600'
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)
         }}
       >
-        <Trash2 className='mr-1 h-3.5 w-3.5' />
+        <Trash2
+          className={cn(TRASH_DELETE_ICON_CLASS, 'mr-1 h-3.5 w-3.5')}
+        />
       </Button>
 
       <ConfirmDialog

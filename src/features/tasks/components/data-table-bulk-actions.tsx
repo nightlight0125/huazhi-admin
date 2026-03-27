@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
 import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
+import { TRASH_DELETE_DESTRUCTIVE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { toast } from 'sonner'
-import { sleep } from '@/lib/utils'
+import { sleep, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -169,11 +170,13 @@ export function DataTableBulkActions<TData>({
               variant='destructive'
               size='icon'
               onClick={() => setShowDeleteConfirm(true)}
-              className='size-8'
+              className='group size-8'
               aria-label='Delete selected tasks'
               title='Delete selected tasks'
             >
-              <Trash2 />
+              <Trash2
+                className={cn(TRASH_DELETE_DESTRUCTIVE_ICON_CLASS, 'h-4 w-4')}
+              />
               <span className='sr-only'>Delete selected tasks</span>
             </Button>
           </TooltipTrigger>

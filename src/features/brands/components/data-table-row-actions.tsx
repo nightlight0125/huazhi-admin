@@ -1,6 +1,8 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { type Row } from '@tanstack/react-table'
 import { Download, Edit, Eye, Trash2 } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -69,12 +71,12 @@ export function DataTableRowActions<TData>({
             setCurrentRow(brandItem)
             setOpen('delete')
           }}
-          className='text-destructive focus:text-destructive'
+          className='group text-gray-700 focus:text-gray-700 data-[highlighted]:text-red-600'
         >
-          <Trash2 className='mr-2 h-4 w-4' />
+          <Trash2 className={cn(TRASH_DELETE_ICON_CLASS, 'mr-2 h-4 w-4')} />
           删除
           <DropdownMenuShortcut>
-            <Trash2 size={16} />
+            <Trash2 size={16} className={TRASH_DELETE_ICON_CLASS} />
           </DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

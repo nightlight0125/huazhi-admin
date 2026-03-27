@@ -4,6 +4,8 @@ import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { requestPayment } from '@/lib/api/orders'
+import { TRASH_DELETE_DESTRUCTIVE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -227,11 +229,13 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
               variant='destructive'
               size='icon'
               onClick={() => setOpen('delete')}
-              className='size-8'
+              className='group size-8'
               aria-label='Delete selected orders'
               title='Delete selected orders'
             >
-              <Trash2 />
+              <Trash2
+                className={cn(TRASH_DELETE_DESTRUCTIVE_ICON_CLASS, 'h-4 w-4')}
+              />
               <span className='sr-only'>Delete selected orders</span>
             </Button>
           </TooltipTrigger>

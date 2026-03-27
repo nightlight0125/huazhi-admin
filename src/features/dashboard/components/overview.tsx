@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import {
   CartesianGrid,
   Line,
@@ -12,7 +12,6 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { graphicStatistics } from '@/lib/api/orders'
-import { Button } from '@/components/ui/button'
 
 interface ChartDataItem {
   date: string
@@ -101,9 +100,9 @@ export function Overview() {
             <span className='text-sm'>Paid Amount</span>
           </div>
         </div>
-        <Button variant='outline' size='sm' className='absolute right-0'>
+        {/* <Button variant='outline' size='sm' className='absolute right-0'>
           <Download className='h-4 w-4' />
-        </Button>
+        </Button> */}
       </div>
       {isLoading ? (
         <div className='flex h-[350px] items-center justify-center'>

@@ -1,6 +1,7 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { type Row } from '@tanstack/react-table'
 import { Trash2, UserPen } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -49,11 +50,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               setCurrentRow(row.original)
               setOpen('delete')
             }}
-            className='text-red-500!'
+            className='group text-gray-700 focus:text-gray-700 data-[highlighted]:text-red-600'
           >
             delete
             <DropdownMenuShortcut>
-              <Trash2 size={16} />
+              <Trash2 size={16} className={TRASH_DELETE_ICON_CLASS} />
             </DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuContent>

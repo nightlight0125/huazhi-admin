@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useSearch } from '@tanstack/react-router'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import worldCountries from 'world-countries'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { ChevronDown, ChevronUp, HelpCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import worldCountries from 'world-countries'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryCountry, type CountryItem } from '@/lib/api/logistics'
-import {
-  getAddress,
-  updateAddress,
-  updateBillAddress,
-} from '@/lib/api/users'
+import { getAddress, updateAddress, updateBillAddress } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -162,7 +158,6 @@ function AddressFields(props: {
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name='lastName'
@@ -380,7 +375,8 @@ export function AddressForm() {
               const countryInfo = countryCode
                 ? worldCountries.find(
                     (c: { cca2?: string }) =>
-                      c.cca2?.toUpperCase() === String(countryCode).toUpperCase()
+                      c.cca2?.toUpperCase() ===
+                      String(countryCode).toUpperCase()
                   )
                 : null
               const code =
@@ -407,7 +403,7 @@ export function AddressForm() {
 
   // 回填/刷新地址数据：调用 getAddress 接口（保存成功后也可调用以刷新表单）
   const loadAddressData = async (options?: { silent?: boolean }) => {
-    const userId = auth.user?.id
+    const userId = auth.user?.customerId
     if (!userId || countries.length === 0) {
       setIsLoadingAddressData(false)
       return
@@ -492,8 +488,8 @@ export function AddressForm() {
 
   const handleInvoiceSubmit = async (data: InvoiceAddressValues) => {
     try {
-      const userId = auth.user?.id
-      if (!userId) {
+      const customerId = auth.user?.customerId
+      if (!customerId) {
         toast.error('User ID is required')
         return
       }
@@ -501,7 +497,7 @@ export function AddressForm() {
       const loadingToast = toast.loading('Updating billing address...')
 
       await updateBillAddress({
-        id: userId,
+        id: customerId,
         hzkj_customer_first_name2: data.firstName,
         hzkj_customer_last_name2: data.lastName,
         hzkj_phone_number: data.phoneNumber,
@@ -557,16 +553,10 @@ export function AddressForm() {
 
   const handleConsigneeSubmit = async (data: ConsigneeAddressValues) => {
     try {
-      const userId = auth.user?.id
-      if (!userId) {
-        toast.error('User ID is required')
-        return
-      }
-
+      const customerId = auth.user?.customerId || ''
       const loadingToast = toast.loading('Updating shipping address...')
-
       await updateAddress({
-        id: userId,
+        id: customerId,
         hzkj_customer_first_name: data.firstName,
         hzkj_customer_last_name: data.lastName,
         hzkj_phone: data.phoneNumber,
@@ -612,8 +602,8 @@ export function AddressForm() {
       )}
       {/* 账单地址 */}
       <Collapsible open={invoiceOpen} onOpenChange={setInvoiceOpen}>
-        <div className='rounded-md border border-border bg-card'>
-          <CollapsibleTrigger className='flex w-full items-center justify-between px-4 py-3 hover:bg-muted/50'>
+        <div className='border-border bg-card rounded-md border'>
+          <CollapsibleTrigger className='hover:bg-muted/50 flex w-full items-center justify-between px-4 py-3'>
             <div className='flex items-center gap-2'>
               <Button
                 variant='ghost'
@@ -625,12 +615,14 @@ export function AddressForm() {
                 }}
               >
                 {invoiceOpen ? (
-                  <ChevronUp className='h-4 w-4 text-muted-foreground' />
+                  <ChevronUp className='text-muted-foreground h-4 w-4' />
                 ) : (
-                  <ChevronDown className='h-4 w-4 text-muted-foreground' />
+                  <ChevronDown className='text-muted-foreground h-4 w-4' />
                 )}
               </Button>
-              <span className='font-medium text-foreground'>Invoice Address</span>
+              <span className='text-foreground font-medium'>
+                Invoice Address
+              </span>
               <Button
                 variant='ghost'
                 size='icon'
@@ -642,7 +634,7 @@ export function AddressForm() {
           </CollapsibleTrigger>
 
           {invoiceOpen && (
-            <div className='border-t border-border px-4 py-6'>
+            <div className='border-border border-t px-4 py-6'>
               <Form {...invoiceForm}>
                 <form
                   onSubmit={invoiceForm.handleSubmit(handleInvoiceSubmit)}
@@ -659,7 +651,7 @@ export function AddressForm() {
                     control={invoiceForm.control}
                     name='syncShippingAddress'
                     render={({ field }) => (
-                      <FormItem className='flex flex-row items-start space-y-0 space-x-3 rounded-md border border-border p-4'>
+                      <FormItem className='border-border flex flex-row items-start space-y-0 space-x-3 rounded-md border p-4'>
                         <FormControl>
                           <Checkbox
                             checked={field.value}
@@ -690,8 +682,8 @@ export function AddressForm() {
 
       {/* 收货地址 */}
       <Collapsible open={consigneeOpen} onOpenChange={setConsigneeOpen}>
-        <div className='rounded-md border border-border bg-card'>
-          <CollapsibleTrigger className='flex w-full items-center justify-between px-4 py-3 hover:bg-muted/50'>
+        <div className='border-border bg-card rounded-md border'>
+          <CollapsibleTrigger className='hover:bg-muted/50 flex w-full items-center justify-between px-4 py-3'>
             <div className='flex items-center gap-2'>
               <Button
                 variant='ghost'
@@ -703,12 +695,12 @@ export function AddressForm() {
                 }}
               >
                 {consigneeOpen ? (
-                  <ChevronUp className='h-4 w-4 text-muted-foreground' />
+                  <ChevronUp className='text-muted-foreground h-4 w-4' />
                 ) : (
-                  <ChevronDown className='h-4 w-4 text-muted-foreground' />
+                  <ChevronDown className='text-muted-foreground h-4 w-4' />
                 )}
               </Button>
-              <span className='font-medium text-foreground'>
+              <span className='text-foreground font-medium'>
                 Consignee Address
               </span>
               <Button
@@ -722,7 +714,7 @@ export function AddressForm() {
           </CollapsibleTrigger>
 
           {consigneeOpen && (
-            <div className='border-t border-border px-4 py-6'>
+            <div className='border-border border-t px-4 py-6'>
               <Form {...consigneeForm}>
                 <form
                   onSubmit={consigneeForm.handleSubmit(handleConsigneeSubmit)}

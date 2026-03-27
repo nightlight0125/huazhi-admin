@@ -71,14 +71,18 @@ function ProductDetailRow({
   onModifyProduct,
   orderId,
   orderNumber,
-  onDelete,
+  onDeleteLine,
   orderStatus,
 }: {
   product: OrderProduct
   onModifyProduct?: () => void
   orderId: string
   orderNumber?: string
-  onDelete?: (orderId: string) => void | Promise<void>
+  /** 删除当前展开行对应明细：走 updateSalOutOrder，该行 flag=1，其余 flag=0 */
+  onDeleteLine?: (
+    orderId: string,
+    lineItem: OrderProduct
+  ) => void | Promise<void>
   orderStatus?: string
 }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -89,14 +93,14 @@ function ProductDetailRow({
   }
 
   const handleConfirmDelete = async () => {
-    if (!onDelete) return
+    if (!onDeleteLine) return
 
     setIsDeleting(true)
     try {
-      await onDelete(orderId)
+      await onDeleteLine(orderId, product)
       setDeleteDialogOpen(false)
     } catch (error) {
-      console.error('删除订单失败:', error)
+      console.error('删除订单明细失败:', error)
     } finally {
       setIsDeleting(false)
     }
@@ -225,11 +229,11 @@ function ProductDetailRow({
         handleConfirm={handleConfirmDelete}
         destructive
         isLoading={isDeleting}
-        title={<span className='text-destructive'>Delete Order</span>}
+        title={<span className='text-destructive'>Delete line item</span>}
         desc={
           <>
             <p className='mb-2'>
-              Are you sure you want to delete this order?
+              Remove this product line from the order?
               <br />
               This action cannot be undone.
             </p>
@@ -785,11 +789,6 @@ export function OrdersTable({
 
   const handleDelete = async (orderId: string) => {
     const customerId = auth.user?.customerId
-    if (!customerId) {
-      toast.error('Customer ID not found')
-      return
-    }
-
     try {
       await deleteOrder({
         customerId: String(customerId),
@@ -802,6 +801,114 @@ export function OrdersTable({
         error instanceof Error
           ? error.message
           : 'Failed to delete order. Please try again.'
+      )
+    }
+  }
+
+  /** 删除订单中一行明细：updateSalOutOrder，目标行 flag=1，其余 flag=0 */
+  const handleDeleteOrderLine = async (
+    orderId: string,
+    lineItem: OrderProduct
+  ) => {
+    const customerId = auth.user?.customerId
+    const order = data.find((o) => o.id === orderId)
+    if (!order || !customerId) {
+      toast.error('Order or customer information is missing')
+      return
+    }
+
+    const rawOrder = order as any
+    const targetEntryId = String(
+      (lineItem as any).entryId || lineItem.entryId || ''
+    ).trim()
+    if (!targetEntryId) {
+      toast.error('Cannot resolve this line item (missing entry id)')
+      return
+    }
+
+    const detail =
+      (rawOrder.lingItems || [])
+        .map((item: any) => {
+          const entryId = String(item.entryId || '')
+          const skuId = String(
+            item.hzkj_local_sku_id ||
+              item.hzkj_local_sku_id2 ||
+              item.hzkj_local_sku ||
+              ''
+          )
+          const quantity =
+            Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0
+          const flag = entryId === targetEntryId ? 1 : 0
+          return { entryId, skuId, quantity, flag }
+        })
+        .filter((d: any) => d.entryId && d.skuId) || []
+
+    if (detail.length === 0) {
+      toast.error('No valid order lines to update')
+      return
+    }
+
+    const firstName =
+      rawOrder.firstName ||
+      (rawOrder.customerName &&
+        typeof rawOrder.customerName === 'string' &&
+        rawOrder.customerName.split(' ')[0]) ||
+      (rawOrder.hzkj_customer_name &&
+        typeof rawOrder.hzkj_customer_name === 'object' &&
+        rawOrder.hzkj_customer_name.zh_CN) ||
+      ''
+    const lastName =
+      rawOrder.lastName ||
+      (rawOrder.customerName &&
+        typeof rawOrder.customerName === 'string' &&
+        rawOrder.customerName.split(' ').slice(1).join(' ')) ||
+      ''
+
+    try {
+      await updateSalOutOrder({
+        orderId: rawOrder.id || order.id,
+        customerId: String(customerId),
+        firstName,
+        lastName,
+        phone:
+          rawOrder.phone ||
+          rawOrder.hzkj_telephone ||
+          rawOrder.phoneNumber ||
+          '',
+        countryId: rawOrder.countryId || rawOrder.hzkj_country_id || '',
+        admindivisionId: rawOrder.admindivisionId,
+        city: rawOrder.city || rawOrder.hzkj_address?.split(',')[0] || '',
+        address1:
+          rawOrder.address1 ||
+          rawOrder.address ||
+          rawOrder.hzkj_address ||
+          rawOrder.hzkj_bill_address ||
+          '',
+        address2: rawOrder.address2 || rawOrder.hzkj_sam_address || '',
+        postCode:
+          rawOrder.postCode ||
+          rawOrder.postalCode ||
+          rawOrder.hzkj_post_code ||
+          '',
+        taxId: rawOrder.taxId || '',
+        customChannelId: String(rawOrder.customChannelId || ''),
+        email: rawOrder.email || rawOrder.hzkj_email || '',
+        wareHouse:
+          rawOrder.wareHouse ||
+          rawOrder.warehouseId ||
+          rawOrder.shippingOrigin ||
+          '',
+        detail,
+      })
+
+      toast.success('Line item removed from order')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('Failed to delete order line:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete line item. Please try again.'
       )
     }
   }
@@ -1064,7 +1171,7 @@ export function OrdersTable({
                                   orderId={order.id}
                                   orderNumber={order.orderNumber}
                                   orderStatus={order.hzkj_orderstatus}
-                                  onDelete={handleDelete}
+                                  onDeleteLine={handleDeleteOrderLine}
                                   onModifyProduct={() => {
                                     const rawItems =
                                       (order as any).lingItems || []
@@ -1157,7 +1264,6 @@ export function OrdersTable({
 
       <DataTableBulkActions table={table} />
 
-      {/* Modify Product Dialog */}
       <OrdersModifyProductDialog
         open={modifyProductDialog.open}
         onOpenChange={(open) => {

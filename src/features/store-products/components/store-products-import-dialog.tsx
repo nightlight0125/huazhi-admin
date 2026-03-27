@@ -79,7 +79,7 @@ export function StoreProductsImportDialog({
           pageSize: 100,
         })
 
-        setShops(list)
+        setShops(list.filter((shop) => String(shop.enable ?? '1') !== '0'))
       } catch (error) {
         toast.error(
           error instanceof Error

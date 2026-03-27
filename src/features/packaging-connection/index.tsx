@@ -315,7 +315,10 @@ export function PackagingConnection() {
 
         // 将店铺列表映射为选项格式
         const options = response.list
-          .filter((shop: ShopListItem) => shop.id) // 过滤掉没有 id 的店铺
+          .filter(
+            (shop: ShopListItem) =>
+              !!shop.id && String(shop.enable ?? '1') !== '0'
+          )
           .map((shop: ShopListItem) => ({
             label:
               typeof shop.name === 'string'

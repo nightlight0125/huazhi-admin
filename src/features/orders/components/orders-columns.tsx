@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
 import { CreditCard, Edit, Loader2, Minus, Plus, Trash2 } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -43,13 +44,13 @@ function OrderDeleteCell({ row, onDelete }: OrderDeleteCellProps) {
       <Button
         variant='ghost'
         size='sm'
-        className='h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
+        className='group h-8 px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
         onClick={(e) => {
           e.stopPropagation()
           setOpen(true)
         }}
       >
-        <Trash2 className='h-3.5 w-3.5' />
+        <Trash2 className={cn(TRASH_DELETE_ICON_CLASS, 'h-3.5 w-3.5')} />
       </Button>
 
       <ConfirmDialog
@@ -191,10 +192,7 @@ export const createOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original
         const sourceNo = toDisplayString((order as any).hzkj_source_number)
-        const billNo =
-          toDisplayString((order as any).billno) ||
-          toDisplayString(order.platformOrderNumber) ||
-          toDisplayString(order.orderNumber)
+        const billNo = toDisplayString((order as any).billno)
         return (
           <div className='space-y-1 text-sm'>
             <div>{sourceNo || '---'}</div>

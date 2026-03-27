@@ -289,11 +289,13 @@ export interface CalcuFreightResponse {
   [key: string]: unknown
 }
 
-// 计算运费 API（按商品与目的地）
+// 计算运费 API（按 SKU、目的地与数量；skuId 来自 selectSpecGetSku 返回的 id）
 export async function calcuFreight(
   params: {
-    spuId: string
+    skuId: string
     destinationId: string
+    /** 购买数量 */
+    quantity: number
   }
 ): Promise<FreightOption[]> {
   const response = await apiClient.post<CalcuFreightResponse>(

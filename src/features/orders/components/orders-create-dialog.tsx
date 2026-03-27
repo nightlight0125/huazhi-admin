@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, Package } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { showSubmittedData } from '@/lib/show-submitted-data'
 import { Button } from '@/components/ui/button'
 import {
@@ -374,10 +376,12 @@ export function OrdersCreateDialog({ open, onOpenChange }: OrdersCreateDialogPro
                             type='button'
                             variant='ghost'
                             size='sm'
+                            className='group'
                             onClick={() => removeProduct(index)}
-                            className='text-destructive hover:text-destructive'
                           >
-                            <Trash2 className='h-4 w-4' />
+                            <Trash2
+                              className={cn(TRASH_DELETE_ICON_CLASS, 'h-4 w-4')}
+                            />
                           </Button>
                         )}
                       </div>

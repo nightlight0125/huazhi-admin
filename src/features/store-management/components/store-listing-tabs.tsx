@@ -86,65 +86,6 @@ function mapCountriesToCountryOptions(
   })
 }
 
-// 处理选择国家并计算运费
-async function handleCountrySelectAndCalculateFreight(
-  productId: string | undefined,
-  country: { value: string; id?: string },
-  statesData: StateItem[],
-  setShippingMethodOptions: (
-    options: Array<{
-      id: string
-      title: string
-      cost: string
-      deliveryTime: string
-    }>
-  ) => void,
-  setSelectedDestinationId: (id: string) => void,
-  setIsLoadingFreight: (loading: boolean) => void
-) {
-  if (!productId || !country.value) {
-    return
-  }
-
-  setIsLoadingFreight(true)
-  try {
-    const countryId =
-      country.id ||
-      statesData.find(
-        (s) => s.hzkj_code?.toUpperCase() === country.value.toUpperCase()
-      )?.id
-    if (!countryId) {
-      toast.error('Failed to get country ID. Please try again.')
-      return
-    }
-
-    const freightOptions = await calcuFreight({
-      spuId: productId,
-      destinationId: countryId,
-    })
-
-    const formattedOptions = freightOptions.map((option: FreightOption) => ({
-      id: option.logsId || String(Math.random()),
-      title: option.logsNumber || '',
-      cost: `$${option.freight?.toFixed(2) || '0.00'}`,
-      deliveryTime: option.time || '',
-    }))
-
-    setShippingMethodOptions(formattedOptions)
-    setSelectedDestinationId(countryId)
-  } catch (error) {
-    console.error('Failed to calculate freight:', error)
-    toast.error(
-      error instanceof Error
-        ? error.message
-        : 'Failed to calculate freight. Please try again.'
-    )
-    setShippingMethodOptions([])
-  } finally {
-    setIsLoadingFreight(false)
-  }
-}
-
 type StoreListingTabsProps = {
   selectedTags: string[]
   setSelectedTags: (tags: string[]) => void
@@ -153,8 +94,10 @@ type StoreListingTabsProps = {
   columns?: any[]
   // 产品标题，用于填充 Title 输入框的默认值
   productTitle?: string
-  // 产品ID，用于计算运费
+  // 产品ID（SPU 路由等）
   productId?: string
+  /** selectSpecGetSku 返回的 SKU id，用于 calcuFreight */
+  skuIdForFreight?: string
   // 产品数据，用于获取规格信息和图片
   apiProduct?: ApiProductItem | null
   // 规格信息
@@ -200,8 +143,9 @@ export const StoreListingTabs = forwardRef<
       columns,
       productTitle = '',
       productId,
+      skuIdForFreight,
       apiProduct: _apiProduct,
-      specInfo: _specInfo = [],
+      specInfo = [],
       selectedSellingPlatform: initialSelectedSellingPlatform,
       selectedTo: initialSelectedTo,
       selectedShippingMethod: initialSelectedShippingMethod,
@@ -285,6 +229,57 @@ export const StoreListingTabs = forwardRef<
 
     const selectedCountry = countryOptions.find((c) => c.value === selectedTo)
 
+    // 目的地 + SKU 齐备后拉运费（数量固定 1；支持先选国家后才有 skuIdForFreight）
+    useEffect(() => {
+      if (!selectedDestinationId || !selectedTo?.trim()) {
+        setShippingMethodOptions([])
+        return
+      }
+      const skuIdStr = skuIdForFreight?.trim() ?? ''
+      if (!skuIdStr) {
+        setShippingMethodOptions([])
+        return
+      }
+      const qty = 1
+
+      let cancelled = false
+      setIsLoadingFreight(true)
+      ;(async () => {
+        try {
+          const freightOptions = await calcuFreight({
+            skuId: skuIdStr,
+            destinationId: selectedDestinationId,
+            quantity: qty,
+          })
+          if (cancelled) return
+          const formattedOptions = freightOptions.map(
+            (option: FreightOption) => ({
+              id: option.logsId || String(Math.random()),
+              title: option.logsNumber || '',
+              cost: `$${option.freight?.toFixed(2) || '0.00'}`,
+              deliveryTime: option.time || '',
+            })
+          )
+          setShippingMethodOptions(formattedOptions)
+        } catch (error) {
+          if (cancelled) return
+          console.error('Failed to calculate freight:', error)
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Failed to calculate freight. Please try again.'
+          )
+          setShippingMethodOptions([])
+        } finally {
+          if (!cancelled) setIsLoadingFreight(false)
+        }
+      })()
+
+      return () => {
+        cancelled = true
+      }
+    }, [skuIdForFreight, selectedDestinationId, selectedTo])
+
     // 当 productTitle 变化时重置 title，使原商品名以 placeholder（灰显）展示
     useEffect(() => {
       setTitle('')
@@ -292,7 +287,10 @@ export const StoreListingTabs = forwardRef<
 
     // 当选择 Shipping Fee 批量修订时，输入框默认填充当前所选物流方式的运费
     useEffect(() => {
-      if (bulkReviseType === 'shipping-fee' && selectedShippingMethodData?.cost) {
+      if (
+        bulkReviseType === 'shipping-fee' &&
+        selectedShippingMethodData?.cost
+      ) {
         setBulkReviseValue(selectedShippingMethodData.cost)
       }
     }, [bulkReviseType, selectedShippingMethodData?.cost])
@@ -481,13 +479,19 @@ export const StoreListingTabs = forwardRef<
           variantValues.push({ groupName: '规格', name: variant.size })
         }
 
-        // 处理动态规格字段（spec_xxx 格式）
+        // 处理动态规格字段（spec_xxx 格式），取值 name 不取 id
         Object.keys(variant).forEach((key) => {
-          if (key.startsWith('spec_') && variant[key]) {
-            const specName = key.replace('spec_', '')
+          if (key.startsWith('spec_') && !key.endsWith('_name')) {
+            const specId = key.replace('spec_', '')
+            const nameKey = `${key}_name`
+            const nameValue =
+              (variant as Record<string, unknown>)[nameKey] ?? variant[key]
+            if (!nameValue) return
+            const groupName =
+              specInfo?.find((s) => s.specId === specId)?.specName ?? specId
             variantValues.push({
-              groupName: specName,
-              name: String(variant[key]),
+              groupName,
+              name: String(nameValue),
             })
           }
         })
@@ -902,20 +906,19 @@ export const StoreListingTabs = forwardRef<
                               <CommandItem
                                 key={country.value}
                                 value={country.label}
-                                onSelect={async () => {
+                                onSelect={() => {
                                   setSelectedTo(country.value)
                                   setIsShipToSelectOpen(false)
 
-                                  // 调用运费计算API
-                                  if (productId) {
-                                    await handleCountrySelectAndCalculateFreight(
-                                      productId,
-                                      country,
-                                      statesData,
-                                      setShippingMethodOptions,
-                                      setSelectedDestinationId,
-                                      setIsLoadingFreight
-                                    )
+                                  const destinationId =
+                                    country.id ||
+                                    statesData.find(
+                                      (s) =>
+                                        s.hzkj_code?.toUpperCase() ===
+                                        country.value.toUpperCase()
+                                    )?.id
+                                  if (destinationId) {
+                                    setSelectedDestinationId(destinationId)
                                   }
                                 }}
                               >

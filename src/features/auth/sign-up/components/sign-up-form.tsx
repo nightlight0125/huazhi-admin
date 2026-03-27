@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
@@ -86,6 +86,12 @@ export function SignUpForm({
   const [phonePopoverOpen, setPhonePopoverOpen] = useState(false)
   const navigate = useNavigate()
   const { auth } = useAuthStore()
+  const { customerId, operatorId } = useSearch({
+    from: '/(auth)/sign-up',
+  }) as {
+    customerId?: string
+    operatorId?: string
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -131,7 +137,11 @@ export function SignUpForm({
         data.email,
         data.name,
         data.phone,
-        data.password
+        data.password,
+        {
+          customerId,
+          operatorId,
+        }
       )
 
       toast.dismiss(loadingToast)

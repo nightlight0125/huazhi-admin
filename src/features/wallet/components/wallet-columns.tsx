@@ -177,24 +177,23 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
     },
   },
   {
-    accessorKey: 'amount',
+    id: 'hzkj_amountfield',
+    accessorFn: (row) => row.hzkj_amountfield ?? row.amount,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Amount' />
     ),
     cell: ({ row }) => {
-      const amount = row.original.amount as number
-      const record = row.original
-      const isRecharge = record.type === 'recharge'
-
+      const amount = row.original.hzkj_amountfield ?? row.original.amount
+      if (amount === undefined || amount === null || Number.isNaN(Number(amount))) {
+        return <span className='text-muted-foreground'>-</span>
+      }
+      const n = Number(amount)
       return (
-        <div
-          className={`font-medium ${isRecharge ? 'text-green-600' : 'text-blue-600'}`}
-        >
-          {isRecharge ? '+' : '-'}
+        <div className='text-sm font-medium'>
           {new Intl.NumberFormat('zh-CN', {
             style: 'currency',
             currency: 'CNY',
-          }).format(amount)}
+          }).format(n)}
         </div>
       )
     },

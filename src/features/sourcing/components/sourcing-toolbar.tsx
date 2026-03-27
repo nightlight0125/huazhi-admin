@@ -108,9 +108,7 @@ export function SourcingToolbar<TData>({
         <Button
           className='h-8 bg-purple-600 text-xs hover:bg-purple-700'
           size='sm'
-          onClick={() => {
-            // Handle new sourcing action
-          }}
+          onClick={() => {}}
         >
           <Plus className='mr-1 h-3.5 w-3.5' />
           New Sourcing

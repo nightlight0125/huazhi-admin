@@ -8,6 +8,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { sourcingStatuses } from '../data/data'
 import { type Sourcing } from '../data/schema'
 
@@ -363,7 +365,10 @@ export const createSourcingColumns = (
               }}
             />
             <Trash2
-              className='h-3.5 w-3.5 cursor-pointer text-gray-500'
+              className={cn(
+                TRASH_DELETE_ICON_CLASS,
+                'h-3.5 w-3.5 cursor-pointer'
+              )}
               onClick={(e) => {
                 e.stopPropagation()
                 handlers?.onDelete?.(sourcing)

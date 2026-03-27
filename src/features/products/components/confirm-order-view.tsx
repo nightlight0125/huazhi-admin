@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, ChevronDown } from 'lucide-react'
+import {
+  ArrowLeft,
+  ChevronDown,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  User,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { calcuNewOrderFreight, type FreightOption } from '@/lib/api/logistics'
@@ -56,6 +64,50 @@ export interface ConfirmOrderPayload {
   selectedWarehouse?: string
   hasShippingAddress: boolean
   shippingCost?: number
+  /** 详情页 calcuFreight 返回的选项，与 calcuNewOrderFreight 结果合并去重 */
+  carriedFreightOptions?: FreightOption[]
+  /** 详情页用户选中的物流 logsId，合并后若在列表中则默认选中 */
+  preferredShippingMethodId?: string
+}
+
+/** 以接口列表为准追加携带项：同 logsId 或同 logsNumber（去空白）视为重复 */
+export function mergeCarriedAndApiFreightOptions(
+  apiList: FreightOption[],
+  carried?: FreightOption[]
+): FreightOption[] {
+  const normalize = (o: FreightOption): FreightOption => ({
+    ...o,
+    logsId: String(o.logsId ?? ''),
+    logsNumber: String(o.logsNumber ?? ''),
+    freight: typeof o.freight === 'number' ? o.freight : Number(o.freight) || 0,
+    time: typeof o.time === 'string' ? o.time : String(o.time ?? ''),
+  })
+
+  const apiNorm: FreightOption[] = []
+  const apiSeenIds = new Set<string>()
+  for (const o of apiList.map(normalize)) {
+    if (!o.logsId || apiSeenIds.has(o.logsId)) continue
+    apiSeenIds.add(o.logsId)
+    apiNorm.push(o)
+  }
+  const result: FreightOption[] = [...apiNorm]
+  const seenIds = new Set(apiNorm.map((o) => o.logsId))
+  const seenNumbers = new Set(
+    apiNorm.map((o) => o.logsNumber.trim()).filter(Boolean)
+  )
+
+  for (const raw of carried ?? []) {
+    const c = normalize(raw)
+    const id = c.logsId
+    const num = c.logsNumber.trim()
+    if (id && seenIds.has(id)) continue
+    if (num && seenNumbers.has(num)) continue
+    if (!id && !num) continue
+    result.push(c)
+    if (id) seenIds.add(id)
+    if (num) seenNumbers.add(num)
+  }
+  return result
 }
 
 interface ConfirmOrderViewProps {
@@ -94,12 +146,6 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
 
   const handlePay = async () => {
     const customerId = auth.user?.customerId
-
-    if (!customerId) {
-      toast.error('Customer ID not found. Please login again.')
-      return
-    }
-
     if (!shippingAddress) {
       toast.error('Please add a shipping address before paying')
       return
@@ -171,7 +217,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   // 获取地址信息 - 组件加载时调用
   useEffect(() => {
     const fetchAddress = async () => {
-      const userId = auth.user?.id
+      const userId = auth.user?.customerId
       try {
         const address = await getAddress(String(userId))
         setShippingAddress(address)
@@ -204,7 +250,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     const skuIdToQty: Record<string, string> = orderData.items.reduce(
       (acc, item) => {
         const id = item.id
-        acc[id] = String((Number(acc[id] ?? 0) + item.quantity))
+        acc[id] = String(Number(acc[id] ?? 0) + item.quantity)
         return acc
       },
       {} as Record<string, string>
@@ -220,7 +266,16 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           countryId,
           customerId: String(customerId),
         })
-        setFreightOptions(options)
+        const merged = mergeCarriedAndApiFreightOptions(
+          options,
+          orderData.carriedFreightOptions
+        )
+        setFreightOptions(merged)
+
+        const preferred = orderData.preferredShippingMethodId?.trim()
+        if (preferred && merged.some((o) => String(o.logsId) === preferred)) {
+          setSelectedShippingMethod(preferred)
+        }
       } catch (error) {
         console.error('Failed to calculate freight:', error)
         toast.error(
@@ -228,12 +283,28 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             ? error.message
             : 'Failed to calculate freight.'
         )
+        const fallback = mergeCarriedAndApiFreightOptions(
+          [],
+          orderData.carriedFreightOptions
+        )
+        setFreightOptions(fallback)
+        const preferred = orderData.preferredShippingMethodId?.trim()
+        if (preferred && fallback.some((o) => String(o.logsId) === preferred)) {
+          setSelectedShippingMethod(preferred)
+        }
       } finally {
         setIsLoadingFreight(false)
       }
     }
     void fetchFreight()
-  }, [shippingAddress, orderData.items, auth.user?.customerId, auth.user?.id])
+  }, [
+    shippingAddress,
+    orderData.items,
+    orderData.carriedFreightOptions,
+    orderData.preferredShippingMethodId,
+    auth.user?.customerId,
+    auth.user?.id,
+  ])
 
   // 选中物流方式后从 freightOptions 中取运费
   useEffect(() => {
@@ -277,25 +348,141 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
 
       <div className='text-muted-foreground mb-4 text-sm'></div>
       <div className='space-y-6'>
-        <div className='rounded-lg border p-6'>
-          <h3 className='mb-4 text-lg font-semibold'>Delivery information</h3>
-          {!shippingAddress?.hzkj_address2 ? (
+        <div className='border-border rounded-lg border p-6'>
+          <div className='mb-4 flex items-center justify-between'>
+            <h3 className='text-lg font-semibold'>Delivery information</h3>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              onClick={() =>
+                navigate({
+                  to: '/settings',
+                  search: {
+                    tab: 'profile',
+                    returnTo: `/products/${orderData.productId}`,
+                  },
+                })
+              }
+              className='gap-1.5'
+            >
+              <Pencil className='h-3.5 w-3.5' />
+              Edit
+            </Button>
+          </div>
+          {!shippingAddress ||
+          (!shippingAddress.hzkj_address2 &&
+            !shippingAddress.hzkj_textfield &&
+            !shippingAddress.hzkj_city &&
+            !shippingAddress.hzkj_customer_first_name &&
+            !shippingAddress.hzkj_customer_last_name) ? (
             <div className='flex flex-col items-center justify-center py-8'>
               <p className='text-muted-foreground mb-4 text-sm'>No address</p>
               <Button
                 onClick={handleAddAddress}
-                className='bg-orange-600 text-white hover:bg-orange-700'
+                className='bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-600 dark:hover:bg-orange-500'
               >
                 Add address
               </Button>
             </div>
           ) : (
             <div className='space-y-4'>
-              <div className='text-sm'>
-                <span className='font-medium'>Shipping Address:</span>{' '}
-                <span className='text-muted-foreground'>
-                  {shippingAddress?.hzkj_address2 || 'No address available'}
-                </span>
+              <div className='border-border bg-muted/30 dark:bg-muted/20 rounded-lg border p-4'>
+                <div className='mb-3 flex items-center gap-2 text-sm font-medium'>
+                  <MapPin className='h-4 w-4 text-orange-500 dark:text-orange-400' />
+                  Shipping Address
+                </div>
+                <div className='space-y-4'>
+                  {/* Contact info */}
+                  <div className='flex flex-wrap gap-x-8 gap-y-3'>
+                    {(shippingAddress?.hzkj_customer_first_name ||
+                      shippingAddress?.hzkj_customer_last_name) && (
+                      <div className='flex items-center gap-2'>
+                        <User className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                        <span className='text-muted-foreground text-xs'>
+                          Recipient
+                        </span>
+                        <span className='font-medium'>
+                          {[
+                            shippingAddress.hzkj_customer_first_name,
+                            shippingAddress.hzkj_customer_last_name,
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                        </span>
+                      </div>
+                    )}
+                    {shippingAddress?.hzkj_phone && (
+                      <div className='flex items-center gap-2'>
+                        <Phone className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                        <span className='text-muted-foreground text-xs'>
+                          Phone
+                        </span>
+                        <span className='font-medium'>
+                          {shippingAddress.hzkj_phone}
+                        </span>
+                      </div>
+                    )}
+                    {shippingAddress?.hzkj_adress_emailfield && (
+                      <div className='flex items-center gap-2'>
+                        <Mail className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                        <span className='text-muted-foreground text-xs'>
+                          Email
+                        </span>
+                        <span className='font-medium'>
+                          {shippingAddress.hzkj_adress_emailfield}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Address lines */}
+                  <div className='border-border space-y-1.5 border-t pt-3'>
+                    {[
+                      (shippingAddress as Record<string, unknown>)
+                        ?.hzkj_country_name != null && {
+                        label: 'Country',
+                        value: String(
+                          (shippingAddress as Record<string, unknown>)
+                            .hzkj_country_name
+                        ),
+                      },
+                      shippingAddress?.hzkj_admindivision_number && {
+                        label: 'Region',
+                        value: shippingAddress.hzkj_admindivision_number,
+                      },
+                      shippingAddress?.hzkj_city && {
+                        label: 'City',
+                        value: shippingAddress.hzkj_city,
+                      },
+                      shippingAddress?.hzkj_textfield && {
+                        label: 'Address1',
+                        value: shippingAddress.hzkj_textfield,
+                      },
+                      shippingAddress?.hzkj_address2 && {
+                        label: 'Address2',
+                        value: shippingAddress.hzkj_address2,
+                      },
+                      shippingAddress?.hzkj_textfield1 && {
+                        label: 'Postcode',
+                        value: shippingAddress.hzkj_textfield1,
+                      },
+                    ]
+                      .filter(Boolean)
+                      .map((item, i) => (
+                        <div
+                          key={i}
+                          className='flex items-baseline gap-2 text-sm'
+                        >
+                          <span className='text-muted-foreground w-20 shrink-0 text-xs'>
+                            {(item as { label: string }).label}:
+                          </span>
+                          <span className='font-medium'>
+                            {(item as { value: string }).value}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -335,7 +522,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
         </div>
 
         {/* Product 区域 */}
-        <div className='rounded-lg border p-6'>
+        <div className='border-border rounded-lg border p-6'>
           <h3 className='mb-4 text-lg font-semibold'>Product</h3>
           <div className='overflow-x-auto'>
             <Table>
@@ -433,13 +620,13 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           <div className='flex items-center justify-end gap-4'>
             <div className='flex items-center gap-2'>
               <span className='text-sm font-semibold'>Total Amounts:</span>
-              <span className='text-lg font-bold text-orange-600'>
+              <span className='text-lg font-bold text-orange-600 dark:text-orange-400'>
                 ${isLoadingFreight ? '...' : totalAmount.toFixed(2)}
               </span>
               <Button
                 variant='ghost'
                 size='sm'
-                className='h-6 px-2 text-xs text-orange-600 hover:text-orange-700'
+                className='h-6 px-2 text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300'
                 onClick={() => setIsDetailDialogOpen(true)}
               >
                 Detail <ChevronDown className='ml-1 h-3 w-3' />
@@ -447,7 +634,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             </div>
             <Button
               onClick={handlePay}
-              className='bg-orange-600 px-8 text-white hover:bg-orange-700'
+              className='bg-orange-600 px-8 text-white hover:bg-orange-700 dark:bg-orange-600 dark:hover:bg-orange-500'
               size='lg'
               disabled={isLoadingFreight}
             >
@@ -477,7 +664,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             <Separator />
             <div className='flex items-center justify-between text-base font-semibold'>
               <span>Total:</span>
-              <span className='text-orange-600'>${finalTotal.toFixed(2)}</span>
+              <span className='text-orange-600 dark:text-orange-400'>
+                ${finalTotal.toFixed(2)}
+              </span>
             </div>
           </div>
         </DialogContent>

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
 import { Trash2, UserX, UserCheck, Mail } from 'lucide-react'
 import { toast } from 'sonner'
-import { sleep } from '@/lib/utils'
+import { TRASH_DELETE_DESTRUCTIVE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { sleep, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -115,11 +116,13 @@ export function DataTableBulkActions<TData>({
               variant='destructive'
               size='icon'
               onClick={() => setShowDeleteConfirm(true)}
-              className='size-8'
+              className='group size-8'
               aria-label='删除选中的用户'
               title='删除选中的用户'
             >
-              <Trash2 />
+              <Trash2
+                className={cn(TRASH_DELETE_DESTRUCTIVE_ICON_CLASS, 'h-4 w-4')}
+              />
               <span className='sr-only'>删除选中的用户</span>
             </Button>
           </TooltipTrigger>

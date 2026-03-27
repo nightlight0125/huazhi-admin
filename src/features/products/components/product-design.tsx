@@ -27,6 +27,7 @@ import {
   saveCustomization,
   type ApiProductItem,
 } from '@/lib/api/products'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1039,9 +1040,11 @@ export function ProductDesign() {
             size='icon'
             onClick={handleDelete}
             title='Delete Selected'
-            className='h-8 w-8'
+            className='group h-8 w-8'
           >
-            <Trash2 className='h-4 w-4' />
+            <Trash2
+              className={cn(TRASH_DELETE_ICON_CLASS, 'h-4 w-4')}
+            />
           </Button>
           <Button
             variant='ghost'

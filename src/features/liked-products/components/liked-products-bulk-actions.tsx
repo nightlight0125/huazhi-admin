@@ -1,5 +1,7 @@
 import { type Table } from '@tanstack/react-table'
 import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
+import { TRASH_DELETE_DESTRUCTIVE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -121,11 +123,13 @@ export function LikedProductsBulkActions({
             variant='destructive'
             size='icon'
             onClick={handleBulkDelete}
-            className='size-8'
+            className='group size-8'
             aria-label='Remove selected from collection'
             title='Remove selected from collection'
           >
-            <Trash2 />
+            <Trash2
+              className={cn(TRASH_DELETE_DESTRUCTIVE_ICON_CLASS, 'h-4 w-4')}
+            />
             <span className='sr-only'>Remove selected from collection</span>
           </Button>
         </TooltipTrigger>

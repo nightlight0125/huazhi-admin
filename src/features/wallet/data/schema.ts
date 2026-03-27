@@ -13,7 +13,9 @@ export const walletRecordSchema = z.object({
   description: z.string(), // 描述
   paymentMethod: z.string(), // 充值方式
   date: z.date(), // 日期
-  amount: z.number(), // 金额
+  amount: z.number(), // 金额（与 hzkj_amountfield 同步，供排序等）
+  /** 后端资金记录金额字段，列表展示以此为准 */
+  hzkj_amountfield: z.number().optional(),
   cashback: z.number().optional(), // 返现
   notes: z.string().optional(), // 备注
   status: walletRecordStatusSchema, // 充值状态

@@ -193,7 +193,6 @@ export function AllProductsGrid({
   // 本地搜索输入值
   const [searchInputValue, setSearchInputValue] = useState<string>('')
 
-  // Store Listing Tabs 相关状态
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
     string[]
@@ -444,7 +443,8 @@ export function AllProductsGrid({
       const categoryIds = Array.from(next)
       categoryChangePendingRef.current = { ids: categoryIds }
       if (categoryChangeRafRef.current === null) {
-        categoryChangeRafRef.current = requestAnimationFrame(flushCategoryChange)
+        categoryChangeRafRef.current =
+          requestAnimationFrame(flushCategoryChange)
       }
       return next
     })
