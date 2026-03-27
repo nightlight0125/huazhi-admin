@@ -3,6 +3,9 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   ArrowLeft,
   ChevronDown,
+  Coins,
+  CreditCard,
+  Loader2,
   Mail,
   MapPin,
   Pencil,
@@ -12,6 +15,7 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { calcuNewOrderFreight, type FreightOption } from '@/lib/api/logistics'
+import { getCustomerBalance } from '@/lib/api/orders'
 import { buyProduct } from '@/lib/api/products'
 import { getAddress, type AddressItem } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
@@ -115,6 +119,8 @@ interface ConfirmOrderViewProps {
   onBack: () => void
 }
 
+type PaymentMethod = 'balance' | 'credit_card'
+
 export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const navigate = useNavigate()
   const { auth } = useAuthStore()
@@ -122,6 +128,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     string | undefined
   >()
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [isPayDialogOpen, setIsPayDialogOpen] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<PaymentMethod>('credit_card')
   const [shippingAddress, setShippingAddress] = useState<AddressItem | null>(
     null
   )
@@ -130,6 +139,10 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   )
   const [freightOptions, setFreightOptions] = useState<FreightOption[]>([])
   const [isLoadingFreight, setIsLoadingFreight] = useState(false)
+  const [isPaying, setIsPaying] = useState(false)
+  const [balance, setBalance] = useState<number>(0)
+  const [availableBalance, setAvailableBalance] = useState<number>(0)
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false)
 
   const handleAddAddress = () => {
     // 保存确认订单数据，返回后可恢复视图
@@ -144,8 +157,14 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     })
   }
 
-  const handlePay = async () => {
+  const handlePay = async (
+    paymentMethod: PaymentMethod = selectedPaymentMethod
+  ) => {
     const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found. Please login again.')
+      return
+    }
     if (!shippingAddress) {
       toast.error('Please add a shipping address before paying')
       return
@@ -156,7 +175,17 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       return
     }
 
+    if (
+      paymentMethod === 'balance' &&
+      !isLoadingBalance &&
+      availableBalance < totalAmount
+    ) {
+      toast.error('Insufficient balance. Please recharge and try again.')
+      return
+    }
+
     try {
+      setIsPaying(true)
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
       const returnUrl = origin
         ? `${origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`
@@ -197,6 +226,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
 
       if (paymentUrl) {
         toast.success('Redirecting to payment page...')
+        setIsPayDialogOpen(false)
         // 在当前窗口中跳转到支付页面
         window.location.href = paymentUrl
       } else if (response.message) {
@@ -211,6 +241,8 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           ? error.message
           : 'Failed to place order. Please try again.'
       )
+    } finally {
+      setIsPaying(false)
     }
   }
 
@@ -305,6 +337,35 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     auth.user?.customerId,
     auth.user?.id,
   ])
+
+  useEffect(() => {
+    const customerId = auth.user?.customerId
+    if (!isPayDialogOpen || !customerId) return
+    let cancelled = false
+    setIsLoadingBalance(true)
+    getCustomerBalance({ customerId: String(customerId) })
+      .then((res) => {
+        if (cancelled) return
+        const toNum = (v: unknown) => {
+          const n = typeof v === 'number' ? v : Number(String(v ?? 0))
+          return Number.isFinite(n) ? n : 0
+        }
+        setBalance(toNum(res.data?.balance))
+        setAvailableBalance(toNum(res.data?.avaliableBalance))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setBalance(0)
+        setAvailableBalance(0)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingBalance(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isPayDialogOpen, auth.user?.customerId])
 
   // 选中物流方式后从 freightOptions 中取运费
   useEffect(() => {
@@ -531,7 +592,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                   <TableHead>Product</TableHead>
                   <TableHead>Price($)</TableHead>
                   <TableHead>Discounted Price($)</TableHead>
-                  <TableHead>Weight(g)</TableHead>
+                  <TableHead>Weight(kg)</TableHead>
                   <TableHead>Qty</TableHead>
                   <TableHead>Fee($)</TableHead>
                 </TableRow>
@@ -633,7 +694,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
               </Button>
             </div>
             <Button
-              onClick={handlePay}
+              onClick={() => setIsPayDialogOpen(true)}
               className='bg-orange-600 px-8 text-white hover:bg-orange-700 dark:bg-orange-600 dark:hover:bg-orange-500'
               size='lg'
               disabled={isLoadingFreight}
@@ -667,6 +728,125 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
               <span className='text-orange-600 dark:text-orange-400'>
                 ${finalTotal.toFixed(2)}
               </span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
+        <DialogContent className='sm:max-w-[600px]'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center justify-between'>
+              Pay for Order
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className='space-y-6 py-4'>
+            <div className='space-y-3'>
+              <div className='text-sm font-medium'>Payment Methods:</div>
+              <div className='grid grid-cols-3 gap-3'>
+                <button
+                  type='button'
+                  onClick={() => setSelectedPaymentMethod('balance')}
+                  className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                    selectedPaymentMethod === 'balance'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                      : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
+                  }`}
+                >
+                  <Coins className='mb-2 h-6 w-6' />
+                  <span className='text-sm font-medium'>Balance</span>
+                </button>
+
+                <button
+                  type='button'
+                  onClick={() => setSelectedPaymentMethod('credit_card')}
+                  className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                    selectedPaymentMethod === 'credit_card'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                      : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
+                  }`}
+                >
+                  <CreditCard className='mb-2 h-6 w-6' />
+                  <span className='text-sm font-medium'>Credit card</span>
+                </button>
+
+                <button
+                  type='button'
+                  disabled
+                  className='relative flex cursor-not-allowed flex-col items-center justify-center rounded-lg border-2 border-gray-200 bg-gray-50 p-4 opacity-60 transition-all dark:bg-gray-800'
+                >
+                  <div className='mb-2 h-6 w-16 rounded bg-gray-400'></div>
+                  <span className='text-sm font-medium text-gray-500'>
+                    Airwallex
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className='space-y-1 rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-950'>
+              <p className='text-sm font-medium text-orange-800 dark:text-orange-200'>
+                Recomended! Get 1~2.5% bonus when recharging with XT and
+                Payoneer.
+              </p>
+              <p className='text-xs text-orange-700 dark:text-orange-300'>
+                Pay without limit on amount or number of orders.
+              </p>
+            </div>
+
+            <div className='space-y-3 border-t pt-4'>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Total Amount :</span>
+                <span className='text-sm font-semibold text-orange-600'>
+                  {isLoadingFreight ? '...' : `Pay $${totalAmount.toFixed(2)}`}
+                </span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Balance:</span>
+                <span className='text-sm font-semibold text-orange-600'>
+                  {isLoadingBalance ? '...' : `$${balance.toFixed(2)}`}
+                </span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Available:</span>
+                <span className='text-sm font-semibold text-orange-600'>
+                  {isLoadingBalance ? '...' : `$${availableBalance.toFixed(2)}`}
+                </span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Bonus:</span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>Credits:</span>
+              </div>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm'>No. of Orders:</span>
+                <span className='text-sm font-semibold'>1</span>
+              </div>
+            </div>
+
+            <div className='flex justify-end gap-3 border-t pt-4'>
+              <Button
+                variant='outline'
+                onClick={() => setIsPayDialogOpen(false)}
+                disabled={isPaying}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void handlePay(selectedPaymentMethod)}
+                disabled={isPaying || isLoadingFreight}
+                className='bg-blue-500 hover:bg-blue-600'
+              >
+                {isPaying ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Processing...
+                  </>
+                ) : (
+                  'Confirm Payment'
+                )}
+              </Button>
             </div>
           </div>
         </DialogContent>

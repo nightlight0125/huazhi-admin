@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // 账单地址 Schema
 const invoiceAddressSchema = z.object({
@@ -340,7 +341,7 @@ export function AddressForm() {
   const navigate = useNavigate()
   const { returnTo } = useSearch({ from: '/_authenticated/settings/' })
   const { auth } = useAuthStore()
-  const [invoiceOpen, setInvoiceOpen] = useState(true)
+  const [invoiceOpen, setInvoiceOpen] = useState(false)
   const [consigneeOpen, setConsigneeOpen] = useState(false)
 
   // 第一级：国家 - queryCountry
@@ -623,13 +624,24 @@ export function AddressForm() {
               <span className='text-foreground font-medium'>
                 Invoice Address
               </span>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='h-5 w-5 rounded-full bg-orange-100 p-0 hover:bg-orange-200 dark:bg-orange-900/40 dark:hover:bg-orange-800/60'
-              >
-                <HelpCircle className='h-3 w-3 text-orange-500 dark:text-orange-400' />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    className='h-5 w-5 rounded-full bg-orange-100 p-0 hover:bg-orange-200 dark:bg-orange-900/40 dark:hover:bg-orange-800/60'
+                  >
+                    <HelpCircle className='h-3 w-3 text-orange-500 dark:text-orange-400' />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side='top'
+                  sideOffset={8}
+                  className='max-w-[280px] whitespace-normal text-left leading-snug'
+                >
+                  Add a default shipping address so you can quickly select it when creating sample or dropshipping orders.
+                </TooltipContent>
+              </Tooltip>
             </div>
           </CollapsibleTrigger>
 
@@ -703,13 +715,24 @@ export function AddressForm() {
               <span className='text-foreground font-medium'>
                 Consignee Address
               </span>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='h-5 w-5 rounded-full bg-orange-100 p-0 hover:bg-orange-200 dark:bg-orange-900/40 dark:hover:bg-orange-800/60'
-              >
-                <HelpCircle className='h-3 w-3 text-orange-500 dark:text-orange-400' />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    className='h-5 w-5 rounded-full bg-orange-100 p-0 hover:bg-orange-200 dark:bg-orange-900/40 dark:hover:bg-orange-800/60'
+                  >
+                    <HelpCircle className='h-3 w-3 text-orange-500 dark:text-orange-400' />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side='top'
+                  sideOffset={8}
+                  className='max-w-[280px] whitespace-normal text-left leading-snug'
+                >
+                  Please ensure all required fields are completed to generate a valid invoice for the orders.
+                </TooltipContent>
+              </Tooltip>
             </div>
           </CollapsibleTrigger>
 

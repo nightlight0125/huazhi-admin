@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { getToken, memberLogin } from '@/lib/api/auth'
+import { getToken, idLogin, memberLogin } from '@/lib/api/auth'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -35,14 +35,19 @@ const formSchema = z.object({
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
+  accountId?: string
+  bizUserId?: string
 }
 
 export function UserAuthForm({
   className,
   redirectTo,
+  accountId,
+  bizUserId,
   ...props
 }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const hasAutoLoginTriggeredRef = useRef(false)
   const navigate = useNavigate()
   const { auth } = useAuthStore()
 
@@ -205,6 +210,103 @@ export function UserAuthForm({
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    const canAutoLogin =
+      typeof accountId === 'string' &&
+      accountId.trim() !== '' &&
+      typeof bizUserId === 'string' &&
+      bizUserId.trim() !== ''
+
+    if (!canAutoLogin || hasAutoLoginTriggeredRef.current) return
+
+    hasAutoLoginTriggeredRef.current = true
+
+    const runAutoLogin = async () => {
+      setIsLoading(true)
+      const loadingToast = toast.loading('Signing in...')
+
+      try {
+        let token = auth.accessToken
+        if (!token || token.trim() === '') {
+          token = await getToken()
+          auth.setAccessToken(token)
+        }
+
+        if (!token || token.trim() === '') {
+          throw new Error('Failed to get access token. Please try again.')
+        }
+
+        const loginResponse = await idLogin(accountId!, bizUserId!)
+        const finalToken = loginResponse.token || loginResponse.access_token || token
+        if (!finalToken || finalToken.trim() === '') {
+          throw new Error('Failed to get valid token. Please try again.')
+        }
+
+        auth.setAccessToken(finalToken)
+
+        const userData = loginResponse.data as {
+          accountId?: string
+          id?: string
+          email?: string
+          roleId?: string
+          hzkj_whatsapp1?: string
+          customerId?: string
+          user?: {
+            id?: string
+            username?: string
+            roleId?: string
+            hzkj_whatsapp1?: string
+            customerId?: string
+          }
+          [key: string]: unknown
+        }
+
+        const user = {
+          accountNo: userData.accountId || userData.id || accountId,
+          email: userData.email || '',
+          role: ['user'],
+          exp: Date.now() + 3 * 60 * 60 * 1000,
+          id: userData.user?.id || userData.id || bizUserId || '',
+          username: userData.user?.username || accountId || '',
+          roleId: userData.roleId || userData.user?.roleId || '',
+          hzkj_whatsapp1:
+            userData.user?.hzkj_whatsapp1 || userData.hzkj_whatsapp1 || '',
+          customerId: userData.user?.customerId || userData.customerId || '',
+        }
+        auth.setUser(user)
+
+        try {
+          const { queryRole } = await import('@/lib/api/users')
+          const roleList = await queryRole(1, 100)
+          auth.setRoles(roleList)
+        } catch {
+          // 不阻止登录流程
+        }
+
+        toast.dismiss(loadingToast)
+        toast.success('Login successful!')
+
+        if (redirectTo) {
+          navigate({ to: redirectTo as any, replace: true })
+        } else {
+          navigate({ to: '/', replace: true })
+        }
+      } catch (error) {
+        toast.dismiss(loadingToast)
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to sign in. Please check Account ID and Biz User ID.'
+        toast.error(errorMessage)
+        console.error('Auto staff login error:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void runAutoLogin()
+  }, [accountId, auth, bizUserId, navigate, redirectTo])
 
   return (
     <Form {...form}>

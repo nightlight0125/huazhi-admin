@@ -87,8 +87,14 @@ function ProductDetailRow({
 }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const normalizedStatus = String(orderStatus ?? '').toLowerCase()
+  const isPaidOrder = normalizedStatus === '2'
 
   const handleDeleteClick = () => {
+    if (isPaidOrder) {
+      toast.error('Paid orders are not allowed to be deleted.')
+      return
+    }
     setDeleteDialogOpen(true)
   }
 
@@ -106,7 +112,7 @@ function ProductDetailRow({
     }
   }
 
-  const isModifyDisabled = orderStatus === 'no'
+  const isModifyDisabled = orderStatus === '2'
   const fieldLabels = ['Shopify', 'SKU', 'Price', 'Quantity']
   const leftButtons = ['Store', 'HZ']
   const rightButtons: Array<{
@@ -121,7 +127,14 @@ function ProductDetailRow({
       disabled: isModifyDisabled,
       tooltip: isModifyDisabled ? 'No local matching SKU' : undefined,
     },
-    { label: 'Delete', onClick: handleDeleteClick },
+    {
+      label: 'Delete',
+      onClick: handleDeleteClick,
+      disabled: isPaidOrder,
+      tooltip: isPaidOrder
+        ? 'Paid orders are not allowed to be deleted.'
+        : undefined,
+    },
   ]
 
   // 格式化数值：如果是数字则保留两位小数，否则显示原值或 ---
@@ -836,8 +849,7 @@ export function OrdersTable({
               item.hzkj_local_sku ||
               ''
           )
-          const quantity =
-            Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0
+          const quantity = Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0
           const flag = entryId === targetEntryId ? 1 : 0
           return { entryId, skuId, quantity, flag }
         })

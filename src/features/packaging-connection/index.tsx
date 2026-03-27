@@ -58,19 +58,19 @@ const tabs = [
     value: 'products' as TabType,
     label: 'Products',
     icon: Package,
-    tip: 'The package will be used for each connected product and as many units as there are SKU.',
+    tip: 'The package will be used for each connected product, with quantities based on the number of SKUs.',
   },
   {
     value: 'order' as TabType,
     label: 'Order',
     icon: Store,
-    tip: 'The package will be used for the order. All orders includes this SKU will be packaged with the package( one piece only).',
+    tip: 'The package will be used for the order. All orders includes this SKU will be packaged with this specific package (one piece per order only).',
   },
   {
     value: 'stores' as TabType,
     label: 'Store',
     icon: Package,
-    tip: 'The package will be used for the store. All orders from this store will be packaged with the package( one piece only).',
+    tip: 'The package will be used for the store. All orders from this store will be packaged in this specific package (one piece per order).',
   },
 ]
 
@@ -568,7 +568,9 @@ export function PackagingConnection() {
                   >
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className='inline-flex items-center'>{tab.label}</span>
+                        <span className='inline-flex items-center'>
+                          {tab.label}
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent side='bottom' className='max-w-xs'>
                         <p>{tab.tip}</p>

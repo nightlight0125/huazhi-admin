@@ -586,7 +586,10 @@ export function WalletTable({ data }: DataTableProps) {
             </TableComponent>
           </div>
 
-          <DataTablePagination table={table} />
+          <DataTablePagination
+            table={table}
+            selectedCount={table.getFilteredSelectedRowModel().rows.length}
+          />
           <DataTableBulkActions table={table} />
         </TabsContent>
       </Tabs>

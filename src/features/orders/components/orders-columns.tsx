@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
 import { CreditCard, Edit, Loader2, Minus, Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -279,6 +280,14 @@ export const createOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original
         const hasChannel = order.hzkj_customer_channel_number
+        const rawShippingCost = order.hzkj_fre_quo_amount
+        const shippingCostNumber =
+          rawShippingCost === null || rawShippingCost === undefined
+            ? NaN
+            : Number(rawShippingCost)
+        const shippingCostDisplay = Number.isFinite(shippingCostNumber)
+          ? `$${shippingCostNumber.toFixed(2)}`
+          : '---'
         return (
           <button
             type='button'
@@ -288,7 +297,7 @@ export const createOrdersColumns = (options?: {
             }}
             className='hover:bg-muted/50 -mx-1 w-full space-y-1 rounded px-1 py-0.5 text-left text-sm'
           >
-            <div>{order.hzkj_fre_quo_amount ?? '---'}</div>
+            <div>{shippingCostDisplay}</div>
             {hasChannel ? (
               <div className='text-muted-foreground text-xs'>
                 {toDisplayString(order.hzkj_customer_channel_number)}
@@ -355,6 +364,13 @@ export const createOrdersColumns = (options?: {
               size='sm'
               className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary -mr-1 h-8 px-1.5 hover:bg-transparent dark:hover:bg-transparent'
               onClick={() => {
+                const hasChannel = order.hzkj_customer_channel_number
+                if (!hasChannel) {
+                  toast.error(
+                    'Please select a shipping method for this order before paying.'
+                  )
+                  return
+                }
                 onPay?.(order.id)
               }}
             >

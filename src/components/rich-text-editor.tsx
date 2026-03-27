@@ -5,11 +5,13 @@ import 'quill/dist/quill.snow.css'
 type RichTextEditorProps = {
   initialContent?: string
   onChange?: (value: string) => void
+  height?: number | string
 }
 
 export function RichTextEditor({
   initialContent = '',
   onChange,
+  height = 300,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const quillRef = useRef<Quill | null>(null)
@@ -269,7 +271,7 @@ export function RichTextEditor({
       <div
         ref={editorRef}
         style={{
-          height: '300px',
+          height: typeof height === 'number' ? `${height}px` : height,
         }}
       />
       {!isLoaded && (

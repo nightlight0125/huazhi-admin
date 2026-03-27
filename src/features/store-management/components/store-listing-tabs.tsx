@@ -464,8 +464,17 @@ export const StoreListingTabs = forwardRef<
         return
       }
 
-      // 获取 variant pricing 数据
-      const variantData = variantPricingTable.getRowModel().rows.map((row) => {
+      // 仅提交已勾选的 variant
+      const selectedVariantRows =
+        variantPricingTable.getFilteredSelectedRowModel().rows
+
+      if (selectedVariantRows.length === 0) {
+        toast.error('Please select at least one variant')
+        return
+      }
+
+      // 获取已勾选的 variant pricing 数据
+      const variantData = selectedVariantRows.map((row) => {
         const variant = row.original
 
         // 构建 variantValues - 从动态规格字段中提取
@@ -504,11 +513,6 @@ export const StoreListingTabs = forwardRef<
           variantValues,
         }
       })
-
-      if (variantData.length === 0) {
-        toast.error('Please add at least one variant')
-        return
-      }
 
       setIsSubmitting(true)
       try {
@@ -640,10 +644,10 @@ export const StoreListingTabs = forwardRef<
     }, [isLoadingStores, stores, selectedStore])
 
     return (
-      <div className='flex flex-1 flex-col overflow-hidden'>
+      <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
         <Tabs
           defaultValue='products'
-          className='flex flex-1 flex-col overflow-hidden'
+          className='flex min-h-0 flex-1 flex-col overflow-hidden'
         >
           {/* 顶部 Tabs 和提示条 */}
           <div className='shrink-0 border-b px-6 pt-3 pb-2'>
@@ -1305,18 +1309,6 @@ export const StoreListingTabs = forwardRef<
                   </div>
                 )}
               </div>
-
-              {/* <div className='space-y-2'>
-              <div className='text-sm font-semibold'>Videos</div>
-              <div>
-                <span className='font-semibold'>Available</span> Only Shopify,
-                Tiktok and Temu stores are currently supported for listing
-                videos.
-              </div>
-              <div className='mt-3 flex flex-wrap gap-4'>
-                <div className='border-border bg-muted/30 h-32 w-56 overflow-hidden rounded-lg border' />
-              </div>
-            </div> */}
             </div>
           </TabsContent>
           <TabsContent
@@ -1324,13 +1316,11 @@ export const StoreListingTabs = forwardRef<
             className='text-muted-foreground flex-1 overflow-y-auto px-6 py-4 text-sm'
           >
             <div className='space-y-2'>
-              <div className='text-muted-foreground font-medium'>
-                Description
-              </div>
               <RichTextEditor
                 key={`description-editor-${productId || 'new'}`}
                 initialContent={richTextContent}
                 onChange={setDescriptionContent}
+                height='clamp(360px, calc(100vh - 300px), 700px)'
               />
             </div>
           </TabsContent>

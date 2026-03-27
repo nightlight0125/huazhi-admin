@@ -160,8 +160,6 @@ export function ProductDetails() {
       : from === 'packaging-products'
         ? 'packaging-products'
         : undefined
-  const shouldShowBuyStockInPackaging =
-    isFromPackagingProducts && packagingTab === 'my-packaging'
   const shouldShowMyPackagingButton = !(
     isFromPackagingProducts && packagingTab === 'my-packaging'
   )
@@ -407,7 +405,8 @@ export function ProductDetails() {
       const specId = spec.hzkj_sku_spec_id || ''
       if (!specId || !Array.isArray(spec.hzkj_sku_specvalue_e)) return
       const firstValue = spec.hzkj_sku_specvalue_e.find(
-        (v) => typeof v.hzkj_sku_specvalue_id === 'string' && v.hzkj_sku_specvalue_id
+        (v) =>
+          typeof v.hzkj_sku_specvalue_id === 'string' && v.hzkj_sku_specvalue_id
       )
       if (firstValue?.hzkj_sku_specvalue_id) {
         defaults[specId] = firstValue.hzkj_sku_specvalue_id
@@ -851,57 +850,61 @@ export function ProductDetails() {
         )
         const rows = Array.isArray(skuRecords) ? skuRecords : []
 
-        const variantData: VariantPricing[] = rows.map((item: SkuRecordItem) => {
-          const row = item as Record<string, unknown>
-          const skuNumber =
-            (typeof row.number === 'string' && row.number) ||
-            (typeof row.hzkj_sku_number === 'string' && row.hzkj_sku_number) ||
-            ''
-          const rawPrice = row.hzkj_pur_price ?? row.price
-          const skuPrice =
-            typeof rawPrice === 'number'
-              ? rawPrice
-              : Number(rawPrice ?? productPrice) || productPrice
+        const variantData: VariantPricing[] = rows.map(
+          (item: SkuRecordItem) => {
+            const row = item as Record<string, unknown>
+            const skuNumber =
+              (typeof row.number === 'string' && row.number) ||
+              (typeof row.hzkj_sku_number === 'string' &&
+                row.hzkj_sku_number) ||
+              ''
+            const rawPrice = row.hzkj_pur_price ?? row.price
+            const skuPrice =
+              typeof rawPrice === 'number'
+                ? rawPrice
+                : Number(rawPrice ?? productPrice) || productPrice
 
-          const skuImage =
-            (typeof row.hzkj_picturefield === 'string' && row.hzkj_picturefield) ||
-            (typeof row.pic === 'string' && row.pic) ||
-            (typeof productImage === 'string'
-              ? productImage.split(';')[0] || productImage
-              : '')
+            const skuImage =
+              (typeof row.hzkj_picturefield === 'string' &&
+                row.hzkj_picturefield) ||
+              (typeof row.pic === 'string' && row.pic) ||
+              (typeof productImage === 'string'
+                ? productImage.split(';')[0] || productImage
+                : '')
 
-          const specValues: Record<string, string> = {}
-          const skuValues = Array.isArray(row.hzkj_sku_values)
-            ? (row.hzkj_sku_values as Array<Record<string, unknown>>)
-            : []
-          skuValues.forEach((v) => {
-            const specId = String(v.group_id ?? '').trim()
-            const specName = String(v.name ?? '').trim()
-            if (specId) {
-              specValues[`spec_${specId}`] = specName
-            }
-          })
-          // 兜底：确保所有动态规格列都有值（避免空列导致看起来“无数据”）
-          specInfo.forEach((spec) => {
-            const key = `spec_${spec.specId}`
-            if (!(key in specValues)) {
-              specValues[key] = ''
-            }
-          })
+            const specValues: Record<string, string> = {}
+            const skuValues = Array.isArray(row.hzkj_sku_values)
+              ? (row.hzkj_sku_values as Array<Record<string, unknown>>)
+              : []
+            skuValues.forEach((v) => {
+              const specId = String(v.group_id ?? '').trim()
+              const specName = String(v.name ?? '').trim()
+              if (specId) {
+                specValues[`spec_${specId}`] = specName
+              }
+            })
+            // 兜底：确保所有动态规格列都有值（避免空列导致看起来“无数据”）
+            specInfo.forEach((spec) => {
+              const key = `spec_${spec.specId}`
+              if (!(key in specValues)) {
+                specValues[key] = ''
+              }
+            })
 
-          return {
-            id:
-              (typeof row.id === 'string' && row.id) || String(Math.random()),
-            skuId: row.id,
-            sku: skuNumber,
-            image: skuImage,
-            cjPrice: skuPrice,
-            shippingFee: '$0.00',
-            totalDropshippingPrice: `$${skuPrice.toFixed(2)}`,
-            yourPrice: undefined,
-            ...specValues,
-          } as VariantPricing
-        })
+            return {
+              id:
+                (typeof row.id === 'string' && row.id) || String(Math.random()),
+              skuId: row.id,
+              sku: skuNumber,
+              image: skuImage,
+              cjPrice: skuPrice,
+              shippingFee: '$0.00',
+              totalDropshippingPrice: `$${skuPrice.toFixed(2)}`,
+              yourPrice: undefined,
+              ...specValues,
+            } as VariantPricing
+          }
+        )
 
         setVariantPricingData(variantData)
       } catch (error) {
@@ -1656,26 +1659,24 @@ export function ProductDetails() {
                       </div>
                     </Button>
                   ) : null}
-                  {shouldShowBuyStockInPackaging || !isFromPackagingProducts ? (
-                    <Button
-                      variant='outline'
-                      className={cn(
-                        'w-full',
-                        selectedBuyType === 'stock' && 'bg-muted'
-                      )}
-                      size='lg'
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        handleBuyStockButtonClick()
-                      }}
-                    >
-                      <div className='flex w-full items-center justify-start'>
-                        <Tag className='mr-2 h-4 w-4' />
-                        <span>Buy Stock</span>
-                      </div>
-                    </Button>
-                  ) : null}
+                  <Button
+                    variant='outline'
+                    className={cn(
+                      'w-full',
+                      selectedBuyType === 'stock' && 'bg-muted'
+                    )}
+                    size='lg'
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleBuyStockButtonClick()
+                    }}
+                  >
+                    <div className='flex w-full items-center justify-start'>
+                      <Tag className='mr-2 h-4 w-4' />
+                      <span>Buy Stock</span>
+                    </div>
+                  </Button>
 
                   {shouldShowMyPackagingButton && (
                     <>
@@ -1891,7 +1892,7 @@ export function ProductDetails() {
             side='right'
             className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
           >
-            <div className='flex h-full text-sm'>
+            <div className='flex min-h-0 flex-1 text-sm'>
               {/* 左侧：Listing 类型菜单（与 StoreManagement 保持一致） */}
 
               {/* 右侧：Tabs + 表单内容 */}
