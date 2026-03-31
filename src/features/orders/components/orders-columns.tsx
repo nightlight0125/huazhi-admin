@@ -279,6 +279,13 @@ export const createOrdersColumns = (options?: {
       header: 'Shipping Cost',
       cell: ({ row }) => {
         const order = row.original
+        const fulfillmentStatus = String(
+          (order as any).hzkj_orderstatus ?? ''
+        ).toLowerCase()
+        const isPaid =
+          fulfillmentStatus === '2' ||
+          fulfillmentStatus === '3' ||
+          fulfillmentStatus === '4'
         const hasChannel = order.hzkj_customer_channel_number
         const rawShippingCost = order.hzkj_fre_quo_amount
         const shippingCostNumber =
@@ -288,6 +295,24 @@ export const createOrdersColumns = (options?: {
         const shippingCostDisplay = Number.isFinite(shippingCostNumber)
           ? `$${shippingCostNumber.toFixed(2)}`
           : '---'
+
+        // 已付款订单：允许查看价格和渠道，但不允许再修改物流渠道
+        if (isPaid) {
+          return (
+            <div className='-mx-1 w-full space-y-1 px-1 py-0.5 text-left text-sm'>
+              <div>{shippingCostDisplay}</div>
+              {hasChannel ? (
+                <div className='text-muted-foreground text-xs'>
+                  {toDisplayString(order.hzkj_customer_channel_number)}
+                </div>
+              ) : (
+                <div className='text-xs text-red-500'>[please select]</div>
+              )}
+            </div>
+          )
+        }
+
+        // 未付款订单：允许点击选择 / 修改物流渠道
         return (
           <button
             type='button'
@@ -348,7 +373,10 @@ export const createOrdersColumns = (options?: {
         const fulfillmentStatus = String(
           order.hzkj_orderstatus ?? ''
         ).toLowerCase()
-        const isPaid = fulfillmentStatus === '2' || fulfillmentStatus === 'no'
+        const isPaid =
+          fulfillmentStatus === '2' ||
+          fulfillmentStatus === '3' ||
+          fulfillmentStatus === '4'
 
         if (isPaid) {
           return <div className='flex items-center gap-0' />

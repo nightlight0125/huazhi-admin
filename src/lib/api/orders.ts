@@ -379,7 +379,7 @@ export async function deleteOrder(
   params: DeleteOrderRequest
 ): Promise<DeleteOrderResponse> {
   const response = await apiClient.post<DeleteOrderResponse>(
-    '/v2/hzkj/hzkj_ordercenter/order/deleteAfterSOrder',
+    '/v2/hzkj/hzkj_ordercenter/order/deleteSalOutOrder',
     params
   )
 

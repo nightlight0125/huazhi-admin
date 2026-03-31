@@ -179,10 +179,15 @@ export function PackagingConnection() {
 
       if (activeTab === 'stores') {
         if (userId && customerId) {
+          const shopId =
+            storeFilterValue && storeFilterValue.length > 0
+              ? storeFilterValue[0]
+              : '*'
           const response = await queryCuShopPackageList({
             data: {
               hzkj_pk_shop_hzkj_customer_id: String(customerId),
               accountId: String(userId),
+              hzkj_pk_shop_id: shopId,
             },
             pageSize,
             pageNo,
@@ -353,10 +358,16 @@ export function PackagingConnection() {
 
       try {
         if (activeTab === 'stores') {
+          const shopId =
+            storeFilterValue && storeFilterValue.length > 0
+              ? storeFilterValue[0]
+              : '*'
+
           const response = await queryCuShopPackageList({
             data: {
               hzkj_pk_shop_hzkj_customer_id: String(customerId),
               accountId: String(userId),
+              hzkj_pk_shop_id: shopId,
             },
             pageSize,
             pageNo,
@@ -512,7 +523,13 @@ export function PackagingConnection() {
     }
   }, [table, pageNo, pageSize])
 
-  // storeName 的过滤由 onFilterChange 直接更新 storeFilterValue，无需从此处同步
+  // Store Tab 的列 id 为 storeName 后，与工具栏下拉共用；切换 Tab 时同步列上的展示
+  useEffect(() => {
+    if (!table) return
+    const col = table.getColumn('storeName')
+    if (!col) return
+    col.setFilterValue(storeFilterValue)
+  }, [activeTab, storeFilterValue, table])
 
   const handleStatusTabChange = (status: 'connected' | 'unconnected') => {
     const nextStatus =
@@ -630,6 +647,7 @@ export function PackagingConnection() {
                   <DataTableToolbar
                     table={table}
                     showSearch={false}
+                    showSearchButton={false}
                     onFilterChange={(columnId, value) => {
                       if (columnId === 'storeName') {
                         setStoreFilterValue(value)

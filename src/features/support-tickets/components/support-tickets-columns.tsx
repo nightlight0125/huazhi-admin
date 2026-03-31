@@ -162,7 +162,9 @@ export const createSupportTicketsColumns = (options?: {
               </div>
             )}
             <div className='space-y-0.5 text-sm'>
-              <div>Order NO: {row.original.hzkj_src_number || '--'}</div>
+              <div>
+                Order NO: {(row.original as any).hzkj_src_number ?? '--'}
+              </div>
               <div>SKU: {ticket.hzkj_localsku_number || '--'}</div>
               <div>Variant: {ticket.hzkj_localsku_hzkj_name || '--'}</div>
               <div>

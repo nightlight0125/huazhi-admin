@@ -28,7 +28,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 // 账单地址 Schema
 const invoiceAddressSchema = z.object({
@@ -637,9 +641,10 @@ export function AddressForm() {
                 <TooltipContent
                   side='top'
                   sideOffset={8}
-                  className='max-w-[280px] whitespace-normal text-left leading-snug'
+                  className='max-w-[280px] text-left leading-snug whitespace-normal'
                 >
-                  Add a default shipping address so you can quickly select it when creating sample or dropshipping orders.
+                  Please ensure all required fields are completed to generate a
+                  valid invoice for the orders.
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -728,9 +733,10 @@ export function AddressForm() {
                 <TooltipContent
                   side='top'
                   sideOffset={8}
-                  className='max-w-[280px] whitespace-normal text-left leading-snug'
+                  className='max-w-[280px] text-left leading-snug whitespace-normal'
                 >
-                  Please ensure all required fields are completed to generate a valid invoice for the orders.
+                  Add a default shipping address so you can quickly select it
+                  when creating sample or dropshipping orders.
                 </TooltipContent>
               </Tooltip>
             </div>

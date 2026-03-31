@@ -35,9 +35,18 @@ const createFlagIcon = (countryCode: string) => {
   return FlagIcon
 }
 
+const PRIORITY_OPTIONS = [
+  { label: '0', value: '0' },
+  { label: '1', value: '1' },
+  { label: '2', value: '2' },
+] as const
+
 const editShippingSchema = z.object({
   shippingTo: z.string().min(1, 'Shipping To is required'),
   shippingMethod: z.string().min(1, 'Shipping Method is required'),
+  priority: z.enum(['0', '1', '2'], {
+    message: 'Priority is required',
+  }),
 })
 
 type EditShippingValues = z.infer<typeof editShippingSchema>
@@ -120,7 +129,6 @@ export function EditShippingToDialog({
   // 监听物流渠道加载错误
   useEffect(() => {
     if (channelsError) {
-      console.error('Failed to load logistics channels:', channelsError)
       toast.error('Failed to load logistics channels')
     }
   }, [channelsError])
@@ -128,22 +136,38 @@ export function EditShippingToDialog({
   const form = useForm<EditShippingValues>({
     resolver: zodResolver(editShippingSchema),
     defaultValues: {
-      shippingTo: row?.shippingTo ?? '',
-      shippingMethod: row?.shippingMethod ?? '',
+      shippingTo: '',
+      shippingMethod: '',
+      priority: '0',
     },
   })
 
-  // 当选中行变化或弹窗重新打开时，同步表单默认值
-  if (
-    row &&
-    (form.getValues('shippingTo') !== row.shippingTo ||
-      form.getValues('shippingMethod') !== row.shippingMethod)
-  ) {
-    form.reset({
-      shippingTo: row.shippingTo,
-      shippingMethod: row.shippingMethod,
-    })
-  }
+  useEffect(() => {
+    if (!open || !row) {
+      return
+    }
+
+    // 根据名称匹配国家和渠道选项
+    const matchedCountry =
+      countryOptions.find((opt) => opt.label === row.shippingTo) ?? null
+    const matchedMethod =
+      methodOptions.find((opt) => opt.label === row.shippingMethod) ?? null
+
+    const rowPriority = (row as any)?.priority
+    const priorityValue =
+      rowPriority != null && rowPriority !== ''
+        ? (String(rowPriority) as '0' | '1' | '2')
+        : '0'
+
+    form.reset(
+      {
+        shippingTo: matchedCountry?.value ?? '',
+        shippingMethod: matchedMethod?.value ?? '',
+        priority: priorityValue,
+      },
+      { keepDirty: false, keepTouched: false }
+    )
+  }, [open, row, countryOptions, methodOptions, form])
 
   const handleSubmit = (values: EditShippingValues) => {
     // call API to add freight for this row
@@ -167,12 +191,28 @@ export function EditShippingToDialog({
           entryId: String(rawEntryId ?? ''),
           destinationId: String(values.shippingTo),
           channelId: String(values.shippingMethod),
+          priority: String(values.priority),
         }
 
-        await apiClient.post(
+        const response = await apiClient.post(
           '/v2/hzkj/hzkj_logistics/hzkj_cus_freight/add',
           payload
         )
+
+        // 与其他 API 封装保持一致：status === false 视为业务失败
+        const data = response.data as {
+          status?: boolean
+          message?: string | null
+          errorCode?: string
+        }
+        if (data && data.status === false) {
+          const msg =
+            data.message ||
+            (data.errorCode
+              ? `Operation failed (code: ${data.errorCode}).`
+              : 'Failed to add shipping plan. Please try again.')
+          throw new Error(msg)
+        }
 
         toast.dismiss(loadingToast)
         toast.success('Added successfully')
@@ -183,7 +223,6 @@ export function EditShippingToDialog({
         toast.dismiss(loadingToast)
         const msg = error instanceof Error ? error.message : 'Add failed'
         toast.error(msg)
-        console.error('Add freight error:', error)
       } finally {
         setIsSubmitting(false)
       }
@@ -242,6 +281,24 @@ export function EditShippingToDialog({
                     onValueChange={field.onChange}
                     placeholder='Select shipping method'
                     items={methodOptions}
+                    isControlled
+                    className='w-full'
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='priority'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority</FormLabel>
+                  <SelectDropdown
+                    defaultValue={field.value}
+                    onValueChange={field.onChange}
+                    placeholder='Priority'
+                    items={[...PRIORITY_OPTIONS]}
                     isControlled
                     className='w-full'
                   />

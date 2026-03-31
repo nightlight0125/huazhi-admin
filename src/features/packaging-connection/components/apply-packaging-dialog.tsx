@@ -296,7 +296,7 @@ export function ApplyPackagingDialog({
       >
         <div className='border-b px-4 py-3'>
           <h2 className='text-lg leading-tight font-semibold'>
-            Apply Packaging to Product
+            Apply Packaging to Store
           </h2>
         </div>
 

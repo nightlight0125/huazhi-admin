@@ -240,15 +240,24 @@ export function ProductDetails() {
         ? apiProduct.picture
         : 'https://via.placeholder.com/400?text=No+Image'
 
-    // 直接使用 API 返回的数据创建产品对象
+    // 处理 hzkj_picurl_tag：可能是以分号分隔的多张图片
     const picUrl = apiProduct.hzkj_picurl_tag
+    const picList =
+      typeof picUrl === 'string'
+        ? picUrl
+            .split(';')
+            .map((s) => s.trim())
+            .filter((s) => s !== '')
+        : []
     const purPrice = apiProduct.hzkj_pur_price
 
     return {
       id: apiProduct.id,
       name: productName,
+      // 主图优先使用 picList 第一张，其次是单张 picture
       image:
-        (typeof picUrl === 'string' ? picUrl : productImage) ||
+        (picList[0] as string | undefined) ||
+        productImage ||
         'https://via.placeholder.com/400?text=No+Image',
       shippingLocation: 'china', // 默认值
       price: (typeof purPrice === 'number' ? purPrice : apiProduct.price) ?? 0, // 如果 price 不存在，默认为 0
@@ -261,6 +270,7 @@ export function ProductDetails() {
       isMyStore: false,
       createdAt: new Date(),
       updatedAt: new Date(),
+      ...(picList.length > 0 && { images: picList }),
       ...(apiProduct.hzkj_sku_spec_e && {
         hzkj_sku_spec_e: apiProduct.hzkj_sku_spec_e,
       }),
@@ -313,6 +323,7 @@ export function ProductDetails() {
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null)
   const [selectedSkuPrice, setSelectedSkuPrice] = useState<number | null>(null)
   const [selectedSkuEnname, setSelectedSkuEnname] = useState<unknown>(null)
+  const [selectedSkuPic, setSelectedSkuPic] = useState<string | null>(null)
   const [selectedThumbnail, setSelectedThumbnail] = useState(0)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const [selectedStore, setSelectedStore] = useState('')
@@ -327,6 +338,21 @@ export function ProductDetails() {
   const [isCollected, setIsCollected] = useState(false)
   const [isBrandCustomizationOpen, setIsBrandCustomizationOpen] =
     useState(false)
+
+  // 所有商品图片（从 getProduct 的 hzkj_picurl_tag 拆分而来，或退回主图）
+  const productThumbnails: string[] =
+    (product as any)?.images && Array.isArray((product as any).images)
+      ? ((product as any).images as string[])
+      : productData?.image
+        ? [productData.image]
+        : []
+
+  // 主图：优先规格接口返回的图片（selectedSkuPic），其次当前选中的缩略图，最后退回默认主图
+  const mainImageSrc =
+    selectedSkuPic ||
+    (productThumbnails[selectedThumbnail] as string | undefined) ||
+    productData?.image ||
+    ''
 
   useEffect(() => {
     if (apiProduct) {
@@ -497,21 +523,28 @@ export function ProductDetails() {
             typeof skuData?.price === 'number' ? skuData.price : null
           const skuEnname = skuData?.enname || null
           const skuId = skuData?.id ?? null
+          const skuPic =
+            typeof skuData?.pic === 'string' && skuData.pic.trim() !== ''
+              ? skuData.pic
+              : null
           setSelectedSku(skuNumber)
           setSelectedSkuPrice(skuPrice)
           setSelectedSkuEnname(skuEnname)
           setSelectedSkuId(skuId)
+          setSelectedSkuPic(skuPic)
         } else {
           setSelectedSku('')
           setSelectedSkuPrice(null)
           setSelectedSkuEnname(null)
           setSelectedSkuId(null)
+          setSelectedSkuPic(null)
         }
       } catch (error) {
         setSelectedSku('')
         setSelectedSkuPrice(null)
         setSelectedSkuEnname(null)
         setSelectedSkuId(null)
+        setSelectedSkuPic(null)
         toast.error(
           error instanceof Error
             ? error.message
@@ -1051,9 +1084,9 @@ export function ProductDetails() {
               <div className='grid h-full grid-cols-1 md:grid-cols-2'>
                 <div className='flex flex-col'>
                   <div className='aspect-square overflow-hidden rounded-t-lg md:rounded-t-none md:rounded-l-lg'>
-                    {productData.image ? (
+                    {mainImageSrc ? (
                       <img
-                        src={productData.image}
+                        src={mainImageSrc}
                         alt={productData.name || 'Product'}
                         className='h-full w-full object-cover'
                       />
@@ -1067,11 +1100,7 @@ export function ProductDetails() {
                   {/* 缩略图轮播 */}
                   <div className='p-4'>
                     <div className='flex gap-2 overflow-x-auto'>
-                      {[
-                        productData.image,
-                        productData.image,
-                        productData.image,
-                      ].map((img, index) => (
+                      {productThumbnails.map((img, index) => (
                         <div
                           key={index}
                           className={`hover:border-primary/80 h-16 w-16 flex-shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 transition-colors ${
@@ -1079,7 +1108,13 @@ export function ProductDetails() {
                               ? 'border-primary'
                               : 'border-gray-300'
                           }`}
-                          onClick={() => setSelectedThumbnail(index)}
+                          onClick={() => {
+                            setSelectedThumbnail(index)
+                            if (img && img.trim() !== '') {
+                              // 点击缩略图时也更新主图来源
+                              setSelectedSkuPic(img)
+                            }
+                          }}
                         >
                           {img && img.trim() !== '' ? (
                             <img

@@ -1,4 +1,12 @@
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  getSkuByNumber,
+  querySkuByCustomer,
+  type SkuRecordItem,
+} from '@/lib/api/products'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,14 +17,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  getSkuByNumber,
-  querySkuByCustomer,
-  type SkuRecordItem,
-} from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import { type OrderProduct } from '../data/schema'
 
 interface OrdersAddProductDialogProps {
@@ -111,8 +111,7 @@ export function OrdersAddProductDialog({
       }
 
       const selectedSkuItem = skuOptions.find(
-        (item) =>
-          ((item as any).number || item.hzkj_sku_number) === sku.trim()
+        (item) => ((item as any).number || item.hzkj_sku_number) === sku.trim()
       )
 
       const newProduct: OrderProduct = {

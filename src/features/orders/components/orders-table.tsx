@@ -818,109 +818,32 @@ export function OrdersTable({
     }
   }
 
-  /** 删除订单中一行明细：updateSalOutOrder，目标行 flag=1，其余 flag=0 */
+  /** 删除订单中一行明细：当前产品行对应的销售单，调用 deleteSalOutOrder 删除整单 */
   const handleDeleteOrderLine = async (
     orderId: string,
-    lineItem: OrderProduct
+    _lineItem: OrderProduct
   ) => {
     const customerId = auth.user?.customerId
-    const order = data.find((o) => o.id === orderId)
-    if (!order || !customerId) {
-      toast.error('Order or customer information is missing')
+    if (!customerId) {
+      toast.error('Customer information is missing')
       return
     }
 
-    const rawOrder = order as any
-    const targetEntryId = String(
-      (lineItem as any).entryId || lineItem.entryId || ''
-    ).trim()
-    if (!targetEntryId) {
-      toast.error('Cannot resolve this line item (missing entry id)')
-      return
-    }
-
-    const detail =
-      (rawOrder.lingItems || [])
-        .map((item: any) => {
-          const entryId = String(item.entryId || '')
-          const skuId = String(
-            item.hzkj_local_sku_id ||
-              item.hzkj_local_sku_id2 ||
-              item.hzkj_local_sku ||
-              ''
-          )
-          const quantity = Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0
-          const flag = entryId === targetEntryId ? 1 : 0
-          return { entryId, skuId, quantity, flag }
-        })
-        .filter((d: any) => d.entryId && d.skuId) || []
-
-    if (detail.length === 0) {
-      toast.error('No valid order lines to update')
-      return
-    }
-
-    const firstName =
-      rawOrder.firstName ||
-      (rawOrder.customerName &&
-        typeof rawOrder.customerName === 'string' &&
-        rawOrder.customerName.split(' ')[0]) ||
-      (rawOrder.hzkj_customer_name &&
-        typeof rawOrder.hzkj_customer_name === 'object' &&
-        rawOrder.hzkj_customer_name.zh_CN) ||
-      ''
-    const lastName =
-      rawOrder.lastName ||
-      (rawOrder.customerName &&
-        typeof rawOrder.customerName === 'string' &&
-        rawOrder.customerName.split(' ').slice(1).join(' ')) ||
-      ''
-
+    // 这里按后端约定，直接删除该产品行对应的销售出库单
     try {
-      await updateSalOutOrder({
-        orderId: rawOrder.id || order.id,
+      await deleteOrder({
         customerId: String(customerId),
-        firstName,
-        lastName,
-        phone:
-          rawOrder.phone ||
-          rawOrder.hzkj_telephone ||
-          rawOrder.phoneNumber ||
-          '',
-        countryId: rawOrder.countryId || rawOrder.hzkj_country_id || '',
-        admindivisionId: rawOrder.admindivisionId,
-        city: rawOrder.city || rawOrder.hzkj_address?.split(',')[0] || '',
-        address1:
-          rawOrder.address1 ||
-          rawOrder.address ||
-          rawOrder.hzkj_address ||
-          rawOrder.hzkj_bill_address ||
-          '',
-        address2: rawOrder.address2 || rawOrder.hzkj_sam_address || '',
-        postCode:
-          rawOrder.postCode ||
-          rawOrder.postalCode ||
-          rawOrder.hzkj_post_code ||
-          '',
-        taxId: rawOrder.taxId || '',
-        customChannelId: String(rawOrder.customChannelId || ''),
-        email: rawOrder.email || rawOrder.hzkj_email || '',
-        wareHouse:
-          rawOrder.wareHouse ||
-          rawOrder.warehouseId ||
-          rawOrder.shippingOrigin ||
-          '',
-        detail,
+        orderId,
       })
 
-      toast.success('Line item removed from order')
+      toast.success('Order deleted successfully')
       setRefreshKey((prev) => prev + 1)
     } catch (error) {
-      console.error('Failed to delete order line:', error)
+      console.error('Failed to delete order:', error)
       toast.error(
         error instanceof Error
           ? error.message
-          : 'Failed to delete line item. Please try again.'
+          : 'Failed to delete order. Please try again.'
       )
     }
   }

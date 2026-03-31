@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { AuthError, getToken, memberSignUp } from '@/lib/api/auth'
+import { AuthError, memberSignUp, registerSendCode } from '@/lib/api/auth'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -55,6 +54,9 @@ const formSchema = z
     email: z.email({
       message: 'Please enter a valid email address',
     }),
+    emailCode: z
+      .string()
+      .min(1, 'Please enter the email verification code'),
     name: z.string().min(1, 'Please enter your name'),
     phone: z
       .string()
@@ -85,7 +87,6 @@ export function SignUpForm({
   )
   const [phonePopoverOpen, setPhonePopoverOpen] = useState(false)
   const navigate = useNavigate()
-  const { auth } = useAuthStore()
   const { customerId, operatorId } = useSearch({
     from: '/(auth)/sign-up',
   }) as {
@@ -97,6 +98,7 @@ export function SignUpForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
+      emailCode: '',
       name: '',
       phone: '',
       password: '',
@@ -105,39 +107,57 @@ export function SignUpForm({
     },
   })
 
+  const SEND_CODE_COOLDOWN_SEC = 60
+  const [sendCodeCooldown, setSendCodeCooldown] = useState(0)
+  const [isSendingCode, setIsSendingCode] = useState(false)
+
+  useEffect(() => {
+    if (sendCodeCooldown <= 0) return
+    const id = window.setInterval(() => {
+      setSendCodeCooldown((s) => (s <= 1 ? 0 : s - 1))
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [sendCodeCooldown])
+
+  async function handleSendEmailCode() {
+    const ok = await form.trigger('email')
+    const email = form.getValues('email')?.trim()
+    if (!ok || !email) {
+      toast.error('Please enter a valid email address first.')
+      return
+    }
+    if (sendCodeCooldown > 0) return
+
+    setIsSendingCode(true)
+    try {
+      await registerSendCode(email)
+      toast.success(
+        'The verification code has been sent to your email. Please check your inbox.'
+      )
+      setSendCodeCooldown(SEND_CODE_COOLDOWN_SEC)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to send verification code. Please try again.'
+      )
+    } finally {
+      setIsSendingCode(false)
+    }
+  }
+
   async function onSubmit(data: z.infer<typeof formSchema>) {
     setIsLoading(true)
 
     const loadingToast = toast.loading('Creating account...')
 
     try {
-      // 检查当前 token 状态
-      const currentToken = auth.accessToken
-      const currentUser = auth.user
-      let token = currentToken
-
-      // 如果没有 token 或 token 已过期，先获取 token
-      if (!token || token.trim() === '') {
-        // 先调用 getToken 接口获取 token
-        token = await getToken()
-        // 临时保存 token，以便后续请求使用
-        auth.setAccessToken(token)
-      } else if (currentUser?.exp) {
-        // 检查 token 是否过期
-        const now = Date.now()
-        if (now >= currentUser.exp) {
-          // Token 已过期，重新获取
-          token = await getToken()
-          auth.setAccessToken(token)
-        }
-      }
-
-      // 获取到 token 后，调用注册接口
       const response = await memberSignUp(
         data.email,
         data.name,
         data.phone,
         data.password,
+        data.emailCode,
         {
           customerId,
           operatorId,
@@ -215,7 +235,52 @@ export function SignUpForm({
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder='Enter your email' type='email' {...field} />
+                <Input
+                  placeholder='Enter your email'
+                  type='email'
+                  {...field}
+                  onChange={(e) => {
+                    field.onChange(e)
+                    form.setValue('emailCode', '')
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name='emailCode'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email verification code</FormLabel>
+              <FormControl>
+                <div className='flex gap-2'>
+                  <Input
+                    className='min-w-0 flex-1'
+                    placeholder='Enter the code sent to your email'
+                    autoComplete='one-time-code'
+                    {...field}
+                  />
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className='h-10 shrink-0 px-3 sm:min-w-[7.5rem]'
+                    disabled={
+                      isSendingCode || sendCodeCooldown > 0 || isLoading
+                    }
+                    onClick={() => void handleSendEmailCode()}
+                  >
+                    {isSendingCode ? (
+                      <Loader2 className='h-4 w-4 animate-spin' />
+                    ) : sendCodeCooldown > 0 ? (
+                      `${sendCodeCooldown}s`
+                    ) : (
+                      'Send code'
+                    )}
+                  </Button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>

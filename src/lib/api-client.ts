@@ -20,6 +20,15 @@ export const apiClient: AxiosInstance = axios.create({
   },
 })
 
+/** 注册发码 / 注册提交等：无需登录；失败时不应触发 getToken 自动重登 */
+function isAnonymousMemberFlowUrl(url: string | undefined): boolean {
+  if (!url) return false
+  return (
+    url.includes('/hzkj_ordercenter/member/registerSendCode') ||
+    url.includes('/v2/hzkj/base/member/add')
+  )
+}
+
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (redirectToExpiredIfNeeded()) {
@@ -39,7 +48,6 @@ apiClient.interceptors.request.use(
     const isIdLoginRequest = config.url?.includes(
       '/v2/hzkj/hzkj_im_ext/member/idLogin'
     )
-    const isSignUpRequest = config.url?.includes('/v2/hzkj/base/member/add')
     const isForgotPasswordRequest =
       config.url?.includes('/hzkj_member/member/getResetPassWordCode') ||
       config.url?.includes('/hzkj_member/member/sendCode') ||
@@ -52,7 +60,7 @@ apiClient.interceptors.request.use(
     if (
       isLoginRequest ||
       isIdLoginRequest ||
-      isSignUpRequest ||
+      isAnonymousMemberFlowUrl(config.url) ||
       isForgotPasswordRequest ||
       isPaymentCallbackRequest
     ) {
@@ -139,6 +147,13 @@ apiClient.interceptors.response.use(
           new Error(responseData?.message || 'AccessToken认证不通过，token已过期')
         )
       }
+      if (isAnonymousMemberFlowUrl(config?.url)) {
+        return Promise.reject(
+          new Error(
+            responseData?.message || 'AccessToken认证不通过，token已过期'
+          )
+        )
+      }
       // 避免无限重试：每个请求只自动重登并重试一次
       if (config && !config._logical401Retried) {
         config._logical401Retried = true
@@ -222,6 +237,9 @@ apiClient.interceptors.response.use(
         }
         return Promise.reject(error)
       }
+      if (has401Code && isAnonymousMemberFlowUrl(originalRequest?.url)) {
+        return Promise.reject(error)
+      }
       if (has401Code && originalRequest && !originalRequest._retry) {
         originalRequest._retry = true
         try {
@@ -288,6 +306,9 @@ apiClient.interceptors.response.use(
             window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectPath)}`
           }
         }
+        return Promise.reject(error)
+      }
+      if (isAnonymousMemberFlowUrl(originalRequest?.url)) {
         return Promise.reject(error)
       }
       if (originalRequest && !originalRequest._retry) {

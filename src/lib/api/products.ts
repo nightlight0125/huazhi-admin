@@ -1086,6 +1086,8 @@ export interface QueryCuShopPackageListRequest {
   data: {
     hzkj_pk_shop_hzkj_customer_id: string
     accountId: string
+    /** 店铺 ID；`*` 表示全部 */
+    hzkj_pk_shop_id?: string
   }
   pageSize: number
   pageNo: number

@@ -120,11 +120,21 @@ export async function getLogsList(
   return Array.isArray(rows) ? rows : []
 }
 
+// 新增运费自定义渠道 — 单条计划（与后端 data 数组项一致）
+export interface AddCusFreightDataItem {
+  /** 国家 / 目的地 ID */
+  destination: string
+  /** 物流渠道 ID */
+  logisticsChannel: string
+  /** 优先级，字符串 "0" | "1" | "2" */
+  priority: string
+}
+
 // 新增运费自定义渠道请求参数
 export interface AddCusFreightRequest {
   customerId: string
   spuId: string
-  destination: Record<string, string>
+  data: AddCusFreightDataItem[]
 }
 
 // 新增运费自定义渠道响应
@@ -216,24 +226,40 @@ export async function getCusList(
     throw new Error(errorMessage)
   }
 
-  // 数据在 response.data.data.data 中（根据日志显示）
-  const dataObj = response.data.data
+  // 兼容 data / data.data / data.data.data 等嵌套（部分环境返回三层 data）
+  const root = response.data.data as unknown
   let rows: CusFreightItem[] = []
+  let totalCount = 0
 
-  // 尝试多种可能的数据结构
-  if (Array.isArray(dataObj?.data)) {
-    rows = dataObj.data as CusFreightItem[]
-  } else if (Array.isArray(dataObj?.rows)) {
-    rows = dataObj.rows as CusFreightItem[]
-  } else if (Array.isArray(dataObj)) {
-    rows = dataObj as CusFreightItem[]
+  const takeRowsAndTotal = (node: unknown): boolean => {
+    if (node == null || typeof node !== 'object') return false
+    const o = node as Record<string, unknown>
+    if (Array.isArray(o.rows)) {
+      rows = o.rows as CusFreightItem[]
+      totalCount = Number(o.totalCount) || totalCount
+      return true
+    }
+    if (Array.isArray(o.data)) {
+      rows = o.data as CusFreightItem[]
+      totalCount = Number(o.totalCount) || totalCount
+      return true
+    }
+    if (o.data != null && typeof o.data === 'object' && !Array.isArray(o.data)) {
+      totalCount = Number(o.totalCount) || totalCount
+      return takeRowsAndTotal(o.data)
+    }
+    return false
   }
 
-  const totalCount = dataObj?.totalCount || 0
+  if (Array.isArray(root)) {
+    rows = root as CusFreightItem[]
+  } else {
+    takeRowsAndTotal(root)
+  }
 
   return {
     rows: Array.isArray(rows) ? rows : [],
-    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+    totalCount: typeof totalCount === 'number' && totalCount > 0 ? totalCount : rows.length,
   }
 }
 

@@ -95,13 +95,19 @@ export const createLogisticsColumns = (
       ),
       cell: ({ row }) => <div>{row.getValue('shippingMethod')}</div>,
     },
-
     {
       accessorKey: 'shippingTo',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title='Shipping To' />
       ),
       cell: ({ row }) => <div>{row.getValue('shippingTo')}</div>,
+    },
+    {
+      accessorKey: 'priority',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title='Priority' />
+      ),
+      cell: ({ row }) => <div>{row.getValue('priority')}</div>,
     },
     {
       accessorKey: 'shippingTime',
@@ -190,9 +196,7 @@ function DeleteLogisticsDialog({ logistics, onSuccess }: DeleteProps) {
         className='group h-7 border-gray-200 px-2 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300'
         onClick={() => setOpen(true)}
       >
-        <Trash2
-          className={cn(TRASH_DELETE_ICON_CLASS, 'mr-1 h-3.5 w-3.5')}
-        />
+        <Trash2 className={cn(TRASH_DELETE_ICON_CLASS, 'mr-1 h-3.5 w-3.5')} />
       </Button>
       <ConfirmDialog
         open={open}
