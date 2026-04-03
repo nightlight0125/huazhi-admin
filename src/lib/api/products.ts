@@ -746,7 +746,8 @@ export interface QueryPushProductsListRequest {
   data: {
     hzkj_customer_id: string
     hzkj_issuccess: string
-    hzkj_push_shop_id: string
+    /** 未选店铺时可不传 */
+    hzkj_push_shop_id?: string
     str?: string // 搜索字段
   }
   pageSize: number

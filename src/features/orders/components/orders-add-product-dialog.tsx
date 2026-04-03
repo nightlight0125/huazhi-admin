@@ -22,7 +22,8 @@ import { type OrderProduct } from '../data/schema'
 interface OrdersAddProductDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (product: OrderProduct) => void
+  /** Second argument is the raw `getSkuByNumber` payload when the request succeeds. */
+  onConfirm: (product: OrderProduct, rawSku?: Record<string, unknown>) => void
   orderId?: string
   order?: any // 订单对象（保留以保持接口兼容）
   onSuccess?: () => void // 成功回调（保留以保持接口兼容）
@@ -172,7 +173,12 @@ export function OrdersAddProductDialog({
         }
       }
 
-      onConfirm(newProduct)
+      onConfirm(
+        newProduct,
+        d && typeof d === 'object' && !Array.isArray(d)
+          ? (d as Record<string, unknown>)
+          : undefined
+      )
       setSku('')
       setQuantity(1)
       onOpenChange(false)

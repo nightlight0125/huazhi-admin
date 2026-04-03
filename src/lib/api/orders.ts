@@ -98,6 +98,9 @@ export interface ApiOrderItem {
   hzkj_fre_quo_amount?: number | string
   hzkj_customer_channel_name?: number | string
   hzkj_customer_channel_number?: string
+  /** 物流跟踪号，可能为逗号分隔多段 */
+  trackingNumber?: string
+  hzkj_tracking_number?: string
 }
 
 // 查询订单响应
@@ -159,7 +162,14 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     platformOrderNumber: apiOrder.billno || '',
     customerOrderNumber: apiOrder.hzkj_source_number || '',
     customer: customerName,
-    trackingNumber: '',
+    trackingNumber: (() => {
+      const raw =
+        apiOrder.trackingNumber ??
+        apiOrder.hzkj_tracking_number ??
+        (apiOrder as Record<string, unknown>).tracking_number
+      if (raw == null || raw === '') return ''
+      return String(raw).trim()
+    })(),
     shippingCost: 0,
     otherCosts: 0,
     totalCost: (apiOrder as any).hzkj_amount != null
@@ -386,6 +396,40 @@ export async function deleteOrder(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to delete order. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+// 取消订单状态请求参数
+export interface UpdateOrderCancelStatusRequest {
+  customerId: string
+  orderId: string
+  orderType: string
+}
+
+// 取消订单状态响应
+export interface UpdateOrderCancelStatusResponse {
+  data?: unknown
+  errorCode?: string
+  message?: string | null
+  status?: boolean
+  [key: string]: unknown
+}
+
+// 更新订单为已取消状态 API
+export async function updateOrderCancelStatus(
+  params: UpdateOrderCancelStatusRequest
+): Promise<UpdateOrderCancelStatusResponse> {
+  const response = await apiClient.post<UpdateOrderCancelStatusResponse>(
+    '/v2/hzkj/hzkj_ordercenter/order/updateOrderCancelStatus',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message || 'Failed to cancel order. Please try again.'
     throw new Error(errorMessage)
   }
 
@@ -892,8 +936,23 @@ export async function requestPayment(
 /** 钱包支付：销售 0，样品 1，备货 2 */
 export interface WalletPaymentRequest {
   customerId: string
+  /** 已有订单时传订单号；商品详情页余额下单可传 `[]`，由后端按地址/明细建单并扣款 */
   orderIds: string[]
   type: number
+  /** 以下字段与 buyProduct 一致，仅用于商品详情页余额支付（不调 buyProduct 时由本接口携带） */
+  customChannelId?: string
+  firstName?: string
+  lastName?: string
+  phone?: string
+  countryId?: string
+  admindivisionId?: string
+  city?: string
+  address1?: string
+  address2?: string
+  postCode?: string
+  taxId?: string
+  note?: string
+  detail?: Array<{ skuId: string; quantity: number; flag: number }>
 }
 
 export interface WalletPaymentResponse {

@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryStoreSKUList } from '@/lib/api/products'
+import { resolvePictureUrl } from '@/lib/resolve-picture-url'
 import { getPageNumbers } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,19 +32,6 @@ import {
 
 // 后端返回项，直接使用不作处理
 type StoreProductItem = Record<string, unknown>
-
-const API_BASE = 'https://test.hzdrop.com/kapi/'
-const ORIGIN = 'https://test.hzdrop.com'
-
-/** 将后端返回的 picture 转为可用的完整 URL（相对路径需拼接域名） */
-function resolvePictureUrl(picture: unknown): string {
-  const raw = typeof picture === 'string' ? picture.trim() : ''
-  if (!raw) return ''
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
-  if (raw.startsWith('//')) return `https:${raw}`
-  if (raw.startsWith('/')) return `${ORIGIN}${raw}`
-  return `${API_BASE}${raw.replace(/^\//, '')}`
-}
 
 interface SelectStoreProductDialogProps {
   open: boolean

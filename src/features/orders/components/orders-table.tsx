@@ -17,7 +17,12 @@ import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { type FreightOption, calcuOrderFreight } from '@/lib/api/logistics'
-import { deleteOrder, queryOrder, updateSalOutOrder } from '@/lib/api/orders'
+import {
+  deleteOrder,
+  queryOrder,
+  updateOrderCancelStatus,
+  updateSalOutOrder,
+} from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,6 +53,7 @@ import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
 import { OrdersEditCustomerNameDialog } from './orders-edit-customer-name-dialog'
 import { OrdersModifyProductDialog } from './orders-modify-product-dialog'
+import { useOrders } from './orders-provider'
 import { OrdersTableFooter } from './orders-table-footer'
 
 const route = getRouteApi('/_authenticated/orders/')
@@ -278,6 +284,7 @@ export function OrdersTable({
   platformOrderStatusOptions = [],
   countryOptions = [],
 }: DataTableProps) {
+  const { refreshNonce } = useOrders()
   const searchParams = route.useSearch() as Record<string, unknown>
   const navigate = route.useNavigate()
   const { auth } = useAuthStore()
@@ -448,7 +455,7 @@ export function OrdersTable({
     // 将国家ID数组转换为字符串用于请求 key（用于去重）
     const countryIdsKey = countryIds ? countryIds.sort().join(',') : ''
     const orderStatusKey = orderStatus ?? ''
-    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryIdsKey}-${orderStatusKey}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${activeTab}`
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryIdsKey}-${orderStatusKey}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${refreshNonce}-${activeTab}`
 
     if (lastRequestParamsRef.current === requestKey) {
       return
@@ -493,6 +500,7 @@ export function OrdersTable({
     globalFilter,
     columnFilters,
     refreshKey,
+    refreshNonce,
     activeTab,
     formattedDateRange,
     dateRange,
@@ -818,6 +826,30 @@ export function OrdersTable({
     }
   }
 
+  const handleCancelOrder = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await updateOrderCancelStatus({
+        customerId: String(customerId),
+        orderId: String(orderId),
+        orderType: 'storeOrder',
+      })
+      toast.success('Order cancelled successfully')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to cancel order. Please try again.'
+      )
+    }
+  }
+
   /** 删除订单中一行明细：当前产品行对应的销售单，调用 deleteSalOutOrder 删除整单 */
   const handleDeleteOrderLine = async (
     orderId: string,
@@ -874,6 +906,7 @@ export function OrdersTable({
         onEditAddress: handleEditAddress,
         onEditCustomerName: handleEditCustomerName,
         onPay: handlePay,
+        onCancel: handleCancelOrder,
         onDelete: handleDelete,
         onSelectShippingMethod: handleSelectShippingMethod,
       }),
@@ -881,6 +914,7 @@ export function OrdersTable({
       expandedRows,
       data,
       auth.user?.customerId,
+      handleCancelOrder,
       handleDelete,
       handleSelectShippingMethod,
     ]

@@ -98,13 +98,88 @@ function SampleOrderDeleteCell({ row, onDelete }: SampleOrderDeleteCellProps) {
   )
 }
 
+interface SampleOrderCancelCellProps {
+  row: Row<SampleOrder>
+  onCancel?: (orderId: string) => void | Promise<void>
+}
+
+function SampleOrderCancelCell({ row, onCancel }: SampleOrderCancelCellProps) {
+  const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const order = row.original
+
+  const handleConfirmCancel = async () => {
+    if (!onCancel) return
+    setIsLoading(true)
+    try {
+      await onCancel(order.id)
+      setOpen(false)
+    } catch (error) {
+      console.error('取消订单失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant='ghost'
+        size='sm'
+        className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        Cancel
+      </Button>
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) {
+            setOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmCancel}
+        destructive
+        isLoading={isLoading}
+        title='Cancel order'
+        desc={
+          <>
+            <p className='mb-2'>
+              Are you sure to cancel this order?
+              <br />
+            </p>
+            <p className='text-muted-foreground text-sm'>
+              Order Number: <strong>{order.billno}</strong>
+            </p>
+          </>
+        }
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Cancelling...
+            </>
+          ) : (
+            'Confirm'
+          )
+        }
+      />
+    </>
+  )
+}
+
 export const createSampleOrdersColumns = (options?: {
   onPay?: (orderId: string) => void
+  onCancel?: (orderId: string) => void
   onEditAddress?: (orderId: string) => void
   onAddPackage?: (orderId: string) => void
   onDelete?: (orderId: string) => void | Promise<void>
 }): ColumnDef<SampleOrder>[] => {
-  const { onPay, onEditAddress, onDelete } = options || {}
+  const { onPay, onCancel, onEditAddress, onDelete } = options || {}
 
   return [
     {
@@ -291,6 +366,11 @@ export const createSampleOrdersColumns = (options?: {
         const orderStatus = order.hzkj_orderstatus
         // 状态映射
         const statusMap: Record<string, { label: string; color: string }> = {
+          no: {
+            label: 'Unconnected',
+            color:
+              'border-transparent bg-amber-500 text-white dark:bg-amber-500/25 dark:text-amber-400',
+          },
           '0': {
             label: 'Cancelled',
             color:
@@ -318,9 +398,10 @@ export const createSampleOrdersColumns = (options?: {
           },
         }
 
+        const statusKey = String(orderStatus ?? '').toLowerCase()
         const statusInfo =
-          orderStatus && statusMap[String(orderStatus)]
-            ? statusMap[String(orderStatus)]
+          orderStatus != null && orderStatus !== '' && statusMap[statusKey]
+            ? statusMap[statusKey]
             : {
                 label: '---',
                 color: 'border-transparent bg-muted text-muted-foreground',
@@ -342,13 +423,27 @@ export const createSampleOrdersColumns = (options?: {
       cell: ({ row }) => {
         const order = row.original
         const orderStatus = (order as any).hzkj_orderstatus
-        const isPendingPayment = String(orderStatus ?? '') === '1'
+        const normalizedStatus = String(orderStatus ?? '').toLowerCase()
+        const isUnconnected = normalizedStatus === 'no'
+        const isPendingPayment = normalizedStatus === '1'
+        const isCancelledOrder = normalizedStatus === '0'
+        const isPaidOrDone =
+          normalizedStatus === '2' ||
+          normalizedStatus === '3' ||
+          normalizedStatus === '4'
+        const showPay = isUnconnected || isPendingPayment
+
+        if (isPaidOrDone) {
+          return <div className='flex items-center gap-2' />
+        }
         return (
           <div
             className='flex items-center gap-2'
             onClick={(e) => e.stopPropagation()}
           >
-            {isPendingPayment && (
+            {isCancelledOrder ? (
+              <SampleOrderDeleteCell row={row} onDelete={onDelete} />
+            ) : showPay ? (
               <>
                 <Button
                   variant='ghost'
@@ -361,9 +456,11 @@ export const createSampleOrdersColumns = (options?: {
                   <CreditCard className='h-4 w-4' />
                   Pay
                 </Button>
-                <SampleOrderDeleteCell row={row} onDelete={onDelete} />
+                {isPendingPayment && onCancel ? (
+                  <SampleOrderCancelCell row={row} onCancel={onCancel} />
+                ) : null}
               </>
-            )}
+            ) : null}
           </div>
         )
       },

@@ -12,10 +12,10 @@ import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import {
-  queryGoodClassList,
   queryPushProductsList,
-  type GoodClassItem,
+  type QueryPushProductsListRequest,
 } from '@/lib/api/products'
+import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   Table,
@@ -25,7 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { CategoryTreeFilterPopover } from '@/components/category-tree-filter-popover'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type PublishedProduct } from '../data/schema'
 import { PublishedProductsBulkActions } from './published-products-bulk-actions'
@@ -35,89 +34,6 @@ const route = getRouteApi('/_authenticated/published-products/')
 
 type DataTableProps = {
   status?: 'published' | 'publishing' | 'failed'
-}
-
-// Category item type
-type CategoryItem = {
-  label: string
-  value: string
-  children?: CategoryItem[]
-}
-
-// Convert API data to category tree structure
-function convertToCategoryTree(items: GoodClassItem[]): CategoryItem[] {
-  if (!Array.isArray(items) || items.length === 0) {
-    return []
-  }
-
-  // Create a map for quick lookup
-  const itemMap = new Map<string, GoodClassItem>()
-  items.forEach((item) => {
-    const id = String(item.id || item.number || '')
-    if (id) {
-      itemMap.set(id, item)
-    }
-  })
-
-  // Build tree structure
-  const tree: CategoryItem[] = []
-  const processed = new Set<string>()
-
-  // First pass: find root items (items with hzkj_parent_id === "0" or empty)
-  items.forEach((item) => {
-    const id = String(item.id || item.number || '')
-    if (!id || processed.has(id)) return
-
-    // Use hzkj_parent_id, fallback to parent_id for backward compatibility
-    const parentId = String(item.hzkj_parent_id || item.parent_id || '')
-
-    // Root items: parent_id is "0" or empty, or parent not in the list
-    if (parentId === '0' || !parentId || !itemMap.has(parentId)) {
-      const categoryItem: CategoryItem = {
-        label: String(item.name || item.number || ''),
-        value: id,
-      }
-      tree.push(categoryItem)
-      processed.add(id)
-    }
-  })
-
-  // Second pass: add children recursively
-  const addChildren = (parent: CategoryItem) => {
-    items.forEach((item) => {
-      const id = String(item.id || item.number || '')
-      // Use hzkj_parent_id, fallback to parent_id for backward compatibility
-      const parentId = String(item.hzkj_parent_id || item.parent_id || '')
-
-      // If this item's parent matches the current parent and hasn't been processed
-      if (id && parentId === parent.value && !processed.has(id)) {
-        if (!parent.children) {
-          parent.children = []
-        }
-        const categoryItem: CategoryItem = {
-          label: String(item.name || item.number || ''),
-          value: id,
-        }
-        parent.children.push(categoryItem)
-        processed.add(id)
-        // Recursively add children of this item
-        addChildren(categoryItem)
-      }
-    })
-  }
-
-  // Add children to all root items
-  tree.forEach(addChildren)
-
-  // If no tree structure found, return flat list
-  if (tree.length === 0) {
-    return items.map((item) => ({
-      label: String(item.name || item.number || ''),
-      value: String(item.id || item.number || ''),
-    }))
-  }
-
-  return tree
 }
 
 export function PublishedProductsTable({ status }: DataTableProps) {
@@ -131,10 +47,9 @@ export function PublishedProductsTable({ status }: DataTableProps) {
   const [totalCount, setTotalCount] = useState(0)
   const [searchValue, setSearchValue] = useState('') // 独立的搜索状态
   const prevSearchValueRef = useRef<string>('') // 跟踪上一次的搜索值
-  const [categoryTree, setCategoryTree] = useState<CategoryItem[]>([]) // 分类树
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
-    new Set()
-  ) // 选中的分类
+  const [storeOptions, setStoreOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([])
   // 防抖定时器
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   // 请求标志，用于防止重复请求
@@ -161,46 +76,46 @@ export function PublishedProductsTable({ status }: DataTableProps) {
         searchKey: 'storeName',
         type: 'array',
       },
-      {
-        columnId: 'category',
-        searchKey: 'category',
-        type: 'array',
-      },
     ],
   })
 
-  // 获取分类数据
+  // 店铺列表（用于筛选）
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchStores = async () => {
+      const userId = auth.user?.id
+      if (!userId) return
+
       try {
-        const categories = await queryGoodClassList('00000001', 1, 100)
-        const tree = convertToCategoryTree(categories)
-        setCategoryTree(tree)
+        const response = await getUserShopList({
+          hzkjAccountId: userId,
+          pageNo: 0,
+          pageSize: 100,
+        })
+
+        const options = response.list
+          .filter(
+            (shop: ShopListItem) =>
+              !!shop.id && String(shop.enable ?? '1') !== '0'
+          )
+          .map((shop: ShopListItem) => ({
+            label: shop.name || shop.platform || String(shop.id || ''),
+            value: String(shop.id || ''),
+          }))
+
+        setStoreOptions(options)
       } catch (error) {
+        console.error('Failed to fetch stores:', error)
         toast.error(
           error instanceof Error
             ? error.message
-            : 'Failed to load categories. Please try again.'
+            : 'Failed to load stores. Please try again.'
         )
-        setCategoryTree([])
+        setStoreOptions([])
       }
     }
 
-    void fetchCategories()
-  }, [])
-
-  // 处理分类变化
-  const handleCategoryChange = (value: string, checked: boolean) => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev)
-      if (checked) {
-        next.add(value)
-      } else {
-        next.delete(value)
-      }
-      return next
-    })
-  }
+    void fetchStores()
+  }, [auth.user?.id])
 
   // 当搜索条件改变时，重置到第一页
   useEffect(() => {
@@ -219,7 +134,7 @@ export function PublishedProductsTable({ status }: DataTableProps) {
     }
   }, [searchValue, pagination.pageSize, onPaginationChange])
 
-  // 从 columnFilters 中获取选中的店铺ID
+  // 仅在工具栏「Store」中选择了店铺时才有值；未选择时接口传空字符串
   const selectedShopId = useMemo(() => {
     const storeNameFilter = columnFilters.find((f) => f.id === 'storeName')
     if (
@@ -227,7 +142,7 @@ export function PublishedProductsTable({ status }: DataTableProps) {
       Array.isArray(storeNameFilter.value) &&
       storeNameFilter.value.length > 0
     ) {
-      return storeNameFilter.value[0] as string
+      return String(storeNameFilter.value[0])
     }
     return null
   }, [columnFilters])
@@ -258,11 +173,13 @@ export function PublishedProductsTable({ status }: DataTableProps) {
 
       setIsLoading(true)
       try {
-        // 构建请求参数
-        const requestData: any = {
+        // 构建请求参数（未选店铺时不传 hzkj_push_shop_id）
+        const requestData: QueryPushProductsListRequest['data'] = {
           hzkj_customer_id: String(customerId),
           hzkj_issuccess: hzkj_issuccess,
-          hzkj_push_shop_id: selectedShopId || '2337110780475925504', // 使用选中的店铺ID
+        }
+        if (selectedShopId) {
+          requestData.hzkj_push_shop_id = selectedShopId
         }
 
         // 如果有搜索值，添加 str 字段
@@ -427,14 +344,14 @@ export function PublishedProductsTable({ status }: DataTableProps) {
           // 当点击搜索按钮时，更新搜索状态，触发 API 调用
           setSearchValue(searchValue)
         }}
-        customFilterSlot={
-          <CategoryTreeFilterPopover
-            title='All categories'
-            categories={categoryTree}
-            selectedValues={selectedCategories}
-            onValueChange={handleCategoryChange}
-          />
-        }
+        filters={[
+          {
+            columnId: 'storeName',
+            title: 'Store',
+            options: storeOptions,
+            singleSelect: true,
+          },
+        ]}
       />
       <div className='overflow-hidden rounded-md border'>
         <Table>

@@ -19,11 +19,11 @@ export function StoreProducts() {
         <HeaderActions />
       </Header>
 
-      <Main fluid>
+      <Main fluid className='flex min-h-0 flex-1 flex-col'>
         <Tabs
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as AssociateStatus)}
-          className='w-full'
+          className='flex min-h-0 w-full flex-1 flex-col'
         >
           <TabsList className='grid w-fit grid-cols-2'>
             <TabsTrigger
@@ -47,8 +47,11 @@ export function StoreProducts() {
               </div>
             </TabsContent>
           ) : (
-            <TabsContent value='not-associated' className='mt-4'>
-              <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+            <TabsContent
+              value='not-associated'
+              className='mt-4 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden'
+            >
+              <div className='-mx-4 flex min-h-0 flex-1 flex-col px-4 py-1'>
                 <NotAssociatedConnectionView key='not-associated-tab-content' />
               </div>
             </TabsContent>

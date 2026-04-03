@@ -16,7 +16,12 @@ import { HelpCircle } from 'lucide-react'
 import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { deleteOrder, queryOrder, updateSalOutOrder } from '@/lib/api/orders'
+import {
+  deleteOrder,
+  queryOrder,
+  updateOrderCancelStatus,
+  updateSalOutOrder,
+} from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -330,15 +335,40 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
+  const handleCancel = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await updateOrderCancelStatus({
+        customerId: String(customerId),
+        orderId: String(orderId),
+        orderType: 'sampleOrder',
+      })
+      toast.success('Order cancelled successfully')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to cancel order. Please try again.'
+      )
+    }
+  }
+
   const columns = useMemo(
     () =>
       createSampleOrdersColumns({
         onPay: handlePay,
+        onCancel: handleCancel,
         onEditAddress: handleEditAddress,
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    [auth.user?.customerId, handleDelete]
+    [auth.user?.customerId, handleCancel, handleDelete]
   )
 
   const table = useReactTable({

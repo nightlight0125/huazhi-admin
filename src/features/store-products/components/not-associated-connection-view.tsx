@@ -7,6 +7,7 @@ import {
   querySkuByCustomer,
   type ShopifyUnconnectedProductItem,
 } from '@/lib/api/products'
+import { getPageNumbers } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -18,7 +19,6 @@ import {
 } from '@/components/ui/select'
 import { ProductsConnectionDialog } from './products-connection-dialog'
 import { StoreProductsPrimaryButtons } from './store-products-primary-buttons'
-import { getPageNumbers } from '@/lib/utils'
 import { useStoreProducts } from './store-products-provider'
 
 // StoreProductItem 现在使用 API 返回的类型
@@ -360,7 +360,7 @@ export function NotAssociatedConnectionView() {
       setIsLoadingTeemDropProducts(true)
       try {
         const result = await querySkuByCustomer(
-          undefined, // goodId 不传，后端请求中不会包含 hzkj_good_id 字段
+          undefined,
           String(customerId),
           '0', // hzkj_public 默认 "0"
           tdPage,
@@ -400,61 +400,67 @@ export function NotAssociatedConnectionView() {
 
   return (
     <>
-      <div className='flex min-h-0 flex-1 items-start gap-6 overflow-hidden px-1'>
-        {/* 左侧：Store Products */}
-        <div className='flex min-h-0 flex-1 flex-col overflow-y-auto pr-6'>
+      <div className='flex h-[calc(100vh-13rem)] min-h-[360px] w-full min-w-0 flex-1 gap-6 overflow-hidden px-1'>
+        {/* 左侧：Store Products — 头部固定，列表滚动，分页贴底 */}
+        <div className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pr-6'>
           <div className='mb-4 shrink-0'>
             <h3 className='mb-4 text-sm font-semibold'>Store Products</h3>
             <div className='flex h-10 items-center gap-2'>
-            <Input
-              placeholder='enter store product\name\ID'
-              value={storeSearchValue}
-              onChange={(e) => setStoreSearchValue(e.target.value)}
-              className='border-border focus-visible:ring-ring h-8 w-[280px] rounded-md focus-visible:ring-2'
-            />
-            <Button
-              onClick={handleStoreSearch}
-              className='h-8 rounded-md bg-orange-500 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-orange-600 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2'
-              size='sm'
-            >
-              <Search className='mr-2 h-4 w-4' />
-              Search
-            </Button>
+              <Input
+                placeholder='enter store product\name\ID'
+                value={storeSearchValue}
+                onChange={(e) => setStoreSearchValue(e.target.value)}
+                className='border-border focus-visible:ring-ring h-8 w-[280px] rounded-md focus-visible:ring-2'
+              />
+              <Button
+                onClick={handleStoreSearch}
+                className='h-8 rounded-md bg-orange-500 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-orange-600 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2'
+                size='sm'
+              >
+                <Search className='mr-2 h-4 w-4' />
+                Search
+              </Button>
             </div>
           </div>
-          <div className='min-h-0 flex-1 space-y-3'>
-            {storeProducts.length > 0 ? (
-              storeProducts.map((product) => {
-                const productId = (product as any).productId || product.id
-                const isSelected = selectedStoreProductId === productId
+          <div className='bg-background min-h-0 flex-1 overflow-y-auto pr-1'>
+            {isLoadingStoreProducts ? (
+              <div className='text-muted-foreground py-8 text-center text-sm'>
+                Loading...
+              </div>
+            ) : storeProducts.length > 0 ? (
+              <div className='space-y-3 pb-1'>
+                {storeProducts.map((product) => {
+                  const productId = (product as any).productId || product.id
+                  const isSelected = selectedStoreProductId === productId
 
-                return (
-                  <div
-                    key={productId}
-                    className={`relative flex h-[112px] cursor-pointer items-stretch rounded-lg border p-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-                    onClick={() => handleStoreProductSelect(product.id)}
-                  >
-                    <div className='flex min-h-0 flex-1 items-start gap-3'>
-                      <img
-                        src={product.image}
-                        alt={product.description}
-                        className='h-16 w-16 shrink-0 rounded object-cover'
-                      />
-                      <div className='min-w-0 flex-1'>
-                        <p className='mb-1 line-clamp-3 text-sm break-words'>
-                          {product.description}
-                        </p>
-                        <p className='text-muted-foreground text-xs'>
-                          Product ID:{' '}
-                          {typeof productId === 'string'
-                            ? productId
-                            : String(productId || '')}
-                        </p>
+                  return (
+                    <div
+                      key={productId}
+                      className={`relative flex h-[112px] cursor-pointer items-stretch rounded-lg border p-3 transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                      onClick={() => handleStoreProductSelect(product.id)}
+                    >
+                      <div className='flex min-h-0 flex-1 items-start gap-3'>
+                        <img
+                          src={product.image}
+                          alt={product.description}
+                          className='h-16 w-16 shrink-0 rounded object-cover'
+                        />
+                        <div className='min-w-0 flex-1'>
+                          <p className='mb-1 line-clamp-3 text-sm break-words'>
+                            {product.description}
+                          </p>
+                          <p className='text-muted-foreground text-xs'>
+                            Product ID:{' '}
+                            {typeof productId === 'string'
+                              ? productId
+                              : String(productId || '')}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })
+                  )
+                })}
+              </div>
             ) : (
               <div className='text-muted-foreground mt-4 text-center text-sm'>
                 No products found
@@ -462,108 +468,106 @@ export function NotAssociatedConnectionView() {
             )}
           </div>
 
-          {isLoadingStoreProducts ? (
-            <div className='text-muted-foreground mt-4 text-center text-sm'>
-              Loading...
+          {!isLoadingStoreProducts && totalStoreProducts > 0 ? (
+            <div className='bg-background shrink-0 border-t pt-3'>
+              <PaginationControl
+                page={storePage}
+                pageSize={storePageSize}
+                totalItems={totalStoreProducts}
+                onPageChange={setStorePage}
+                onPageSizeChange={(size) => {
+                  setStorePageSize(size)
+                  setStorePage(1)
+                }}
+              />
             </div>
-          ) : totalStoreProducts > 0 ? (
-            <PaginationControl
-              page={storePage}
-              pageSize={storePageSize}
-              totalItems={totalStoreProducts}
-              onPageChange={setStorePage}
-              onPageSizeChange={(size) => {
-                setStorePageSize(size)
-                setStorePage(1)
-              }}
-            />
           ) : null}
         </div>
 
-        <div className='flex min-h-0 flex-1 flex-col overflow-y-auto pl-6'>
+        {/* 右侧：HyperZone — 同上 */}
+        <div className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pl-6'>
           <div className='mb-4 shrink-0'>
             <h3 className='mb-4 text-sm font-semibold'>HyperZone Products</h3>
             <div className='flex h-10 items-center'>
               <StoreProductsPrimaryButtons />
             </div>
           </div>
-          <div className='min-h-0 flex-1 space-y-3'>
+          <div className='bg-background min-h-0 flex-1 overflow-y-auto pr-1'>
             {isLoadingTeemDropProducts ? (
-              <div className='text-muted-foreground mt-4 text-center text-sm'>
+              <div className='text-muted-foreground py-8 text-center text-sm'>
                 Loading...
               </div>
             ) : teemDropProducts.length > 0 ? (
-              teemDropProducts.map((product) => {
-                const isConnectedToSelected =
-                  !!selectedStoreProductId &&
-                  !!product.id &&
-                  isConnected(selectedStoreProductId, product.id)
-                return (
-                  <div
-                    key={product.id}
-                    className={`relative flex h-[112px] items-stretch rounded-lg border p-3 transition-colors ${
-                      isConnectedToSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className='flex min-h-0 flex-1 items-start gap-3'>
-                      {product.hzkj_picturefield ? (
-                        <img
-                          src={product.hzkj_picturefield}
-                          className='h-16 w-16 shrink-0 rounded object-cover'
-                        />
-                      ) : (
-                        <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded bg-gray-100 text-[10px] text-gray-400'>
-                          No Img
+              <div className='space-y-3 pb-1'>
+                {teemDropProducts.map((product) => {
+                  const isConnectedToSelected =
+                    !!selectedStoreProductId &&
+                    !!product.id &&
+                    isConnected(selectedStoreProductId, product.id)
+                  return (
+                    <div
+                      key={product.id}
+                      className={`relative flex h-[112px] items-stretch rounded-lg border p-3 transition-colors ${
+                        isConnectedToSelected
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className='flex min-h-0 flex-1 items-start gap-3'>
+                        {product.hzkj_picturefield ? (
+                          <img
+                            src={product.hzkj_picturefield}
+                            className='h-16 w-16 shrink-0 rounded object-cover'
+                          />
+                        ) : (
+                          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded bg-gray-100 text-[10px] text-gray-400'>
+                            No Img
+                          </div>
+                        )}
+                        <div className='min-w-0 flex-1'>
+                          <p className='mb-1 line-clamp-3 text-sm break-words'>
+                            {typeof product.hzkj_good_hzkj_enname === 'string'
+                              ? product.hzkj_good_hzkj_enname
+                              : String(product.hzkj_good_hzkj_enname || '')}
+                          </p>
+                          <p className='text-muted-foreground text-xs'>
+                            SPU: {product.number}
+                          </p>
                         </div>
-                      )}
-                      <div className='min-w-0 flex-1'>
-                        <p className='mb-1 line-clamp-3 text-sm break-words'>
-                          {typeof product.hzkj_bg_enname === 'string'
-                            ? product.hzkj_bg_enname
-                            : String(product.hzkj_bg_enname || '')}
-                        </p>
-                        <p className='text-muted-foreground text-xs'>
-                          SPU: {product.number}
-                        </p>
+                        {selectedStoreProductId && (
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            className='h-7 shrink-0 px-3 text-xs'
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const selectedStoreProduct = storeProducts.find(
+                                (p) => {
+                                  const pId = (p as any).productId || p.id
+                                  return pId === selectedStoreProductId
+                                }
+                              )
+                              const leftProductId =
+                                (selectedStoreProduct as any)?.productId ||
+                                selectedStoreProduct?.id ||
+                                selectedStoreProductId
+
+                              const rightProductId = product.id || ''
+
+                              setDialogLeftProductId(leftProductId)
+                              setDialogRightProductId(rightProductId)
+
+                              setConnectionDialogOpen(true)
+                            }}
+                          >
+                            Connect
+                          </Button>
+                        )}
                       </div>
-                      {selectedStoreProductId && (
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='h-7 shrink-0 px-3 text-xs'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            // 获取左侧选中产品的 productId
-                            const selectedStoreProduct = storeProducts.find(
-                              (p) => {
-                                const pId = (p as any).productId || p.id
-                                return pId === selectedStoreProductId
-                              }
-                            )
-                            const leftProductId =
-                              (selectedStoreProduct as any)?.productId ||
-                              selectedStoreProduct?.id ||
-                              selectedStoreProductId
-
-                            // 获取右侧当前点击的产品的 id
-                            const rightProductId = product.id || ''
-
-                            // 保存这两个 ID，传递给弹框
-                            setDialogLeftProductId(leftProductId)
-                            setDialogRightProductId(rightProductId)
-
-                            setConnectionDialogOpen(true)
-                          }}
-                        >
-                          Connect
-                        </Button>
-                      )}
                     </div>
-                  </div>
-                )
-              })
+                  )
+                })}
+              </div>
             ) : (
               <div className='text-muted-foreground mt-4 text-center text-sm'>
                 No products found
@@ -571,17 +575,19 @@ export function NotAssociatedConnectionView() {
             )}
           </div>
 
-          {isLoadingTeemDropProducts ? null : totalTeemDropProducts > 0 ? (
-            <PaginationControl
-              page={tdPage}
-              pageSize={tdPageSize}
-              totalItems={totalTeemDropProducts}
-              onPageChange={setTdPage}
-              onPageSizeChange={(size) => {
-                setTdPageSize(size)
-                setTdPage(1) // 改变页面大小时重置到第一页
-              }}
-            />
+          {!isLoadingTeemDropProducts && totalTeemDropProducts > 0 ? (
+            <div className='bg-background shrink-0 border-t pt-3'>
+              <PaginationControl
+                page={tdPage}
+                pageSize={tdPageSize}
+                totalItems={totalTeemDropProducts}
+                onPageChange={setTdPage}
+                onPageSizeChange={(size) => {
+                  setTdPageSize(size)
+                  setTdPage(1)
+                }}
+              />
+            </div>
           ) : null}
         </div>
       </div>

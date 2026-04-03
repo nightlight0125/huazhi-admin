@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import {
+  addCuOdPdPackageAPI,
   addCuShopPackage,
   queryBindMaterialApi,
   queryCustomerBindPackageAPI,
@@ -28,6 +29,7 @@ interface ApplyPackagingDialogProps {
   storeSku: StoreSku | null
   onConfirm?: (selectedProducts: PackagingProduct[]) => void
   hideProductDetails?: boolean
+  tabType?: 'products' | 'order' | 'stores'
 }
 
 export function ApplyPackagingDialog({
@@ -36,6 +38,7 @@ export function ApplyPackagingDialog({
   storeSku,
   onConfirm,
   hideProductDetails = false,
+  tabType = 'products',
 }: ApplyPackagingDialogProps) {
   const [skuSearch, setSkuSearch] = useState('')
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
@@ -232,23 +235,40 @@ export function ApplyPackagingDialog({
     }
 
     try {
-      const shopId = selectedShopId
+      const orderProductId = String(storeSku.id || '')
       const packageId = String(
         selectedProduct.id ||
           selectedProduct.hzkj_shop_package_id ||
           selectedProduct.hzkj_shop_pd_package_id
       )
 
-      const payload = {
-        data: [
-          {
-            hzkj_shop_id: shopId,
-            hzkj_shop_pk_entry: [{ hzkj_shop_package_id: packageId }],
-          },
-        ],
-      }
+      // Add New Packaging（hideProductDetails）：店铺绑定包装 → addCuShopPackage
+      if (hideProductDetails) {
+        await addCuShopPackage({
+          data: [
+            {
+              hzkj_shop_id: String(selectedShopId),
+              hzkj_shop_pk_entry: [
+                { hzkj_shop_package_id: packageId },
+              ],
+            },
+          ],
+        })
+      } else {
+        const payload = {
+          data: [
+            {
+              id: orderProductId,
+              hzkj_shop_pd_package_id: packageId,
+              // 规则：Products tab = 2；Order/Store tab = 1
+              hzkj_package_type: tabType === 'products' ? '2' : '1',
+              hzkj_order_pd_pk_qty: 1,
+            },
+          ],
+        }
 
-      await addCuShopPackage(payload)
+        await addCuOdPdPackageAPI(payload)
+      }
 
       toast.success('Packaging applied successfully')
 

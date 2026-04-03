@@ -589,7 +589,11 @@ export function PackagingConnection() {
                           {tab.label}
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side='bottom' className='max-w-xs'>
+                      <TooltipContent
+                        side='top'
+                        align='start'
+                        className='max-w-[320px] whitespace-normal break-words px-2 py-1.5 text-xs leading-5'
+                      >
                         <p>{tab.tip}</p>
                       </TooltipContent>
                     </Tooltip>
@@ -685,6 +689,7 @@ export function PackagingConnection() {
         storeSku={selectedStoreSku}
         onConfirm={handleConnectDialogConfirm}
         hideProductDetails={addNewPackagingMode}
+        tabType={activeTab}
       />
       <DisconnectConfirmDialog
         open={disconnectDialogOpen}

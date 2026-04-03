@@ -326,7 +326,10 @@ export function OrdersModifyProductDialog({
     setAddProductDialogOpen(true)
   }
 
-  const handleAddProductConfirm = (newProduct: OrderProduct) => {
+  const handleAddProductConfirm = (
+    newProduct: OrderProduct,
+    _rawSku?: Record<string, unknown>
+  ) => {
     const editableProduct: EditableProduct = {
       ...newProduct,
       isEditing: false,

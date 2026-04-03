@@ -21,6 +21,9 @@ interface AuthUser {
 }
 
 interface AuthState {
+  /** 用户主动退出登录流程中：用于屏蔽全局 toast / 查询错误提示 */
+  signingOut: boolean
+  setSigningOut: (value: boolean) => void
   auth: {
     user: AuthUser | null
     setUser: (user: AuthUser | null) => void
@@ -60,6 +63,8 @@ export const useAuthStore = create<AuthState>()((set) => {
   }
   
   return {
+    signingOut: false,
+    setSigningOut: (value) => set({ signingOut: value }),
     auth: {
       user: initUser,
       setUser: (user) =>
@@ -93,6 +98,15 @@ export const useAuthStore = create<AuthState>()((set) => {
         }),
       reset: () =>
         set((state) => {
+          const currentUser = state.auth.user
+          const customerId = currentUser?.customerId || currentUser?.id
+          if (customerId) {
+            try {
+              const storageKey = `dashboard_reminder_shown_${customerId}`
+              sessionStorage.removeItem(storageKey)
+            } catch (error) {
+            }
+          }
           removeCookie(ACCESS_TOKEN)
           localStorage.removeItem(ROLES_STORAGE_KEY)
           localStorage.removeItem(USER_STORAGE_KEY)

@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { useOrders } from './orders-provider'
 
 interface OrdersSyncDialogProps {
   open: boolean
@@ -26,6 +27,7 @@ export function OrdersSyncDialog({
   onOpenChange,
 }: OrdersSyncDialogProps) {
   const { auth } = useAuthStore()
+  const { triggerRefresh } = useOrders()
   const [stores, setStores] = useState<ShopOption[]>([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [selectedStores, setSelectedStores] = useState<string[]>([])
@@ -126,6 +128,7 @@ export function OrdersSyncDialog({
 
       toast.success(`Sync completed successfully!\nStores: ${storesToSync}`)
       onOpenChange(false)
+      triggerRefresh()
 
       // 重置状态
       setSelectedStores([])
@@ -166,9 +169,7 @@ export function OrdersSyncDialog({
         </DialogHeader>
 
         <div className='space-y-6 py-4'>
-          {/* 店铺选择 */}
           <div className='space-y-3'>
-            {/* 全部店铺开关 */}
             <div className='flex items-center space-x-2'>
               <Checkbox
                 id='sync-all-stores'

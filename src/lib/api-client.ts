@@ -1,5 +1,5 @@
-import { useAuthStore } from '@/stores/auth-store'
 import { redirectToExpiredIfNeeded } from '@/lib/build-expiration'
+import { useAuthStore } from '@/stores/auth-store'
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -71,8 +71,9 @@ apiClient.interceptors.request.use(
       return config
     }
 
-    if (!token || !auth.user?.id) {
-      const error = new Error('User not authenticated. Please login again.')
+    if (!token) {
+      // 未登录/已退出：不再抛出带文案的错误，避免在退出时出现多余的全局提示
+      const error = new Error('')
       // @ts-expect-error - 添加自定义属性
       error.isAuthError = true
       return Promise.reject(error)
@@ -350,6 +351,17 @@ apiClient.interceptors.response.use(
           )}`
         }
       }
+
+      // 认证类错误在这里统一吃掉，避免在退出登录等场景出现空白或重复的 toast
+      return Promise.reject(
+        new AxiosError(
+          '',
+          error.code,
+          error.config,
+          error.request,
+          error.response
+        )
+      )
     }
     return Promise.reject(error)
   }

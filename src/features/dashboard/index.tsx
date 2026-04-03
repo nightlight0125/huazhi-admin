@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import {
-  getReminder,
-  getNowReminder,
-  type ReminderItem,
-} from '@/lib/api/base'
+import { getNowReminder, getReminder, type ReminderItem } from '@/lib/api/base'
 import {
   orderCountStatistics,
   type OrderCountStatisticsData,
@@ -48,13 +44,9 @@ export function Dashboard() {
   // 获取客户用户信息
   useEffect(() => {
     const fetchCustomerUser = async () => {
-      const userId = authUser?.id
-      if (!userId) {
-        return
-      }
-
+      const customerId = authUser?.customerId || ''
       try {
-        const userData = await queryCustomerUser(userId, 1, 10)
+        const userData = await queryCustomerUser(customerId, 1, 10)
         setCustomerUser(userData)
       } catch (error) {
         toast.error(
@@ -72,11 +64,7 @@ export function Dashboard() {
   // 获取订单数量统计
   useEffect(() => {
     const fetchOrderStats = async () => {
-      const customerId = authUser?.customerId || authUser?.id
-      if (!customerId) {
-        return
-      }
-
+      const customerId = authUser?.customerId
       try {
         const stats = await orderCountStatistics(String(customerId))
         setOrderStats(stats)
@@ -117,6 +105,34 @@ export function Dashboard() {
 
     void fetchReminders()
   }, [])
+
+  // 登录进入首页时，自动弹出当前提醒（默认展示第一条，每次登录弹一次）
+  useEffect(() => {
+    const customerId = authUser?.customerId || authUser?.id
+    if (!customerId) return
+
+    const storageKey = `dashboard_reminder_shown_${customerId}`
+    if (sessionStorage.getItem(storageKey) === '1') {
+      return
+    }
+
+    void (async () => {
+      try {
+        setReminderDetailLoading(true)
+        const detail = await getNowReminder(String(customerId))
+        if (detail) {
+          setSelectedReminder(detail as ReminderItem)
+          setShowReminderDialog(true)
+          sessionStorage.setItem(storageKey, '1')
+        }
+      } catch (error) {
+        // 首次自动弹出的失败这里只打日志，不打扰用户
+        console.error('Failed to auto-open reminder on dashboard:', error)
+      } finally {
+        setReminderDetailLoading(false)
+      }
+    })()
+  }, [authUser?.customerId, authUser?.id])
 
   // 处理点击 Read More：打开弹框并调用 getNowReminder 接口获取详情
   const handleReadMore = async (reminder: ReminderItem) => {
@@ -352,17 +368,9 @@ export function Dashboard() {
                     <CardContent className='flex items-center justify-between py-3'>
                       <div className='flex items-center gap-3'>
                         <div className='flex flex-col items-center gap-1'>
-                          {user.picture ? (
-                            <img
-                              src={user.picture}
-                              alt={user.username}
-                              className='h-12 w-12 rounded-full object-cover'
-                            />
-                          ) : (
-                            <div className='bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full text-xl font-bold'>
-                              {user.username?.charAt(0)?.toUpperCase() || 'U'}
-                            </div>
-                          )}
+                          <div className='bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full text-xl font-bold'>
+                            {user.username?.charAt(0)?.toUpperCase() || 'U'}
+                          </div>
                           <p className='text-sm font-semibold'>
                             {user.username || ''}
                           </p>
@@ -504,55 +512,36 @@ export function Dashboard() {
 
       {/* Reminder Detail Dialog */}
       <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
-        <DialogContent className='sm:max-w-lg'>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedReminder?.hzkj_textfield || 'Notification Details'}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent
+          className='flex max-h-[90vh] w-[min(100vw-2rem,66vw)] max-w-[min(100vw-2rem,66vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,66vw)]'
+        >
           {reminderDetailLoading ? (
-            <div className='flex min-h-[120px] items-center justify-center py-8'>
+            <div className='flex min-h-[200px] items-center justify-center p-8'>
               <Loader2 className='text-muted-foreground h-8 w-8 animate-spin' />
             </div>
           ) : selectedReminder ? (
-            <div className='space-y-4 py-4'>
-              <div className='flex justify-between gap-4 text-sm'>
-                <span className='text-muted-foreground shrink-0'>Bill No:</span>
-                <span className='font-medium'>
-                  {selectedReminder.billno || '-'}
-                </span>
-              </div>
-              <div className='flex justify-between gap-4 text-sm'>
-                <span className='text-muted-foreground shrink-0'>
-                  Text Field:
-                </span>
-                <span className='font-medium'>
-                  {selectedReminder.hzkj_textfield || '-'}
-                </span>
-              </div>
-              <div className='flex justify-between gap-4 text-sm'>
-                <span className='text-muted-foreground shrink-0'>
-                  Effective Start Date:
-                </span>
-                <span className='font-medium'>
+            <>
+              <DialogHeader className='space-y-2 px-8 pt-8 pb-4 text-center sm:text-center'>
+                <DialogTitle className='text-xl leading-snug'>
+                  {selectedReminder.hzkj_textfield || 'Notification Details'}
+                </DialogTitle>
+                <p className='text-muted-foreground text-sm'>
                   {formatDate(
                     ((selectedReminder as Record<string, unknown>)
                       .createtime as string | undefined) ??
                       selectedReminder.hzkj_effective_time_startdate
                   )}
-                </span>
-              </div>
-              <div className='space-y-2'>
-                <p className='text-muted-foreground text-sm'>Content:</p>
+                </p>
+              </DialogHeader>
+              <div className='border-border flex min-h-0 flex-1 flex-col overflow-y-auto border-t px-8 pb-8'>
                 <div
-                  className='text-muted-foreground prose prose-sm max-w-none text-sm'
+                  className='prose prose-sm dark:prose-invert text-foreground mt-4 max-w-none text-left [&_img]:max-w-full [&_p]:leading-relaxed'
                   dangerouslySetInnerHTML={{
-                    __html:
-                      selectedReminder.hzkj_richtextfield || '<p>-</p>',
+                    __html: selectedReminder.hzkj_richtextfield || '<p>-</p>',
                   }}
                 />
               </div>
-            </div>
+            </>
           ) : null}
         </DialogContent>
       </Dialog>

@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { CheckCircle2 } from 'lucide-react'
+import { useAuthStore } from '@/stores/auth-store'
 import { UserAuthForm } from './components/user-auth-form'
 
 const reasons = [
@@ -15,6 +17,12 @@ export function SignIn() {
   const { redirect, accountId, bizUserId } = useSearch({
     from: '/(auth)/sign-in',
   })
+  const setSigningOut = useAuthStore((s) => s.setSigningOut)
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setSigningOut(false), 800)
+    return () => window.clearTimeout(t)
+  }, [setSigningOut])
 
   return (
     <div className='bg-background min-h-svh'>

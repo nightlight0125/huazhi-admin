@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getCollectSKUsList } from '@/lib/api/products'
+import { resolvePictureUrl } from '@/lib/resolve-picture-url'
 import { cn, getPageNumbers } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,18 +31,6 @@ import {
 } from '@/components/ui/select'
 
 type MyProductItem = Record<string, unknown>
-
-const API_BASE = 'https://test.hzdrop.com/kapi/'
-const ORIGIN = 'https://test.hzdrop.com'
-
-function resolvePictureUrl(picture: unknown): string {
-  const raw = typeof picture === 'string' ? picture.trim() : ''
-  if (!raw) return ''
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
-  if (raw.startsWith('//')) return `https:${raw}`
-  if (raw.startsWith('/')) return `${ORIGIN}${raw}`
-  return `${API_BASE}${raw.replace(/^\//, '')}`
-}
 
 interface SelectMyProductDialogProps {
   open: boolean

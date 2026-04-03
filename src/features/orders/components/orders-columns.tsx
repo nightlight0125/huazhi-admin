@@ -92,6 +92,80 @@ function OrderDeleteCell({ row, onDelete }: OrderDeleteCellProps) {
   )
 }
 
+interface OrderCancelCellProps {
+  row: Row<Order>
+  onCancel?: (orderId: string) => void | Promise<void>
+}
+
+function OrderCancelCell({ row, onCancel }: OrderCancelCellProps) {
+  const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const order = row.original
+
+  const handleConfirmCancel = async () => {
+    if (!onCancel) return
+    setIsLoading(true)
+    try {
+      await onCancel(order.id)
+      setOpen(false)
+    } catch (error) {
+      console.error('取消订单失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant='ghost'
+        size='sm'
+        className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary h-8 px-1.5 hover:bg-transparent dark:hover:bg-transparent'
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        Cancel
+      </Button>
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) {
+            setOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmCancel}
+        destructive
+        isLoading={isLoading}
+        title='Cancel order'
+        desc={
+          <>
+            <p className='mb-2'>
+              Are you sure to cancel this order?
+              <br />
+            </p>
+            <p className='text-muted-foreground text-sm'>
+              Order Number: <strong>{order.orderNumber}</strong>
+            </p>
+          </>
+        }
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Cancelling...
+            </>
+          ) : (
+            'Confirm'
+          )
+        }
+      />
+    </>
+  )
+}
+
 export const createOrdersColumns = (options?: {
   onExpand?: (rowId: string) => void
   expandedRows?: Set<string>
@@ -99,6 +173,7 @@ export const createOrdersColumns = (options?: {
   onEditAddress?: (orderId: string) => void
   onEditCustomerName?: (orderId: string) => void
   onPay?: (orderId: string) => void
+  onCancel?: (orderId: string) => void
   onDelete?: (orderId: string) => void | Promise<void>
   onSelectShippingMethod?: (order: Order) => void
 }): ColumnDef<Order>[] => {
@@ -109,6 +184,7 @@ export const createOrdersColumns = (options?: {
     onEditAddress,
     onEditCustomerName: _onEditCustomerName,
     onPay,
+    onCancel,
     onDelete,
     onSelectShippingMethod,
   } = options || {}
@@ -275,6 +351,43 @@ export const createOrdersColumns = (options?: {
       size: 200,
     },
     {
+      id: 'trackingNumber',
+      header: 'Tracking Number',
+      cell: ({ row }) => {
+        const order = row.original
+        const rawTracking = toDisplayString((order as any).trackingNumber)
+        const trackingNumbers = rawTracking
+          ? rawTracking
+              .split(',')
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : []
+
+        if (trackingNumbers.length === 0) {
+          return <div className='text-sm'>---</div>
+        }
+
+        return (
+          <div className='space-y-1 text-sm'>
+            {trackingNumbers.map((trackingNo, index) => (
+              <div key={`${trackingNo}-${index}`}>
+                <a
+                  href={`https://t.17track.net/zh-cn#nums=${encodeURIComponent(trackingNo)}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-primary hover:underline'
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {trackingNo}
+                </a>
+              </div>
+            ))}
+          </div>
+        )
+      },
+      size: 180,
+    },
+    {
       id: 'shippingCost',
       header: 'Shipping Cost',
       cell: ({ row }) => {
@@ -312,7 +425,6 @@ export const createOrdersColumns = (options?: {
           )
         }
 
-        // 未付款订单：允许点击选择 / 修改物流渠道
         return (
           <button
             type='button'
@@ -373,13 +485,28 @@ export const createOrdersColumns = (options?: {
         const fulfillmentStatus = String(
           order.hzkj_orderstatus ?? ''
         ).toLowerCase()
+        const isUnconnected = fulfillmentStatus === 'no'
+        const isPendingPayment = fulfillmentStatus === '1'
+        const isCancelledOrder = fulfillmentStatus === '0'
         const isPaid =
           fulfillmentStatus === '2' ||
           fulfillmentStatus === '3' ||
           fulfillmentStatus === '4'
+        const showPay = isUnconnected || isPendingPayment
 
         if (isPaid) {
           return <div className='flex items-center gap-0' />
+        }
+
+        if (isCancelledOrder) {
+          return (
+            <div
+              className='flex items-center gap-0'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <OrderDeleteCell row={row} onDelete={onDelete} />
+            </div>
+          )
         }
 
         return (
@@ -387,25 +514,29 @@ export const createOrdersColumns = (options?: {
             className='flex items-center gap-0'
             onClick={(e) => e.stopPropagation()}
           >
-            <Button
-              variant='ghost'
-              size='sm'
-              className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary -mr-1 h-8 px-1.5 hover:bg-transparent dark:hover:bg-transparent'
-              onClick={() => {
-                const hasChannel = order.hzkj_customer_channel_number
-                if (!hasChannel) {
-                  toast.error(
-                    'Please select a shipping method for this order before paying.'
-                  )
-                  return
-                }
-                onPay?.(order.id)
-              }}
-            >
-              <CreditCard className='h-3.5 w-3.5' />
-              Pay
-            </Button>
-            <OrderDeleteCell row={row} onDelete={onDelete} />
+            {showPay ? (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary -mr-1 h-8 px-1.5 hover:bg-transparent dark:hover:bg-transparent'
+                onClick={() => {
+                  const hasChannel = order.hzkj_customer_channel_number
+                  if (!hasChannel) {
+                    toast.error(
+                      'Please select a shipping method for this order before paying.'
+                    )
+                    return
+                  }
+                  onPay?.(order.id)
+                }}
+              >
+                <CreditCard className='h-3.5 w-3.5' />
+                Pay
+              </Button>
+            ) : null}
+            {isPendingPayment && onCancel ? (
+              <OrderCancelCell row={row} onCancel={onCancel} />
+            ) : null}
           </div>
         )
       },

@@ -9,6 +9,8 @@ type OrdersContextType = {
   setOpen: (str: OrdersDialogType | null) => void
   currentRow: Order | null
   setCurrentRow: React.Dispatch<React.SetStateAction<Order | null>>
+  refreshNonce: number
+  triggerRefresh: () => void
 }
 
 const OrdersContext = React.createContext<OrdersContextType | null>(null)
@@ -16,9 +18,23 @@ const OrdersContext = React.createContext<OrdersContextType | null>(null)
 export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useDialogState<OrdersDialogType>(null)
   const [currentRow, setCurrentRow] = useState<Order | null>(null)
+  const [refreshNonce, setRefreshNonce] = useState(0)
+
+  const triggerRefresh = () => {
+    setRefreshNonce((n) => n + 1)
+  }
 
   return (
-    <OrdersContext value={{ open, setOpen, currentRow, setCurrentRow }}>
+    <OrdersContext
+      value={{
+        open,
+        setOpen,
+        currentRow,
+        setCurrentRow,
+        refreshNonce,
+        triggerRefresh,
+      }}
+    >
       {children}
     </OrdersContext>
   )

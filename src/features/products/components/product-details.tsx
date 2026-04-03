@@ -1181,50 +1181,52 @@ export function ProductDetails() {
                       Array.isArray(
                         (apiProduct as Record<string, unknown>)?.hzkj_sku_spec_e
                       ) &&
-                      (
-                        (apiProduct as Record<string, unknown>)
-                          .hzkj_sku_spec_e as Array<{
-                          hzkj_sku_spec_id?: string
-                          hzkj_sku_spec_enname?: string
-                          hzkj_sku_specvalue_e?: Array<{
-                            hzkj_sku_specvalue_id?: string
-                            hzkj_sku_specvalue_enname?: string
+                      <div className='max-h-56 space-y-4 overflow-y-auto pr-1'>
+                        {(
+                          (apiProduct as Record<string, unknown>)
+                            .hzkj_sku_spec_e as Array<{
+                            hzkj_sku_spec_id?: string
+                            hzkj_sku_spec_enname?: string
+                            hzkj_sku_specvalue_e?: Array<{
+                              hzkj_sku_specvalue_id?: string
+                              hzkj_sku_specvalue_enname?: string
+                              [key: string]: unknown
+                            }>
                             [key: string]: unknown
                           }>
-                          [key: string]: unknown
-                        }>
-                      ).map((spec) => (
-                        <div key={spec.hzkj_sku_spec_id || ''}>
-                          <Label className='mb-2 block text-sm font-medium'>
-                            {spec.hzkj_sku_spec_enname || ''}
-                          </Label>
-                          <div className='flex flex-wrap gap-2'>
-                            {Array.isArray(spec.hzkj_sku_specvalue_e) &&
-                              spec.hzkj_sku_specvalue_e.map((value) => (
-                                <Button
-                                  key={value.hzkj_sku_specvalue_id || ''}
-                                  variant={
-                                    selectedSpecs[
-                                      spec.hzkj_sku_spec_id || ''
-                                    ] === value.hzkj_sku_specvalue_id
-                                      ? 'default'
-                                      : 'outline'
-                                  }
-                                  size='sm'
-                                  onClick={() =>
-                                    setSelectedSpecs((prev) => ({
-                                      ...prev,
-                                      [spec.hzkj_sku_spec_id || '']:
-                                        value.hzkj_sku_specvalue_id || '',
-                                    }))
-                                  }
-                                >
-                                  {value.hzkj_sku_specvalue_enname || ''}
-                                </Button>
-                              ))}
+                        ).map((spec) => (
+                          <div key={spec.hzkj_sku_spec_id || ''}>
+                            <Label className='mb-2 block text-sm font-medium'>
+                              {spec.hzkj_sku_spec_enname || ''}
+                            </Label>
+                            <div className='flex flex-wrap gap-2'>
+                              {Array.isArray(spec.hzkj_sku_specvalue_e) &&
+                                spec.hzkj_sku_specvalue_e.map((value) => (
+                                  <Button
+                                    key={value.hzkj_sku_specvalue_id || ''}
+                                    variant={
+                                      selectedSpecs[
+                                        spec.hzkj_sku_spec_id || ''
+                                      ] === value.hzkj_sku_specvalue_id
+                                        ? 'default'
+                                        : 'outline'
+                                    }
+                                    size='sm'
+                                    onClick={() =>
+                                      setSelectedSpecs((prev) => ({
+                                        ...prev,
+                                        [spec.hzkj_sku_spec_id || '']:
+                                          value.hzkj_sku_specvalue_id || '',
+                                      }))
+                                    }
+                                  >
+                                    {value.hzkj_sku_specvalue_enname || ''}
+                                  </Button>
+                                ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>}
 
                     {/* 数量选择器 */}
                     <div>
