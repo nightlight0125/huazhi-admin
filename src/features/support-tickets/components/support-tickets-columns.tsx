@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type ColumnDef, type Row } from '@tanstack/react-table'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Loader2, Minus, Plus, Trash2 } from 'lucide-react'
 import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +14,151 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type SupportTicket } from '../data/schema'
+
+/** 售后明细：兼容 item / items / rows、[0]、或直接为行对象 */
+function getAfterEntryItems(
+  entryEntity: unknown
+): Record<string, unknown>[] {
+  if (entryEntity == null) return []
+  if (Array.isArray(entryEntity)) {
+    return entryEntity.filter(
+      (x) => x && typeof x === 'object'
+    ) as Record<string, unknown>[]
+  }
+  if (typeof entryEntity !== 'object') return []
+
+  const e = entryEntity as Record<string, unknown>
+  const raw = e.item ?? e.items ?? e.rows ?? e.list
+
+  if (Array.isArray(raw)) {
+    return raw.filter((x) => x && typeof x === 'object') as Record<
+      string,
+      unknown
+    >[]
+  }
+  if (raw && typeof raw === 'object') {
+    return [raw as Record<string, unknown>]
+  }
+
+  const at0 = e['0']
+  if (at0 != null && typeof at0 === 'object') {
+    if (Array.isArray(at0)) {
+      return at0.filter((x) => x && typeof x === 'object') as Record<
+        string,
+        unknown
+      >[]
+    }
+    return [at0 as Record<string, unknown>]
+  }
+
+  if (
+    'hzkj_localsku_number' in e ||
+    'hzkj_localsku_hzkj_picturefield' in e ||
+    'hzkj_localsku_hzkj_name' in e
+  ) {
+    return [e]
+  }
+
+  return []
+}
+
+function SupportTicketOrderCell({ row }: { row: Row<SupportTicket> }) {
+  const [expanded, setExpanded] = useState(false)
+  const items = getAfterEntryItems(row.original.hzkj_after_entryentity)
+  const ro = row.original as Record<string, unknown>
+  const orderNo =
+    (ro.hzkj_srcnumber as string | undefined) ??
+    (ro.number as string | undefined) ??
+    (ro.hzOrderNo as string | undefined) ??
+    '--'
+
+  const renderOneLine = (ticket: Record<string, unknown>) => (
+    <div className='flex items-start gap-3'>
+      {ticket.hzkj_localsku_hzkj_picturefield ? (
+        <img
+          src={String(ticket.hzkj_localsku_hzkj_picturefield)}
+          alt=''
+          className='h-12 w-12 flex-shrink-0 rounded border object-cover'
+          onError={(e) => {
+            const target = e.target as HTMLImageElement
+            target.style.display = 'none'
+          }}
+        />
+      ) : (
+        <div className='bg-muted h-12 w-12 flex-shrink-0 rounded border'>
+          <div className='text-muted-foreground flex h-full w-full items-center justify-center text-xs'>
+            No Image
+          </div>
+        </div>
+      )}
+      <div className='min-w-0 flex-1 space-y-0.5 text-sm'>
+        <div>Order NO: {String(orderNo)}</div>
+        <div>SKU: {String(ticket.hzkj_localsku_number ?? '--')}</div>
+        <div>Variant: {String(ticket.hzkj_localsku_hzkj_name ?? '--')}</div>
+        <div>
+          Total Price: $
+          {Number(ticket.hzkj_localsku_hzkj_pur_price ?? 0).toFixed(2)}
+        </div>
+      </div>
+    </div>
+  )
+
+  if (items.length === 0) {
+    return (
+      <div className='text-muted-foreground text-sm'>
+        <div>Order NO: {String(orderNo)}</div>
+        <div>—</div>
+      </div>
+    )
+  }
+
+  const visibleItems = expanded ? items : items.slice(0, 1)
+  const hasMore = items.length > 1
+
+  return (
+    <div className='flex max-w-md flex-col gap-0'>
+      {visibleItems.map((ticket, idx) => (
+        <div
+          key={idx}
+          className={cn(
+            'border-border/60 py-2',
+            idx > 0 && 'border-t'
+          )}
+        >
+          {renderOneLine(ticket)}
+        </div>
+      ))}
+      {hasMore && (
+        <div className='border-border/60 flex justify-center border-t pt-2'>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            className='text-muted-foreground hover:text-foreground h-8 gap-1 px-2 text-xs'
+            onClick={(e) => {
+              e.stopPropagation()
+              setExpanded((v) => !v)
+            }}
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse order lines' : 'Show more orders'}
+          >
+            {expanded ? (
+              <>
+                <Minus className='h-3.5 w-3.5' />
+                Collapse
+              </>
+            ) : (
+              <>
+                <Plus className='h-3.5 w-3.5' />
+                {items.length - 1} more
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface SupportTicketDeleteCellProps {
   row: Row<SupportTicket>
@@ -140,39 +285,7 @@ export const createSupportTicketsColumns = (options?: {
     {
       id: 'hzOrder',
       header: 'Order',
-      cell: ({ row }) => {
-        const entryEntity = row.original.hzkj_after_entryentity
-        const ticket = entryEntity?.item?.[0] || (entryEntity as any)?.[0] || {}
-        return (
-          <div className='flex items-center gap-3'>
-            {ticket.hzkj_localsku_hzkj_picturefield ? (
-              <img
-                src={ticket.hzkj_localsku_hzkj_picturefield}
-                className='h-12 w-12 flex-shrink-0 rounded border object-cover'
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.style.display = 'none'
-                }}
-              />
-            ) : (
-              <div className='bg-muted h-12 w-12 flex-shrink-0 rounded border'>
-                <div className='text-muted-foreground flex h-full w-full items-center justify-center text-xs'>
-                  No Image
-                </div>
-              </div>
-            )}
-            <div className='space-y-0.5 text-sm'>
-              <div>Order NO: {row.original.hzkj_src_number || '--'}</div>
-              <div>SKU: {ticket.hzkj_localsku_number || '--'}</div>
-              <div>Variant: {ticket.hzkj_localsku_hzkj_name || '--'}</div>
-              <div>
-                Total Price: $
-                {(ticket.hzkj_localsku_hzkj_pur_price || 0).toFixed(2)}
-              </div>
-            </div>
-          </div>
-        )
-      },
+      cell: ({ row }) => <SupportTicketOrderCell row={row} />,
       size: 300,
     },
     {
@@ -181,8 +294,8 @@ export const createSupportTicketsColumns = (options?: {
         <DataTableColumnHeader column={column} title='Qty' />
       ),
       cell: ({ row }) => {
-        const entryEntity = row.original.hzkj_after_entryentity
-        const ticket = entryEntity?.item?.[0] || (entryEntity as any)?.[0] || {}
+        const items = getAfterEntryItems(row.original.hzkj_after_entryentity)
+        const ticket = items[0] || {}
         const qty = Number(ticket.hzkj_qty ?? 0)
         return (
           <div className='w-10 text-center text-xs'>

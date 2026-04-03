@@ -21,15 +21,34 @@ export function generateNonce(): string {
 }
 
 // 格式化时间戳
+// 固定返回「北京时间」的时间戳字符串（YYYY-MM-DD HH:mm:ss）
 export function formatTimestamp(): string {
   const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  const hours = String(now.getHours()).padStart(2, '0')
-  const minutes = String(now.getMinutes()).padStart(2, '0')
-  const seconds = String(now.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+
+  // 使用 Intl 按 Asia/Shanghai 时区格式化，再从 parts 中拼接
+  const formatter = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+
+  const parts = formatter.formatToParts(now)
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? ''
+
+  const year = get('year')
+  const month = get('month')
+  const day = get('day')
+  const hour = get('hour')
+  const minute = get('minute')
+  const second = get('second')
+
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
 }
 
 // 获取 Token 请求参数
@@ -74,21 +93,20 @@ export interface MemberLoginResponse {
   [key: string]: unknown
 }
 
-// 业务员 ID 登录 API（/v2/hzkj/hzkj_im_ext/member/idLogin）
 export async function idLogin(
-  accountId: string,
+  userId: string,
   bizUserId: string
 ): Promise<MemberLoginResponse> {
   const response = await apiClient.post<MemberLoginResponse>(
     '/v2/hzkj/hzkj_im_ext/member/idLogin',
-    { accountId, bizUserId }
+    { userId, bizUserId }
   )
 
   const res = response.data
 
   if (!res.status) {
     const errorMessage =
-      res.message || 'ID login failed. Please check accountId and bizUserId.'
+      res.message || 'ID login failed. Please check userId and bizUserId.'
     throw new Error(errorMessage)
   }
 
@@ -180,6 +198,7 @@ export interface SignUpRequest {
     name: string
     phone: string
     password: string
+    emailCode: string
     customerId?: string
     operatorId?: string
   }
@@ -199,6 +218,7 @@ export async function memberSignUp(
   name: string,
   phone: string,
   password: string,
+  emailCode: string,
   referral?: {
     customerId?: string
     operatorId?: string
@@ -210,6 +230,7 @@ export async function memberSignUp(
       name,
       phone,
       password,
+      emailCode,
       customerId: referral?.customerId,
       operatorId: referral?.operatorId,
     },
@@ -219,6 +240,31 @@ export async function memberSignUp(
     '/v2/hzkj/base/member/add',
     requestData
   )
+  return response.data
+}
+
+// ---------- 注册：发送邮箱验证码 ----------
+export interface RegisterSendCodeResponse {
+  status?: boolean
+  message?: string
+  errorCode?: string
+  [key: string]: unknown
+}
+
+/** 向注册邮箱发送验证码 */
+export async function registerSendCode(
+  email: string
+): Promise<RegisterSendCodeResponse> {
+  const response = await apiClient.post<RegisterSendCodeResponse>(
+    '/v2/hzkj/hzkj_ordercenter/member/registerSendCode',
+    { email }
+  )
+  if (response.data.status === false) {
+    throw new Error(
+      response.data.message ||
+        'Failed to send verification code. Please try again.'
+    )
+  }
   return response.data
 }
 

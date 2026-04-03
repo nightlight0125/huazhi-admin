@@ -128,7 +128,6 @@ export function ProductDesign() {
       ...canvasJson,
       backgroundImage: {
         src: productImage,
-        // 保存背景图片的缩放信息
         scaleX: canvas.backgroundImage?.scaleX || 1,
         scaleY: canvas.backgroundImage?.scaleY || 1,
       },

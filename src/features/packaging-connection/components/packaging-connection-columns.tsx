@@ -1,10 +1,10 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { ChevronRight, Link2, Link2Off, Minus, Trash2 } from 'lucide-react'
+import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
-import { cn } from '@/lib/utils'
 import { type StoreSku } from '../data/schema'
 
 export const createPackagingConnectionColumns = (options?: {
@@ -58,13 +58,24 @@ export const createPackagingConnectionColumns = (options?: {
       },
       {
         accessorKey: 'hzkj_pk_shop_name',
-        id: 'store',
-        header: 'Store',
+        id: 'storeName',
+        header: 'Store Name',
         cell: ({ row }) => {
           const item = row.original
           return (
             <div className='text-sm'>{item.hzkj_pk_shop_name || '---'}</div>
           )
+        },
+        filterFn: (row, _id, value) => {
+          if (!value || !Array.isArray(value) || value.length === 0) {
+            return true
+          }
+          const rowStoreId =
+            row.original.hzkj_pk_shop_id != null &&
+            row.original.hzkj_pk_shop_id !== ''
+              ? String(row.original.hzkj_pk_shop_id)
+              : ''
+          return value.some((v) => String(v) === rowStoreId)
         },
         size: 150,
       },
@@ -297,10 +308,14 @@ export const createPackagingConnectionColumns = (options?: {
         if (!value || !Array.isArray(value) || value.length === 0) {
           return true
         }
-        // value 是店铺 ID（来自 storeNameOptions），需用行数据中的 hzkj_od_pd_shop_id 比对
-        const rowStoreId = row.original.hzkj_od_pd_shop_id
-          ? String(row.original.hzkj_od_pd_shop_id)
-          : ''
+        const rowStoreId =
+          row.original.hzkj_od_pd_shop_id != null &&
+          row.original.hzkj_od_pd_shop_id !== ''
+            ? String(row.original.hzkj_od_pd_shop_id)
+            : row.original.hzkj_pk_shop_id != null &&
+                row.original.hzkj_pk_shop_id !== ''
+              ? String(row.original.hzkj_pk_shop_id)
+              : ''
         return value.some((v) => String(v) === rowStoreId)
       },
       size: 150,

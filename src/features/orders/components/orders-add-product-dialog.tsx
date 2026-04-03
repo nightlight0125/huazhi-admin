@@ -1,4 +1,12 @@
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  getSkuByNumber,
+  querySkuByCustomer,
+  type SkuRecordItem,
+} from '@/lib/api/products'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,20 +17,13 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  getSkuByNumber,
-  querySkuByCustomer,
-  type SkuRecordItem,
-} from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import { type OrderProduct } from '../data/schema'
 
 interface OrdersAddProductDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (product: OrderProduct) => void
+  /** Second argument is the raw `getSkuByNumber` payload when the request succeeds. */
+  onConfirm: (product: OrderProduct, rawSku?: Record<string, unknown>) => void
   orderId?: string
   order?: any // 订单对象（保留以保持接口兼容）
   onSuccess?: () => void // 成功回调（保留以保持接口兼容）
@@ -111,8 +112,7 @@ export function OrdersAddProductDialog({
       }
 
       const selectedSkuItem = skuOptions.find(
-        (item) =>
-          ((item as any).number || item.hzkj_sku_number) === sku.trim()
+        (item) => ((item as any).number || item.hzkj_sku_number) === sku.trim()
       )
 
       const newProduct: OrderProduct = {
@@ -173,7 +173,12 @@ export function OrdersAddProductDialog({
         }
       }
 
-      onConfirm(newProduct)
+      onConfirm(
+        newProduct,
+        d && typeof d === 'object' && !Array.isArray(d)
+          ? (d as Record<string, unknown>)
+          : undefined
+      )
       setSku('')
       setQuantity(1)
       onOpenChange(false)

@@ -1,5 +1,6 @@
 const EXPIRED_PATH = '/500'
-const EXPIRE_WINDOW_MS = 60 * 1000 // 1 minute
+// const EXPIRE_WINDOW_MS = 5 * 60 * 1000 // 5 minutes
+const EXPIRE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 function toPositiveNumber(raw: unknown): number | null {
   const parsed = Number(raw)
@@ -16,7 +17,7 @@ function getExpireAtMs(): number | null {
     return explicitExpireAt
   }
 
-  // Fallback: build timestamp + 1 minute.
+  // Fallback: build timestamp + expiration window.
   const buildTimeMs = toPositiveNumber(import.meta.env.VITE_BUILD_TIME_MS)
   if (buildTimeMs != null) {
     return buildTimeMs + EXPIRE_WINDOW_MS

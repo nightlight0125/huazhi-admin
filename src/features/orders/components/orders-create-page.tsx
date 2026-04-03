@@ -3,12 +3,13 @@ import { z } from 'zod'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
-import { Loader2, Search } from 'lucide-react'
+import { Loader2, Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import worldCountries from 'world-countries'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryCountry, type CountryItem } from '@/lib/api/logistics'
 import { addBTOrder } from '@/lib/api/orders'
+import { resolvePictureUrl } from '@/lib/resolve-picture-url'
 import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +37,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import type { OrderProduct } from '../data/schema'
+import { OrdersAddProductDialog } from './orders-add-product-dialog'
 import { SelectMyProductDialog } from './select-my-product-dialog'
 import { SelectStoreProductDialog } from './select-store-product-dialog'
 
@@ -55,30 +58,31 @@ const createFlagIcon = (countryCode: string) => {
   return FlagIcon
 }
 
-// 产品表单验证模式（rawItem 保存完整后端对象，用于后续提交或扩展）
+// Product line: rawItem holds backend row (id/skuId for submit); imageUrl is resolved display URL
 const productFormSchema = z.object({
   id: z.string(),
-  productName: z.string().min(1, '产品名称为必填项'),
+  productName: z.string().min(1, 'Product name is required'),
   productVariants: z.string().optional(),
-  quantity: z.number().min(1, '数量必须大于0'),
-  unitPrice: z.number().min(0, '单价不能为负'),
-  rawItem: z.record(z.string(), z.unknown()).optional(), // 完整后端对象
+  quantity: z.number().min(1, 'Quantity must be at least 1'),
+  unitPrice: z.number().min(0, 'Unit price cannot be negative'),
+  imageUrl: z.string().optional(),
+  rawItem: z.record(z.string(), z.unknown()).optional(),
 })
 
 // 表单验证模式（country/divisionPath/province 与 address-form 级联结构一致）
 const formSchema = z.object({
-  store: z.string().min(1, '店铺为必填项'),
-  customerName: z.string().min(1, '客户名称为必填项'),
-  country: z.string().min(1, '国家为必填项'),
+  store: z.string().min(1, 'Store is required'),
+  customerName: z.string().min(1, 'Customer name is required'),
+  country: z.string().min(1, 'Country is required'),
   divisionPath: z.array(z.string()).optional(), // 多级行政区路径 [省id, 市id, ..., 叶节点id]
   province: z.string().optional(), // 叶子节点行政区 id（提交用 admindivisionId）
-  city: z.string().min(1, '城市为必填项'),
-  address: z.string().min(1, '地址为必填项'),
-  phoneNumber: z.string().min(1, '电话号码为必填项'),
-  email: z.string().email('请输入有效的邮箱地址').optional(),
-  zipCode: z.string().min(1, '邮政编码为必填项'),
+  city: z.string().min(1, 'City is required'),
+  address: z.string().min(1, 'Address is required'),
+  phoneNumber: z.string().min(1, 'Phone number is required'),
+  email: z.string().email('Please enter a valid email').optional(),
+  zipCode: z.string().min(1, 'Zip code is required'),
   taxNumber: z.string().optional(),
-  products: z.array(productFormSchema).min(1, '至少需要一个产品'),
+  products: z.array(productFormSchema).min(1, 'At least one product is required'),
 })
 
 type OrderForm = z.infer<typeof formSchema>
@@ -88,6 +92,7 @@ export function OrdersCreatePage() {
   const { auth } = useAuthStore()
   const [selectStoreProductOpen, setSelectStoreProductOpen] = useState(false)
   const [selectMyProductOpen, setSelectMyProductOpen] = useState(false)
+  const [addProductDialogOpen, setAddProductDialogOpen] = useState(false)
   const [shopList, setShopList] = useState<ShopListItem[]>([])
   const [isLoadingShops, setIsLoadingShops] = useState(false)
 
@@ -218,7 +223,7 @@ export function OrdersCreatePage() {
 
     if (detail.length === 0 || detail.length !== values.products.length) {
       toast.error(
-        'All products must have a valid SKU (add products from Select Store Product or Select My Product)'
+        'Each line needs a valid SKU ID: pick from dialogs, or for manual rows fill in SKU ID.'
       )
       return
     }
@@ -255,13 +260,15 @@ export function OrdersCreatePage() {
   const handleSelectStoreProduct = (items: Record<string, unknown>[]) => {
     items.forEach((item) => {
       const price = Number((item as any).skuPrice ?? 0) || 0
+      const imageUrl = resolvePictureUrl(item.picture)
       appendProduct({
         id: crypto.randomUUID(),
         productName: String(item.skuCName ?? ''),
         productVariants: String(item.skuNumber ?? ''),
         quantity: 1,
         unitPrice: price,
-        rawItem: item, // 保存完整后端对象
+        imageUrl: imageUrl || undefined,
+        rawItem: item,
       })
     })
   }
@@ -280,18 +287,63 @@ export function OrdersCreatePage() {
         (item as any).hzkj_local_sku ??
         (item as any).skuNumber ??
         ''
+      const imageUrl = resolvePictureUrl(item.pic)
       appendProduct({
         id: crypto.randomUUID(),
         productName: String(item.spuName ?? ''),
         productVariants: String(sku),
         quantity: 1,
         unitPrice: price,
+        imageUrl: imageUrl || undefined,
         rawItem: item,
       })
     })
     if (items.length > 0) {
       toast.success(`Added ${items.length} product(s)`)
     }
+  }
+
+  const handleAddProductBySkuConfirm = (
+    product: OrderProduct,
+    rawSku?: Record<string, unknown>
+  ) => {
+    const d = rawSku ?? {}
+    const idFromApi = d.id != null ? String(d.id) : ''
+    const idFromProduct = product.hzkj_local_sku_id
+      ? String(product.hzkj_local_sku_id)
+      : ''
+    const skuId = idFromApi || idFromProduct
+    if (!skuId) {
+      toast.error('Could not resolve SKU ID from the server response.')
+      return
+    }
+    const pic =
+      (typeof d.pic === 'string' && d.pic) ||
+      (typeof d.picture === 'string' && d.picture) ||
+      (typeof (d as { hzkj_picture?: string }).hzkj_picture === 'string' &&
+        (d as { hzkj_picture?: string }).hzkj_picture) ||
+      product.productImageUrl ||
+      ''
+    const number =
+      (typeof d.number === 'string' ? d.number : '') ||
+      product.hzkj_local_sku ||
+      product.hzkj_shop_sku ||
+      ''
+    const rawItem: Record<string, unknown> = {
+      ...d,
+      id: d.id ?? skuId,
+      skuId: d.skuId ?? skuId,
+    }
+    appendProduct({
+      id: crypto.randomUUID(),
+      productName: product.productName || String(number || skuId),
+      productVariants: number,
+      quantity: product.quantity,
+      unitPrice: Number(product.price ?? 0) || 0,
+      imageUrl: resolvePictureUrl(pic) || undefined,
+      rawItem,
+    })
+    toast.success('Product added')
   }
 
   return (
@@ -515,7 +567,7 @@ export function OrdersCreatePage() {
                 <CardTitle className='text-xl font-bold'>
                   Product Info
                 </CardTitle>
-                <div className='flex gap-2'>
+                <div className='flex flex-wrap gap-2'>
                   <Button
                     type='button'
                     variant='outline'
@@ -530,6 +582,13 @@ export function OrdersCreatePage() {
                   >
                     <Search className='mr-2 h-4 w-4' /> Select My Store Product
                   </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => setAddProductDialogOpen(true)}
+                  >
+                    <Plus className='mr-2 h-4 w-4' /> Add Product
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -538,10 +597,12 @@ export function OrdersCreatePage() {
                 <Table>
                   <TableHeader>
                     <TableRow className='bg-purple-50 dark:bg-purple-950/20'>
+                      <TableHead className='w-[72px]'>Image</TableHead>
                       <TableHead>
                         Product Name<span className='text-red-500'>*</span>
                       </TableHead>
                       <TableHead>SKU</TableHead>
+                      <TableHead>SKU ID</TableHead>
                       <TableHead>
                         Quantity<span className='text-red-500'>*</span>
                       </TableHead>
@@ -550,8 +611,42 @@ export function OrdersCreatePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {productFields.map((field, index) => (
+                    {productFields.map((field, index) => {
+                      const rawItem = form.watch(
+                        `products.${index}.rawItem`
+                      ) as Record<string, unknown> | undefined
+                      const imageRaw = form.watch(
+                        `products.${index}.imageUrl`
+                      )
+                      const thumbUrl = resolvePictureUrl(imageRaw)
+                      return (
                       <TableRow key={field.id}>
+                        <TableCell className='align-middle'>
+                          <div className='flex max-w-[120px] flex-col gap-1'>
+                            {thumbUrl ? (
+                              <div className='bg-muted relative h-14 w-14 shrink-0 overflow-hidden rounded border'>
+                                <img
+                                  src={thumbUrl}
+                                  alt=''
+                                  className='h-full w-full object-contain'
+                                  referrerPolicy='no-referrer'
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null
+                                    e.currentTarget.src =
+                                      'data:image/svg+xml,' +
+                                      encodeURIComponent(
+                                        '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect fill="#f0f0f0" width="56" height="56"/><text x="28" y="30" fill="#999" font-size="9" text-anchor="middle">—</text></svg>'
+                                      )
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <div className='text-muted-foreground bg-muted flex h-14 w-14 shrink-0 items-center justify-center rounded border text-[10px]'>
+                                —
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <FormField
                             control={form.control}
@@ -589,6 +684,15 @@ export function OrdersCreatePage() {
                               </FormItem>
                             )}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <span className='text-muted-foreground text-sm'>
+                            {rawItem &&
+                            typeof rawItem === 'object' &&
+                            (rawItem.id ?? rawItem.skuId)
+                              ? String(rawItem.id ?? rawItem.skuId)
+                              : '—'}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <FormField
@@ -656,7 +760,8 @@ export function OrdersCreatePage() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -688,6 +793,11 @@ export function OrdersCreatePage() {
         open={selectStoreProductOpen}
         onOpenChange={setSelectStoreProductOpen}
         onSelect={handleSelectStoreProduct}
+      />
+      <OrdersAddProductDialog
+        open={addProductDialogOpen}
+        onOpenChange={setAddProductDialogOpen}
+        onConfirm={handleAddProductBySkuConfirm}
       />
     </div>
   )

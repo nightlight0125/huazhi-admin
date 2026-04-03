@@ -8,6 +8,8 @@ export const logisticsSchema = z.object({
   shippingMethod: z.string(),
   shippingFrom: z.string(),
   shippingTo: z.string(),
+  /** 后端 priority，如 "0" */
+  priority: z.string().optional(),
   shippingTime: z.string(),
   shippingPrice: z.number(),
   productImage: z.string().optional(),

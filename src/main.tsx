@@ -10,6 +10,14 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import 'flag-icons/css/flag-icons.min.css'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+
+const toastErrorOriginal = toast.error.bind(toast)
+toast.error = ((...args: Parameters<typeof toast.error>) => {
+  if (useAuthStore.getState().signingOut) {
+    return '' as ReturnType<typeof toast.error>
+  }
+  return toastErrorOriginal(...args)
+}) as typeof toast.error
 // Styles
 import { redirectToExpiredIfNeeded } from '@/lib/build-expiration'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -40,6 +48,9 @@ const queryClient = new QueryClient({
     },
     mutations: {
       onError: (error) => {
+        if (useAuthStore.getState().signingOut) {
+          return
+        }
         handleServerError(error)
 
         if (error instanceof AxiosError) {
@@ -52,6 +63,9 @@ const queryClient = new QueryClient({
   },
   queryCache: new QueryCache({
     onError: (error) => {
+      if (useAuthStore.getState().signingOut) {
+        return
+      }
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
           toast.error('Session expired!')

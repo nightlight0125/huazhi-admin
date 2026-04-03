@@ -17,6 +17,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 /* ===================== types ===================== */
 
@@ -285,13 +290,28 @@ export function ProductsConnectionDialog({
           (item: SkuRecordItem & { [key: string]: unknown }) => {
             const id = item.id || item.hzkj_sku_number || ''
             const image = (item as any).hzkj_picturefield as string | undefined
+            const ennameRaw = (item as any).hzkj_good_hzkj_enname
+            const enname =
+              typeof ennameRaw === 'string'
+                ? ennameRaw
+                : ennameRaw && typeof ennameRaw === 'object'
+                  ? (ennameRaw as any).GLang ||
+                    (ennameRaw as any).zh_CN ||
+                    (ennameRaw as any).zh_TW ||
+                    ''
+                  : ''
             return {
               id,
               image: typeof image === 'string' ? image : '',
               name:
-                typeof (item as any).name === 'string'
+                (typeof enname === 'string' && enname.trim() !== ''
+                  ? enname
+                  : '') ||
+                (typeof (item as any).name === 'string'
                   ? ((item as any).name as string)
-                  : item.hzkj_sku_name || id,
+                  : '') ||
+                item.hzkj_sku_name ||
+                id,
               tdSku: item.hzkj_sku_number || '',
             }
           }
@@ -414,14 +434,14 @@ export function ProductsConnectionDialog({
                     <div
                       key={product.variantid}
                       onClick={() => setSelectedStoreProductId(product.id)}
-                      className={`cursor-pointer rounded-lg border p-3 transition ${selected || isConnectedToSameIndex ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
+                      className={`h-[88px] cursor-pointer rounded-lg border p-3 transition ${selected || isConnectedToSameIndex ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
                     >
-                      <div className='flex gap-3'>
+                      <div className='flex h-full items-center gap-3'>
                         <img
                           src={product.picture}
                           className='h-14 w-14 rounded object-cover'
                         />
-                        <div className='flex-1'>
+                        <div className='min-w-0 flex-1'>
                           <p className='text-sm'>
                             {product.description || product.title}
                           </p>
@@ -488,15 +508,26 @@ export function ProductsConnectionDialog({
                     <div
                       key={product.id}
                       onClick={() => handleConnect(product.id)}
-                      className={`cursor-pointer rounded-lg border p-3 transition ${active || isConnectedToSameIndex ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
+                      className={`h-[88px] cursor-pointer rounded-lg border p-3 transition ${active || isConnectedToSameIndex ? 'border-primary bg-primary/5' : 'hover:border-primary/40'} `}
                     >
-                      <div className='flex gap-3'>
+                      <div className='flex h-full items-center gap-3'>
                         <img
                           src={product.image}
                           className='h-14 w-14 rounded object-cover'
                         />
-                        <div className='flex-1'>
-                          <p className='text-sm'>{product.name}</p>
+                        <div className='min-w-0 flex-1'>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className='truncate text-sm'>{product.name}</p>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side='top'
+                              align='start'
+                              className='max-w-[320px] px-2 py-1.5 text-xs leading-5 break-words whitespace-normal'
+                            >
+                              {product.name}
+                            </TooltipContent>
+                          </Tooltip>
                           <p className='text-muted-foreground text-xs'>
                             SKU: {product.id}
                           </p>

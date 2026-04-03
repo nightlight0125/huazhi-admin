@@ -145,7 +145,16 @@ export async function getNowReminder(
     throw new Error(errorMessage)
   }
 
-  const data = response.data.data
+  let rawData = response.data.data as unknown
+
+  // 后端可能返回单个对象或数组，这里统一兼容：
+  // - 如果是数组：默认取第一条用于首页弹窗
+  // - 如果是对象：直接使用
+  if (Array.isArray(rawData)) {
+    rawData = rawData[0]
+  }
+
+  const data = rawData
   if (!data || typeof data !== 'object') {
     throw new Error('Invalid reminder response.')
   }

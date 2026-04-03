@@ -25,9 +25,18 @@ import {
 } from '@/components/ui/form'
 import { SelectDropdown } from '@/components/select-dropdown'
 
+const PRIORITY_OPTIONS = [
+  { label: '0', value: '0' },
+  { label: '1', value: '1' },
+  { label: '2', value: '2' },
+] as const
+
 const shippingPlanItemSchema = z.object({
   from: z.string().min(1, 'Country is required'),
   method: z.string().min(1, 'Method is required'),
+  priority: z.enum(['0', '1', '2'], {
+    message: 'Priority is required',
+  }),
 })
 
 const shippingPlanFormSchema = z.object({
@@ -72,7 +81,7 @@ export function ShippingPlanDialog({
       sku: '',
       spu: '',
       to: '',
-      plans: [{ from: '', method: '' }],
+      plans: [{ from: '', method: '', priority: '0' }],
     },
     mode: 'onChange',
   })
@@ -128,7 +137,7 @@ export function ShippingPlanDialog({
         sku: '',
         spu: '',
         to: '',
-        plans: [{ from: '', method: '' }],
+        plans: [{ from: '', method: '', priority: '0' }],
       })
     }
   }, [open, form])
@@ -150,21 +159,6 @@ export function ShippingPlanDialog({
 
     setIsSubmitting(true)
     try {
-      // destination 的 key 实际上是国家 ID（例如 1000002），value 是自定义渠道 ID
-      const destination: Record<string, string> = {}
-      values.plans.forEach((plan) => {
-        if (plan.from && plan.method) {
-          // 直接使用选择的国家 ID 作为 key
-          destination[plan.from] = plan.method
-        }
-      })
-
-      if (Object.keys(destination).length === 0) {
-        toast.error('Please select valid country and method for shipping plans')
-        setIsSubmitting(false)
-        return
-      }
-
       const customerId = auth.user?.customerId
       if (!customerId) {
         toast.error('Customer ID is required')
@@ -174,8 +168,12 @@ export function ShippingPlanDialog({
 
       const requestData = {
         customerId,
-        spuId: values.spu, // 使用表单中选择的 SPU
-        destination,
+        spuId: values.spu,
+        data: validPlans.map((plan) => ({
+          destination: plan.from,
+          logisticsChannel: plan.method,
+          priority: plan.priority,
+        })),
       }
 
       // 调用新增接口
@@ -250,14 +248,14 @@ export function ShippingPlanDialog({
                   {fields.map((field, index) => (
                     <div
                       key={field.id}
-                      className='grid grid-cols-2 items-center gap-4'
+                      className='flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-3'
                     >
                       <FormField
                         control={form.control}
                         name={`plans.${index}.from`}
                         render={({ field: fromField }) => (
-                          <FormItem>
-                            <FormLabel className='sr-only'>From</FormLabel>
+                          <FormItem className='min-w-0 flex-1'>
+                            <FormLabel className='text-xs'>Country</FormLabel>
                             <SelectDropdown
                               defaultValue={fromField.value}
                               onValueChange={fromField.onChange}
@@ -271,42 +269,55 @@ export function ShippingPlanDialog({
                         )}
                       />
 
-                      <div className='flex items-center gap-2'>
-                        <div className='flex-1'>
-                          <FormField
-                            control={form.control}
-                            name={`plans.${index}.method`}
-                            render={({ field: methodField }) => (
-                              <FormItem>
-                                <FormLabel className='sr-only'>
-                                  Method
-                                </FormLabel>
-                                <SelectDropdown
-                                  defaultValue={methodField.value}
-                                  onValueChange={methodField.onChange}
-                                  placeholder='Select method'
-                                  items={methodOptions}
-                                  className='w-full'
-                                  isControlled
-                                  disabled={isLoadingStates}
-                                />
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                      <FormField
+                        control={form.control}
+                        name={`plans.${index}.method`}
+                        render={({ field: methodField }) => (
+                          <FormItem className='min-w-0 flex-1'>
+                            <FormLabel className='text-xs'>Method</FormLabel>
+                            <SelectDropdown
+                              defaultValue={methodField.value}
+                              onValueChange={methodField.onChange}
+                              placeholder='Select method'
+                              items={methodOptions}
+                              className='w-full'
+                              isControlled
+                              disabled={isLoadingStates}
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                        <Button
-                          type='button'
-                          variant='link'
-                          size='sm'
-                          className='px-0 text-xs text-blue-500 hover:text-blue-600'
-                          onClick={() => remove(index)}
-                          disabled={fields.length === 1}
-                        >
-                          remove
-                        </Button>
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name={`plans.${index}.priority`}
+                        render={({ field: priorityField }) => (
+                          <FormItem className='w-full sm:w-32'>
+                            <FormLabel className='text-xs'>Priority</FormLabel>
+                            <SelectDropdown
+                              defaultValue={priorityField.value}
+                              onValueChange={priorityField.onChange}
+                              placeholder='Priority'
+                              items={[...PRIORITY_OPTIONS]}
+                              className='w-full'
+                              isControlled
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button
+                        type='button'
+                        variant='link'
+                        size='sm'
+                        className='h-10 shrink-0 self-end px-0 text-xs text-blue-500 hover:text-blue-600 sm:mb-0.5'
+                        onClick={() => remove(index)}
+                        disabled={fields.length === 1}
+                      >
+                        remove
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -317,8 +328,9 @@ export function ShippingPlanDialog({
                   className='mt-3 bg-orange-500 text-xs font-medium text-white hover:bg-orange-600'
                   onClick={() =>
                     append({
-                      from: 'FR',
-                      method: 'standard',
+                      from: '',
+                      method: '',
+                      priority: '0',
                     })
                   }
                 >

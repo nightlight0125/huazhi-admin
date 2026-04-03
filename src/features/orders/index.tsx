@@ -40,13 +40,8 @@ export function Orders() {
   useEffect(() => {
     const fetchStores = async () => {
       const userId = auth.user?.id
-      if (!userId) {
-        setStoreOptions([])
-        return
-      }
-
       try {
-        const options = await getUserShopOptions(String(userId))
+        const options = await getUserShopOptions(String(userId), 0, 100)
         setStoreOptions(options)
       } catch (error) {
         console.error('获取店铺列表失败:', error)

@@ -74,6 +74,7 @@ export function Logistics() {
             shippingMethod: item.logsNumber || '',
             shippingFrom: '',
             shippingTo: item.stateName || '',
+            priority: String(item.priority ?? ''),
             // preserve entryId from backend row so edit/delete can use it
             entryId: String(
               (item as any).entryId ??
@@ -152,7 +153,6 @@ export function Logistics() {
         open={shippingPlanOpen}
         onOpenChange={setShippingPlanOpen}
         onSuccess={() => {
-          // 强制刷新列表，忽略去重逻辑
           fetchLogistics(true)
         }}
       />

@@ -1,127 +1,13 @@
 import { type Table } from '@tanstack/react-table'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { getPageNumbers } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { ServerTablePaginationBar } from '@/components/data-table'
 import { type Order } from '../data/schema'
 
 type OrdersTableFooterProps = {
   table: Table<Order>
-  totalRows?: number // 服务端分页的总数
+  /** 保留与调用方兼容；分页展示以 table 的 pageCount 为准 */
+  totalRows?: number
 }
 
-export function OrdersTableFooter({
-  table,
-  totalRows = 0,
-}: OrdersTableFooterProps) {
-  const paginationState = table.getState().pagination
-  const currentPage = paginationState.pageIndex + 1
-  const totalPages = table.getPageCount()
-  const pageSize = paginationState.pageSize
-  const pageNumbers = getPageNumbers(currentPage, totalPages)
-  const selectedCount = table.getFilteredSelectedRowModel().rows.length
-  const isAllPageSelected = table.getIsAllPageRowsSelected()
-  const isSomePageSelected = table.getIsSomePageRowsSelected()
-
-  const handlePageSelect = (checked: boolean) => {
-    if (checked) {
-      table.toggleAllPageRowsSelected(true)
-    } else {
-      table.toggleAllPageRowsSelected(false)
-    }
-  }
-
-  return (
-    <div className='border-border bg-card flex items-center justify-between border-t px-4 py-3'>
-      {/* Left: Selection checkboxes and count */}
-      <div className='flex items-center gap-4'>
-        <div className='flex items-center gap-2'>
-          <Checkbox
-            id='page-select'
-            checked={
-              isAllPageSelected ||
-              (isSomePageSelected && !isAllPageSelected
-                ? 'indeterminate'
-                : false)
-            }
-            onCheckedChange={handlePageSelect}
-          />
-          <label
-            htmlFor='page-select'
-            className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
-          >
-            Page
-          </label>
-        </div>
-        {/* <div className='flex items-center gap-2'>
-          <Checkbox
-            id='all-select'
-            checked={false}
-            onCheckedChange={handleAllSelect}
-          />
-          <label
-            htmlFor='all-select'
-            className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
-          >
-            All Orders
-          </label>
-        </div> */}
-        <div className='text-sm'>
-          Selected:{' '}
-          <span className='font-semibold text-orange-500 dark:text-orange-400'>
-            {selectedCount}
-          </span>
-        </div>
-      </div>
-
-      {/* Center: Pagination */}
-      <div className='flex items-center gap-4'>
-        <div className='text-muted-foreground text-sm'>
-          Showing{' '}
-          {totalRows === 0 ? 0 : paginationState.pageIndex * pageSize + 1} to{' '}
-          {Math.min((paginationState.pageIndex + 1) * pageSize, totalRows)} of{' '}
-          {totalRows} orders
-        </div>
-        <div className='flex items-center gap-2'>
-          <Button
-            variant='outline'
-            size='icon'
-            className='h-8 w-8'
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronLeft className='h-4 w-4' />
-          </Button>
-
-          {/* Page number buttons */}
-          {pageNumbers.map((pageNumber, index) => (
-            <div key={`${pageNumber}-${index}`} className='flex items-center'>
-              {pageNumber === '...' ? (
-                <span className='text-muted-foreground px-2 text-sm'>...</span>
-              ) : (
-                <Button
-                  variant={currentPage === pageNumber ? 'default' : 'outline'}
-                  size='sm'
-                  className='h-8 min-w-8 px-2'
-                  onClick={() => table.setPageIndex((pageNumber as number) - 1)}
-                >
-                  {pageNumber}
-                </Button>
-              )}
-            </div>
-          ))}
-
-          <Button
-            variant='outline'
-            size='icon'
-            className='h-8 w-8'
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            <ChevronRight className='h-4 w-4' />
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
+export function OrdersTableFooter({ table }: OrdersTableFooterProps) {
+  return <ServerTablePaginationBar table={table} />
 }

@@ -1,19 +1,4 @@
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  queryShopifyConnectedProducts,
-  unlinkProduct,
-} from '@/lib/api/products'
-import { useAuthStore } from '@/stores/auth-store'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -23,9 +8,25 @@ import {
   type PaginationState,
 } from '@tanstack/react-table'
 import { Link2, Loader2, Minus, Plus, Sparkles } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  queryShopifyConnectedProducts,
+  unlinkProduct,
+} from '@/lib/api/products'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { type StoreProduct } from '../data/schema'
+
 interface AssociatedStoreProductsTableProps {
   data?: StoreProduct[]
 }
@@ -324,7 +325,7 @@ export function AssociatedStoreProductsTable({
       },
       {
         id: 'product',
-        header: 'Product',
+        header: 'HZ Product',
         cell: ({ row }) => {
           const item = row.original
           return (
@@ -338,7 +339,7 @@ export function AssociatedStoreProductsTable({
               <div className='flex flex-col gap-1'>
                 <div className='text-sm font-medium'>{item.localSpuId}</div>
                 <div className='text-muted-foreground text-xs'>
-                  TD SPU: {item.localSpuNumber}
+                  HZ SPU: {item.localSpuNumber}
                 </div>
                 <div className='text-muted-foreground text-xs'>
                   Price: $
@@ -598,7 +599,7 @@ export function AssociatedStoreProductsTable({
                                     {variant.localSkuEName || '-'}
                                   </div>
                                   <div className='text-muted-foreground text-xs'>
-                                    TD SPU: {variant.localSkuNumber || '---'}
+                                    HZ SPU: {variant.localSkuNumber || '---'}
                                   </div>
                                   <div className='text-muted-foreground text-xs'>
                                     Price: $

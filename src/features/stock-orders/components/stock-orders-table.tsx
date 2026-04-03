@@ -14,7 +14,11 @@ import {
 import { HelpCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { deleteStockOrder, queryOrder } from '@/lib/api/orders'
+import {
+  deleteStockOrder,
+  queryOrder,
+  updateOrderCancelStatus,
+} from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -232,6 +236,30 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
+  const handleCancel = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await updateOrderCancelStatus({
+        customerId: String(customerId),
+        orderId: String(orderId),
+        orderType: 'stockOrder',
+      })
+      toast.success('Order cancelled successfully')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to cancel order. Please try again.'
+      )
+    }
+  }
+
   const handleBuyStock = (orderId?: string) => {
     void navigate({
       to: '/stock-orders/buy-stock',
@@ -243,11 +271,12 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     () =>
       createStockOrdersColumns({
         onPay: handlePay,
+        onCancel: handleCancel,
         onEditAddress: handleEditAddress,
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    [auth.user?.customerId, handleDelete, navigate]
+    [auth.user?.customerId, handleCancel, handleDelete, navigate]
   )
 
   const table = useReactTable({

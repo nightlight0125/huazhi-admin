@@ -17,7 +17,12 @@ import { type DateRange } from 'react-day-picker'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { type FreightOption, calcuOrderFreight } from '@/lib/api/logistics'
-import { deleteOrder, queryOrder, updateSalOutOrder } from '@/lib/api/orders'
+import {
+  deleteOrder,
+  queryOrder,
+  updateOrderCancelStatus,
+  updateSalOutOrder,
+} from '@/lib/api/orders'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,6 +53,7 @@ import { createOrdersColumns } from './orders-columns'
 import { OrdersEditAddressDialog } from './orders-edit-address-dialog'
 import { OrdersEditCustomerNameDialog } from './orders-edit-customer-name-dialog'
 import { OrdersModifyProductDialog } from './orders-modify-product-dialog'
+import { useOrders } from './orders-provider'
 import { OrdersTableFooter } from './orders-table-footer'
 
 const route = getRouteApi('/_authenticated/orders/')
@@ -278,6 +284,7 @@ export function OrdersTable({
   platformOrderStatusOptions = [],
   countryOptions = [],
 }: DataTableProps) {
+  const { refreshNonce } = useOrders()
   const searchParams = route.useSearch() as Record<string, unknown>
   const navigate = route.useNavigate()
   const { auth } = useAuthStore()
@@ -448,7 +455,7 @@ export function OrdersTable({
     // 将国家ID数组转换为字符串用于请求 key（用于去重）
     const countryIdsKey = countryIds ? countryIds.sort().join(',') : ''
     const orderStatusKey = orderStatus ?? ''
-    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryIdsKey}-${orderStatusKey}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${activeTab}`
+    const requestKey = `${customerId}-${pageIndex}-${pageSize}-${globalFilter || ''}-${shopId || ''}-${shopOrderStatus || ''}-${countryIdsKey}-${orderStatusKey}-${formattedDateRange?.startDate || ''}-${formattedDateRange?.endDate || ''}-${refreshKey}-${refreshNonce}-${activeTab}`
 
     if (lastRequestParamsRef.current === requestKey) {
       return
@@ -493,6 +500,7 @@ export function OrdersTable({
     globalFilter,
     columnFilters,
     refreshKey,
+    refreshNonce,
     activeTab,
     formattedDateRange,
     dateRange,
@@ -818,109 +826,56 @@ export function OrdersTable({
     }
   }
 
-  /** 删除订单中一行明细：updateSalOutOrder，目标行 flag=1，其余 flag=0 */
-  const handleDeleteOrderLine = async (
-    orderId: string,
-    lineItem: OrderProduct
-  ) => {
+  const handleCancelOrder = async (orderId: string) => {
     const customerId = auth.user?.customerId
-    const order = data.find((o) => o.id === orderId)
-    if (!order || !customerId) {
-      toast.error('Order or customer information is missing')
+    if (!customerId) {
+      toast.error('Customer ID not found')
       return
     }
-
-    const rawOrder = order as any
-    const targetEntryId = String(
-      (lineItem as any).entryId || lineItem.entryId || ''
-    ).trim()
-    if (!targetEntryId) {
-      toast.error('Cannot resolve this line item (missing entry id)')
-      return
-    }
-
-    const detail =
-      (rawOrder.lingItems || [])
-        .map((item: any) => {
-          const entryId = String(item.entryId || '')
-          const skuId = String(
-            item.hzkj_local_sku_id ||
-              item.hzkj_local_sku_id2 ||
-              item.hzkj_local_sku ||
-              ''
-          )
-          const quantity = Number(item.hzkj_qty || item.hzkj_src_qty || 0) || 0
-          const flag = entryId === targetEntryId ? 1 : 0
-          return { entryId, skuId, quantity, flag }
-        })
-        .filter((d: any) => d.entryId && d.skuId) || []
-
-    if (detail.length === 0) {
-      toast.error('No valid order lines to update')
-      return
-    }
-
-    const firstName =
-      rawOrder.firstName ||
-      (rawOrder.customerName &&
-        typeof rawOrder.customerName === 'string' &&
-        rawOrder.customerName.split(' ')[0]) ||
-      (rawOrder.hzkj_customer_name &&
-        typeof rawOrder.hzkj_customer_name === 'object' &&
-        rawOrder.hzkj_customer_name.zh_CN) ||
-      ''
-    const lastName =
-      rawOrder.lastName ||
-      (rawOrder.customerName &&
-        typeof rawOrder.customerName === 'string' &&
-        rawOrder.customerName.split(' ').slice(1).join(' ')) ||
-      ''
 
     try {
-      await updateSalOutOrder({
-        orderId: rawOrder.id || order.id,
+      await updateOrderCancelStatus({
         customerId: String(customerId),
-        firstName,
-        lastName,
-        phone:
-          rawOrder.phone ||
-          rawOrder.hzkj_telephone ||
-          rawOrder.phoneNumber ||
-          '',
-        countryId: rawOrder.countryId || rawOrder.hzkj_country_id || '',
-        admindivisionId: rawOrder.admindivisionId,
-        city: rawOrder.city || rawOrder.hzkj_address?.split(',')[0] || '',
-        address1:
-          rawOrder.address1 ||
-          rawOrder.address ||
-          rawOrder.hzkj_address ||
-          rawOrder.hzkj_bill_address ||
-          '',
-        address2: rawOrder.address2 || rawOrder.hzkj_sam_address || '',
-        postCode:
-          rawOrder.postCode ||
-          rawOrder.postalCode ||
-          rawOrder.hzkj_post_code ||
-          '',
-        taxId: rawOrder.taxId || '',
-        customChannelId: String(rawOrder.customChannelId || ''),
-        email: rawOrder.email || rawOrder.hzkj_email || '',
-        wareHouse:
-          rawOrder.wareHouse ||
-          rawOrder.warehouseId ||
-          rawOrder.shippingOrigin ||
-          '',
-        detail,
+        orderId: String(orderId),
+        orderType: 'storeOrder',
       })
-
-      toast.success('Line item removed from order')
+      toast.success('Order cancelled successfully')
       setRefreshKey((prev) => prev + 1)
     } catch (error) {
-      console.error('Failed to delete order line:', error)
       toast.error(
         error instanceof Error
           ? error.message
-          : 'Failed to delete line item. Please try again.'
+          : 'Failed to cancel order. Please try again.'
+      )
+    }
+  }
+
+  /** 删除订单中一行明细：当前产品行对应的销售单，调用 deleteSalOutOrder 删除整单 */
+  const handleDeleteOrderLine = async (
+    orderId: string,
+    _lineItem: OrderProduct
+  ) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer information is missing')
+      return
+    }
+
+    // 这里按后端约定，直接删除该产品行对应的销售出库单
+    try {
+      await deleteOrder({
+        customerId: String(customerId),
+        orderId,
+      })
+
+      toast.success('Order deleted successfully')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.error('Failed to delete order:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete order. Please try again.'
       )
     }
   }
@@ -951,6 +906,7 @@ export function OrdersTable({
         onEditAddress: handleEditAddress,
         onEditCustomerName: handleEditCustomerName,
         onPay: handlePay,
+        onCancel: handleCancelOrder,
         onDelete: handleDelete,
         onSelectShippingMethod: handleSelectShippingMethod,
       }),
@@ -958,6 +914,7 @@ export function OrdersTable({
       expandedRows,
       data,
       auth.user?.customerId,
+      handleCancelOrder,
       handleDelete,
       handleSelectShippingMethod,
     ]

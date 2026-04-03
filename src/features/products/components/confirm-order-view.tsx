@@ -15,7 +15,7 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { calcuNewOrderFreight, type FreightOption } from '@/lib/api/logistics'
-import { getCustomerBalance } from '@/lib/api/orders'
+import { getCustomerBalance, walletPayment } from '@/lib/api/orders'
 import { buyProduct } from '@/lib/api/products'
 import { getAddress, type AddressItem } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
@@ -192,13 +192,12 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
         : undefined
       const returnFailUrl = origin ? `${origin}/order/payment-fail` : undefined
 
-      const response = await buyProduct({
-        customerId: String(customerId),
-        customChannelId: selectedShippingMethod,
-        // 支付完成后回调地址（带 session_id 占位符，支付平台会替换为真实 ID）
-        ...(returnUrl ? { returnUrl } : {}),
-        ...(returnFailUrl ? { returnFailUrl } : {}),
-        // 地址信息映射
+      const walletPaymentType =
+        orderData.mode === 'sample' ? 1 : orderData.mode === 'stock' ? 2 : 0
+
+      const useWallet = paymentMethod === 'balance'
+
+      const addressPayload = {
         firstName: shippingAddress.hzkj_customer_first_name ?? '',
         lastName: shippingAddress.hzkj_customer_last_name ?? '',
         phone: shippingAddress.hzkj_phone ?? '',
@@ -215,6 +214,30 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           quantity: item.quantity,
           flag: 0,
         })),
+      }
+
+      if (useWallet) {
+        const orderIdsFromItems = orderData.items
+          .map((item) => String(item.id).trim())
+          .filter(Boolean)
+        await walletPayment({
+          customerId: String(customerId),
+          orderIds: orderIdsFromItems,
+          type: walletPaymentType,
+          customChannelId: selectedShippingMethod,
+          ...addressPayload,
+        })
+        toast.success('Wallet payment completed successfully')
+        setIsPayDialogOpen(false)
+        return
+      }
+
+      const response = await buyProduct({
+        customerId: String(customerId),
+        customChannelId: selectedShippingMethod,
+        ...(returnUrl ? { returnUrl } : {}),
+        ...(returnFailUrl ? { returnFailUrl } : {}),
+        ...addressPayload,
       })
 
       const paymentUrl =
