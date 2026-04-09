@@ -260,6 +260,31 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
+  const handleRestore = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await updateOrderCancelStatus({
+        customerId: String(customerId),
+        orderId: String(orderId),
+        orderType: 'stockOrder',
+        restore: true,
+      })
+      toast.success('Order restored successfully')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to restore order. Please try again.'
+      )
+    }
+  }
+
   const handleBuyStock = (orderId?: string) => {
     void navigate({
       to: '/stock-orders/buy-stock',
@@ -272,11 +297,12 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
       createStockOrdersColumns({
         onPay: handlePay,
         onCancel: handleCancel,
+        onRestore: handleRestore,
         onEditAddress: handleEditAddress,
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    [auth.user?.customerId, handleCancel, handleDelete, navigate]
+    [auth.user?.customerId, handleCancel, handleRestore, handleDelete, navigate]
   )
 
   const table = useReactTable({
@@ -333,7 +359,10 @@ export function StockOrdersTable({ data: _data }: DataTableProps) {
         >
           Buy stock
         </Button>
-        <StockOrdersActionsMenu table={table} />
+        <StockOrdersActionsMenu
+          table={table}
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+        />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
         <TabsList className='grid w-full grid-cols-4'>

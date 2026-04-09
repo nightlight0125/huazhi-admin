@@ -1,4 +1,14 @@
+import type { InternalAxiosRequestConfig } from 'axios'
+import { isAxiosError } from 'axios'
 import { apiClient } from '../api-client'
+import { parseValidateTimeToMs } from '../token-validate'
+
+const REFRESH_TOKEN_LOG_PREFIX = '[refreshTokenApi]'
+
+/** 与 api-client 拦截器一致，避免刷新接口再进入刷新链 */
+type RefreshRequestConfig = InternalAxiosRequestConfig & {
+  skipAuthRefresh?: boolean
+}
 
 // 自定义错误类，用于携带 errorCode 信息
 export class AuthError extends Error {
@@ -11,69 +21,6 @@ export class AuthError extends Error {
   }
 }
 
-// 生成随机 nonce (UUID v4)
-export function generateNonce(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
-// 格式化时间戳
-// 固定返回「北京时间」的时间戳字符串（YYYY-MM-DD HH:mm:ss）
-export function formatTimestamp(): string {
-  const now = new Date()
-
-  // 使用 Intl 按 Asia/Shanghai 时区格式化，再从 parts 中拼接
-  const formatter = new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  })
-
-  const parts = formatter.formatToParts(now)
-  const get = (type: string) =>
-    parts.find((p) => p.type === type)?.value ?? ''
-
-  const year = get('year')
-  const month = get('month')
-  const day = get('day')
-  const hour = get('hour')
-  const minute = get('minute')
-  const second = get('second')
-
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-}
-
-// 获取 Token 请求参数
-export interface GetTokenRequest {
-  client_id: string
-  client_secret: string
-  username: string
-  accountId?: string
-  nonce: string
-  timestamp: string
-  language: string
-}
-
-// 获取 Token 响应
-export interface GetTokenResponse {
-  access_token?: string
-  token?: string
-  data?: {
-    token?: string
-    access_token?: string
-    [key: string]: unknown
-  }
-  [key: string]: unknown
-}
-
 // 会员登录请求参数
 export interface MemberLoginRequest {
   member: {
@@ -82,15 +29,145 @@ export interface MemberLoginRequest {
   }
 }
 
+/** 登录 / 刷新接口 data 中与令牌相关的字段 */
+export interface AuthTokenPayload {
+  token?: string
+  /** 令牌过期时间（后端控制格式，见 parseValidateTimeToMs） */
+  validateTime?: string
+  [key: string]: unknown
+}
+
 // 会员登录响应
 export interface MemberLoginResponse {
-  data: unknown
+  data?: AuthTokenPayload | unknown
   errorCode?: string
   message?: string
   status: boolean
   token?: string
   access_token?: string
   [key: string]: unknown
+}
+
+/** 从登录 / idLogin 等响应中解析 token 与过期时刻（毫秒） */
+export function extractTokenAndExpiryFromLoginResponse(
+  res: MemberLoginResponse | Record<string, unknown>
+): { token: string | null; expiresAtMs: number | null } {
+  const raw = res as Record<string, unknown>
+  const data = raw.data as AuthTokenPayload | undefined
+  const token =
+    (data?.token as string | undefined) ||
+    (raw.token as string | undefined) ||
+    (raw.access_token as string | undefined) ||
+    null
+  const expiresAtMs = parseValidateTimeToMs(data?.validateTime)
+  return { token, expiresAtMs }
+}
+
+export interface RefreshTokenApiResponse {
+  data?: AuthTokenPayload
+  status?: boolean
+  message?: string
+  errorCode?: string | number
+  [key: string]: unknown
+}
+
+/**
+ * 刷新访问令牌（请求体仅传当前 token，与后端约定一致）
+ * 通过 axios 自定义 config 标记，避免触发 request 拦截器里的「刷新链」
+ */
+export async function refreshTokenApi(accessToken: string): Promise<{
+  token: string
+  expiresAtMs: number | null
+}> {
+  const log = import.meta.env.DEV
+  if (log) {
+    console.warn(`${REFRESH_TOKEN_LOG_PREFIX} 请求开始`, {
+      path: '/v2/hzkj/hzkj_customer/member/refreshTokenApi',
+      tokenLength: accessToken?.length ?? 0,
+    })
+  }
+
+  try {
+    const response = await apiClient.post<RefreshTokenApiResponse>(
+      '/v2/hzkj/hzkj_customer/member/refreshTokenApi',
+      { token: accessToken },
+      { skipAuthRefresh: true } as RefreshRequestConfig
+    )
+    const res: RefreshTokenApiResponse = response.data
+
+    if (log) {
+      console.warn(`${REFRESH_TOKEN_LOG_PREFIX} HTTP 响应`, {
+        httpStatus: response.status,
+        bodyStatus: res.status,
+        errorCode: res.errorCode,
+        message: res.message,
+        hasData: res.data != null,
+      })
+    }
+
+    if (res.status === false) {
+      if (log) {
+        console.error(`${REFRESH_TOKEN_LOG_PREFIX} 业务 status=false`, {
+          message: res.message,
+          errorCode: res.errorCode,
+        })
+      }
+      throw new Error(
+        (res.message as string | undefined) || 'Token refresh failed'
+      )
+    }
+    if (res.errorCode === '401' || res.errorCode === 401) {
+      if (log) {
+        console.error(`${REFRESH_TOKEN_LOG_PREFIX} 业务 errorCode=401`, {
+          message: res.message,
+        })
+      }
+      throw new Error(
+        (res.message as string | undefined) || 'Token refresh failed'
+      )
+    }
+
+    const data = res.data as AuthTokenPayload | undefined
+    const token =
+      (data?.token as string | undefined) ||
+      (res as { token?: string }).token
+    if (!token || String(token).trim() === '') {
+      if (log) {
+        console.error(`${REFRESH_TOKEN_LOG_PREFIX} 响应中无 token`, {
+          dataKeys: data ? Object.keys(data) : [],
+          topKeys: Object.keys(res as object),
+        })
+      }
+      throw new Error('No token in refresh response')
+    }
+    const expiresAtMs = parseValidateTimeToMs(data?.validateTime)
+    if (log) {
+      console.warn(`${REFRESH_TOKEN_LOG_PREFIX} 刷新成功`, {
+        newTokenLength: token.length,
+        expiresAtMs,
+      })
+    }
+    return { token, expiresAtMs }
+  } catch (err) {
+    if (log) {
+      if (isAxiosError(err)) {
+        console.error(`${REFRESH_TOKEN_LOG_PREFIX} 请求异常 (Axios)`, {
+          message: err.message,
+          code: err.code,
+          httpStatus: err.response?.status,
+          responseData: err.response?.data,
+        })
+      } else if (err instanceof Error) {
+        console.error(`${REFRESH_TOKEN_LOG_PREFIX} 失败`, {
+          message: err.message,
+          stack: err.stack,
+        })
+      } else {
+        console.error(`${REFRESH_TOKEN_LOG_PREFIX} 失败`, err)
+      }
+    }
+    throw err
+  }
 }
 
 export async function idLogin(
@@ -144,51 +221,6 @@ export async function memberLogin(
   }
 
   return res
-}
-
-export async function getToken(
-): Promise<string> {
-  const requestData: GetTokenRequest =
-   {
-    client_id: 'HuaZhiQD',
-    client_secret: 'Dc1598837132xcs@',
-    username:'xuchushun',
-    accountId: '2299284867814356992',
-    nonce: generateNonce(), // 使用随机生成的 nonce
-    timestamp: formatTimestamp(),
-    language: 'zh_CN',
-  }
- 
-  try {
-    
-    const response = await apiClient.post<GetTokenResponse>(
-      '/oauth2/getToken',
-      requestData
-    )
-    
-
-    const token =
-      response.data.access_token ||
-      response.data.token ||
-      response.data.data?.access_token ||
-      response.data.data?.token
-
-    if (!token) {
-      throw new Error('Token not found in response')
-    }
-
-    return token
-  } catch (error) {
-    if (error instanceof Error) {
-    }
-    
-    // 如果是 axios 错误，可在此打印 error.response 等详细信息
-    if (error && typeof error === 'object' && 'response' in error) {
-      // AxiosError handling placeholder
-    }
-    
-    throw error
-  }
 }
 
 // 注册请求参数
@@ -303,8 +335,7 @@ export async function checkLoginStatus(): Promise<GetUserStatusResponse> {
     }
   }
 
-  // 使用 accountNo 或 id 作为 accountId
-  const accountId = auth.user.accountNo || auth.user.id
+  const accountId = auth.user.accountNo 
 
   try {
     const requestData: GetUserStatusRequest = {
@@ -316,7 +347,6 @@ export async function checkLoginStatus(): Promise<GetUserStatusResponse> {
       requestData
     )
 
-    // 如果接口返回 status 为 false，说明登录状态无效
     if (!response.data.status) {
       return {
         status: false,

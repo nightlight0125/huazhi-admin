@@ -5,13 +5,12 @@ import { create } from 'zustand'
 const ACCESS_TOKEN = 'thisisjustarandomstring'
 const ROLES_STORAGE_KEY = 'roles_storage'
 const USER_STORAGE_KEY = 'user_storage'
-const TOKEN_EXPIRY_KEY = 'token_expiry'
-
+/** 登录/刷新接口返回的 validateTime 解析后的过期时刻（ms），非敏感 */
+const TOKEN_EXPIRES_AT_MS_KEY = 'token_expires_at_ms'
 interface AuthUser {
   accountNo: string
   email: string
   role: string[]
-  exp: number
   id: string
   username: string
   roleId?: string
@@ -29,6 +28,9 @@ interface AuthState {
     setUser: (user: AuthUser | null) => void
     accessToken: string
     setAccessToken: (accessToken: string) => void
+    /** 当前 access token 过期时刻（毫秒），来自登录/刷新接口的 validateTime */
+    tokenExpiresAtMs: number | null
+    setTokenExpiresAtMs: (expiresAtMs: number | null) => void
     resetAccessToken: () => void
     reset: () => void
     roles: RoleItem[]
@@ -61,7 +63,18 @@ export const useAuthStore = create<AuthState>()((set) => {
   } catch (error) {
     console.warn('Failed to load roles from localStorage:', error)
   }
-  
+
+  let initTokenExpiresAtMs: number | null = null
+  try {
+    const raw = localStorage.getItem(TOKEN_EXPIRES_AT_MS_KEY)
+    if (raw != null && raw !== '') {
+      const n = Number(raw)
+      if (Number.isFinite(n) && n > 0) initTokenExpiresAtMs = n
+    }
+  } catch {
+    initTokenExpiresAtMs = null
+  }
+
   return {
     signingOut: false,
     setSigningOut: (value) => set({ signingOut: value }),
@@ -73,18 +86,31 @@ export const useAuthStore = create<AuthState>()((set) => {
           if (user) {
             try {
               localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
-              // 保存 token 过期时间（3小时后）
-              const expiryTime = Date.now() + 3 * 60 * 60 * 1000 // 3小时
-              localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiryTime))
             } catch (error) {
             }
           } else {
             localStorage.removeItem(USER_STORAGE_KEY)
-            localStorage.removeItem(TOKEN_EXPIRY_KEY)
           }
           return { ...state, auth: { ...state.auth, user } }
         }),
       accessToken: initToken,
+      tokenExpiresAtMs: initTokenExpiresAtMs,
+      setTokenExpiresAtMs: (expiresAtMs) =>
+        set((state) => {
+          try {
+            if (expiresAtMs != null && Number.isFinite(expiresAtMs)) {
+              localStorage.setItem(TOKEN_EXPIRES_AT_MS_KEY, String(expiresAtMs))
+            } else {
+              localStorage.removeItem(TOKEN_EXPIRES_AT_MS_KEY)
+            }
+          } catch {
+            // ignore
+          }
+          return {
+            ...state,
+            auth: { ...state.auth, tokenExpiresAtMs: expiresAtMs },
+          }
+        }),
       setAccessToken: (accessToken) =>
         set((state) => {
           setCookie(ACCESS_TOKEN, JSON.stringify(accessToken))
@@ -93,8 +119,15 @@ export const useAuthStore = create<AuthState>()((set) => {
       resetAccessToken: () =>
         set((state) => {
           removeCookie(ACCESS_TOKEN)
-          localStorage.removeItem(TOKEN_EXPIRY_KEY)
-          return { ...state, auth: { ...state.auth, accessToken: '' } }
+          try {
+            localStorage.removeItem(TOKEN_EXPIRES_AT_MS_KEY)
+          } catch {
+            // ignore
+          }
+          return {
+            ...state,
+            auth: { ...state.auth, accessToken: '', tokenExpiresAtMs: null },
+          }
         }),
       reset: () =>
         set((state) => {
@@ -110,10 +143,17 @@ export const useAuthStore = create<AuthState>()((set) => {
           removeCookie(ACCESS_TOKEN)
           localStorage.removeItem(ROLES_STORAGE_KEY)
           localStorage.removeItem(USER_STORAGE_KEY)
-          localStorage.removeItem(TOKEN_EXPIRY_KEY)
+          localStorage.removeItem('token_expiry')
+          localStorage.removeItem(TOKEN_EXPIRES_AT_MS_KEY)
           return {
             ...state,
-            auth: { ...state.auth, user: null, accessToken: '', roles: [] },
+            auth: {
+              ...state.auth,
+              user: null,
+              accessToken: '',
+              tokenExpiresAtMs: null,
+              roles: [],
+            },
           }
         }),
       roles: initRoles,

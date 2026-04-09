@@ -4,15 +4,11 @@ import { type Table } from '@tanstack/react-table'
 import {
   ChevronDown,
   Download,
-  FileDown,
   Loader2,
-  Merge,
-  Package,
   Plus,
   RefreshCw,
   ShoppingBag,
   Truck,
-  Upload,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -22,6 +18,7 @@ import {
   addRMAOrder,
   getOrderInvoicePdf,
   queryAfterSaleReasonList,
+  updateOrderCancelStatus,
   type AfterSaleReasonItem,
 } from '@/lib/api/orders'
 import { useLogisticsChannels } from '@/hooks/use-logistics-channels'
@@ -59,7 +56,7 @@ interface OrdersPrimaryButtonsProps {
 }
 
 export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
-  const { setOpen } = useOrders()
+  const { setOpen, triggerRefresh } = useOrders()
   const navigate = useNavigate()
   const { auth } = useAuthStore()
   const [rmaDialogOpen, setRmaDialogOpen] = useState(false)
@@ -80,6 +77,12 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
   const [selectedLogsId, setSelectedLogsId] = useState<string>('')
   const [isSubmittingShipping, setIsSubmittingShipping] = useState(false)
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [isCancellingOrder, setIsCancellingOrder] = useState(false)
+  const [pendingCancelOrder, setPendingCancelOrder] = useState<{
+    id: string
+    orderNumber: string
+  } | null>(null)
   const { channels: logisticsChannels, isLoading: isLoadingChannels } =
     useLogisticsChannels(1, 1000, shippingDialogOpen)
 
@@ -195,10 +198,69 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
     }
   }
 
+  const openCancelConfirm = () => {
+    if (!table) {
+      toast.error('Table not available')
+      return
+    }
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    if (selectedRows.length === 0) {
+      toast.error('Please select at least one order')
+      return
+    }
+    if (selectedRows.length > 1) {
+      toast.error('Please select only one order')
+      return
+    }
+    const order = selectedRows[0].original
+    const status = String((order as any).hzkj_orderstatus ?? '')
+    if (status !== '1') {
+      toast.error('Only orders pending payment can be cancelled.')
+      return
+    }
+    setPendingCancelOrder({
+      id: order.id,
+      orderNumber:
+        order.orderNumber ||
+        (order as any).billno ||
+        order.platformOrderNumber ||
+        order.id,
+    })
+    setCancelConfirmOpen(true)
+  }
+
+  const handleConfirmCancelOrder = async () => {
+    const customerId = auth.user?.customerId
+    if (!customerId || !pendingCancelOrder) {
+      return
+    }
+    setIsCancellingOrder(true)
+    try {
+      await updateOrderCancelStatus({
+        customerId: String(customerId),
+        orderId: String(pendingCancelOrder.id),
+        orderType: 'storeOrder',
+      })
+      toast.success('Order cancelled successfully')
+      setCancelConfirmOpen(false)
+      setPendingCancelOrder(null)
+      table?.resetRowSelection()
+      triggerRefresh()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to cancel order. Please try again.'
+      )
+    } finally {
+      setIsCancellingOrder(false)
+    }
+  }
+
   const handleAction = (action: string) => {
     switch (action) {
       case 'cancel':
-        // TODO: Implement cancel action
+        openCancelConfirm()
         break
       case 'change_shipping':
         if (!table) {
@@ -260,7 +322,6 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
         break
       }
       case 'export':
-        // TODO: Implement export order action
         break
       case 'merge':
         // TODO: Implement merge order action
@@ -365,29 +426,13 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
             )}
             Download Invoice
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleAction('export')}>
-            <FileDown className='mr-2 h-4 w-4' />
-            Export Order
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleAction('merge')}>
-            <Merge className='mr-2 h-4 w-4' />
-            Merge Order
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAction('add')}>
             <Plus className='mr-2 h-4 w-4' />
             Add Order
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleAction('upload')}>
-            <Upload className='mr-2 h-4 w-4' />
-            Upload Order
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAction('after_sales')}>
             <ShoppingBag className='mr-2 h-4 w-4' />
             After-Sales
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleAction('use_stock')}>
-            <Package className='mr-2 h-4 w-4' />
-            Use Your Stock
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -398,6 +443,40 @@ export function OrdersPrimaryButtons({ table }: OrdersPrimaryButtonsProps) {
       >
         <span>Sync Orders</span> <RefreshCw size={18} />
       </Button>
+
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isCancellingOrder) {
+            setCancelConfirmOpen(open)
+            if (!open) setPendingCancelOrder(null)
+          }
+        }}
+        handleConfirm={() => void handleConfirmCancelOrder()}
+        destructive
+        isLoading={isCancellingOrder}
+        title='Cancel order'
+        desc={
+          <>
+            <p className='mb-2'>Are you sure you want to cancel this order?</p>
+            {pendingCancelOrder ? (
+              <p className='text-muted-foreground text-sm'>
+                Order number: <strong>{pendingCancelOrder.orderNumber}</strong>
+              </p>
+            ) : null}
+          </>
+        }
+        confirmText={
+          isCancellingOrder ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Cancelling...
+            </>
+          ) : (
+            'Confirm'
+          )
+        }
+      />
 
       <ConfirmDialog
         open={rmaDialogOpen}

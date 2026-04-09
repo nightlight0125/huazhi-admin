@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ChevronDown,
   Coins,
-  CreditCard,
   Loader2,
   Mail,
   MapPin,
@@ -15,8 +14,8 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { calcuNewOrderFreight, type FreightOption } from '@/lib/api/logistics'
-import { getCustomerBalance, walletPayment } from '@/lib/api/orders'
-import { buyProduct } from '@/lib/api/products'
+import { getCustomerBalance } from '@/lib/api/orders'
+import { buyProduct, buyProductByWall } from '@/lib/api/products'
 import { getAddress, type AddressItem } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { IconPaypal, IconStripe } from '@/assets/brand-icons'
 import {
   Table,
   TableBody,
@@ -119,7 +119,7 @@ interface ConfirmOrderViewProps {
   onBack: () => void
 }
 
-type PaymentMethod = 'balance' | 'credit_card'
+type PaymentMethod = 'balance' | 'credit_card' | 'airwallex'
 
 export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const navigate = useNavigate()
@@ -187,16 +187,18 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
     try {
       setIsPaying(true)
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const payTypeThirdParty =
+        paymentMethod === 'credit_card' ? 0 : paymentMethod === 'airwallex' ? 1 : undefined
       const returnUrl = origin
-        ? `${origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`
+        ? paymentMethod === 'airwallex'
+          ? `${origin}/order/payment-callback?payType=1`
+          : `${origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`
         : undefined
       const returnFailUrl = origin ? `${origin}/order/payment-fail` : undefined
 
-      const walletPaymentType =
-        orderData.mode === 'sample' ? 1 : orderData.mode === 'stock' ? 2 : 0
-
       const useWallet = paymentMethod === 'balance'
 
+      /** 弹窗内选 Balance：走 buyProductByWall；选 Credit card：走 buyProduct（第三方支付） */
       const addressPayload = {
         firstName: shippingAddress.hzkj_customer_first_name ?? '',
         lastName: shippingAddress.hzkj_customer_last_name ?? '',
@@ -210,22 +212,28 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
         taxId: shippingAddress.hzkj_tax_id1 ?? '',
         note: shippingAddress.hzkj_textfield3 ?? '',
         detail: orderData.items.map((item) => ({
-          skuId: item.id,
+          skuId: String(item.id),
           quantity: item.quantity,
           flag: 0,
         })),
       }
 
       if (useWallet) {
-        const orderIdsFromItems = orderData.items
-          .map((item) => String(item.id).trim())
-          .filter(Boolean)
-        await walletPayment({
+        await buyProductByWall({
           customerId: String(customerId),
-          orderIds: orderIdsFromItems,
-          type: walletPaymentType,
           customChannelId: selectedShippingMethod,
-          ...addressPayload,
+          firstName: addressPayload.firstName,
+          lastName: addressPayload.lastName,
+          phone: addressPayload.phone,
+          countryId: addressPayload.countryId,
+          adminDivisionId: addressPayload.admindivisionId,
+          city: addressPayload.city,
+          address1: addressPayload.address1,
+          address2: addressPayload.address2,
+          postCode: addressPayload.postCode,
+          taxId: addressPayload.taxId,
+          note: addressPayload.note,
+          detail: addressPayload.detail,
         })
         toast.success('Wallet payment completed successfully')
         setIsPayDialogOpen(false)
@@ -235,6 +243,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       const response = await buyProduct({
         customerId: String(customerId),
         customChannelId: selectedShippingMethod,
+        ...(payTypeThirdParty !== undefined ? { payType: payTypeThirdParty } : {}),
         ...(returnUrl ? { returnUrl } : {}),
         ...(returnFailUrl ? { returnFailUrl } : {}),
         ...addressPayload,
@@ -771,38 +780,52 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                 <button
                   type='button'
                   onClick={() => setSelectedPaymentMethod('balance')}
-                  className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                  className={`relative flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
                     selectedPaymentMethod === 'balance'
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
                       : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
                   }`}
                 >
-                  <Coins className='mb-2 h-6 w-6' />
-                  <span className='text-sm font-medium'>Balance</span>
+                  <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
+                    <Coins className='h-6 w-6' />
+                  </div>
+                  <span className='text-sm font-medium leading-none'>Balance</span>
                 </button>
 
                 <button
                   type='button'
                   onClick={() => setSelectedPaymentMethod('credit_card')}
-                  className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                  className={`relative flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
                     selectedPaymentMethod === 'credit_card'
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
                       : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
                   }`}
                 >
-                  <CreditCard className='mb-2 h-6 w-6' />
-                  <span className='text-sm font-medium'>Credit card</span>
+                  <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
+                    <IconStripe
+                      className='h-8 w-10 text-[#635BFF]'
+                      aria-hidden
+                    />
+                  </div>
+                  <span className='text-sm font-medium leading-none'>Stripe</span>
                 </button>
 
                 <button
                   type='button'
-                  disabled
-                  className='relative flex cursor-not-allowed flex-col items-center justify-center rounded-lg border-2 border-gray-200 bg-gray-50 p-4 opacity-60 transition-all dark:bg-gray-800'
+                  onClick={() => setSelectedPaymentMethod('airwallex')}
+                  className={`relative flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
+                    selectedPaymentMethod === 'airwallex'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                      : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
+                  }`}
                 >
-                  <div className='mb-2 h-6 w-16 rounded bg-gray-400'></div>
-                  <span className='text-sm font-medium text-gray-500'>
-                    Airwallex
-                  </span>
+                  <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
+                    <IconPaypal
+                      className='h-6 w-6 text-[#003087]'
+                      aria-hidden
+                    />
+                  </div>
+                  <span className='text-sm font-medium leading-none'>Paypal</span>
                 </button>
               </div>
             </div>

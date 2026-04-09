@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Building2, Wallet } from 'lucide-react'
+import { Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { getCurrency, type CurrencyItem } from '@/lib/api/base'
@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { IconPaypal, IconStripe } from '@/assets/brand-icons'
 import { type WalletStats } from '../data/schema'
 
 interface WalletStatsProps {
@@ -346,8 +347,11 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
                 disabled={isLoading}
                 onClick={handleButtonClick}
               >
-                <Building2 className='h-5 w-5' />
-                <span className='text-sm font-medium'>Bank Transfer</span>
+                <IconStripe
+                  className='h-8 w-10 text-[#635BFF]'
+                  aria-hidden
+                />
+                <span className='text-sm font-medium'>Stripe</span>
               </Button>
 
               {/* Bank Transfer (Detailed) */}
@@ -363,20 +367,13 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
                 }
               >
                 <div className='flex w-full items-center justify-between'>
-                  <Building2 className='h-5 w-5' />
-                  <div className='flex gap-0.5'>
-                    <span className='text-xs'>🇺🇸</span>
-                    <span className='text-xs'>🇬🇧</span>
-                    <span className='text-xs'>🇨🇦</span>
-                    <span className='text-xs'>🇦🇺</span>
-                    <span className='text-xs'>🇪🇺</span>
-                  </div>
+                  <IconPaypal
+                    className='h-5 w-5 text-[#003087]'
+                    aria-hidden
+                  />
                 </div>
                 <div className='flex w-full flex-col items-start gap-0.5'>
-                  <span className='text-sm font-medium'>Bank transfer</span>
-                  <span className='text-muted-foreground text-xs'>
-                    Up to 1 business day
-                  </span>
+                  <span className='text-sm font-medium'>PayPal</span>
                 </div>
               </Button>
 

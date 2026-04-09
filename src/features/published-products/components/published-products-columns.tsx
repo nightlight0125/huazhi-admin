@@ -2,14 +2,13 @@ import { type ColumnDef } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type PublishedProduct } from '../data/schema'
-import { PublishedProductsRowActions } from './published-products-row-actions'
 
 type PublishedProductsColumnsOptions = {
   onDeleteSuccess?: () => void
 }
 
 export const publishedProductsColumns = (
-  options?: PublishedProductsColumnsOptions
+  _options?: PublishedProductsColumnsOptions
 ): ColumnDef<PublishedProduct>[] => [
   {
     id: 'select',
@@ -90,25 +89,25 @@ export const publishedProductsColumns = (
       return (
         <div className='space-y-0.5 text-xs'>
           <div className='font-medium text-green-600'>
-            HZ:${product.tdPrice.toFixed(2)}
+            Your: ${product.yourPrice}
           </div>
           <div className='font-medium text-green-600'>
-            Your: {product.yourPrice}
+            HZ:${product.tdPrice.toFixed(2)}
           </div>
         </div>
       )
     },
   },
-  {
-    accessorKey: 'weight',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='Weight(g)' />
-    ),
-    cell: ({ row }) => {
-      const weight = row.getValue('weight') as number
-      return <div className='text-xs'>{weight}</div>
-    },
-  },
+  // {
+  //   accessorKey: 'weight',
+  //   header: ({ column }) => (
+  //     <DataTableColumnHeader column={column} title='Weight(g)' />
+  //   ),
+  //   cell: ({ row }) => {
+  //     const weight = row.getValue('weight') as number
+  //     return <div className='text-xs'>{weight}</div>
+  //   },
+  // },
   {
     accessorKey: 'reason',
     header: ({ column }) => (
@@ -149,14 +148,14 @@ export const publishedProductsColumns = (
       )
     },
   },
-  {
-    id: 'actions',
-    cell: ({ row }) => (
-      <PublishedProductsRowActions
-        row={row}
-        onDeleteSuccess={options?.onDeleteSuccess}
-      />
-    ),
-    enableSorting: false,
-  },
+  // {
+  //   id: 'actions',
+  //   cell: ({ row }) => (
+  //     <PublishedProductsRowActions
+  //       row={row}
+  //       onDeleteSuccess={options?.onDeleteSuccess}
+  //     />
+  //   ),
+  //   enableSorting: false,
+  // },
 ]

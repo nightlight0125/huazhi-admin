@@ -164,10 +164,9 @@ export function StoreManagement() {
     }
   }
 
-  const handleNext = () => {
-    if (selectedPlatform) {
-    }
-  }
+  const handleConnectStoreNext = useCallback(() => {
+    void fetchUserShops(true)
+  }, [fetchUserShops])
 
   return (
     <TasksProvider>
@@ -232,7 +231,7 @@ export function StoreManagement() {
               }
             }}
             platformName={selectedPlatform}
-            onNext={handleNext}
+            onNext={handleConnectStoreNext}
           />
         )}
         <BindShopDialog

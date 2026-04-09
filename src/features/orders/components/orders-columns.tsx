@@ -166,6 +166,79 @@ function OrderCancelCell({ row, onCancel }: OrderCancelCellProps) {
   )
 }
 
+interface OrderRestoreCellProps {
+  row: Row<Order>
+  onRestore?: (orderId: string) => void | Promise<void>
+}
+
+function OrderRestoreCell({ row, onRestore }: OrderRestoreCellProps) {
+  const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const order = row.original
+
+  const handleConfirmRestore = async () => {
+    if (!onRestore) return
+    setIsLoading(true)
+    try {
+      await onRestore(order.id)
+      setOpen(false)
+    } catch (error) {
+      console.error('恢复订单失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant='ghost'
+        size='sm'
+        className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary h-8 px-1.5 hover:bg-transparent dark:hover:bg-transparent'
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        Restore
+      </Button>
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) {
+            setOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmRestore}
+        isLoading={isLoading}
+        title='Restore order'
+        desc={
+          <>
+            <p className='mb-2'>
+              This order will return to awaiting payment. You can continue checkout
+              after restoring.
+            </p>
+            <p className='text-muted-foreground text-sm'>
+              Order Number: <strong>{order.orderNumber}</strong>
+            </p>
+          </>
+        }
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Restoring...
+            </>
+          ) : (
+            'Restore'
+          )
+        }
+      />
+    </>
+  )
+}
+
 export const createOrdersColumns = (options?: {
   onExpand?: (rowId: string) => void
   expandedRows?: Set<string>
@@ -174,6 +247,7 @@ export const createOrdersColumns = (options?: {
   onEditCustomerName?: (orderId: string) => void
   onPay?: (orderId: string) => void
   onCancel?: (orderId: string) => void
+  onRestore?: (orderId: string) => void | Promise<void>
   onDelete?: (orderId: string) => void | Promise<void>
   onSelectShippingMethod?: (order: Order) => void
 }): ColumnDef<Order>[] => {
@@ -185,6 +259,7 @@ export const createOrdersColumns = (options?: {
     onEditCustomerName: _onEditCustomerName,
     onPay,
     onCancel,
+    onRestore,
     onDelete,
     onSelectShippingMethod,
   } = options || {}
@@ -352,7 +427,7 @@ export const createOrdersColumns = (options?: {
     },
     {
       id: 'trackingNumber',
-      header: 'Tracking Number',
+      header: 'Tracking No',
       cell: ({ row }) => {
         const order = row.original
         const rawTracking = toDisplayString((order as any).trackingNumber)
@@ -504,6 +579,9 @@ export const createOrdersColumns = (options?: {
               className='flex items-center gap-0'
               onClick={(e) => e.stopPropagation()}
             >
+              {onRestore ? (
+                <OrderRestoreCell row={row} onRestore={onRestore} />
+              ) : null}
               <OrderDeleteCell row={row} onDelete={onDelete} />
             </div>
           )

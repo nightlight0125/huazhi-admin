@@ -98,6 +98,12 @@ export interface ApiOrderItem {
   hzkj_fre_quo_amount?: number | string
   hzkj_customer_channel_name?: number | string
   hzkj_customer_channel_number?: string
+  hzkj_customer_channel_id?: string
+  hzkj_address1?: string
+  hzkj_address2?: string
+  hzkj_admindivision_id?: string
+  hzkj_city?: string
+  hzkj_tax_id?: string
   /** 物流跟踪号，可能为逗号分隔多段 */
   trackingNumber?: string
   hzkj_tracking_number?: string
@@ -212,6 +218,9 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
     hzkj_fre_quo_amount: apiOrder.hzkj_fre_quo_amount,
     hzkj_customer_channel_name: apiOrder.hzkj_customer_channel_name,
     hzkj_customer_channel_number: apiOrder.hzkj_customer_channel_number,
+    hzkj_customer_channel_id: (apiOrder as any).hzkj_customer_channel_id,
+    hzkj_customer_id: (apiOrder as any).hzkj_customer_id,
+    hzkj_post_code: (apiOrder as any).hzkj_post_code,
     hzkj_total_amount: (apiOrder as any).hzkj_total_amount,
     totalQty: (apiOrder as any).totalQty,
     // 额外挂载编辑地址需要用到的原始字段（保持原始命名，方便直接读取）
@@ -402,11 +411,13 @@ export async function deleteOrder(
   return response.data
 }
 
-// 取消订单状态请求参数
+// 取消 / 恢复订单（同一接口：restore 为 true 时表示反取消）
 export interface UpdateOrderCancelStatusRequest {
   customerId: string
   orderId: string
   orderType: string
+  /** 为 true 时恢复已取消订单，不传或 false 表示取消订单 */
+  restore?: boolean
 }
 
 // 取消订单状态响应
@@ -418,7 +429,7 @@ export interface UpdateOrderCancelStatusResponse {
   [key: string]: unknown
 }
 
-// 更新订单为已取消状态 API
+// 更新订单取消状态 API（取消与恢复共用）
 export async function updateOrderCancelStatus(
   params: UpdateOrderCancelStatusRequest
 ): Promise<UpdateOrderCancelStatusResponse> {
@@ -429,7 +440,10 @@ export async function updateOrderCancelStatus(
 
   if (response.data.status === false) {
     const errorMessage =
-      response.data.message || 'Failed to cancel order. Please try again.'
+      response.data.message ||
+      (params.restore
+        ? 'Failed to restore order. Please try again.'
+        : 'Failed to cancel order. Please try again.')
     throw new Error(errorMessage)
   }
 
@@ -835,6 +849,8 @@ export interface RequestPaymentRequest {
   customerId: string
   orderIds: string[]
   type: number // 2 表示库存订单
+  /** 0 Stripe，1 Paypal（与后端约定） */
+  payType?: number
   // 支付完成后返回的地址（回调 URL，可选）
   returnUrl?: string
   // 支付失败/取消后返回的地址
@@ -886,15 +902,23 @@ export interface RequestPaymentResponse {
 export async function requestPayment(
   request: RequestPaymentRequest
 ): Promise<RequestPaymentResponse> {
-  // 在浏览器环境下，附加带有 session_id 占位符的回调地址
-  // 支付服务商会将 {CHECKOUT_SESSION_ID} 替换为真实的会话 ID，并重定向回该地址
+  const payType = request.payType ?? 0
+  // Stripe(0)：默认带 session_id 占位符；Paypal(1)：不能带 session_id={CHECKOUT_SESSION_ID}，否则后端/渠道报错
+  const defaultSuccessReturnUrl =
+    typeof window !== 'undefined'
+      ? payType === 1
+        ? `${window.location.origin}/order/payment-callback?payType=1`
+        : `${window.location.origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`
+      : undefined
+
   const payload: RequestPaymentRequest = {
     ...request,
+    payType,
     ...(typeof window !== 'undefined'
       ? {
-          ...(!request.returnUrl
+          ...(!request.returnUrl && defaultSuccessReturnUrl
             ? {
-                returnUrl: `${window.location.origin}/order/payment-callback?session_id={CHECKOUT_SESSION_ID}`,
+                returnUrl: defaultSuccessReturnUrl,
               }
             : {}),
           ...(!request.returnFailUrl
@@ -972,7 +996,8 @@ export async function walletPayment(
   )
   if (response.data.status === false) {
     const msg =
-      response.data.message || 'Failed to request wallet payment. Please try again.'
+      response.data.message ||
+      'Failed to request wallet payment. Please try again.'
     throw new Error(msg)
   }
   return response.data

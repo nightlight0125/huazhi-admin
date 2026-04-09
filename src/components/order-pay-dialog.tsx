@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from '@tanstack/react-router'
-import { Coins, CreditCard, Loader2 } from 'lucide-react'
+import { Coins, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { IconPaypal, IconStripe } from '@/assets/brand-icons'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   getCustomerBalance,
@@ -34,7 +35,9 @@ interface OrderPayDialogProps {
   onConfirm?: (
     orderId: string,
     paymentMethod: PaymentMethod,
-    amount: number
+    amount: number,
+    /** 0 Stripe，1 Paypal；余额支付为 undefined */
+    payType?: number
   ) => void
   onPaymentSuccess?: () => void // 支付成功后的回调，用于刷新数据
 }
@@ -94,12 +97,10 @@ export function OrderPayDialog({
       ? rawTotalAmount
       : 0
 
-  const orderIds = order.orderIds && order.orderIds.length > 0
-    ? order.orderIds
-    : [order.id]
+  const orderIds =
+    order.orderIds && order.orderIds.length > 0 ? order.orderIds : [order.id]
   const numberOfOrders = orderIds.length
 
-  // 根据当前菜单路由决定支付 type：/orders -> 0 销售，/sample-orders -> 1 样品，/stock-orders -> 2 备货
   const pathname = location.pathname ?? ''
   const paymentType = pathname.includes('sample-orders')
     ? 1
@@ -116,7 +117,13 @@ export function OrderPayDialog({
 
     // 如果有自定义的 onConfirm 回调，先调用它
     if (onConfirm) {
-      onConfirm(order.id, selectedPaymentMethod, totalAmount)
+      const payTypeForConfirm =
+        selectedPaymentMethod === 'balance'
+          ? undefined
+          : selectedPaymentMethod === 'credit_card'
+            ? 0
+            : 1
+      onConfirm(order.id, selectedPaymentMethod, totalAmount, payTypeForConfirm)
       onOpenChange(false)
       return
     }
@@ -131,10 +138,12 @@ export function OrderPayDialog({
         })
         toast.success('Wallet payment submitted successfully')
       } else {
+        const payType = selectedPaymentMethod === 'credit_card' ? 0 : 1
         const response = await requestPayment({
           customerId: String(customerId),
           orderIds,
           type: orderType,
+          payType,
         })
         const paymentUrl =
           typeof response.data === 'string' ? response.data : undefined
@@ -177,45 +186,56 @@ export function OrderPayDialog({
               <button
                 type='button'
                 onClick={() => setSelectedPaymentMethod('balance')}
-                className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                className={`relative flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
                   selectedPaymentMethod === 'balance'
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
                     : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
                 }`}
               >
-                <Coins className='mb-2 h-6 w-6' />
-                <span className='text-sm font-medium'>Balance</span>
+                <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
+                  <Coins className='h-6 w-6' />
+                </div>
+                <span className='text-sm leading-none font-medium'>
+                  Balance
+                </span>
               </button>
 
-              {/* Credit Card */}
+              {/* Credit Card / Stripe */}
               <button
                 type='button'
                 onClick={() => setSelectedPaymentMethod('credit_card')}
-                className={`relative flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                className={`relative flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
                   selectedPaymentMethod === 'credit_card'
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
                     : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
                 }`}
               >
-                <CreditCard className='mb-2 h-6 w-6' />
-                <span className='text-sm font-medium'>Credit card</span>
+                <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
+                  <IconStripe
+                    className='h-8 w-10 text-[#635BFF]'
+                    aria-hidden
+                  />
+                </div>
+                <span className='text-sm leading-none font-medium'>Stripe</span>
               </button>
 
-              {/* Airwallex */}
+              {/* Paypal / airwallex */}
               <button
                 type='button'
                 onClick={() => setSelectedPaymentMethod('airwallex')}
-                disabled
-                className={`relative flex cursor-not-allowed flex-col items-center justify-center rounded-lg border-2 p-4 opacity-60 transition-all ${
+                className={`relative flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
                   selectedPaymentMethod === 'airwallex'
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                    : 'border-gray-200 bg-gray-50 dark:bg-gray-800'
+                    : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800'
                 }`}
               >
-                <div className='mb-2 h-6 w-16 rounded bg-gray-400'></div>
-                <span className='text-sm font-medium text-gray-500'>
-                  Airwallex
-                </span>
+                <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
+                  <IconPaypal
+                    className='h-6 w-6 text-[#003087]'
+                    aria-hidden
+                  />
+                </div>
+                <span className='text-sm leading-none font-medium'>Paypal</span>
               </button>
             </div>
           </div>

@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { toDisplayString } from '@/features/orders/utils'
 import { type SampleOrder } from '../data/schema'
 
 // 删除订单单元格组件
@@ -172,14 +173,91 @@ function SampleOrderCancelCell({ row, onCancel }: SampleOrderCancelCellProps) {
   )
 }
 
+interface SampleOrderRestoreCellProps {
+  row: Row<SampleOrder>
+  onRestore?: (orderId: string) => void | Promise<void>
+}
+
+function SampleOrderRestoreCell({
+  row,
+  onRestore,
+}: SampleOrderRestoreCellProps) {
+  const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const order = row.original
+
+  const handleConfirmRestore = async () => {
+    if (!onRestore) return
+    setIsLoading(true)
+    try {
+      await onRestore(order.id)
+      setOpen(false)
+    } catch (error) {
+      console.error('恢复订单失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant='ghost'
+        size='sm'
+        className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        Restore
+      </Button>
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) {
+            setOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmRestore}
+        isLoading={isLoading}
+        title='Restore order'
+        desc={
+          <>
+            <p className='mb-2'>
+              This order will return to awaiting payment. You can continue checkout
+              after restoring.
+            </p>
+            <p className='text-muted-foreground text-sm'>
+              Order Number: <strong>{order.billno}</strong>
+            </p>
+          </>
+        }
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Restoring...
+            </>
+          ) : (
+            'Restore'
+          )
+        }
+      />
+    </>
+  )
+}
+
 export const createSampleOrdersColumns = (options?: {
   onPay?: (orderId: string) => void
   onCancel?: (orderId: string) => void
+  onRestore?: (orderId: string) => void | Promise<void>
   onEditAddress?: (orderId: string) => void
   onAddPackage?: (orderId: string) => void
   onDelete?: (orderId: string) => void | Promise<void>
 }): ColumnDef<SampleOrder>[] => {
-  const { onPay, onCancel, onEditAddress, onDelete } = options || {}
+  const { onPay, onCancel, onRestore, onEditAddress, onDelete } = options || {}
 
   return [
     {
@@ -346,16 +424,40 @@ export const createSampleOrdersColumns = (options?: {
     },
     {
       id: 'shipping',
-      header: 'Tracking No.',
+      header: 'Tracking No',
       cell: ({ row }) => {
         const order = row.original
+        const rawTracking = toDisplayString((order as any).trackingNumber)
+        const trackingNumbers = rawTracking
+          ? rawTracking
+              .split(',')
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : []
+
+        if (trackingNumbers.length === 0) {
+          return <div className='text-sm'>---</div>
+        }
+
         return (
           <div className='space-y-1 text-sm'>
-            <div>{order.trackingNumber || '---'}</div>
+            {trackingNumbers.map((trackingNo, index) => (
+              <div key={`${trackingNo}-${index}`}>
+                <a
+                  href={`https://t.17track.net/zh-cn#nums=${encodeURIComponent(trackingNo)}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-primary hover:underline'
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {trackingNo}
+                </a>
+              </div>
+            ))}
           </div>
         )
       },
-      size: 150,
+      size: 180,
     },
     {
       accessorKey: 'status',
@@ -442,7 +544,12 @@ export const createSampleOrdersColumns = (options?: {
             onClick={(e) => e.stopPropagation()}
           >
             {isCancelledOrder ? (
-              <SampleOrderDeleteCell row={row} onDelete={onDelete} />
+              <>
+                {onRestore ? (
+                  <SampleOrderRestoreCell row={row} onRestore={onRestore} />
+                ) : null}
+                <SampleOrderDeleteCell row={row} onDelete={onDelete} />
+              </>
             ) : showPay ? (
               <>
                 <Button

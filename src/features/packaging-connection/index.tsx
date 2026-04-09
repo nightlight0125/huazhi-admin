@@ -28,6 +28,7 @@ import {
   PackagingConnectionTable,
   usePackagingConnectionTable,
 } from './components/packaging-connection-table'
+import { prefetchDefaultProductThumb } from './default-product-thumb'
 import { type PackagingProduct, type StoreSku } from './data/schema'
 
 // Transform OdPdPackageListItem to StoreSku
@@ -211,13 +212,13 @@ export function PackagingConnection() {
             hzkjIsconnect = '0'
           }
 
-          // 根据 tab 确定 hzkj_package_type
+          // 根据 tab 确定 hzkj_package_type：Products = 2，Order = 1（与 ApplyPackagingDialog 一致）
           const packageType =
             hzkjIsconnect === '0'
               ? undefined
               : activeTab === 'products'
-                ? '1'
-                : '2'
+                ? '2'
+                : '1'
 
           // 获取店铺过滤值
           const shopId =
@@ -300,6 +301,10 @@ export function PackagingConnection() {
     string[] | undefined
   >(undefined)
   const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    prefetchDefaultProductThumb()
+  }, [])
 
   // 获取店铺列表
   useEffect(() => {
@@ -400,14 +405,14 @@ export function PackagingConnection() {
           hzkjIsconnect = '0'
         }
 
-        // 根据 tab 确定 hzkj_package_type
+        // 根据 tab 确定 hzkj_package_type：Products = 2，Order = 1（与 ApplyPackagingDialog 一致）
         // 查询未关联产品时，hzkj_package_type 不传
         const packageType =
           hzkjIsconnect === '0'
             ? undefined
             : activeTab === 'products'
-              ? '1'
-              : '2'
+              ? '2'
+              : '1'
 
         // 获取店铺过滤值
         const shopId =
@@ -592,7 +597,7 @@ export function PackagingConnection() {
                       <TooltipContent
                         side='top'
                         align='start'
-                        className='max-w-[320px] whitespace-normal break-words px-2 py-1.5 text-xs leading-5'
+                        className='max-w-[320px] px-2 py-1.5 text-xs leading-5 break-words whitespace-normal'
                       >
                         <p>{tab.tip}</p>
                       </TooltipContent>

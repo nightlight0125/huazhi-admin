@@ -1152,6 +1152,8 @@ export async function queryCuShopPackageList(
 export interface BuyProductRequest {
   customerId: string
   customChannelId: string
+  /** 0 Stripe，1 Paypal */
+  payType?: number
   // 支付完成后返回的地址（回调 URL）
   returnUrl?: string
   // 支付失败/取消后返回的地址
@@ -1198,6 +1200,49 @@ export async function buyProduct(
   if (response.data.status === false) {
     const errorMessage =
       response.data.message || 'Failed to buy product. Please try again.'
+    throw new Error(errorMessage)
+  }
+
+  return response.data
+}
+
+/**
+ * 余额购买（确认订单弹窗选 Balance）：与 buyProduct 字段一致但不传 returnUrl；
+ * 后端示例使用 `adminDivisionId`（与 buyProduct 的 `admindivisionId` 同义）。
+ */
+export interface BuyProductByWallRequest {
+  customerId: string
+  customChannelId: string
+  firstName: string
+  lastName: string
+  phone: string
+  countryId: string
+  adminDivisionId: string
+  city: string
+  address1: string
+  address2: string
+  postCode: string
+  taxId: string
+  note: string
+  detail: Array<{
+    skuId: string
+    quantity: number
+    flag: number
+  }>
+}
+
+export async function buyProductByWall(
+  params: BuyProductByWallRequest
+): Promise<BuyProductResponse> {
+  const response = await apiClient.post<BuyProductResponse>(
+    '/v2/hzkj/hzkj_commodity/hzkj_cu_product_record/buyProductByWall',
+    params
+  )
+
+  if (response.data.status === false) {
+    const errorMessage =
+      response.data.message ||
+      'Failed to complete wallet payment. Please try again.'
     throw new Error(errorMessage)
   }
 

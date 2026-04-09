@@ -72,7 +72,9 @@ function SupportTicketOrderCell({ row }: { row: Row<SupportTicket> }) {
     (ro.hzOrderNo as string | undefined) ??
     '--'
 
-  const renderOneLine = (ticket: Record<string, unknown>) => (
+  const renderOneLine = (ticket: Record<string, unknown>) => {
+    const variantText = String(ticket.hzkj_localsku_hzkj_name ?? '--')
+    return (
     <div className='flex items-start gap-3'>
       {ticket.hzkj_localsku_hzkj_picturefield ? (
         <img
@@ -94,14 +96,31 @@ function SupportTicketOrderCell({ row }: { row: Row<SupportTicket> }) {
       <div className='min-w-0 flex-1 space-y-0.5 text-sm'>
         <div>Order NO: {String(orderNo)}</div>
         <div>SKU: {String(ticket.hzkj_localsku_number ?? '--')}</div>
-        <div>Variant: {String(ticket.hzkj_localsku_hzkj_name ?? '--')}</div>
+        <div className='flex min-w-0 items-baseline gap-1'>
+          <span className='flex-shrink-0'>Variant:</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className='min-w-0 max-w-[min(100%,12rem)] cursor-default truncate'>
+                {variantText}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              side='top'
+              align='start'
+              className='max-w-sm break-words'
+            >
+              {variantText}
+            </TooltipContent>
+          </Tooltip>
+        </div>
         <div>
           Total Price: $
           {Number(ticket.hzkj_localsku_hzkj_pur_price ?? 0).toFixed(2)}
         </div>
       </div>
     </div>
-  )
+    )
+  }
 
   if (items.length === 0) {
     return (

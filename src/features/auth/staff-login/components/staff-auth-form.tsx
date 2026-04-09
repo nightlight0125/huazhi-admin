@@ -5,7 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { getToken, idLogin } from '@/lib/api/auth'
+import {
+  extractTokenAndExpiryFromLoginResponse,
+  idLogin,
+} from '@/lib/api/auth'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -49,24 +52,18 @@ export function StaffAuthForm({
     const loadingToast = toast.loading('Signing in...')
 
     try {
-      let token = auth.accessToken
-      if (!token || token.trim() === '') {
-        token = await getToken()
-        auth.setAccessToken(token)
-      }
-      if (!token || token.trim() === '') {
-        throw new Error('Failed to get access token. Please try again.')
-      }
-
       const loginResponse = await idLogin(data.accountId, data.bizUserId)
 
+      const { token: idTok, expiresAtMs } =
+        extractTokenAndExpiryFromLoginResponse(loginResponse)
       const finalToken =
-        loginResponse.token || loginResponse.access_token || token
+        idTok || loginResponse.token || loginResponse.access_token
       if (!finalToken || finalToken.trim() === '') {
         throw new Error('Failed to get valid token. Please try again.')
       }
 
       auth.setAccessToken(finalToken)
+      auth.setTokenExpiresAtMs(expiresAtMs)
 
       const userData = loginResponse.data as {
         accountId?: string
@@ -89,7 +86,6 @@ export function StaffAuthForm({
         accountNo: userData.accountId || userData.id || data.accountId,
         email: userData.email || '',
         role: ['user'],
-        exp: Date.now() + 3 * 60 * 60 * 1000,
         id: userData.user?.id || userData.id || data.bizUserId || '',
         username: userData.user?.username || data.accountId || '',
         roleId: userData.roleId || userData.user?.roleId || '',

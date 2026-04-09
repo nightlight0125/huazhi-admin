@@ -21,12 +21,26 @@ toast.error = ((...args: Parameters<typeof toast.error>) => {
 // Styles
 import { redirectToExpiredIfNeeded } from '@/lib/build-expiration'
 import { handleServerError } from '@/lib/handle-server-error'
+import {
+  ensureShopifyAppBridgeScriptLoaded,
+  initShopifyAppBridge,
+} from '@/lib/shopify-app-bridge'
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
 // Generated Routes
 import { routeTree } from './routeTree.gen'
 import './styles/index.css'
+
+try {
+  await ensureShopifyAppBridgeScriptLoaded()
+} catch (e) {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn('[Shopify App Bridge] script load skipped or failed', e)
+  }
+}
+initShopifyAppBridge()
 
 const queryClient = new QueryClient({
   defaultOptions: {

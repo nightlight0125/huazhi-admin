@@ -22,6 +22,8 @@ import { type CountryItem, queryCountry } from '@/lib/api/logistics'
 import {
   collectProduct,
   delCollectProducts,
+  getProduct,
+  type ApiProductItem,
   type GoodClassItem,
   queryGoodClassList,
 } from '@/lib/api/products'
@@ -48,7 +50,10 @@ import { FilterToolbar } from '@/components/filter-toolbar'
 import { ImageSearchInput } from '@/components/image-search-input'
 import { PriceRangePopover } from '@/components/price-range-popover'
 import { type Product } from '@/features/products/data/schema'
-import { StoreListingTabs } from '@/features/store-management/components/store-listing-tabs'
+import {
+  StoreListingTabs,
+  type StoreListingTabsHandle,
+} from '@/features/store-management/components/store-listing-tabs'
 import { createVariantPricingColumns } from '@/features/store-management/components/variant-pricing-columns'
 import { mockVariantPricingData } from '@/features/store-management/components/variant-pricing-data'
 import { type VariantPricing } from '@/features/store-management/components/variant-pricing-schema'
@@ -194,6 +199,17 @@ export function AllProductsGrid({
   const [searchInputValue, setSearchInputValue] = useState<string>('')
 
   const [isStoreListingOpen, setIsStoreListingOpen] = useState(false)
+  const storeListingTabsRef = useRef<StoreListingTabsHandle>(null)
+  const [storeListingApiProduct, setStoreListingApiProduct] =
+    useState<ApiProductItem | null>(null)
+  const [storeListingRichText, setStoreListingRichText] = useState('')
+  const [storeListingProductId, setStoreListingProductId] = useState<
+    string | null
+  >(null)
+  const [storeListingListTitle, setStoreListingListTitle] = useState('')
+  const [isLoadingStoreListingProduct, setIsLoadingStoreListingProduct] =
+    useState(false)
+  const [isConfirmingPublish, setIsConfirmingPublish] = useState(false)
   const [storeListingSelectedTags, setStoreListingSelectedTags] = useState<
     string[]
   >([])
@@ -376,6 +392,34 @@ export function AllProductsGrid({
           ? error.message
           : 'Failed to add favorite. Please try again.'
       )
+    }
+  }
+
+  const openStoreListingForProduct = async (product: Product) => {
+    const customerId = auth.user?.customerId ?? auth.user?.id
+    if (!customerId) {
+      toast.error('Please login first')
+      return
+    }
+    setIsLoadingStoreListingProduct(true)
+    try {
+      const detail = await getProduct(product.id, String(customerId))
+      setStoreListingApiProduct(detail)
+      const richtext = (detail as Record<string, unknown> | null)
+        ?.hzkj_richtextfield
+      setStoreListingRichText(typeof richtext === 'string' ? richtext : '')
+      setStoreListingProductId(product.id)
+      setStoreListingListTitle(product.name)
+      setIsStoreListingOpen(true)
+    } catch (error) {
+      console.error('Failed to load product detail for publish:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load product detail.'
+      )
+    } finally {
+      setIsLoadingStoreListingProduct(false)
     }
   }
 
@@ -675,12 +719,17 @@ export function AllProductsGrid({
                       size='sm'
                       className='h-7 flex-1 px-1'
                       title='Add to Store'
+                      disabled={isLoadingStoreListingProduct}
                       onClick={(e) => {
                         e.stopPropagation()
-                        setIsStoreListingOpen(true)
+                        void openStoreListingForProduct(product)
                       }}
                     >
-                      <Store className='h-3.5 w-3.5' />
+                      {isLoadingStoreListingProduct ? (
+                        <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                      ) : (
+                        <Store className='h-3.5 w-3.5' />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -710,19 +759,83 @@ export function AllProductsGrid({
         handleConfirm={handleConfirmUnfavorite}
       />
 
-      {/* Store listing 右侧抽屉 */}
-      <Sheet open={isStoreListingOpen} onOpenChange={setIsStoreListingOpen}>
+      {/* Store listing 右侧抽屉：内容区可滚动，底部按钮固定可见 */}
+      <Sheet
+        open={isStoreListingOpen}
+        onOpenChange={(open) => {
+          setIsStoreListingOpen(open)
+          if (!open) {
+            setStoreListingApiProduct(null)
+            setStoreListingRichText('')
+            setStoreListingProductId(null)
+            setStoreListingListTitle('')
+            setStoreListingSelectedTags([])
+          }
+        }}
+      >
         <SheetContent
           side='right'
-          className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
+          className='flex h-full max-h-[100dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:!w-[70vw] sm:!max-w-none'
         >
-          <div className='flex h-full text-sm'>
+          <div className='flex min-h-0 flex-1 flex-col overflow-hidden text-sm'>
             <StoreListingTabs
+              ref={storeListingTabsRef}
               selectedTags={storeListingSelectedTags}
               setSelectedTags={setStoreListingSelectedTags}
               variantPricingTable={variantPricingTable}
               columns={variantPricingColumns}
+              productId={storeListingProductId ?? undefined}
+              productTitle={(() => {
+                const api = storeListingApiProduct
+                if (api) {
+                  const en = (api as Record<string, unknown>)?.hzkj_enname
+                  if (en != null) {
+                    const val =
+                      typeof en === 'string'
+                        ? en
+                        : (en as Record<string, unknown>)?.GLang
+                    if (val != null && String(val).trim()) return String(val)
+                  }
+                }
+                return storeListingListTitle
+              })()}
+              apiProduct={storeListingApiProduct}
+              richTextContent={storeListingRichText}
+              onConfirm={() => setIsStoreListingOpen(false)}
             />
+          </div>
+          <div className='bg-background flex shrink-0 items-center justify-end gap-2 border-t px-4 py-3'>
+            <Button
+              variant='outline'
+              onClick={() => setIsStoreListingOpen(false)}
+              className='min-w-[96px]'
+            >
+              Cancel
+            </Button>
+            <Button
+              className='min-w-[120px]'
+              disabled={isConfirmingPublish}
+              onClick={async () => {
+                if (!storeListingTabsRef.current) return
+                setIsConfirmingPublish(true)
+                try {
+                  await storeListingTabsRef.current.handleConfirm()
+                } catch (error) {
+                  console.error('Failed to push product:', error)
+                } finally {
+                  setIsConfirmingPublish(false)
+                }
+              }}
+            >
+              {isConfirmingPublish ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Publishing...
+                </>
+              ) : (
+                'Confirm'
+              )}
+            </Button>
           </div>
         </SheetContent>
       </Sheet>

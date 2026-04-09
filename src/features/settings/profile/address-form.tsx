@@ -123,7 +123,6 @@ type CascaderOption = {
   number?: string
 }
 
-// 创建国旗图标组件（与 useCountries 一致）
 const createFlagIcon = (countryCode: string) => {
   const FlagIcon = ({ className }: { className?: string }) => {
     const code = countryCode.toLowerCase()

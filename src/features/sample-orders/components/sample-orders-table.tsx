@@ -359,16 +359,42 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     }
   }
 
+  const handleRestore = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await updateOrderCancelStatus({
+        customerId: String(customerId),
+        orderId: String(orderId),
+        orderType: 'sampleOrder',
+        restore: true,
+      })
+      toast.success('Order restored successfully')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to restore order. Please try again.'
+      )
+    }
+  }
+
   const columns = useMemo(
     () =>
       createSampleOrdersColumns({
         onPay: handlePay,
         onCancel: handleCancel,
+        onRestore: handleRestore,
         onEditAddress: handleEditAddress,
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    [auth.user?.customerId, handleCancel, handleDelete]
+    [auth.user?.customerId, handleCancel, handleRestore, handleDelete]
   )
 
   const table = useReactTable({
@@ -427,7 +453,10 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         }}
       />
       <div className='mb-2 flex items-center justify-end'>
-        <SampleOrdersActionsMenu table={table} />
+        <SampleOrdersActionsMenu
+          table={table}
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+        />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
         <TabsList className='grid w-full grid-cols-6'>

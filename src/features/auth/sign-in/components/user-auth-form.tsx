@@ -5,7 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { getToken, idLogin, memberLogin } from '@/lib/api/auth'
+import {
+  extractTokenAndExpiryFromLoginResponse,
+  idLogin,
+  memberLogin,
+} from '@/lib/api/auth'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -66,44 +70,21 @@ export function UserAuthForm({
     const loadingToast = toast.loading('Signing in...')
 
     try {
-      // 检查当前 token 状态
-      const currentToken = auth.accessToken
-      const currentUser = auth.user
-      let token = currentToken
-
-      if (!token || token.trim() === '') {
-        // 先调用 getToken 接口获取 token
-        token = await getToken()
-        // 临时保存 token，以便后续请求使用
-        auth.setAccessToken(token)
-      } else if (currentUser?.exp) {
-        // 检查 token 是否过期
-        const now = Date.now()
-        if (now >= currentUser.exp) {
-          // Token 已过期，重新获取
-          // token = await getToken(data.email)
-          // auth.setAccessToken(token)
-        }
-      }
-
-      // 验证 token 是否存在且有效
-      if (!token || token.trim() === '') {
-        throw new Error('Failed to get access token. Please try again.')
-      }
-
-      // 获取到 token 后，调用会员登录接口
       const loginResponse = await memberLogin(data.email, data.password)
 
-      // 确保使用最新的 token（如果登录响应中有新的 token，使用新的）
+      const { token: tokenFromApi, expiresAtMs } =
+        extractTokenAndExpiryFromLoginResponse(loginResponse)
       const finalToken =
-        loginResponse.token || loginResponse.access_token || token
+        tokenFromApi ||
+        loginResponse.token ||
+        loginResponse.access_token
 
-      // 再次验证最终 token 是否存在
       if (!finalToken || finalToken.trim() === '') {
         throw new Error('Failed to get valid token. Please try again.')
       }
 
       auth.setAccessToken(finalToken)
+      auth.setTokenExpiresAtMs(expiresAtMs)
 
       // 设置用户信息（根据实际 API 响应调整）
       const userData = loginResponse.data as {
@@ -127,7 +108,6 @@ export function UserAuthForm({
         accountNo: userData.accountId || userData.id || data.email,
         email: userData.email || data.email,
         role: ['user'],
-        exp: Date.now() + 3 * 60 * 60 * 1000, // 3 hours from now (matching backend expiry)
         id: userData.user?.id || userData.id || '',
         username: userData.user?.username || data.email.split('@')[0] || '',
         roleId: userData.roleId || userData.user?.roleId || '',
@@ -148,17 +128,7 @@ export function UserAuthForm({
 
       try {
         if (typeof window !== 'undefined') {
-          if (data.rememberMe) {
-            window.localStorage.setItem(
-              'saved_login_credentials',
-              JSON.stringify({
-                email: data.email,
-                password: data.password,
-              })
-            )
-          } else {
-            window.localStorage.removeItem('saved_login_credentials')
-          }
+          window.localStorage.removeItem('saved_login_credentials')
         }
       } catch {
         // 静默处理本地存储异常
@@ -227,23 +197,17 @@ export function UserAuthForm({
       const loadingToast = toast.loading('Signing in...')
 
       try {
-        let token = auth.accessToken
-        if (!token || token.trim() === '') {
-          token = await getToken()
-          auth.setAccessToken(token)
-        }
-
-        if (!token || token.trim() === '') {
-          throw new Error('Failed to get access token. Please try again.')
-        }
-
         const loginResponse = await idLogin(accountId!, bizUserId!)
-        const finalToken = loginResponse.token || loginResponse.access_token || token
+        const { token: idToken, expiresAtMs: idExpires } =
+          extractTokenAndExpiryFromLoginResponse(loginResponse)
+        const finalToken =
+          idToken || loginResponse.token || loginResponse.access_token
         if (!finalToken || finalToken.trim() === '') {
           throw new Error('Failed to get valid token. Please try again.')
         }
 
         auth.setAccessToken(finalToken)
+        auth.setTokenExpiresAtMs(idExpires)
 
         const userData = loginResponse.data as {
           accountId?: string
@@ -266,7 +230,6 @@ export function UserAuthForm({
           accountNo: userData.accountId || userData.id || accountId,
           email: userData.email || '',
           role: ['user'],
-          exp: Date.now() + 3 * 60 * 60 * 1000,
           id: userData.user?.id || userData.id || bizUserId || '',
           username: userData.user?.username || accountId || '',
           roleId: userData.roleId || userData.user?.roleId || '',

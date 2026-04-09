@@ -215,11 +215,11 @@ export function RecommendProductsRowActions({
       <Sheet open={isStoreListingOpen} onOpenChange={setIsStoreListingOpen}>
         <SheetContent
           side='right'
-          className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
+          className='flex h-full max-h-[100dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:!w-[70vw] sm:!max-w-none'
           onClick={stopEventPropagation}
           onMouseDown={stopEventPropagation}
         >
-          <div className='flex h-full text-sm'>
+          <div className='flex min-h-0 flex-1 flex-col overflow-hidden text-sm'>
             <StoreListingTabs
               ref={storeListingTabsRef}
               selectedTags={storeListingSelectedTags}

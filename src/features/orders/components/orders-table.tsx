@@ -157,6 +157,20 @@ function ProductDetailRow({
     return String(value)
   }
 
+  /** Shopify 列展示：优先后端 hzkj_product_name_en.GLang（或整段为 string 时直接用） */
+  const shopifyProductTitle = (() => {
+    const raw = (
+      product as {
+        hzkj_product_name_en?: { GLang?: string; zh_CN?: string } | string
+      }
+    )?.hzkj_product_name_en
+    if (raw == null || raw === '') return product?.hzkj_variant_name || ''
+    if (typeof raw === 'string') return raw.trim() || product?.hzkj_variant_name || ''
+    const g = raw.GLang?.trim()
+    if (g) return g
+    return product?.hzkj_variant_name || ''
+  })()
+
   return (
     <React.Fragment>
       <TableRow className='bg-muted/30'>
@@ -166,7 +180,7 @@ function ProductDetailRow({
               <div>
                 <img
                   src={product?.hzkj_picture || ''}
-                  alt={product?.hzkj_variant_name || ''}
+                  alt={shopifyProductTitle}
                   className='h-12 w-12 rounded object-cover'
                 />
               </div>
@@ -186,11 +200,26 @@ function ProductDetailRow({
                         )}
                         <div
                           style={{ width: '220px', wordBreak: 'break-all' }}
-                          className='text-[12px]'
+                          className='min-w-0 text-[12px]'
                         >
                           {index === 0
                             ? buttonIndex === 0
-                              ? `Shopify:${product?.hzkj_variant_name || ''}`
+                              ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <p className='cursor-default truncate'>
+                                        {`Shopify:${shopifyProductTitle}`}
+                                      </p>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side='top'
+                                      align='start'
+                                      className='max-w-sm break-words text-xs'
+                                    >
+                                      {`Shopify:${shopifyProductTitle}`}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )
                               : `Variant: ${(product as any)?.hzkj_sku_values || ''}`
                             : index === 1
                               ? buttonIndex === 0
@@ -850,6 +879,31 @@ export function OrdersTable({
     }
   }
 
+  const handleRestoreOrder = async (orderId: string) => {
+    const customerId = auth.user?.customerId
+    if (!customerId) {
+      toast.error('Customer ID not found')
+      return
+    }
+
+    try {
+      await updateOrderCancelStatus({
+        customerId: String(customerId),
+        orderId: String(orderId),
+        orderType: 'storeOrder',
+        restore: true,
+      })
+      toast.success('Order restored successfully')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to restore order. Please try again.'
+      )
+    }
+  }
+
   /** 删除订单中一行明细：当前产品行对应的销售单，调用 deleteSalOutOrder 删除整单 */
   const handleDeleteOrderLine = async (
     orderId: string,
@@ -907,6 +961,7 @@ export function OrdersTable({
         onEditCustomerName: handleEditCustomerName,
         onPay: handlePay,
         onCancel: handleCancelOrder,
+        onRestore: handleRestoreOrder,
         onDelete: handleDelete,
         onSelectShippingMethod: handleSelectShippingMethod,
       }),
@@ -915,6 +970,7 @@ export function OrdersTable({
       data,
       auth.user?.customerId,
       handleCancelOrder,
+      handleRestoreOrder,
       handleDelete,
       handleSelectShippingMethod,
     ]

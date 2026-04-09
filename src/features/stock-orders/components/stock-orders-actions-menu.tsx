@@ -1,20 +1,13 @@
 import { useEffect, useState } from 'react'
 import { type Table } from '@tanstack/react-table'
-import {
-  ChevronDown,
-  Download,
-  FileDown,
-  Loader2,
-  Merge,
-  ShoppingBag,
-  X,
-} from 'lucide-react'
+import { ChevronDown, Download, Loader2, ShoppingBag, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   addRMAOrder,
   getOrderInvoicePdf,
   queryAfterSaleReasonList,
+  updateOrderCancelStatus,
   type AfterSaleReasonItem,
 } from '@/lib/api/orders'
 import { Button } from '@/components/ui/button'
@@ -39,9 +32,13 @@ import { type StockOrder } from '../data/schema'
 
 interface StockOrdersActionsMenuProps {
   table?: Table<StockOrder> | null
+  onRefresh?: () => void
 }
 
-export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
+export function StockOrdersActionsMenu({
+  table,
+  onRefresh,
+}: StockOrdersActionsMenuProps) {
   const { auth } = useAuthStore()
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
   const [rmaDialogOpen, setRmaDialogOpen] = useState(false)
@@ -50,10 +47,16 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
   const [selectedReasonId, setSelectedReasonId] = useState('')
   const [dealType, setDealType] = useState('')
   const [description, setDescription] = useState('')
-  const [afterSaleReasons, setAfterSaleReasons] = useState<AfterSaleReasonItem[]>(
-    []
-  )
+  const [afterSaleReasons, setAfterSaleReasons] = useState<
+    AfterSaleReasonItem[]
+  >([])
   const [isLoadingReasons, setIsLoadingReasons] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [isCancellingOrder, setIsCancellingOrder] = useState(false)
+  const [pendingCancelOrder, setPendingCancelOrder] = useState<{
+    id: string
+    orderNumber: string
+  } | null>(null)
   const dealTypeOptions = [
     { label: 'Return and refund', value: 'A' },
     { label: 'Refund only', value: 'B' },
@@ -146,7 +149,6 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
       // 刷新订单列表
       table.resetRowSelection()
     } catch (error) {
-      console.error('创建售后订单失败:', error)
       toast.error(
         error instanceof Error
           ? error.message
@@ -157,10 +159,63 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
     }
   }
 
+  const openCancelConfirm = () => {
+    if (!table) {
+      toast.error('Table not available')
+      return
+    }
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    if (selectedRows.length === 0) {
+      toast.error('Please select at least one order')
+      return
+    }
+    if (selectedRows.length > 1) {
+      toast.error('Please select only one order')
+      return
+    }
+    const order = selectedRows[0].original
+    const status = String((order as any).hzkj_orderstatus ?? '')
+    if (status !== '1') {
+      toast.error('Only orders pending payment can be cancelled.')
+      return
+    }
+    setPendingCancelOrder({
+      id: order.id,
+      orderNumber: (order as any).billno || order.orderNumber || order.id,
+    })
+    setCancelConfirmOpen(true)
+  }
+
+  const handleConfirmCancelOrder = async () => {
+    const customerId = auth.user?.customerId || auth.user?.id
+    if (!customerId || !pendingCancelOrder) return
+    setIsCancellingOrder(true)
+    try {
+      await updateOrderCancelStatus({
+        customerId: String(customerId),
+        orderId: String(pendingCancelOrder.id),
+        orderType: 'stockOrder',
+      })
+      toast.success('Order cancelled successfully')
+      setCancelConfirmOpen(false)
+      setPendingCancelOrder(null)
+      table?.resetRowSelection()
+      onRefresh?.()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to cancel order. Please try again.'
+      )
+    } finally {
+      setIsCancellingOrder(false)
+    }
+  }
+
   const handleAction = (action: string) => {
     switch (action) {
       case 'cancel':
-        // TODO: Implement cancel action
+        openCancelConfirm()
         break
       case 'download_invoice': {
         if (!table) {
@@ -271,19 +326,46 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
           )}
           Download Invoice
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAction('export')}>
-          <FileDown className='mr-2 h-4 w-4' />
-          Export Order
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAction('merge')}>
-          <Merge className='mr-2 h-4 w-4' />
-          Merge Order
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleAction('after_sales')}>
           <ShoppingBag className='mr-2 h-4 w-4' />
           After-Sales Batch
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isCancellingOrder) {
+            setCancelConfirmOpen(open)
+            if (!open) setPendingCancelOrder(null)
+          }
+        }}
+        handleConfirm={() => void handleConfirmCancelOrder()}
+        destructive
+        isLoading={isCancellingOrder}
+        title='Cancel order'
+        desc={
+          <>
+            <p className='mb-2'>Are you sure you want to cancel this order?</p>
+            {pendingCancelOrder ? (
+              <p className='text-muted-foreground text-sm'>
+                Order number: <strong>{pendingCancelOrder.orderNumber}</strong>
+              </p>
+            ) : null}
+          </>
+        }
+        confirmText={
+          isCancellingOrder ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Cancelling...
+            </>
+          ) : (
+            'Confirm'
+          )
+        }
+      />
+
       <ConfirmDialog
         open={rmaDialogOpen}
         onOpenChange={(newOpen) => {
@@ -308,11 +390,11 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
       >
         <div className='mt-4 space-y-4'>
           <div className='grid grid-cols-2 gap-6'>
-            <div className='space-y-2 min-w-0'>
+            <div className='min-w-0 space-y-2'>
               <Label htmlFor='stock-rma-order-no'>Order No</Label>
               <Input id='stock-rma-order-no' value={selectedOrderNo} disabled />
             </div>
-            <div className='space-y-2 min-w-0'>
+            <div className='min-w-0 space-y-2'>
               <Label htmlFor='stock-rma-question-type'>Question type</Label>
               <Select
                 value={selectedReasonId}
@@ -325,7 +407,9 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
                 >
                   <SelectValue
                     className='block max-w-full truncate'
-                    placeholder={isLoadingReasons ? 'Loading...' : 'Please select'}
+                    placeholder={
+                      isLoadingReasons ? 'Loading...' : 'Please select'
+                    }
                   />
                 </SelectTrigger>
                 <SelectContent>
@@ -340,7 +424,11 @@ export function StockOrdersActionsMenu({ table }: StockOrdersActionsMenuProps) {
                     const value = item.id ?? String((item as any).id || label)
 
                     return (
-                      <SelectItem key={value} value={value} className='max-w-80'>
+                      <SelectItem
+                        key={value}
+                        value={value}
+                        className='max-w-80'
+                      >
                         <span className='block truncate' title={label}>
                           {label}
                         </span>

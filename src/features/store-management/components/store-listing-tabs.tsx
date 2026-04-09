@@ -60,6 +60,10 @@ import {
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { type VariantPricing } from './variant-pricing-schema'
 
+/** Title 无 productTitle 时 placeholder 与回车填入共用，避免「看得见占位符但回车无效」 */
+const DEFAULT_PRODUCT_TITLE_FALLBACK =
+  'Fashion Ozzy Christmas Elf Doll Xmas Trees Decoration Ornaments Music Godfather Classic Sitting Posture Noel Elf Plush Toys'
+
 // 国家选项类型
 interface CountryOption {
   value: string
@@ -732,16 +736,13 @@ export const StoreListingTabs = forwardRef<
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={
-                    productTitle ||
-                    'Fashion Ozzy Christmas Elf Doll Xmas Trees Decoration Ornaments Music Godfather Classic Sitting Posture Noel Elf Plush Toys'
-                  }
+                  placeholder={productTitle || DEFAULT_PRODUCT_TITLE_FALLBACK}
                   className='h-8'
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !title.trim() && productTitle) {
-                      e.preventDefault()
-                      setTitle(productTitle)
-                    }
+                    if (e.key !== 'Enter' || title.trim()) return
+                    e.preventDefault()
+                    const fromProp = productTitle?.trim()
+                    setTitle(fromProp || DEFAULT_PRODUCT_TITLE_FALLBACK)
                   }}
                 />
               </div>

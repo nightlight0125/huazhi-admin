@@ -3,8 +3,9 @@ import { Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import {
+  getProductsList,
   queryShopifyUnconnectedProducts,
-  querySkuByCustomer,
+  type ApiProductItem,
   type ShopifyUnconnectedProductItem,
 } from '@/lib/api/products'
 import { getPageNumbers } from '@/lib/utils'
@@ -29,13 +30,23 @@ type StoreProductItem = ShopifyUnconnectedProductItem & {
   variantId: string
 }
 
-// TeemDropProductItem 基于 SKU 记录数据
+// HyperZone 列表：由 getProductsList 映射，字段与模板展示对齐
 type TeemDropProductItem = {
   id?: string
   hzkj_picturefield?: string
-  name?: string
+  hzkj_good_hzkj_enname?: string
   number?: string
   [key: string]: unknown
+}
+
+function mapApiProductToTeemDropItem(p: ApiProductItem): TeemDropProductItem {
+  return {
+    id: p.id,
+    number: p.number,
+    hzkj_picturefield:
+      typeof p.picture === 'string' ? p.picture : String(p.picture || ''),
+    hzkj_good_hzkj_enname: p.enname || p.name || '',
+  }
 }
 
 // 保留 mockStoreProducts 用于类型参考（已不再使用，将被 API 数据替代）
@@ -354,28 +365,30 @@ export function NotAssociatedConnectionView() {
 
   useEffect(() => {
     const fetchTeemDropProducts = async () => {
-      // const customerId = auth.user?.customerId
-      const customerId = '0'
+      const customerId = String(auth.user?.customerId ?? '')
+      if (!customerId) {
+        setTeemDropProducts([])
+        setTotalTeemDropProducts(0)
+        setIsLoadingTeemDropProducts(false)
+        return
+      }
 
       setIsLoadingTeemDropProducts(true)
       try {
-        const result = await querySkuByCustomer(
-          undefined,
-          String(customerId),
-          '0', // hzkj_public 默认 "0"
-          tdPage,
-          tdPageSize,
-          true, // 返回总数
-          searchKeyword
-        )
+        const response = await getProductsList({
+          customerId,
+          pageSize: tdPageSize,
+          pageNo: tdPage,
+          productName: searchKeyword?.trim() || '',
+          deliveryId: '',
+          categoryIds: [],
+          productTypes: [],
+          productTags: [],
+        })
 
-        // 类型检查：确保返回的是带总数的对象
-        if (!result || typeof result !== 'object' || !('rows' in result)) {
-          throw new Error('Invalid API response format')
-        }
-
-        setTeemDropProducts(result.rows || [])
-        setTotalTeemDropProducts(result.totalCount || 0)
+        const rows = response.data?.products ?? []
+        setTeemDropProducts(rows.map(mapApiProductToTeemDropItem))
+        setTotalTeemDropProducts(response.data?.totalCount ?? 0)
       } catch (error) {
         toast.error(
           error instanceof Error

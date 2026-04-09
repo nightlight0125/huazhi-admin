@@ -319,6 +319,8 @@ export function PublishedProductsTable({ status }: DataTableProps) {
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     manualPagination: true, // 启用服务端分页
+    // 店铺等筛选由接口完成；列筛选存的是 shopId，与 storeName 列展示值不一致，不能在客户端再滤一层
+    manualFiltering: true,
     pageCount,
     onPaginationChange,
     onGlobalFilterChange,
@@ -347,7 +349,7 @@ export function PublishedProductsTable({ status }: DataTableProps) {
         filters={[
           {
             columnId: 'storeName',
-            title: 'Store',
+            title: 'Store Name',
             options: storeOptions,
             singleSelect: true,
           },

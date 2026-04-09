@@ -1927,9 +1927,9 @@ export function ProductDetails() {
         <Sheet open={isStoreListingOpen} onOpenChange={setIsStoreListingOpen}>
           <SheetContent
             side='right'
-            className='flex h-full w-full flex-col sm:!w-[70vw] sm:!max-w-none'
+            className='flex h-full max-h-[100dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:!w-[70vw] sm:!max-w-none'
           >
-            <div className='flex min-h-0 flex-1 text-sm'>
+            <div className='flex min-h-0 flex-1 flex-col overflow-hidden text-sm'>
               {/* 左侧：Listing 类型菜单（与 StoreManagement 保持一致） */}
 
               {/* 右侧：Tabs + 表单内容 */}
@@ -1964,7 +1964,7 @@ export function ProductDetails() {
             </div>
 
             {/* 底部操作按钮，保持与 /store-management 一致 */}
-            <div className='flex items-center justify-end gap-2 border-t px-4 py-3'>
+            <div className='bg-background flex shrink-0 items-center justify-end gap-2 border-t px-4 py-3'>
               <Button
                 variant='outline'
                 onClick={() => setIsStoreListingOpen(false)}

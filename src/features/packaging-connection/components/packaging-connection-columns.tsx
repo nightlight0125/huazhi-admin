@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
 import { ChevronRight, Link2, Link2Off, Minus, Trash2 } from 'lucide-react'
 import { TRASH_DELETE_ICON_CLASS } from '@/lib/delete-action-ui'
@@ -5,7 +6,47 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { type StoreSku } from '../data/schema'
+import { DEFAULT_PRODUCT_THUMB_URL } from '../default-product-thumb'
+
+/**
+ * 用 CSS background 画固定占位图，避免每个格子挂 <img> 带来的 decode/合成闪一下。
+ * 无障碍用 role="img" + aria-label。
+ */
+const MemoLazyProductThumb = memo(
+  function MemoLazyProductThumb({
+    rowKey: _rowKey,
+    alt,
+    imageUrl,
+  }: {
+    /** 与 Table getRowId 一致，供 memo 比较；与 Table 行 key 同源 */
+    rowKey: string
+    alt: string
+    /** 后端商品图，如 `hzkj_local_sku_hzkj_picturefield`；空则用默认占位图 */
+    imageUrl?: string
+  }) {
+    const trimmed = typeof imageUrl === 'string' ? imageUrl.trim() : ''
+    const bgUrl = trimmed || DEFAULT_PRODUCT_THUMB_URL
+    return (
+      <div
+        role='img'
+        aria-label={alt}
+        title={alt}
+        className='bg-muted h-16 w-16 flex-shrink-0 [transform:translateZ(0)] overflow-hidden rounded-md border bg-cover bg-center bg-no-repeat [contain:layout]'
+        style={{ backgroundImage: `url(${JSON.stringify(bgUrl)})` }}
+      />
+    )
+  },
+  (prev, next) =>
+    prev.rowKey === next.rowKey &&
+    prev.alt === next.alt &&
+    prev.imageUrl === next.imageUrl
+)
 
 export const createPackagingConnectionColumns = (options?: {
   onExpand?: (rowId: string) => void
@@ -23,7 +64,6 @@ export const createPackagingConnectionColumns = (options?: {
     onConnect,
     onDelete,
     isStoreTab = false,
-    isOrderTab = false,
   } = options || {}
 
   // 如果是 stores tab，返回不同的列定义
@@ -233,6 +273,10 @@ export const createPackagingConnectionColumns = (options?: {
       header: 'Store SKU',
       cell: ({ row }) => {
         const item = row.original
+        const storeSkuDisplayName =
+          item.hzkj_local_sku_hzkj_name ||
+          item.hzkj_shop_package_hzkj_name ||
+          ''
         return (
           <div className='flex items-center gap-3'>
             <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
@@ -245,11 +289,24 @@ export const createPackagingConnectionColumns = (options?: {
                 }}
               />
             </div>
-            <div className='flex flex-col gap-1'>
-              <div className='text-sm font-medium'>
-                {item.hzkj_local_sku_hzkj_name ||
-                  item.hzkj_shop_package_hzkj_name}
-              </div>
+            <div className='flex min-w-0 flex-1 flex-col gap-1'>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className='max-w-[220px]'>
+                    <p className='truncate text-sm font-medium'>
+                      {storeSkuDisplayName || '---'}
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                {storeSkuDisplayName.trim().length > 0 && (
+                  <TooltipContent
+                    side='top'
+                    className='max-w-sm text-sm break-words'
+                  >
+                    {storeSkuDisplayName}
+                  </TooltipContent>
+                )}
+              </Tooltip>
               <div className='text-muted-foreground text-xs'>
                 SKU: {item.hzkj_shop_sku || item.hzkj_shop_package_number}
               </div>
@@ -267,19 +324,32 @@ export const createPackagingConnectionColumns = (options?: {
       header: 'Product',
       cell: ({ row }) => {
         const item = row.original
+        const productDisplayName = item.hzkj_local_sku_hzkj_name || ''
         return (
           <div className='flex items-center gap-3'>
-            <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
-              <img
-                src={item.hzkj_local_sku_hzkj_picturefield || ''}
-                alt='SKU'
-                className='h-full w-full object-cover'
-              />
-            </div>
-            <div className='flex flex-col gap-1'>
-              <div className='text-sm font-medium'>
-                {item.hzkj_local_sku_hzkj_name || '---'}
-              </div>
+            <MemoLazyProductThumb
+              rowKey={row.id}
+              alt={productDisplayName.trim() ? productDisplayName : 'Product'}
+              imageUrl={item.hzkj_local_sku_hzkj_picturefield}
+            />
+            <div className='flex min-w-0 flex-1 flex-col gap-1'>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className='max-w-[220px]'>
+                    <p className='truncate text-sm font-medium'>
+                      {productDisplayName || '---'}
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                {productDisplayName.trim().length > 0 && (
+                  <TooltipContent
+                    side='top'
+                    className='max-w-sm text-sm break-words'
+                  >
+                    {productDisplayName}
+                  </TooltipContent>
+                )}
+              </Tooltip>
               <div className='text-muted-foreground text-xs'>
                 SKU: {item.hzkj_local_sku_number || '---'}
               </div>
@@ -393,7 +463,7 @@ export const createPackagingConnectionColumns = (options?: {
                 Connect
               </Button>
             )}
-            {isOrderTab && (
+            {/* {!isOrderTab && (
               <Button
                 variant='outline'
                 size='sm'
@@ -407,7 +477,7 @@ export const createPackagingConnectionColumns = (options?: {
                   className={cn(TRASH_DELETE_ICON_CLASS, 'mr-1 h-3.5 w-3.5')}
                 />
               </Button>
-            )}
+            )} */}
           </div>
         )
       },

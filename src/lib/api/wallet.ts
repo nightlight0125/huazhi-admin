@@ -280,12 +280,9 @@ export interface RequestWalletPaymentResponse {
   [key: string]: unknown
 }
 
-// 请求支付 API（参考订单支付，使用 session_id 回调格式）
 export async function requestWalletPayment(
   request: RequestWalletPaymentRequest
 ): Promise<RequestWalletPaymentResponse> {
-  // 在浏览器环境下，附加带有 session_id 占位符的回调地址
-  // 支付服务商会将 {CHECKOUT_SESSION_ID} 替换为真实的会话 ID，并重定向回该地址
   const payload: RequestWalletPaymentRequest = {
     ...request,
     ...(typeof window !== 'undefined'
@@ -332,7 +329,6 @@ export async function requestWalletPayment(
   return response.data
 }
 
-// 钱包充值支付完成/失败后回调（携带 session_id）
 export interface WalletCallbackResponse {
   status?: boolean
   message?: string

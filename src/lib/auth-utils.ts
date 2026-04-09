@@ -11,28 +11,6 @@ export function isAuthenticated(): boolean {
 }
 
 /**
- * 检查 token 是否过期（基于本地存储的过期时间）
- * @returns 如果过期返回 true，否则返回 false
- */
-export function isTokenExpired(): boolean {
-  try {
-    const expiryTime = localStorage.getItem('token_expiry')
-    if (!expiryTime) {
-      // 如果没有过期时间，检查 user.exp
-      const { auth } = useAuthStore.getState()
-      if (auth.user?.exp) {
-        return Date.now() >= auth.user.exp
-      }
-      // 如果都没有，认为已过期
-      return true
-    }
-    return Date.now() >= Number(expiryTime)
-  } catch {
-    return true
-  }
-}
-
-/**
  * 获取当前用户 ID（不抛出错误）
  * 推荐在组件中使用 useAuthStore hook 直接获取，更简洁
  * 
@@ -61,7 +39,7 @@ export function getCurrentUserId(): string | undefined {
 export async function validateLoginStatus(): Promise<boolean> {
   try {
     // 先进行本地检查，避免不必要的网络请求
-    if (!isAuthenticated() || isTokenExpired()) {
+    if (!isAuthenticated()) {
       return false
     }
 

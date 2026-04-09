@@ -59,7 +59,7 @@ export function ProductsConnectionDialog({
   onOpenChange,
   onConfirm,
   leftProductId,
-  rightProductId: _rightProductId,
+  rightProductId,
 }: ProductsConnectionDialogProps) {
   const { auth } = useAuthStore()
 
@@ -95,7 +95,6 @@ export function ProductsConnectionDialog({
     )
 
   const { sortedStoreProducts, sortedTeemDropProducts } = useMemo(() => {
-    // 创建连接映射
     const storeToTeemDrop = new Map<string, string>()
     const teemDropToStore = new Map<string, string>()
     connections.forEach((conn) => {
@@ -274,9 +273,26 @@ export function ProductsConnectionDialog({
     }
 
     const fetchTeemDropProducts = async () => {
+      if (!customerId) {
+        setTeemDropProducts([])
+        return
+      }
+
+      // 接口 hzkj_good_id：点击 Connect 时选中的 HyperZone 商品 id（与 not-associated 传入的 rightProductId 一致）
+      const hzkjGoodId =
+        rightProductId != null && String(rightProductId).trim() !== ''
+          ? String(rightProductId).trim()
+          : undefined
+
       setIsLoadingTeemDropProducts(true)
       try {
-        const result = await querySkuByCustomer(undefined, '0', '0', 1, 100)
+        const result = await querySkuByCustomer(
+          hzkjGoodId,
+          String(customerId),
+          '0',
+          1,
+          100
+        )
 
         const rows = Array.isArray(result)
           ? result
@@ -338,6 +354,7 @@ export function ProductsConnectionDialog({
     auth.user?.id,
     selectedStoreProductId,
     leftProductId,
+    rightProductId,
   ])
 
   const handleConnect = (teemDropProductId: string) => {

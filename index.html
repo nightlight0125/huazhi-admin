@@ -58,7 +58,7 @@
 
   <body>
     <div id="root"></div>
+    <!-- app-bridge.js 改由 main 在「嵌入且 URL 含 host+shop」时动态加载，避免独立访问时报缺 shop -->
     <script type="module" src="/src/main.tsx"></script>
-    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
   </body>
 </html>

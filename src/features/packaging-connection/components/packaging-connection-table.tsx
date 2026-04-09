@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import {
+  type ColumnDef,
   type SortingState,
   type Table as TanstackTable,
   type VisibilityState,
@@ -25,6 +26,17 @@ import { DataTablePagination } from '@/components/data-table'
 import { type PackagingProduct, type StoreSku } from '../data/schema'
 import { PackagingConnectionBulkActions } from './packaging-connection-bulk-actions'
 import { createPackagingConnectionColumns } from './packaging-connection-columns'
+
+/** TanStack 默认用行下标当 id，分页后「第 0 行」key 不变，会错误复用 DOM。必须用业务主键。 */
+function getPackagingRowId(row: StoreSku, index: number): string {
+  const id = row.id
+  if (id != null && String(id) !== '') return String(id)
+  const r = row as Record<string, unknown>
+  const shop = String(r.hzkj_od_pd_shop_id ?? r.hzkj_pk_shop_id ?? '')
+  const variant = String(r.hzkj_variantid ?? '')
+  const sku = String(r.hzkj_shop_sku ?? r.hzkj_shop_package_number ?? '')
+  return `fb-${shop}-${variant}-${sku}-${index}`
+}
 
 type DataTableProps = {
   data: StoreSku[]
@@ -75,13 +87,13 @@ export function PackagingConnectionTable({
   }
 
   // Create columns based on filter state (only used if no external table)
-  const columns = useMemo(() => {
+  const columns = useMemo((): ColumnDef<StoreSku>[] => {
     return createPackagingConnectionColumns({
       onExpand: handleExpand,
       expandedRows,
       onDisconnect: handleDisconnect,
       onConnect: handleConnect,
-    })
+    }) as ColumnDef<StoreSku>[]
   }, [handleExpand, expandedRows, handleDisconnect, handleConnect])
 
   // Only create internal table if no external table provided
@@ -91,6 +103,7 @@ export function PackagingConnectionTable({
   const internalTable = useReactTable({
     data,
     columns,
+    getRowId: getPackagingRowId,
     state: {
       sorting,
       columnVisibility,
@@ -322,7 +335,7 @@ export function usePackagingConnectionTable(
 
   // Get status filter value from columnFilters
   // Create columns based on filter state
-  const columns = useMemo(() => {
+  const columns = useMemo((): ColumnDef<StoreSku>[] => {
     return createPackagingConnectionColumns({
       onExpand: handleExpand,
       expandedRows,
@@ -331,7 +344,7 @@ export function usePackagingConnectionTable(
       onDelete: handleDelete,
       isStoreTab: options?.activeTab === 'stores',
       isOrderTab: options?.activeTab === 'order',
-    })
+    }) as ColumnDef<StoreSku>[]
   }, [
     handleExpand,
     expandedRows,
@@ -355,6 +368,7 @@ export function usePackagingConnectionTable(
   const table = useReactTable({
     data,
     columns,
+    getRowId: getPackagingRowId,
     state: {
       sorting,
       columnVisibility,

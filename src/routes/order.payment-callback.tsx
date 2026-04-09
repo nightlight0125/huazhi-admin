@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 
 const searchSchema = z.object({
   session_id: z.string().optional(),
+  /** 1：Paypal 回调（无 Stripe session_id 占位） */
+  payType: z.coerce.number().optional(),
 })
 
 export const Route = createFileRoute('/order/payment-callback')({
@@ -15,7 +17,7 @@ export const Route = createFileRoute('/order/payment-callback')({
 })
 
 function OrderPaymentCallbackPage() {
-  const { session_id } = Route.useSearch()
+  const { session_id, payType } = Route.useSearch()
   const navigate = useNavigate()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
     'loading'
@@ -23,6 +25,15 @@ function OrderPaymentCallbackPage() {
   const [message, setMessage] = useState<string>('')
 
   useEffect(() => {
+    // Paypal：returnUrl 不含 session_id 占位；仅带 payType=1，由渠道回跳后展示成功
+    if (!session_id && payType === 1) {
+      setStatus('success')
+      setMessage(
+        'Payment return received. You can close this window or go back to orders.'
+      )
+      return
+    }
+
     if (!session_id) {
       setStatus('error')
       setMessage('Missing session_id.')
@@ -50,7 +61,7 @@ function OrderPaymentCallbackPage() {
     return () => {
       cancelled = true
     }
-  }, [session_id])
+  }, [session_id, payType])
 
   return (
     <div className='bg-muted/30 flex min-h-svh flex-col items-center justify-center gap-6 p-6'>

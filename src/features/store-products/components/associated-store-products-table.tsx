@@ -207,7 +207,6 @@ export function AssociatedStoreProductsTable({
     })
   }
 
-  // 创建列定义
   const columns = useMemo<ColumnDef<StoreProduct>[]>(
     () => [
       {

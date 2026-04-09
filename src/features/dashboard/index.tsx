@@ -9,6 +9,7 @@ import {
   type OrderCountStatisticsData,
 } from '@/lib/api/orders'
 import { queryCustomerUser, type CustomerUserItem } from '@/lib/api/users'
+import { getWalletInfo } from '@/lib/api/wallet'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
@@ -22,6 +23,20 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { HotSellingProducts } from './components/hot-selling-products'
 import { Overview } from './components/overview'
+
+/** 接口返回空对象或无标题/正文时不在首页自动弹窗 */
+function hasReminderContent(detail: ReminderItem | Record<string, unknown>) {
+  const d = detail as Record<string, unknown>
+  const title = String(d.hzkj_textfield ?? d.text ?? '').trim()
+  const bill = String(d.billno ?? d.bill_no ?? '').trim()
+  const rawHtml = String(d.hzkj_richtextfield ?? d.content ?? '').trim()
+  const plain = rawHtml
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim()
+  if (title || bill) return true
+  return plain.length > 0
+}
 
 export function Dashboard() {
   const authUser = useAuthStore((state) => state.auth.user)
@@ -40,6 +55,15 @@ export function Dashboard() {
   )
   const [showReminderDialog, setShowReminderDialog] = useState(false)
   const [reminderDetailLoading, setReminderDetailLoading] = useState(false)
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [walletRebate, setWalletRebate] = useState<number | null>(null)
+  const [walletInfoLoading, setWalletInfoLoading] = useState(true)
+
+  const formatUsd = (value: number) =>
+    `$${value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`
 
   // 获取客户用户信息
   useEffect(() => {
@@ -86,6 +110,38 @@ export function Dashboard() {
     void fetchOrderStats()
   }, [authUser?.customerId, authUser?.id])
 
+  // 钱包余额 / 返利（getWalletInfo → hzkj_balance、hzkj_rebate_amount）
+  useEffect(() => {
+    const fetchWalletInfo = async () => {
+      const customerId = authUser?.customerId
+      if (!customerId) {
+        setWalletBalance(null)
+        setWalletRebate(null)
+        setWalletInfoLoading(false)
+        return
+      }
+
+      setWalletInfoLoading(true)
+      try {
+        const info = await getWalletInfo(String(customerId), 1, 10)
+        setWalletBalance(info.balance)
+        setWalletRebate(info.rebateAmount)
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load wallet info. Please try again.'
+        )
+        setWalletBalance(0)
+        setWalletRebate(0)
+      } finally {
+        setWalletInfoLoading(false)
+      }
+    }
+
+    void fetchWalletInfo()
+  }, [authUser?.customerId])
+
   // 获取提醒列表
   useEffect(() => {
     const fetchReminders = async () => {
@@ -120,13 +176,13 @@ export function Dashboard() {
       try {
         setReminderDetailLoading(true)
         const detail = await getNowReminder(String(customerId))
-        if (detail) {
+        if (detail && hasReminderContent(detail)) {
           setSelectedReminder(detail as ReminderItem)
           setShowReminderDialog(true)
-          sessionStorage.setItem(storageKey, '1')
         }
+        // 无论是否有可展示内容，本会话只自动请求一次，避免空数据时反复打接口
+        sessionStorage.setItem(storageKey, '1')
       } catch (error) {
-        // 首次自动弹出的失败这里只打日志，不打扰用户
         console.error('Failed to auto-open reminder on dashboard:', error)
       } finally {
         setReminderDetailLoading(false)
@@ -134,31 +190,11 @@ export function Dashboard() {
     })()
   }, [authUser?.customerId, authUser?.id])
 
-  // 处理点击 Read More：打开弹框并调用 getNowReminder 接口获取详情
-  const handleReadMore = async (reminder: ReminderItem) => {
+  // 处理点击 Read More：直接用列表项数据打开弹框，不再请求 getNowReminder
+  const handleReadMore = (reminder: ReminderItem) => {
+    setReminderDetailLoading(false)
     setSelectedReminder(reminder)
     setShowReminderDialog(true)
-    setReminderDetailLoading(true)
-    const customerId = authUser?.customerId || authUser?.id
-    if (!customerId) {
-      setReminderDetailLoading(false)
-      toast.error('Customer ID not found. Please login again.')
-      return
-    }
-    try {
-      const detail = await getNowReminder(String(customerId))
-      setSelectedReminder(detail as ReminderItem)
-    } catch (error) {
-      console.error('Failed to fetch reminder detail:', error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to load reminder details. Please try again.'
-      )
-      // 请求失败时保留列表数据作为回退展示
-    } finally {
-      setReminderDetailLoading(false)
-    }
   }
 
   // 格式化日期
@@ -330,22 +366,34 @@ export function Dashboard() {
                 <div className='w-full lg:w-[320px] lg:flex-shrink-0 xl:w-[340px] 2xl:w-[360px]'>
                   <Card>
                     <CardContent className='flex items-center gap-3 py-3'>
-                      <div>
-                        <p className='text-foreground text-xl font-bold'>$0</p>
-                      </div>
+                      {walletInfoLoading ? (
+                        <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
+                      ) : (
+                        <>
+                          <div className='min-w-0'>
+                            <p className='text-foreground text-xl font-bold tabular-nums'>
+                              {walletBalance != null
+                                ? formatUsd(walletBalance)
+                                : '—'}
+                            </p>
+                          </div>
+                          <div className='bg-border h-10 w-px shrink-0' />
+                          <div className='min-w-0'>
+                            <p className='text-muted-foreground text-xl font-bold tabular-nums'>
+                              {walletRebate != null
+                                ? formatUsd(walletRebate)
+                                : '—'}
+                            </p>
+                          </div>
+                        </>
+                      )}
                       <div className='bg-border h-10 w-px' />
-                      <div>
-                        <p className='text-muted-foreground text-xl font-bold'>
-                          €0.00
-                        </p>
-                      </div>
-                      <div className='bg-border h-10 w-px' />
-                      <a
-                        href='#'
+                      <Link
+                        to='/wallet'
                         className='text-primary flex items-center text-xs font-medium hover:underline'
                       >
                         View Transactions
-                      </a>
+                      </Link>
                     </CardContent>
                   </Card>
                 </div>
@@ -512,9 +560,7 @@ export function Dashboard() {
 
       {/* Reminder Detail Dialog */}
       <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
-        <DialogContent
-          className='flex max-h-[90vh] w-[min(100vw-2rem,66vw)] max-w-[min(100vw-2rem,66vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,66vw)]'
-        >
+        <DialogContent className='flex max-h-[90vh] w-[min(100vw-2rem,66vw)] max-w-[min(100vw-2rem,66vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,66vw)]'>
           {reminderDetailLoading ? (
             <div className='flex min-h-[200px] items-center justify-center p-8'>
               <Loader2 className='text-muted-foreground h-8 w-8 animate-spin' />

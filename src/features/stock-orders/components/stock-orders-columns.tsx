@@ -169,14 +169,89 @@ function StockOrderCancelCell({ row, onCancel }: StockOrderCancelCellProps) {
   )
 }
 
+interface StockOrderRestoreCellProps {
+  row: Row<StockOrder>
+  onRestore?: (orderId: string) => void | Promise<void>
+}
+
+function StockOrderRestoreCell({ row, onRestore }: StockOrderRestoreCellProps) {
+  const [open, setOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const order = row.original
+
+  const handleConfirmRestore = async () => {
+    if (!onRestore) return
+    setIsLoading(true)
+    try {
+      await onRestore(order.id)
+      setOpen(false)
+    } catch (error) {
+      console.error('恢复订单失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant='ghost'
+        size='sm'
+        className='text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:bg-transparent dark:hover:bg-transparent'
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        Restore
+      </Button>
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (!isLoading) {
+            setOpen(newOpen)
+          }
+        }}
+        handleConfirm={handleConfirmRestore}
+        isLoading={isLoading}
+        title='Restore order'
+        desc={
+          <>
+            <p className='mb-2'>
+              This order will return to awaiting payment. You can continue checkout
+              after restoring.
+            </p>
+            <p className='text-muted-foreground text-sm'>
+              Order Number:{' '}
+              <strong>{order.billno || order.orderNumber || '---'}</strong>
+            </p>
+          </>
+        }
+        confirmText={
+          isLoading ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Restoring...
+            </>
+          ) : (
+            'Restore'
+          )
+        }
+      />
+    </>
+  )
+}
+
 export const createStockOrdersColumns = (options?: {
   onPay?: (orderId: string) => void
   onCancel?: (orderId: string) => void
+  onRestore?: (orderId: string) => void | Promise<void>
   onEditAddress?: (orderId: string) => void
   onAddPackage?: (orderId: string) => void
   onDelete?: (orderId: string) => void
 }): ColumnDef<StockOrder>[] => {
-  const { onPay, onCancel, onDelete } = options || {}
+  const { onPay, onCancel, onRestore, onDelete } = options || {}
 
   return [
     {
@@ -435,7 +510,12 @@ export const createStockOrdersColumns = (options?: {
             onClick={(e) => e.stopPropagation()}
           >
             {isCancelledOrder ? (
-              <StockOrderDeleteCell row={row} onDelete={onDelete} />
+              <>
+                {onRestore ? (
+                  <StockOrderRestoreCell row={row} onRestore={onRestore} />
+                ) : null}
+                <StockOrderDeleteCell row={row} onDelete={onDelete} />
+              </>
             ) : showPay ? (
               <>
                 <Button
