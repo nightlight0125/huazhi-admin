@@ -38,7 +38,6 @@ type DataTableProps = {
 
 export function PublishedProductsTable({ status }: DataTableProps) {
   const { auth } = useAuthStore()
-  // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -83,8 +82,10 @@ export function PublishedProductsTable({ status }: DataTableProps) {
   useEffect(() => {
     const fetchStores = async () => {
       const userId = auth.user?.id
-      if (!userId) return
-
+      if (!userId) {
+        setStoreOptions([])
+        return
+      }
       try {
         const response = await getUserShopList({
           hzkjAccountId: userId,
@@ -117,14 +118,12 @@ export function PublishedProductsTable({ status }: DataTableProps) {
     void fetchStores()
   }, [auth.user?.id])
 
-  // 当搜索条件改变时，重置到第一页
   useEffect(() => {
     if (prevSearchValueRef.current !== searchValue) {
       const wasEmpty = prevSearchValueRef.current === ''
       const isEmpty = searchValue === ''
       prevSearchValueRef.current = searchValue
 
-      // 只有当搜索值真正改变时才重置分页（避免初始加载时从空到空）
       if (!(wasEmpty && isEmpty)) {
         onPaginationChange({
           pageIndex: 0,
@@ -134,7 +133,6 @@ export function PublishedProductsTable({ status }: DataTableProps) {
     }
   }, [searchValue, pagination.pageSize, onPaginationChange])
 
-  // 仅在工具栏「Store」中选择了店铺时才有值；未选择时接口传空字符串
   const selectedShopId = useMemo(() => {
     const storeNameFilter = columnFilters.find((f) => f.id === 'storeName')
     if (
@@ -147,7 +145,6 @@ export function PublishedProductsTable({ status }: DataTableProps) {
     return null
   }, [columnFilters])
 
-  // 获取数据 - 使用防抖来避免重复请求
   useEffect(() => {
     // 清除之前的防抖定时器
     if (debounceTimerRef.current) {
@@ -201,10 +198,27 @@ export function PublishedProductsTable({ status }: DataTableProps) {
             id: item.id || String(item.id) || '',
             image: item.hzkj_picture || '',
             name: item.name || '',
-            spu: item.spu || item.number || '',
+            spu: item.hzkj_spu_number ?? item.spu ?? item.number ?? '',
+            hzkj_spu_number: item.hzkj_spu_number,
             storeName: item.hzkj_push_shop_name || '',
-            tdPrice: item.tdPrice || item.price || 0,
-            yourPrice: item.yourPrice || `HKD${item.price || 0}`,
+            tdPrice: (() => {
+              const raw = item.hzkj_hz_min_price
+              if (raw != null && raw !== '' && !Number.isNaN(Number(raw))) {
+                return Number(raw)
+              }
+              return item.tdPrice || item.price || 0
+            })(),
+            yourPrice:
+              item.hzkj_shopify_price != null && item.hzkj_shopify_price !== ''
+                ? String(item.hzkj_shopify_price)
+                : item.yourPrice || `HKD${item.price || 0}`,
+            hzkj_shopify_price: item.hzkj_shopify_price,
+            hzkj_hz_min_price:
+              item.hzkj_hz_min_price != null &&
+              item.hzkj_hz_min_price !== '' &&
+              !Number.isNaN(Number(item.hzkj_hz_min_price))
+                ? Number(item.hzkj_hz_min_price)
+                : undefined,
             weight: item.weight || 0,
             shippingFrom: item.shippingFrom || '',
             shippingMethod: item.shippingMethod || '',
@@ -312,7 +326,9 @@ export function PublishedProductsTable({ status }: DataTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     globalFilterFn: (row, _columnId, filterValue) => {
       const name = String(row.original.name || '').toLowerCase()
-      const spu = String(row.original.spu || '').toLowerCase()
+      const spu = String(
+        row.original.hzkj_spu_number || row.original.spu || ''
+      ).toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
       return name.includes(searchValue) || spu.includes(searchValue)
     },
@@ -343,7 +359,6 @@ export function PublishedProductsTable({ status }: DataTableProps) {
         searchPlaceholder='Enter SPU/SKU/Product Name'
         searchKey='name'
         onSearch={(searchValue) => {
-          // 当点击搜索按钮时，更新搜索状态，触发 API 调用
           setSearchValue(searchValue)
         }}
         filters={[

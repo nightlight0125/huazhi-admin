@@ -1,6 +1,6 @@
 const EXPIRED_PATH = '/500'
-const EXPIRE_WINDOW_MS = 5 * 60 * 1000 // 5 minutes
-// const EXPIRE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+// const EXPIRE_WINDOW_MS = 5 * 60 * 1000 // 5 minutes
+const EXPIRE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 function toPositiveNumber(raw: unknown): number | null {
   const parsed = Number(raw)

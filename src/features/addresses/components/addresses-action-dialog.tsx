@@ -383,7 +383,12 @@ export function AddressesActionDialog({
                   name='taxId'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tax ID</FormLabel>
+                      <FormLabel>
+                        Tax ID{' '}
+                        <span className='text-muted-foreground text-xs font-normal'>
+                          (optional)
+                        </span>
+                      </FormLabel>
                       <FormControl>
                         <Input
                           placeholder='Please enter tax id'

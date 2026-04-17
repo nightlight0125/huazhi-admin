@@ -358,6 +358,8 @@ export interface SkuRecordItem {
   hzkj_good_id?: string
   hzkj_sku_number?: string
   hzkj_sku_name?: string
+  /** 后端 SKU 编号（与 hzkj_sku_number 可能并存） */
+  number?: string | number
   [key: string]: unknown
 }
 
@@ -898,7 +900,7 @@ export interface QueryShopifyUnconnectedProductsRequest {
   accountId: string
   pageIndex: number
   pageSize: number
-  hzkj_str?: string // 搜索字段
+  productName?: string // 搜索字段（商品名）
 }
 
 // Shopify 未连接产品项

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Wallet } from 'lucide-react'
 import { toast } from 'sonner'
+import { IconPaypal, IconStripe } from '@/assets/brand-icons'
 import { useAuthStore } from '@/stores/auth-store'
 import { getCurrency, type CurrencyItem } from '@/lib/api/base'
 import { getWalletInfo, requestWalletPayment } from '@/lib/api/wallet'
+import { payTypeForWalletTopupMethod } from '@/lib/third-party-pay-type'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,15 +26,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { IconPaypal, IconStripe } from '@/assets/brand-icons'
 import { type WalletStats } from '../data/schema'
 
 interface WalletStatsProps {
@@ -49,8 +43,8 @@ const benefitTiers = [
 export function WalletStats({ stats: _stats }: WalletStatsProps) {
   const { auth } = useAuthStore()
   const [topupAmount, setTopupAmount] = useState('0')
-  const [currency, setCurrency] = useState('6') // 默认USD的id
-  const [currencies, setCurrencies] = useState<CurrencyItem[]>([])
+  /** 充值固定 USD；仍请求货币列表以解析后端 currency id */
+  const [usdCurrency, setUsdCurrency] = useState<CurrencyItem | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
     string | null
   >(null)
@@ -59,30 +53,22 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
   const [amountError, setAmountError] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const hasInitializedCurrency = useRef(false)
 
-  // 获取货币列表
+  // 解析 USD 对应的后端 currency id
   useEffect(() => {
-    const fetchCurrencies = async () => {
+    const fetchUsdCurrency = async () => {
       try {
         const currencyList = await getCurrency(1, 100)
-        setCurrencies(currencyList)
-        // 只在第一次加载时设置默认货币
-        if (!hasInitializedCurrency.current && currencyList.length > 0) {
-          hasInitializedCurrency.current = true
-          setCurrency((currentCurrency) => {
-            const currentCurrencyExists = currencyList.some(
-              (c) => c.id === currentCurrency
-            )
-            if (!currentCurrencyExists) {
-              const usdCurrency = currencyList.find((c) => c.number === 'USD')
-              return usdCurrency ? usdCurrency.id : currencyList[0].id
-            }
-            return currentCurrency
-          })
+        const usd = currencyList.find((c) => c.number === 'USD')
+        if (usd) {
+          setUsdCurrency(usd)
+        } else {
+          setUsdCurrency(null)
+          toast.error('USD currency is not available from the server.')
         }
       } catch (error) {
         console.error('Failed to fetch currencies:', error)
+        setUsdCurrency(null)
         toast.error(
           error instanceof Error
             ? error.message
@@ -91,7 +77,7 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
       }
     }
 
-    void fetchCurrencies()
+    void fetchUsdCurrency()
   }, [])
 
   // 获取钱包信息
@@ -131,9 +117,8 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
       return false
     }
 
-    // 验证货币
-    if (!currency) {
-      toast.error('Please select a currency')
+    if (!usdCurrency) {
+      toast.error('USD currency is not ready. Please refresh the page.')
       return false
     }
 
@@ -141,13 +126,6 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
     const customerId = auth.user?.customerId || auth.user?.id
     if (!customerId) {
       toast.error('Customer ID not found. Please login again.')
-      return false
-    }
-
-    // 获取货币信息
-    const selectedCurrency = currencies.find((c) => c.id === currency)
-    if (!selectedCurrency) {
-      toast.error('Currency not found')
       return false
     }
 
@@ -160,17 +138,22 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
       return
     }
 
+    const usd = usdCurrency
+    if (!usd) {
+      return
+    }
+
     const amount = parseFloat(topupAmount)
     const customerId = auth.user?.customerId || auth.user?.id
-    const selectedCurrency = currencies.find((c) => c.id === currency)!
 
     setIsLoading(true)
     try {
       const response = await requestWalletPayment({
         customerId: String(customerId),
         amount: amount,
-        currency: currency,
-        currencyNumber: selectedCurrency.number.toLowerCase(),
+        currency: usd.id,
+        currencyNumber: usd.number.toLowerCase(),
+        payType: payTypeForWalletTopupMethod(selectedPaymentMethod),
       })
 
       // 检查返回的 data 是否是链接
@@ -203,20 +186,21 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
     }
   }
 
-  // 处理按钮点击，显示确认弹框
-  const handleButtonClick = () => {
+  /** Stripe / PayPal：校验后与 Stripe 相同，打开确认弹框 */
+  const handleThirdPartyTopupClick = (
+    method: 'bank-transfer' | 'bank-transfer-detailed'
+  ) => {
     if (!validateInput()) {
       return
     }
 
-    // Bank Transfer 最小金额不能低于 0.5
     const amount = parseFloat(topupAmount)
     if (amount < 0.5) {
       toast.error('Minimum amount for Bank Transfer is 0.5')
       return
     }
 
-    setSelectedPaymentMethod('bank-transfer')
+    setSelectedPaymentMethod(method)
     setShowConfirmDialog(true)
   }
 
@@ -277,21 +261,12 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
           <CardContent className='p-0 pt-4'>
             <div className='space-y-2'>
               <div className='flex gap-2'>
-                <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger className='h-9 w-[100px]'>
-                    <SelectValue>
-                      {currencies.find((c) => c.id === currency)?.number ||
-                        'USD'}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currencies.map((currencyItem) => (
-                      <SelectItem key={currencyItem.id} value={currencyItem.id}>
-                        {currencyItem.number}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div
+                  className='bg-muted/50 text-muted-foreground flex h-9 shrink-0 items-center rounded-md border px-3 text-sm font-medium'
+                  aria-label='Currency: USD'
+                >
+                  USD
+                </div>
                 <Input
                   id='topup-amount'
                   type='number'
@@ -345,16 +320,13 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
                 }
                 className='h-auto flex-col items-start gap-2 p-3'
                 disabled={isLoading}
-                onClick={handleButtonClick}
+                onClick={() => handleThirdPartyTopupClick('bank-transfer')}
               >
-                <IconStripe
-                  className='h-8 w-10 text-[#635BFF]'
-                  aria-hidden
-                />
+                <IconStripe className='h-8 w-10 text-[#635BFF]' aria-hidden />
                 <span className='text-sm font-medium'>Stripe</span>
               </Button>
 
-              {/* Bank Transfer (Detailed) */}
+              {/* PayPal — 与 Stripe 相同：校验后打开确认弹框 */}
               <Button
                 variant={
                   selectedPaymentMethod === 'bank-transfer-detailed'
@@ -362,15 +334,13 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
                     : 'outline'
                 }
                 className='h-auto flex-col items-start gap-2 p-3'
+                disabled={isLoading}
                 onClick={() =>
-                  setSelectedPaymentMethod('bank-transfer-detailed')
+                  handleThirdPartyTopupClick('bank-transfer-detailed')
                 }
               >
                 <div className='flex w-full items-center justify-between'>
-                  <IconPaypal
-                    className='h-5 w-5 text-[#003087]'
-                    aria-hidden
-                  />
+                  <IconPaypal className='h-5 w-5 text-[#003087]' aria-hidden />
                 </div>
                 <div className='flex w-full flex-col items-start gap-0.5'>
                   <span className='text-sm font-medium'>PayPal</span>
@@ -404,8 +374,14 @@ export function WalletStats({ stats: _stats }: WalletStatsProps) {
               Are you sure you want to proceed with this payment request?
               <br />
               <br />
-              <strong>Amount:</strong>{' '}
-              {currencies.find((c) => c.id === currency)?.number || 'USD'}{' '}
+              <strong>Method:</strong>{' '}
+              {selectedPaymentMethod === 'bank-transfer-detailed'
+                ? 'PayPal'
+                : selectedPaymentMethod === 'bank-transfer'
+                  ? 'Stripe'
+                  : '—'}
+              <br />
+              <strong>Amount:</strong> USD{' '}
               {parseFloat(topupAmount || '0').toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,

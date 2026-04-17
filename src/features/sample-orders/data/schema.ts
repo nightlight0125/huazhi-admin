@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { type Order } from '@/features/orders/data/schema'
 
 // 订单状态枚举
 export const sampleOrderStatusSchema = z.enum([
@@ -61,15 +62,35 @@ export const sampleOrderSchema = z.object({
   hzkj_order_amount: z.number().optional(), // 订单金额（产品金额）
   hzkj_total_amount: z.number().optional(), // 订单总金额
   hzkj_fre_quo_amount: z.number().optional(), // 运费
+  hzkj_customer_channel_number: z.string().optional(), // 物流渠道编号（展示）
   totalQty: z.number().optional(), // 数量
   // 客户名称（原始字段），结构较为动态，这里使用 any 保持兼容
   hzkj_customer_name: z.any().optional(),
   hzkj_country_code: z.string().optional().nullable(), // 国家代码
   trackingNumber: z.string().optional(), // 跟踪号
+  // 与店铺订单共用 queryOrder/transformApiOrderToOrder；编辑地址、stateProvince 回填依赖 hzkj_state 等
+  lingItems: z.array(z.any()).optional(),
+  hzkj_address1: z.string().optional(),
+  hzkj_address2: z.string().optional(),
+  hzkj_city: z.string().optional(),
+  hzkj_state: z.string().optional().nullable(),
+  hzkj_admindivision_id: z.string().optional(),
+  hzkj_admindivision_name: z.any().optional(),
+  hzkj_customer_first_name: z.string().optional(),
+  hzkj_customer_last_name: z.string().optional(),
+  hzkj_phone: z.string().optional(),
+  hzkj_email: z.string().optional(),
+  hzkj_dst_warehouse_id: z.union([z.string(), z.number()]).optional(),
+  hzkj_tax_id: z.string().optional(),
+  hzkj_country_id: z.union([z.string(), z.number(), z.null()]).optional(),
+  hzkj_post_code: z.string().optional(),
 })
 
 export type SampleOrder = z.infer<typeof sampleOrderSchema>
 export type SampleOrderProduct = z.infer<typeof sampleOrderProductSchema>
 export type ProductVariant = z.infer<typeof productVariantSchema>
 export type SampleOrderStatus = z.infer<typeof sampleOrderStatusSchema>
+
+/** 样品订单列表行：queryOrder 与店铺订单共用同一套 Order */
+export type SampleOrderTableRow = Order
 

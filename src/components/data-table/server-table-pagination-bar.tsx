@@ -106,9 +106,7 @@ export function ServerTablePaginationBar<TData>({
                     currentPage === pageNumber &&
                       'border-orange-500 bg-orange-500 text-white hover:bg-orange-600 hover:text-white dark:hover:bg-orange-600'
                   )}
-                  onClick={() =>
-                    table.setPageIndex((pageNumber as number) - 1)
-                  }
+                  onClick={() => table.setPageIndex((pageNumber as number) - 1)}
                 >
                   <span className='sr-only'>Page {pageNumber}</span>
                   {pageNumber}

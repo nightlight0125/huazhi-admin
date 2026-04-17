@@ -588,7 +588,7 @@ export function ProductsGrid({
                 return (
                   <div
                     key={product.id}
-                    className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
+                    className='group bg-card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border transition-all hover:shadow-md'
                     onClick={() => {
                       // 根据当前路由确定来源
                       let fromValue: string | undefined = undefined
@@ -606,7 +606,7 @@ export function ProductsGrid({
                     }}
                   >
                     {/* Product Image */}
-                    <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
+                    <div className='relative aspect-[5/4] shrink-0 overflow-hidden bg-gray-100'>
                       <img
                         src={product.image}
                         alt={product.name}
@@ -614,7 +614,7 @@ export function ProductsGrid({
                       />
                     </div>
 
-                    <div className='space-y-1.5 p-2.5'>
+                    <div className='flex min-h-0 flex-1 flex-col gap-1.5 p-2.5'>
                       <h3 className='line-clamp-2 text-sm leading-tight font-semibold'>
                         {product.name}
                       </h3>
@@ -623,11 +623,13 @@ export function ProductsGrid({
                         SPU:{product.sku}
                       </p>
 
-                      <div className='text-base font-bold text-orange-500'>
+                      <div className='min-h-0 flex-1' aria-hidden />
+
+                      <div className='shrink-0 text-base font-bold text-orange-500'>
                         ${product.price.toFixed(2)}
                       </div>
 
-                      <div className='flex gap-1.5 pt-1.5'>
+                      <div className='flex shrink-0 gap-1.5 pt-1.5'>
                         <Button
                           variant='outline'
                           size='sm'
@@ -683,7 +685,7 @@ export function ProductsGrid({
               return (
                 <div
                   key={product.id}
-                  className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
+                  className='group bg-card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border transition-all hover:shadow-md'
                   onClick={() => {
                     // 根据当前路由确定来源
                     let fromValue: string | undefined = undefined
@@ -701,7 +703,7 @@ export function ProductsGrid({
                   }}
                 >
                   {/* Product Image */}
-                  <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
+                  <div className='relative aspect-[5/4] shrink-0 overflow-hidden bg-gray-100'>
                     <img
                       src={product.image}
                       alt={product.name}
@@ -709,8 +711,8 @@ export function ProductsGrid({
                     />
                   </div>
 
-                  <div className='space-y-1.5 p-2.5'>
-                    <h3 className='line-clamp-2 h-10 text-sm leading-tight font-semibold'>
+                  <div className='flex min-h-0 flex-1 flex-col gap-1.5 p-2.5'>
+                    <h3 className='line-clamp-2 text-sm leading-tight font-semibold'>
                       {product.name}
                     </h3>
 
@@ -718,11 +720,13 @@ export function ProductsGrid({
                       SPU:{product.sku}
                     </p>
 
-                    <div className='text-base font-bold text-orange-500'>
+                    <div className='min-h-0 flex-1' aria-hidden />
+
+                    <div className='shrink-0 text-base font-bold text-orange-500'>
                       ${product.price.toFixed(2)}
                     </div>
 
-                    <div className='flex gap-1.5 pt-1.5'>
+                    <div className='flex shrink-0 gap-1.5 pt-1.5'>
                       <Button
                         variant='outline'
                         size='sm'

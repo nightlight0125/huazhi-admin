@@ -8,7 +8,13 @@ import { toast } from 'sonner'
 import worldCountries from 'world-countries'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryCountry, type CountryItem } from '@/lib/api/logistics'
-import { getAddress, updateAddress, updateBillAddress } from '@/lib/api/users'
+import {
+  getAddress,
+  updateAddress,
+  updateBillAddress,
+  type UpdateAddressRequest,
+  type UpdateBillAddressRequest,
+} from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -48,6 +54,7 @@ const invoiceAddressSchema = z.object({
   address1: z.string().min(1, 'Please enter address1'),
   address2: z.string().optional(),
   country: z.string().min(1, 'Please select country/region'),
+  state: z.string().optional(),
   province: z.string().optional(), // 最终选中的行政区 id（叶节点，用于提交）
   provinceLevel: z.string().optional(), // 兼容旧逻辑，回填时可能用到
   divisionPath: z.array(z.string()).optional(), // 各级选中的 id 数组，长度随国家级次数动态
@@ -71,11 +78,13 @@ const consigneeAddressSchema = z.object({
   address1: z.string().min(1, 'Please enter address1'),
   address2: z.string().optional(),
   country: z.string().min(1, 'Please select country/region'),
+  state: z.string().optional(),
   province: z.string().optional(),
   provinceLevel: z.string().optional(),
   divisionPath: z.array(z.string()).optional(),
   city: z.string().min(1, 'Please enter city'),
   postcode: z.string().min(1, 'Please enter postcode'),
+  taxId: z.string().optional(),
 })
 
 type InvoiceAddressValues = z.infer<typeof invoiceAddressSchema>
@@ -90,6 +99,7 @@ const defaultInvoiceValues: Partial<InvoiceAddressValues> = {
   address1: '',
   address2: '',
   country: '',
+  state: '',
   province: '',
   provinceLevel: '',
   divisionPath: [],
@@ -108,11 +118,13 @@ const defaultConsigneeValues: Partial<ConsigneeAddressValues> = {
   address1: '',
   address2: '',
   country: '',
+  state: '',
   province: '',
   provinceLevel: '',
   divisionPath: [],
   city: '',
   postcode: '',
+  taxId: '',
 }
 
 // 级联选项类型：value=id, label 根据级别不同（国家用 description，省/市用 name），icon 用于国家国旗
@@ -259,6 +271,7 @@ function AddressFields(props: {
                 field.onChange(value)
                 form.setValue('divisionPath', [])
                 form.setValue('province', '')
+                form.setValue('state', '')
               }}
               disabled={isLoadingCountries}
             >
@@ -282,6 +295,20 @@ function AddressFields(props: {
                 ))}
               </SelectContent>
             </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name='state'
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>State</FormLabel>
+            <FormControl>
+              <Input placeholder='Please enter state' {...field} />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
@@ -443,6 +470,7 @@ export function AddressForm() {
         address1: addressData.hzkj_bill_adress ?? '',
         address2: addressData.hzkj_bill_adress2 ?? '',
         country: invoiceCountryId,
+        state: addressData.hzkj_bill_state ?? '',
         province: '',
         provinceLevel: '',
         divisionPath: [],
@@ -463,11 +491,13 @@ export function AddressForm() {
         address1: addressData.hzkj_textfield ?? '',
         address2: addressData.hzkj_address2 ?? '',
         country: consigneeCountryId,
+        state: addressData.hzkj_state ?? '',
         province: '',
         provinceLevel: '',
         divisionPath: [],
         city: addressData.hzkj_city ?? '',
         postcode: addressData.hzkj_textfield1 ?? '',
+        taxId: addressData.hzkj_tax_id1 ?? '',
       })
 
       if (!options?.silent) {
@@ -500,13 +530,15 @@ export function AddressForm() {
 
       const loadingToast = toast.loading('Updating billing address...')
 
-      await updateBillAddress({
+      // 后端账单州/省字段名必须为 hzkj_bill_state（非 state）
+      const billPayload: UpdateBillAddressRequest['data'][0] = {
         id: customerId,
         hzkj_customer_first_name2: data.firstName,
         hzkj_customer_last_name2: data.lastName,
         hzkj_phone_number: data.phoneNumber,
         hzkj_emailfield: data.email || '',
         hzkj_bill_city: data.city,
+        hzkj_bill_state: (data.state ?? '').trim(),
         hzkj_bill_adress: data.address1,
         hzkj_bill_adress2: data.address2 || '',
         hzkj_textfield3: data.postcode,
@@ -516,7 +548,8 @@ export function AddressForm() {
         hzkj_admindivision2_id: data.province
           ? Number(data.province)
           : undefined,
-      })
+      }
+      await updateBillAddress(billPayload)
 
       toast.dismiss(loadingToast)
       toast.success('Billing address updated successfully!')
@@ -538,11 +571,13 @@ export function AddressForm() {
           address1: data.address1,
           address2: data.address2,
           country: data.country,
+          state: data.state,
           province: '',
           provinceLevel: '',
           divisionPath: [],
           city: data.city,
           postcode: data.postcode,
+          taxId: data.taxId ?? '',
         })
       }
     } catch (error) {
@@ -559,22 +594,25 @@ export function AddressForm() {
     try {
       const customerId = auth.user?.customerId || ''
       const loadingToast = toast.loading('Updating shipping address...')
-      await updateAddress({
+      // 后端收货州/省字段名必须为 hzkj_state（非 state）
+      const shipPayload: UpdateAddressRequest['data'][0] = {
         id: customerId,
         hzkj_customer_first_name: data.firstName,
         hzkj_customer_last_name: data.lastName,
         hzkj_phone: data.phoneNumber,
         hzkj_adress_emailfield: data.email || '',
         hzkj_city: data.city,
+        hzkj_state: (data.state ?? '').trim(),
         hzkj_textfield: data.address1,
         hzkj_address2: data.address2 || '',
         hzkj_textfield1: data.postcode,
-        hzkj_tax_id1: '',
+        hzkj_tax_id1: data.taxId || '',
         hzkj_country_id: data.country ? Number(data.country) : undefined,
         hzkj_admindivision_id: data.province
           ? Number(data.province)
           : undefined,
-      })
+      }
+      await updateAddress(shipPayload)
 
       toast.dismiss(loadingToast)
       toast.success('Shipping address updated successfully!')
@@ -750,7 +788,7 @@ export function AddressForm() {
                 >
                   <AddressFields
                     form={consigneeForm}
-                    showTaxId={false}
+                    showTaxId={true}
                     countries={countries}
                     isLoadingCountries={isLoadingCountries}
                   />

@@ -29,6 +29,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { type OrderProduct } from '../data/schema'
 import { OrdersAddProductDialog } from './orders-add-product-dialog'
 
@@ -338,9 +343,21 @@ export function OrdersModifyProductDialog({
   }
 
   const handleConfirm = async () => {
-    const cleanedProducts = products.map(
-      ({ isEditing, tempSku, tempQuantity, ...rest }) => rest
-    )
+    // 先把行内编辑中的数量/SKU 合并进行数据，再剥离 UI 字段；否则用户只改数量未点行内 ✓ 时，提交仍是旧 hzkj_qty
+    const cleanedProducts = products.map((p) => {
+      const { isEditing, tempSku, tempQuantity, ...rest } = p
+      const merged: EditableProduct = { ...rest }
+      if (tempQuantity != null && tempQuantity >= 1) {
+        merged.hzkj_qty = String(tempQuantity)
+        merged.hzkj_src_qty = String(tempQuantity)
+        merged.quantity = tempQuantity
+      }
+      if (tempSku != null && String(tempSku).trim() !== '') {
+        merged.hzkj_local_sku = String(tempSku).trim()
+        merged.hzkj_shop_sku = String(tempSku).trim()
+      }
+      return merged as OrderProduct
+    })
 
     // 如果提供了 orderId 和 order，则调用 API
     if (orderId && order) {
@@ -543,11 +560,15 @@ export function OrdersModifyProductDialog({
                   products.map((product, index) => {
                     const isEditing = editingIndex === index
                     const productId = product.id || `product-${index}`
+                    const productDisplayName =
+                      product.productName ||
+                      ((product as any).enname as string | undefined) ||
+                      '--'
 
                     return (
                       <TableRow key={productId}>
                         <TableCell>
-                          <div className='flex items-center gap-3'>
+                          <div className='flex min-w-0 max-w-[280px] items-center gap-3'>
                             {(product as any).hzkj_picture || product.productImageUrl ? (
                               <img
                                 src={
@@ -561,18 +582,23 @@ export function OrdersModifyProductDialog({
                                 <ImageIcon className='text-muted-foreground h-6 w-6' />
                               </div>
                             )}
-                            <div className='flex flex-col'>
+                            <div className='flex min-w-0 flex-1 flex-col'>
                               <Badge variant='secondary' className='mb-1 w-fit'>
                                 {product.tempSku ??
                                   (product as any).hzkj_local_sku ??
                                   product.hzkj_shop_sku ??
                                   '--'}
                               </Badge>
-                              <span className='text-sm'>
-                                {product.productName ||
-                                  ((product as any).enname as string | undefined) ||
-                                  '--'}
-                              </span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className='block cursor-default truncate text-sm'>
+                                    {productDisplayName}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side='top' align='start'>
+                                  {productDisplayName}
+                                </TooltipContent>
+                              </Tooltip>
                             </div>
                           </div>
                         </TableCell>

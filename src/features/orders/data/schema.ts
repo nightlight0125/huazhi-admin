@@ -65,6 +65,8 @@ export const orderProductSchema = z.object({
   hzkj_shop_price: z.string().optional().nullable(), // 店铺价格
   hzkj_src_qty: z.string().optional().nullable(), // 源数量
   hzkj_local_sku: z.string().optional(), // 本地SKU
+  /** HZ 行单价，后端 hzkj_unit_sett_price */
+  hzkj_unit_sett_price: z.union([z.string(), z.number()]).optional().nullable(),
   hzkj_amount: z.string().optional().nullable(), // 金额
   hzkj_qty: z.string().optional().nullable(), // 数量
   hzkj_local_sku_id: z.string().optional(), // 本地SKU ID（用于API调用）
@@ -126,6 +128,8 @@ export const orderSchema = z.object({
   hzkj_fre_quo_amount: z.number().optional(), // 运费
   hzkj_customer_channel_name: z.string().optional(), // 客户渠道名称
   hzkj_customer_channel_number: z.string().optional(), // 客户渠道编号
+  /** 州/省（queryOrder 原始字段，编辑地址回填） */
+  hzkj_state: z.string().optional().nullable(),
 })
 
 export type Order = z.infer<typeof orderSchema>

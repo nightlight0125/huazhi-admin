@@ -1,5 +1,10 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { type PublishedProduct } from '../data/schema'
 
@@ -48,10 +53,19 @@ export const publishedProductsColumns = (
             alt={product.name}
             className='h-12 w-12 shrink-0 rounded object-cover'
           />
-          <div className='min-w-0 flex-1'>
-            <div className='mb-1 text-xs font-medium'>{product.name}</div>
+          <div className='max-w-[400px] min-w-0 flex-1'>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className='mb-1 cursor-default truncate text-xs font-medium'>
+                  {product.name}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side='top' align='start'>
+                {product.name}
+              </TooltipContent>
+            </Tooltip>
             <div className='text-muted-foreground text-xs'>
-              SPU: {product.spu}
+              SPU: {product.hzkj_spu_number ?? product.spu}
             </div>
           </div>
         </div>
@@ -86,28 +100,22 @@ export const publishedProductsColumns = (
     ),
     cell: ({ row }) => {
       const product = row.original
+      const shopifyPrice = product.hzkj_shopify_price ?? product.yourPrice
+      const hzMin = product.hzkj_hz_min_price ?? product.tdPrice
+      const hzMinStr =
+        hzMin != null && !Number.isNaN(Number(hzMin))
+          ? Number(hzMin).toFixed(2)
+          : '-'
       return (
         <div className='space-y-0.5 text-xs'>
           <div className='font-medium text-green-600'>
-            Your: ${product.yourPrice}
+            Your: ${shopifyPrice}
           </div>
-          <div className='font-medium text-green-600'>
-            HZ:${product.tdPrice.toFixed(2)}
-          </div>
+          <div className='font-medium text-green-600'>HZ:${hzMinStr}</div>
         </div>
       )
     },
   },
-  // {
-  //   accessorKey: 'weight',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title='Weight(g)' />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const weight = row.getValue('weight') as number
-  //     return <div className='text-xs'>{weight}</div>
-  //   },
-  // },
   {
     accessorKey: 'reason',
     header: ({ column }) => (
@@ -118,7 +126,6 @@ export const publishedProductsColumns = (
       if (product.status !== 'failed') {
         return <div className='text-muted-foreground text-xs'>-</div>
       }
-      // 这里可以根据真实数据返回失败原因，目前先使用占位文案
       return (
         <div className='text-xs text-red-500'>
           Sync failed. Please check store configuration.
@@ -148,14 +155,4 @@ export const publishedProductsColumns = (
       )
     },
   },
-  // {
-  //   id: 'actions',
-  //   cell: ({ row }) => (
-  //     <PublishedProductsRowActions
-  //       row={row}
-  //       onDeleteSuccess={options?.onDeleteSuccess}
-  //     />
-  //   ),
-  //   enableSorting: false,
-  // },
 ]

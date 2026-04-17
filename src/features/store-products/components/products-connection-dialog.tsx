@@ -40,6 +40,8 @@ interface TeemDropProduct {
   image: string
   name: string
   tdSku: string
+  /** 后端返回的 number（展示 SKU 优先用此字段） */
+  number?: string
 }
 
 interface ProductsConnectionDialogProps {
@@ -316,6 +318,14 @@ export function ProductsConnectionDialog({
                     (ennameRaw as any).zh_TW ||
                     ''
                   : ''
+            const rawNumber = item.number
+            const backendNumber =
+              rawNumber !== undefined &&
+              rawNumber !== null &&
+              String(rawNumber).trim() !== ''
+                ? String(rawNumber)
+                : undefined
+
             return {
               id,
               image: typeof image === 'string' ? image : '',
@@ -329,6 +339,7 @@ export function ProductsConnectionDialog({
                 item.hzkj_sku_name ||
                 id,
               tdSku: item.hzkj_sku_number || '',
+              number: backendNumber,
             }
           }
         )
@@ -546,7 +557,10 @@ export function ProductsConnectionDialog({
                             </TooltipContent>
                           </Tooltip>
                           <p className='text-muted-foreground text-xs'>
-                            SKU: {product.id}
+                            SKU:{' '}
+                            {(product.number ??
+                              product.tdSku) ||
+                              product.id}
                           </p>
                         </div>
                       </div>

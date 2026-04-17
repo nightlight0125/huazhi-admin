@@ -3,12 +3,19 @@ import { z } from 'zod'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 import { paymentCallback } from '@/lib/api/orders'
+import {
+  clearPaymentOrderSource,
+  consumePaymentReturnTo,
+  peekPaymentOrderSource,
+} from '@/lib/payment-return-to'
 import { Button } from '@/components/ui/button'
 
 const searchSchema = z.object({
   session_id: z.string().optional(),
   /** 1：Paypal 回调（无 Stripe session_id 占位） */
   payType: z.coerce.number().optional(),
+  /** 与 requestPayment / buyProduct returnUrl 一致：决定「前往哪类订单列表」 */
+  mode: z.enum(['store', 'sample', 'stock']).optional(),
 })
 
 export const Route = createFileRoute('/order/payment-callback')({
@@ -16,9 +23,43 @@ export const Route = createFileRoute('/order/payment-callback')({
   component: OrderPaymentCallbackPage,
 })
 
+const paymentCallbackOnceBySessionId = new Map<string, Promise<void>>()
+
+function runPaymentCallbackOnce(sessionId: string): Promise<void> {
+  const hit = paymentCallbackOnceBySessionId.get(sessionId)
+  if (hit) return hit
+  const p = paymentCallback(sessionId)
+    .then(() => undefined)
+    .finally(() => {
+      paymentCallbackOnceBySessionId.delete(sessionId)
+    })
+  paymentCallbackOnceBySessionId.set(sessionId, p)
+  return p
+}
+
+function orderListButtonTarget(mode: 'store' | 'sample' | 'stock' | undefined) {
+  const m = mode ?? 'store'
+  if (m === 'sample') {
+    return { to: '/sample-orders' as const, label: 'Go to Sample Orders' }
+  }
+  if (m === 'stock') {
+    return { to: '/stock-orders' as const, label: 'Go to Stock Orders' }
+  }
+  return { to: '/orders' as const, label: 'Go to Store Orders' }
+}
+
 function OrderPaymentCallbackPage() {
-  const { session_id, payType } = Route.useSearch()
+  const { session_id, payType, mode } = Route.useSearch()
   const navigate = useNavigate()
+  const fromStorage = peekPaymentOrderSource()
+  const target = orderListButtonTarget(fromStorage ?? mode)
+
+  const goToOrderList = () => {
+    clearPaymentOrderSource()
+    consumePaymentReturnTo()
+    navigate({ to: target.to })
+  }
+
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
     'loading'
   )
@@ -42,12 +83,12 @@ function OrderPaymentCallbackPage() {
 
     let cancelled = false
 
-    paymentCallback(session_id)
+    runPaymentCallbackOnce(session_id)
       .then(() => {
         if (cancelled) return
         setStatus('success')
         setMessage(
-          'Payment result has been processed. You can close this window or go back to Stock Orders.'
+          'Payment result has been processed. You can close this window or go to your orders.'
         )
       })
       .catch((err) => {
@@ -91,13 +132,15 @@ function OrderPaymentCallbackPage() {
               />
             </svg>
           </div>
-          <p className='text-foreground text-center font-medium'>{message}</p>
+          <p className='text-foreground max-w-md text-center font-medium'>
+            {message}
+          </p>
           <div className='flex gap-3'>
-            {/* <Button variant='outline' onClick={() => window.close()}>
-              Close window
-            </Button> */}
-            <Button onClick={() => navigate({ to: '/stock-orders' })}>
-              Go to Stock Orders
+            <Button
+              className='bg-orange-500 text-white hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700'
+              onClick={goToOrderList}
+            >
+              {target.label}
             </Button>
           </div>
         </>
@@ -120,16 +163,15 @@ function OrderPaymentCallbackPage() {
               />
             </svg>
           </div>
-          <p className='text-destructive text-center font-medium'>{message}</p>
+          <p className='text-destructive max-w-md text-center font-medium'>
+            {message}
+          </p>
           <div className='flex gap-3'>
-            {/* <Button
+            <Button
               variant='outline'
-              onClick={() => window.close()}
+              onClick={goToOrderList}
             >
-              Close window
-            </Button> */}
-            <Button onClick={() => navigate({ to: '/stock-orders' })}>
-              Go to Stock Orders
+              {target.label}
             </Button>
           </div>
         </>

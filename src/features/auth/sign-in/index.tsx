@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSearch } from '@tanstack/react-router'
+import { mergeInviteIdsFromRoute } from '@/lib/invite-search-params'
 import { CheckCircle2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { UserAuthForm } from './components/user-auth-form'
@@ -14,9 +15,14 @@ const reasons = [
 ]
 
 export function SignIn() {
-  const { redirect, accountId, bizUserId } = useSearch({
-    from: '/(auth)/sign-in',
-  })
+  const { redirect, accountId, bizUserId, customerId: cid, operatorId: oid } =
+    useSearch({
+      from: '/(auth)/sign-in',
+    })
+  const { customerId, operatorId } = useMemo(
+    () => mergeInviteIdsFromRoute(cid, oid),
+    [cid, oid]
+  )
   const setSigningOut = useAuthStore((s) => s.setSigningOut)
 
   useEffect(() => {
@@ -111,6 +117,8 @@ export function SignIn() {
               redirectTo={redirect}
               accountId={accountId}
               bizUserId={bizUserId}
+              customerId={customerId}
+              operatorId={operatorId}
             />
           </div>
         </div>

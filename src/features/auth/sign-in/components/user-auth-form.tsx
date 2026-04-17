@@ -41,6 +41,9 @@ interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
   accountId?: string
   bizUserId?: string
+  /** 邀请注册：透传到 /sign-up */
+  customerId?: string
+  operatorId?: string
 }
 
 export function UserAuthForm({
@@ -48,6 +51,8 @@ export function UserAuthForm({
   redirectTo,
   accountId,
   bizUserId,
+  customerId,
+  operatorId,
   ...props
 }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -333,6 +338,14 @@ export function UserAuthForm({
         <div className='mt-3 flex items-center justify-between text-sm'>
           <Link
             to='/sign-up'
+            search={{
+              ...(customerId
+                ? { customerId: String(customerId) }
+                : {}),
+              ...(operatorId
+                ? { operatorId: String(operatorId) }
+                : {}),
+            }}
             className='text-muted-foreground hover:text-foreground underline underline-offset-4'
           >
             Don't have an account?

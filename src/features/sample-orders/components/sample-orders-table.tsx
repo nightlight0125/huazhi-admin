@@ -41,7 +41,7 @@ import {
 } from '@/components/order-pay-dialog'
 import { OrdersEditAddressDialog } from '@/features/orders/components/orders-edit-address-dialog'
 import { sampleOrderStatuses } from '../data/data'
-import { type SampleOrder } from '../data/schema'
+import { type SampleOrderTableRow } from '../data/schema'
 import { SampleOrdersActionsMenu } from './sample-orders-actions-menu'
 import { SampleOrdersBulkActions } from './sample-orders-bulk-actions'
 import { createSampleOrdersColumns } from './sample-orders-columns'
@@ -50,12 +50,12 @@ import { SampleOrdersTableFooter } from './sample-orders-table-footer'
 const route = getRouteApi('/_authenticated/sample-orders/')
 
 type DataTableProps = {
-  data?: SampleOrder[]
+  data?: SampleOrderTableRow[]
 }
 
 export function SampleOrdersTable({ data: _data }: DataTableProps) {
   const { auth } = useAuthStore()
-  const [data, setData] = useState<SampleOrder[]>([])
+  const [data, setData] = useState<SampleOrderTableRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -74,7 +74,8 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     useState<OrderPayable | null>(null)
   const [editAddressDialog, setEditAddressDialog] = useState<{
     open: boolean
-    order: SampleOrder | null
+    /** 与店铺订单同源：queryOrder + transformApiOrderToOrder，含 hzkj_state 等 */
+    order: SampleOrderTableRow | null
   }>({
     open: false,
     order: null,
@@ -147,7 +148,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         endDate: formattedDateRange?.endDate,
       })
 
-      setData(response.orders as any)
+      setData(response.orders)
       setTotalCount(response.total)
     } catch (error) {
       console.error('获取样品订单列表失败:', error)
@@ -251,7 +252,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
   }
 
   const handleConfirmEditAddress = async (addressData: AddressData) => {
-    const order = editAddressDialog.order as any
+    const order = editAddressDialog.order
     const customerId = auth.user?.customerId
 
     if (!order || !customerId) {
@@ -260,15 +261,18 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
       return
     }
 
-    // 对于样品订单，目前后端没有提供行级 lingItems，detail 先传空数组
-    const detail: any[] = []
+    // 对于样品订单，目前后端没有提供行级 lingItems，detail 先传空数组（与店铺订单 updateSalOutOrder 字段一致）
+    const detail: Array<{
+      entryId: string
+      skuId: string
+      quantity: number
+      flag: number
+    }> = []
 
     const firstName =
-      (addressData as any).firstName ??
-      addressData.customerName.split(' ')[0] ??
-      ''
+      addressData.firstName ?? addressData.customerName.split(' ')[0] ?? ''
     const lastName =
-      (addressData as any).lastName ??
+      addressData.lastName ??
       addressData.customerName.split(' ').slice(1).join(' ') ??
       ''
 
@@ -279,17 +283,17 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         firstName,
         lastName,
         phone: addressData.phoneNumber,
-        countryId: (addressData as any).countryId ?? '',
-        admindivisionId: (addressData as any).admindivisionId,
+        countryId: addressData.countryId ?? '',
+        admindivisionId: addressData.admindivisionId,
+        stateProvince: addressData.stateProvince,
         city: addressData.city,
         address1: addressData.address,
         address2: addressData.address2,
         postCode: addressData.postalCode,
-        taxId: (addressData as any).taxId || '',
+        taxId: addressData.taxId || '',
         customChannelId: '',
         email: addressData.email || '',
-        wareHouse:
-          (addressData as any).warehouseId ?? addressData.shippingOrigin,
+        wareHouse: addressData.warehouseId ?? addressData.shippingOrigin,
         detail,
       })
 
@@ -394,7 +398,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         onAddPackage: handleAddPackage,
         onDelete: handleDelete,
       }),
-    [auth.user?.customerId, handleCancel, handleRestore, handleDelete]
+    [handleCancel, handleRestore, handleDelete]
   )
 
   const table = useReactTable({
@@ -414,7 +418,8 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     globalFilterFn: (row, _columnId, filterValue) => {
       const orderNumber = String(row.getValue('orderNumber')).toLowerCase()
-      const sku = String(row.original.sku).toLowerCase()
+      const o = row.original as SampleOrderTableRow & { sku?: string }
+      const sku = String(o.sku ?? '').toLowerCase()
       const searchValue = String(filterValue).toLowerCase()
 
       return orderNumber.includes(searchValue) || sku.includes(searchValue)
@@ -547,23 +552,21 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
                     </TableCell>
                   </TableRow>
                 ) : table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => {
-                    return (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && 'selected'}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    )
-                  })
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && 'selected'}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
                 ) : (
                   <TableRow>
                     <TableCell
@@ -601,9 +604,7 @@ export function SampleOrdersTable({ data: _data }: DataTableProps) {
         onOpenChange={(open) =>
           setEditAddressDialog({ ...editAddressDialog, open })
         }
-        // 对于样品订单，底层数据同样来自 queryOrder/transformApiOrderToOrder，
-        // 因此可以复用普通订单的 OrdersEditAddressDialog 映射逻辑
-        order={editAddressDialog.order as any}
+        order={editAddressDialog.order}
         onConfirm={handleConfirmEditAddress}
       />
     </div>

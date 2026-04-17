@@ -58,6 +58,23 @@ function getCustomerNameFromOrderCustomerName(value: unknown): string {
   return String(value)
 }
 
+/** 州/省展示：优先 hzkj_state；否则行政区名称（多语言对象或字符串） */
+function getStateProvinceLabelFromOrder(order: Order): string {
+  const r = order as Record<string, unknown>
+  const direct = r.hzkj_state ?? r.stateProvince
+  if (direct != null && String(direct).trim() !== '') {
+    return String(direct).trim()
+  }
+  const adm = r.hzkj_admindivision_name
+  if (adm == null) return ''
+  if (typeof adm === 'string') return adm.trim()
+  if (typeof adm === 'object') {
+    const o = adm as Record<string, unknown>
+    return String(o.GLang || o.zh_CN || o.zh_TW || '').trim()
+  }
+  return ''
+}
+
 export function OrdersEditAddressDialog({
   open,
   onOpenChange,
@@ -79,6 +96,8 @@ export function OrdersEditAddressDialog({
     address2: rawOrder.hzkj_address2 || '',
     // City 映射到 hzkj_city
     city: rawOrder.hzkj_city || order.city || '',
+    // 州/省：queryOrder 已挂载 hzkj_state；提交 updateSalOutOrder 用 stateProvince
+    stateProvince: getStateProvinceLabelFromOrder(order),
     // Province：使用 hzkj_admindivision_id 作为选中值，具体名称由下拉选项提供
     province: rawOrder.hzkj_admindivision_id
       ? String(rawOrder.hzkj_admindivision_id)

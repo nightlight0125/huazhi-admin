@@ -199,23 +199,24 @@ export const createWalletColumns = (): ColumnDef<WalletRecord>[] => [
     },
   },
   {
-    accessorKey: 'cashback',
+    id: 'hzkj_amountfield2',
+    accessorFn: (row) => row.hzkj_amountfield2,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Cashback' />
     ),
     cell: ({ row }) => {
-      const cashback = row.original.cashback as number | undefined
-      if (!cashback) {
+      const v = row.original.hzkj_amountfield2
+      if (v === undefined || v === null || Number.isNaN(Number(v))) {
         return <span className='text-muted-foreground'>-</span>
       }
-
+      const n = Number(v)
       return (
         <div className='font-medium text-green-600'>
           +
           {new Intl.NumberFormat('zh-CN', {
             style: 'currency',
             currency: 'CNY',
-          }).format(cashback)}
+          }).format(n)}
         </div>
       )
     },

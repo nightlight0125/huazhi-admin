@@ -463,21 +463,6 @@ export const createPackagingConnectionColumns = (options?: {
                 Connect
               </Button>
             )}
-            {/* {!isOrderTab && (
-              <Button
-                variant='outline'
-                size='sm'
-                className='group h-7 border-gray-200 px-2 text-xs text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800'
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete?.(item)
-                }}
-              >
-                <Trash2
-                  className={cn(TRASH_DELETE_ICON_CLASS, 'mr-1 h-3.5 w-3.5')}
-                />
-              </Button>
-            )} */}
           </div>
         )
       },

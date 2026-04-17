@@ -77,7 +77,7 @@ export async function getUserShopList(
     hzkjAccountId,
     queryParam = '',
     pageNo = 0,
-    pageSize = 10,
+    pageSize = 1000,
   } = params
 
   const response = await apiClient.get<GetUserShopListResponse>(

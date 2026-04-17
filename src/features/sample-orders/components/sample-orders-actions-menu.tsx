@@ -28,10 +28,10 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { type SampleOrder } from '../data/schema'
+import { type SampleOrderTableRow } from '../data/schema'
 
 interface SampleOrdersActionsMenuProps {
-  table?: Table<SampleOrder> | null
+  table?: Table<SampleOrderTableRow> | null
   /** Called after a successful cancel so the list can refresh */
   onRefresh?: () => void
 }
@@ -65,7 +65,7 @@ export function SampleOrdersActionsMenu({
     { label: 'Returns only', value: 'D' },
   ] as const
 
-  const getOrderStatus = (order: SampleOrder) =>
+  const getOrderStatus = (order: SampleOrderTableRow) =>
     String((order as any).hzkj_orderstatus ?? '')
 
   useEffect(() => {

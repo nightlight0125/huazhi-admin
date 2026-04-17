@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from '@tanstack/react-router'
+import { parseInviteSearchParamsFromHref } from '@/lib/invite-search-params'
 import { useAuthStore } from '@/stores/auth-store'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
@@ -22,7 +23,10 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
     const currentPath = location.href
     navigate({
       to: '/sign-in',
-      search: { redirect: currentPath },
+      search: {
+        redirect: currentPath,
+        ...parseInviteSearchParamsFromHref(currentPath),
+      },
       replace: true,
     })
   }

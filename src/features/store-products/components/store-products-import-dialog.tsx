@@ -73,8 +73,6 @@ export function StoreProductsImportDialog({
       try {
         const { list } = await getUserShopList({
           hzkjAccountId: userId,
-          // 可根据需要调整查询参数和分页
-          queryParam: 'w',
           pageNo: 0,
           pageSize: 100,
         })

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -10,7 +11,7 @@ import { StoreProductsPrimaryButtons } from './store-products-primary-buttons'
 import { useStoreProducts } from './store-products-provider'
 
 export function StoreProductsToolbar() {
-  const { setOpen: _setOpen } = useStoreProducts()
+  const { setOpen } = useStoreProducts()
   const [selectedShop, setSelectedShop] = useState<string>('')
   const [associateStatus, setAssociateStatus] = useState<string>('')
 
@@ -38,6 +39,13 @@ export function StoreProductsToolbar() {
         </SelectContent>
       </Select>
       <StoreProductsPrimaryButtons />
+      <Button
+        variant='outline'
+        className='space-x-1'
+        onClick={() => setOpen('import')}
+      >
+        <span>Import Store Product</span>
+      </Button>
     </div>
   )
 }

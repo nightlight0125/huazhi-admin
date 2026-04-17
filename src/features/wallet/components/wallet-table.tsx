@@ -91,11 +91,7 @@ function mapApiWalletItemToWalletRecord(
     // 对应后端：hzkj_amountfield（字符串/数字均解析）
     hzkj_amountfield: parseHzkjAmountField(item.hzkj_amountfield),
     amount: parseHzkjAmountField(item.hzkj_amountfield) ?? 0,
-    // 对应后端：hzkj_amountfield2
-    cashback:
-      typeof item.hzkj_amountfield2 === 'number'
-        ? item.hzkj_amountfield2
-        : undefined,
+    hzkj_amountfield2: parseHzkjAmountField(item.hzkj_amountfield2),
     // notes 列已删除，这里保持为空字符串但不展示
     notes: '',
     status,

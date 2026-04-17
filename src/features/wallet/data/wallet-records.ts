@@ -12,9 +12,11 @@ export const walletRecords: WalletRecord[] = Array.from({ length: 100 }, () => {
   const createdAt = faker.date.past()
   const updatedAt = faker.date.between({ from: createdAt, to: new Date() })
 
-  // 生成返现金额（30%概率有返现）
+  // 生成返现金额（30%概率有返现），对应 hzkj_amountfield2
   const hasCashback = faker.datatype.boolean({ probability: 0.3 })
-  const cashback = hasCashback ? faker.number.float({ min: 1, max: amount * 0.1, fractionDigits: 2 }) : undefined
+  const hzkj_amountfield2 = hasCashback
+    ? faker.number.float({ min: 1, max: amount * 0.1, fractionDigits: 2 })
+    : undefined
 
   // 生成备注（50%概率有备注）
   const hasNotes = faker.datatype.boolean({ probability: 0.5 })
@@ -47,7 +49,7 @@ export const walletRecords: WalletRecord[] = Array.from({ length: 100 }, () => {
     date,
     amount,
     hzkj_amountfield: amount,
-    cashback,
+    hzkj_amountfield2,
     notes,
     status: status.value,
     createdAt,

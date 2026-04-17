@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,6 +6,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { ChevronDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AuthError, memberSignUp, registerSendCode } from '@/lib/api/auth'
+import { mergeInviteIdsFromRoute } from '@/lib/invite-search-params'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -87,12 +88,22 @@ export function SignUpForm({
   )
   const [phonePopoverOpen, setPhonePopoverOpen] = useState(false)
   const navigate = useNavigate()
-  const { customerId, operatorId } = useSearch({
+  const routeSearch = useSearch({
     from: '/(auth)/sign-up',
   }) as {
     customerId?: string
     operatorId?: string
   }
+
+  /** 与地址栏 query 一致，避免长数字被解析成 number 丢精度 */
+  const { customerId, operatorId } = useMemo(
+    () =>
+      mergeInviteIdsFromRoute(
+        routeSearch.customerId,
+        routeSearch.operatorId
+      ),
+    [routeSearch.customerId, routeSearch.operatorId]
+  )
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

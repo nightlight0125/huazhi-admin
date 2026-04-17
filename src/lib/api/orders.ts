@@ -1,4 +1,8 @@
 import type { Order } from '@/features/orders/data/schema'
+import {
+  persistPaymentOrderSource,
+  persistPaymentReturnTo,
+} from '@/lib/payment-return-to'
 import { apiClient } from '../api-client'
 
 // 查询订单请求参数
@@ -53,6 +57,8 @@ export interface ApiOrderItem {
     hzkj_src_qty?: string
     hzkj_local_sku_id?: string
     hzkj_shop_sku?: string
+    /** HZ 行结算单价 */
+    hzkj_unit_sett_price?: string | number
     [key: string]: unknown
   }>
   hzkj_billtype?: string
@@ -103,6 +109,8 @@ export interface ApiOrderItem {
   hzkj_address2?: string
   hzkj_admindivision_id?: string
   hzkj_city?: string
+  /** 州/省文本，编辑地址回填与提交 stateProvince 对应 */
+  hzkj_state?: string | null
   hzkj_tax_id?: string
   /** 物流跟踪号，可能为逗号分隔多段 */
   trackingNumber?: string
@@ -125,7 +133,7 @@ export interface QueryOrderResponse {
 function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
   const productList = (apiOrder.lingItems || []).map((item, index) => ({
     id: item.entryId || `product-${index}`,
-    productName: item.hzkj_product_name_en?.GLang || item.hzkj_local_sku_name_cn?.GLang || '',
+    productName:  item.hzkj_product_name_en?.GLang || '',
     productVariant: item.hzkj_variant_name ? [
       {
         id: `variant-${index}`,
@@ -233,6 +241,7 @@ function transformApiOrderToOrder(apiOrder: ApiOrderItem): Order {
       (apiOrder as any).hzkj_admindivision_name?.zh_CN ||
       (apiOrder as any).hzkj_admindivision_name?.zh_TW ||
       (apiOrder as any).hzkj_admindivision_name,
+    hzkj_state: (apiOrder as any).hzkj_state,
     hzkj_city: (apiOrder as any).hzkj_city,
     hzkj_country_id: (apiOrder as any).hzkj_country_id,
     // 客户名拆分字段
@@ -382,6 +391,8 @@ export async function addBTOrder(
 export interface DeleteOrderRequest {
   customerId: string
   orderId: string
+  /** 删除行明细等场景后端约定，例如 0 表示删除行记录 */
+  flag?: number
 }
 
 // 删除订单响应
@@ -466,6 +477,8 @@ export interface UpdateSalOutOrderRequest {
   phone: string
   countryId: string | number
   admindivisionId?: string | number
+  /** 州/省：请求体字段名为 stateProvince；列表/详情里对应展示字段多为 hzkj_state */
+  stateProvince?: string
   city: string
   address1: string
   address2?: string
@@ -851,6 +864,11 @@ export interface RequestPaymentRequest {
   type: number // 2 表示库存订单
   /** 0 Stripe，1 Paypal（与后端约定） */
   payType?: number
+  /**
+   * 仅前端：请求成功后写入 localStorage（`persistPaymentOrderSource`），不会传给后端。
+   * 支付回跳页用于展示对应的「Go to … Orders」按钮。
+   */
+  paymentSuccessMode?: 'store' | 'sample' | 'stock'
   // 支付完成后返回的地址（回调 URL，可选）
   returnUrl?: string
   // 支付失败/取消后返回的地址
@@ -902,8 +920,10 @@ export interface RequestPaymentResponse {
 export async function requestPayment(
   request: RequestPaymentRequest
 ): Promise<RequestPaymentResponse> {
-  const payType = request.payType ?? 0
+  const { paymentSuccessMode, ...requestForApi } = request
+  const payType = requestForApi.payType ?? 0
   // Stripe(0)：默认带 session_id 占位符；Paypal(1)：不能带 session_id={CHECKOUT_SESSION_ID}，否则后端/渠道报错
+  // 「前往哪类订单」由 localStorage 写入，见 persistPaymentOrderSource
   const defaultSuccessReturnUrl =
     typeof window !== 'undefined'
       ? payType === 1
@@ -912,7 +932,7 @@ export async function requestPayment(
       : undefined
 
   const payload: RequestPaymentRequest = {
-    ...request,
+    ...requestForApi,
     payType,
     ...(typeof window !== 'undefined'
       ? {
@@ -941,6 +961,10 @@ export async function requestPayment(
     throw new Error(errorMessage)
   }
 
+  if (typeof window !== 'undefined' && paymentSuccessMode) {
+    persistPaymentOrderSource(paymentSuccessMode)
+  }
+
   // 如果后端返回支付链接，则在当前窗口中跳转到支付页面
   const paymentUrl =
     typeof response.data.data === 'string'
@@ -951,6 +975,7 @@ export async function requestPayment(
         : ''
 
   if (paymentUrl && typeof window !== 'undefined') {
+    persistPaymentReturnTo()
     window.location.href = paymentUrl
   }
 

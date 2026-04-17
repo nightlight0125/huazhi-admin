@@ -257,7 +257,7 @@ export function NotAssociatedConnectionView() {
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false)
   const [storeSearchValue, setStoreSearchValue] = useState('') // Store Products 的搜索输入值
   const [storeSearchKeyword, setStoreSearchKeyword] = useState<string>('') // Store Products 实际用于搜索的关键词
-  const { searchKeyword } = useStoreProducts()
+  const { searchKeyword, setOpen } = useStoreProducts()
   // 用于传递给弹框的 ID
   const [dialogLeftProductId, setDialogLeftProductId] = useState<string>('')
   const [dialogRightProductId, setDialogRightProductId] = useState<string>('')
@@ -294,7 +294,7 @@ export function NotAssociatedConnectionView() {
           accountId: String(accountId),
           pageIndex: storePage - 1,
           pageSize: storePageSize,
-          hzkj_str: storeSearchKeyword.trim() || undefined, // 传递 Store Products 搜索关键词
+          productName: storeSearchKeyword.trim() || undefined,
         })
 
         // 转换 API 数据为组件需要的格式
@@ -432,6 +432,14 @@ export function NotAssociatedConnectionView() {
               >
                 <Search className='mr-2 h-4 w-4' />
                 Search
+              </Button>
+              <Button
+                variant='outline'
+                className='h-8 space-x-1'
+                size='sm'
+                onClick={() => setOpen('import')}
+              >
+                <span>Import Store Product</span>
               </Button>
             </div>
           </div>

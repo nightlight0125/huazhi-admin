@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as WalletPaymentcallbackRouteImport } from './routes/wallet.paymentcallback'
 import { Route as WalletPaymentFailRouteImport } from './routes/wallet.payment-fail'
+import { Route as OrderPaymentSuccessRouteImport } from './routes/order.payment-success'
 import { Route as OrderPaymentFailRouteImport } from './routes/order.payment-fail'
 import { Route as OrderPaymentCallbackRouteImport } from './routes/order.payment-callback'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
@@ -96,6 +97,11 @@ const WalletPaymentcallbackRoute = WalletPaymentcallbackRouteImport.update({
 const WalletPaymentFailRoute = WalletPaymentFailRouteImport.update({
   id: '/wallet/payment-fail',
   path: '/wallet/payment-fail',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderPaymentSuccessRoute = OrderPaymentSuccessRouteImport.update({
+  id: '/order/payment-success',
+  path: '/order/payment-success',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderPaymentFailRoute = OrderPaymentFailRouteImport.update({
@@ -449,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof AuthenticatedWalletRoute
   '/order/payment-callback': typeof OrderPaymentCallbackRoute
   '/order/payment-fail': typeof OrderPaymentFailRoute
+  '/order/payment-success': typeof OrderPaymentSuccessRoute
   '/wallet/payment-fail': typeof WalletPaymentFailRoute
   '/wallet/paymentcallback': typeof WalletPaymentcallbackRoute
   '/': typeof AuthenticatedIndexRoute
@@ -511,6 +518,7 @@ export interface FileRoutesByTo {
   '/wallet': typeof AuthenticatedWalletRoute
   '/order/payment-callback': typeof OrderPaymentCallbackRoute
   '/order/payment-fail': typeof OrderPaymentFailRoute
+  '/order/payment-success': typeof OrderPaymentSuccessRoute
   '/wallet/payment-fail': typeof WalletPaymentFailRoute
   '/wallet/paymentcallback': typeof WalletPaymentcallbackRoute
   '/': typeof AuthenticatedIndexRoute
@@ -578,6 +586,7 @@ export interface FileRoutesById {
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/order/payment-callback': typeof OrderPaymentCallbackRoute
   '/order/payment-fail': typeof OrderPaymentFailRoute
+  '/order/payment-success': typeof OrderPaymentSuccessRoute
   '/wallet/payment-fail': typeof WalletPaymentFailRoute
   '/wallet/paymentcallback': typeof WalletPaymentcallbackRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -643,6 +652,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/order/payment-callback'
     | '/order/payment-fail'
+    | '/order/payment-success'
     | '/wallet/payment-fail'
     | '/wallet/paymentcallback'
     | '/'
@@ -705,6 +715,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/order/payment-callback'
     | '/order/payment-fail'
+    | '/order/payment-success'
     | '/wallet/payment-fail'
     | '/wallet/paymentcallback'
     | '/'
@@ -771,6 +782,7 @@ export interface FileRouteTypes {
     | '/_authenticated/wallet'
     | '/order/payment-callback'
     | '/order/payment-fail'
+    | '/order/payment-success'
     | '/wallet/payment-fail'
     | '/wallet/paymentcallback'
     | '/_authenticated/'
@@ -831,6 +843,7 @@ export interface RootRouteChildren {
   errors503Route: typeof errors503Route
   OrderPaymentCallbackRoute: typeof OrderPaymentCallbackRoute
   OrderPaymentFailRoute: typeof OrderPaymentFailRoute
+  OrderPaymentSuccessRoute: typeof OrderPaymentSuccessRoute
   WalletPaymentFailRoute: typeof WalletPaymentFailRoute
   WalletPaymentcallbackRoute: typeof WalletPaymentcallbackRoute
 }
@@ -870,6 +883,13 @@ declare module '@tanstack/react-router' {
       path: '/wallet/payment-fail'
       fullPath: '/wallet/payment-fail'
       preLoaderRoute: typeof WalletPaymentFailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order/payment-success': {
+      id: '/order/payment-success'
+      path: '/order/payment-success'
+      fullPath: '/order/payment-success'
+      preLoaderRoute: typeof OrderPaymentSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order/payment-fail': {
@@ -1475,6 +1495,7 @@ const rootRouteChildren: RootRouteChildren = {
   errors503Route: errors503Route,
   OrderPaymentCallbackRoute: OrderPaymentCallbackRoute,
   OrderPaymentFailRoute: OrderPaymentFailRoute,
+  OrderPaymentSuccessRoute: OrderPaymentSuccessRoute,
   WalletPaymentFailRoute: WalletPaymentFailRoute,
   WalletPaymentcallbackRoute: WalletPaymentcallbackRoute,
 }

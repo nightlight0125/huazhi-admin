@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from '@tanstack/react-router'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { Coins, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { IconPaypal, IconStripe } from '@/assets/brand-icons'
@@ -9,6 +9,11 @@ import {
   requestPayment,
   walletPayment,
 } from '@/lib/api/orders'
+import {
+  persistPaymentOrderSource,
+  persistPaymentReturnTo,
+} from '@/lib/payment-return-to'
+import { payTypeForOrderDialogMethod } from '@/lib/third-party-pay-type'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -52,6 +57,7 @@ export function OrderPayDialog({
 }: OrderPayDialogProps) {
   const { auth } = useAuthStore()
   const location = useLocation()
+  const navigate = useNavigate()
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>('balance')
   const [isLoading, setIsLoading] = useState(false)
@@ -120,9 +126,7 @@ export function OrderPayDialog({
       const payTypeForConfirm =
         selectedPaymentMethod === 'balance'
           ? undefined
-          : selectedPaymentMethod === 'credit_card'
-            ? 0
-            : 1
+          : payTypeForOrderDialogMethod(selectedPaymentMethod)
       onConfirm(order.id, selectedPaymentMethod, totalAmount, payTypeForConfirm)
       onOpenChange(false)
       return
@@ -136,26 +140,48 @@ export function OrderPayDialog({
           orderIds,
           type: paymentType,
         })
-        toast.success('Wallet payment submitted successfully')
+        const successMode: 'store' | 'sample' | 'stock' = pathname.includes(
+          'sample-orders'
+        )
+          ? 'sample'
+          : pathname.includes('stock-orders')
+            ? 'stock'
+            : 'store'
+        persistPaymentOrderSource(successMode)
+        onOpenChange(false)
+        onPaymentSuccess?.()
+        navigate({
+          to: '/order/payment-success',
+          replace: true,
+        })
       } else {
-        const payType = selectedPaymentMethod === 'credit_card' ? 0 : 1
+        const successMode: 'store' | 'sample' | 'stock' = pathname.includes(
+          'sample-orders'
+        )
+          ? 'sample'
+          : pathname.includes('stock-orders')
+            ? 'stock'
+            : 'store'
+        const payType = payTypeForOrderDialogMethod(selectedPaymentMethod)
         const response = await requestPayment({
           customerId: String(customerId),
           orderIds,
           type: orderType,
           payType,
+          paymentSuccessMode: successMode,
         })
         const paymentUrl =
           typeof response.data === 'string' ? response.data : undefined
         if (paymentUrl && paymentUrl.startsWith('http')) {
+          persistPaymentReturnTo()
           window.open(paymentUrl, '_blank', 'noopener,noreferrer')
           toast.success('Redirecting to payment page...')
         } else {
           toast.success('Payment request submitted successfully')
         }
+        onOpenChange(false)
+        onPaymentSuccess?.()
       }
-      onOpenChange(false)
-      onPaymentSuccess?.()
     } catch (error) {
       console.error('Failed to request payment:', error)
       toast.error(
@@ -178,7 +204,6 @@ export function OrderPayDialog({
         </DialogHeader>
 
         <div className='space-y-6 py-4'>
-          {/* Payment Methods */}
           <div className='space-y-3'>
             <Label className='text-sm font-medium'>Payment Methods:</Label>
             <div className='grid grid-cols-3 gap-3'>
@@ -211,10 +236,7 @@ export function OrderPayDialog({
                 }`}
               >
                 <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
-                  <IconStripe
-                    className='h-8 w-10 text-[#635BFF]'
-                    aria-hidden
-                  />
+                  <IconStripe className='h-8 w-10 text-[#635BFF]' aria-hidden />
                 </div>
                 <span className='text-sm leading-none font-medium'>Stripe</span>
               </button>
@@ -230,10 +252,7 @@ export function OrderPayDialog({
                 }`}
               >
                 <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
-                  <IconPaypal
-                    className='h-6 w-6 text-[#003087]'
-                    aria-hidden
-                  />
+                  <IconPaypal className='h-6 w-6 text-[#003087]' aria-hidden />
                 </div>
                 <span className='text-sm leading-none font-medium'>Paypal</span>
               </button>

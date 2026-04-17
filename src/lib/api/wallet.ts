@@ -265,6 +265,8 @@ export interface RequestWalletPaymentRequest {
   amount: number
   currency: string
   currencyNumber: string
+  /** 0 Stripe，1 PayPal；与订单 requestPayment 一致 */
+  payType?: number
   // 支付完成后返回的地址（回调 URL，可选）
   returnUrl?: string
   // 支付失败/取消后返回的地址
@@ -283,13 +285,22 @@ export interface RequestWalletPaymentResponse {
 export async function requestWalletPayment(
   request: RequestWalletPaymentRequest
 ): Promise<RequestWalletPaymentResponse> {
+  const payType = request.payType ?? 0
+  const defaultSuccessReturnUrl =
+    typeof window !== 'undefined'
+      ? payType === 1
+        ? `${window.location.origin}/wallet/paymentcallback?payType=1`
+        : `${window.location.origin}/wallet/paymentcallback?session_id={CHECKOUT_SESSION_ID}`
+      : undefined
+
   const payload: RequestWalletPaymentRequest = {
     ...request,
+    payType,
     ...(typeof window !== 'undefined'
       ? {
-          ...(!request.returnUrl
+          ...(!request.returnUrl && defaultSuccessReturnUrl
             ? {
-                returnUrl: `${window.location.origin}/wallet/paymentcallback?session_id={CHECKOUT_SESSION_ID}`,
+                returnUrl: defaultSuccessReturnUrl,
               }
             : {}),
           ...(!request.returnFailUrl

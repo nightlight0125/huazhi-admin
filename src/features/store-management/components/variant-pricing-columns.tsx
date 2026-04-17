@@ -184,15 +184,18 @@ export const createVariantPricingColumns = (
       cell: ({ row }) => {
         const variant = row.original as VariantPricing
         return (
-          <EditableCell
-            key={`yourPrice-${variant.id}-${variant.yourPrice || ''}`}
-            value={variant.yourPrice || ''}
-            onValueChange={(newValue) => {
-              variant.yourPrice = newValue
-            }}
-            className='h-6 w-16 text-xs'
-            placeholder='Enter price'
-          />
+          <div className='flex items-center gap-0.5'>
+            <span className='text-muted-foreground shrink-0 text-xs'>$</span>
+            <EditableCell
+              key={`yourPrice-${variant.id}-${variant.yourPrice || ''}`}
+              value={variant.yourPrice || ''}
+              onValueChange={(newValue) => {
+                variant.yourPrice = newValue
+              }}
+              className='h-6 w-16 text-xs'
+              placeholder='Enter price'
+            />
+          </div>
         )
       },
     },

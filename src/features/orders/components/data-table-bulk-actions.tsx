@@ -4,6 +4,7 @@ import { ArrowUpDown, CircleArrowUp, Download, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { requestPayment } from '@/lib/api/orders'
+import { THIRD_PARTY_PAY_TYPE_STRIPE } from '@/lib/third-party-pay-type'
 import { TRASH_DELETE_DESTRUCTIVE_ICON_CLASS } from '@/lib/delete-action-ui'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -128,6 +129,8 @@ export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
         customerId: String(customerId),
         orderIds,
         type: 0, // 0 表示普通订单
+        payType: THIRD_PARTY_PAY_TYPE_STRIPE,
+        paymentSuccessMode: 'store',
       })
 
       toast.success(

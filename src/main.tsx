@@ -6,7 +6,12 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
-import { RouterProvider, createRouter } from '@tanstack/react-router'
+import {
+  RouterProvider,
+  createRouter,
+  parseSearchWith,
+  stringifySearchWith,
+} from '@tanstack/react-router'
 import 'flag-icons/css/flag-icons.min.css'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
@@ -21,6 +26,7 @@ toast.error = ((...args: Parameters<typeof toast.error>) => {
 // Styles
 import { redirectToExpiredIfNeeded } from '@/lib/build-expiration'
 import { handleServerError } from '@/lib/handle-server-error'
+import { searchParamJsonParse } from '@/lib/router-search-json-parse'
 import {
   ensureShopifyAppBridgeScriptLoaded,
   initShopifyAppBridge,
@@ -81,11 +87,10 @@ const queryClient = new QueryClient({
         return
       }
       if (error instanceof AxiosError) {
+        // 401不要在这里 reset / 跳转：api-client 会先走 refreshTokenApi，成功则重试原请求。
+        // 若在此处立刻 navigate到登录页，会与刷新中的请求竞态，出现「刷新还未返回就进登录页」。
         if (error.response?.status === 401) {
-          toast.error('Session expired!')
-          useAuthStore.getState().auth.reset()
-          const redirect = `${router.history.location.href}`
-          router.navigate({ to: '/sign-in', search: { redirect } })
+          return
         }
         if (error.response?.status === 500) {
           toast.error('Internal Server Error!')
@@ -105,6 +110,8 @@ const router = createRouter({
   context: { queryClient },
   defaultPreload: 'intent',
   defaultPreloadStaleTime: 0,
+  parseSearch: parseSearchWith(searchParamJsonParse),
+  stringifySearch: stringifySearchWith(JSON.stringify, searchParamJsonParse),
 })
 
 // Register the router instance for type safety

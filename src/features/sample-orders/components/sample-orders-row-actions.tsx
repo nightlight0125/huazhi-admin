@@ -15,10 +15,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { type SampleOrder } from '../data/schema'
+import { type SampleOrderTableRow } from '../data/schema'
 
 interface SampleOrdersRowActionsProps {
-  row: Row<SampleOrder>
+  row: Row<SampleOrderTableRow>
   onPay?: (orderId: string) => void
   onEditAddress?: (orderId: string) => void
   onAddPackage?: (orderId: string) => void

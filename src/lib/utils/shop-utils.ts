@@ -20,7 +20,7 @@ export interface ShopOption {
 export async function getUserShopOptions(
   userId: string,
   pageNo: number = 0,
-  pageSize: number = 10
+  pageSize: number = 100
 ): Promise<ShopOption[]> {
   try {
     const response = await getUserShopList({

@@ -100,9 +100,10 @@ export function PublishedProductsRowActions({
               <br />
               This action cannot be undone.
             </p>
-            {product.spu && (
+            {(product.hzkj_spu_number || product.spu) && (
               <p className='text-muted-foreground text-sm'>
-                SPU: <strong>{product.spu}</strong>
+                SPU:{' '}
+                <strong>{product.hzkj_spu_number ?? product.spu}</strong>
               </p>
             )}
             {product.name && (

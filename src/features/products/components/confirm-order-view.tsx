@@ -12,10 +12,16 @@ import {
   User,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { IconPaypal, IconStripe } from '@/assets/brand-icons'
 import { useAuthStore } from '@/stores/auth-store'
 import { calcuNewOrderFreight, type FreightOption } from '@/lib/api/logistics'
 import { getCustomerBalance } from '@/lib/api/orders'
+import {
+  persistPaymentOrderSource,
+  persistPaymentReturnTo,
+} from '@/lib/payment-return-to'
 import { buyProduct, buyProductByWall } from '@/lib/api/products'
+import { payTypeForOrderDialogMethod } from '@/lib/third-party-pay-type'
 import { getAddress, type AddressItem } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,7 +38,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { IconPaypal, IconStripe } from '@/assets/brand-icons'
 import {
   Table,
   TableBody,
@@ -144,8 +149,8 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
   const [availableBalance, setAvailableBalance] = useState<number>(0)
   const [isLoadingBalance, setIsLoadingBalance] = useState(false)
 
-  const handleAddAddress = () => {
-    // 保存确认订单数据，返回后可恢复视图
+  /** 去设置页改地址；保存 payload，返回产品页后由 product-details 恢复确认订单视图 */
+  const goToAddressSettings = () => {
     sessionStorage.setItem(
       'confirm-order-return',
       JSON.stringify({ payload: orderData })
@@ -188,7 +193,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       setIsPaying(true)
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
       const payTypeThirdParty =
-        paymentMethod === 'credit_card' ? 0 : paymentMethod === 'airwallex' ? 1 : undefined
+        paymentMethod === 'credit_card' || paymentMethod === 'airwallex'
+          ? payTypeForOrderDialogMethod(paymentMethod)
+          : undefined
       const returnUrl = origin
         ? paymentMethod === 'airwallex'
           ? `${origin}/order/payment-callback?payType=1`
@@ -235,15 +242,21 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
           note: addressPayload.note,
           detail: addressPayload.detail,
         })
-        toast.success('Wallet payment completed successfully')
+        persistPaymentOrderSource(orderData.mode)
         setIsPayDialogOpen(false)
+        navigate({
+          to: '/order/payment-success',
+          replace: true,
+        })
         return
       }
 
       const response = await buyProduct({
         customerId: String(customerId),
         customChannelId: selectedShippingMethod,
-        ...(payTypeThirdParty !== undefined ? { payType: payTypeThirdParty } : {}),
+        ...(payTypeThirdParty !== undefined
+          ? { payType: payTypeThirdParty }
+          : {}),
         ...(returnUrl ? { returnUrl } : {}),
         ...(returnFailUrl ? { returnFailUrl } : {}),
         ...addressPayload,
@@ -259,6 +272,8 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
       if (paymentUrl) {
         toast.success('Redirecting to payment page...')
         setIsPayDialogOpen(false)
+        persistPaymentOrderSource(orderData.mode)
+        persistPaymentReturnTo()
         // 在当前窗口中跳转到支付页面
         window.location.href = paymentUrl
       } else if (response.message) {
@@ -448,15 +463,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
               type='button'
               variant='outline'
               size='sm'
-              onClick={() =>
-                navigate({
-                  to: '/settings',
-                  search: {
-                    tab: 'profile',
-                    returnTo: `/products/${orderData.productId}`,
-                  },
-                })
-              }
+              onClick={goToAddressSettings}
               className='gap-1.5'
             >
               <Pencil className='h-3.5 w-3.5' />
@@ -472,7 +479,7 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
             <div className='flex flex-col items-center justify-center py-8'>
               <p className='text-muted-foreground mb-4 text-sm'>No address</p>
               <Button
-                onClick={handleAddAddress}
+                onClick={goToAddressSettings}
                 className='bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-600 dark:hover:bg-orange-500'
               >
                 Add address
@@ -542,6 +549,10 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                       shippingAddress?.hzkj_admindivision_number && {
                         label: 'Region',
                         value: shippingAddress.hzkj_admindivision_number,
+                      },
+                      shippingAddress?.hzkj_state && {
+                        label: 'State',
+                        value: shippingAddress.hzkj_state,
                       },
                       shippingAddress?.hzkj_city && {
                         label: 'City',
@@ -789,7 +800,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                   <div className='flex h-10 w-full flex-shrink-0 items-center justify-center'>
                     <Coins className='h-6 w-6' />
                   </div>
-                  <span className='text-sm font-medium leading-none'>Balance</span>
+                  <span className='text-sm leading-none font-medium'>
+                    Balance
+                  </span>
                 </button>
 
                 <button
@@ -807,7 +820,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                       aria-hidden
                     />
                   </div>
-                  <span className='text-sm font-medium leading-none'>Stripe</span>
+                  <span className='text-sm leading-none font-medium'>
+                    Stripe
+                  </span>
                 </button>
 
                 <button
@@ -825,7 +840,9 @@ export function ConfirmOrderView({ orderData, onBack }: ConfirmOrderViewProps) {
                       aria-hidden
                     />
                   </div>
-                  <span className='text-sm font-medium leading-none'>Paypal</span>
+                  <span className='text-sm leading-none font-medium'>
+                    Paypal
+                  </span>
                 </button>
               </div>
             </div>

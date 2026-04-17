@@ -20,11 +20,11 @@ import {
 } from '@/components/ui/tooltip'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { toDisplayString } from '@/features/orders/utils'
-import { type SampleOrder } from '../data/schema'
+import { type SampleOrderTableRow } from '../data/schema'
 
 // 删除订单单元格组件
 interface SampleOrderDeleteCellProps {
-  row: Row<SampleOrder>
+  row: Row<SampleOrderTableRow>
   onDelete?: (orderId: string) => void | Promise<void>
 }
 
@@ -100,7 +100,7 @@ function SampleOrderDeleteCell({ row, onDelete }: SampleOrderDeleteCellProps) {
 }
 
 interface SampleOrderCancelCellProps {
-  row: Row<SampleOrder>
+  row: Row<SampleOrderTableRow>
   onCancel?: (orderId: string) => void | Promise<void>
 }
 
@@ -174,7 +174,7 @@ function SampleOrderCancelCell({ row, onCancel }: SampleOrderCancelCellProps) {
 }
 
 interface SampleOrderRestoreCellProps {
-  row: Row<SampleOrder>
+  row: Row<SampleOrderTableRow>
   onRestore?: (orderId: string) => void | Promise<void>
 }
 
@@ -226,8 +226,8 @@ function SampleOrderRestoreCell({
         desc={
           <>
             <p className='mb-2'>
-              This order will return to awaiting payment. You can continue checkout
-              after restoring.
+              This order will return to awaiting payment. You can continue
+              checkout after restoring.
             </p>
             <p className='text-muted-foreground text-sm'>
               Order Number: <strong>{order.billno}</strong>
@@ -256,8 +256,16 @@ export const createSampleOrdersColumns = (options?: {
   onEditAddress?: (orderId: string) => void
   onAddPackage?: (orderId: string) => void
   onDelete?: (orderId: string) => void | Promise<void>
-}): ColumnDef<SampleOrder>[] => {
-  const { onPay, onCancel, onRestore, onEditAddress, onDelete } = options || {}
+  onSelectShippingMethod?: (order: SampleOrderTableRow) => void
+}): ColumnDef<SampleOrderTableRow>[] => {
+  const {
+    onPay,
+    onCancel,
+    onRestore,
+    onEditAddress,
+    onDelete,
+    onSelectShippingMethod,
+  } = options || {}
 
   return [
     {
@@ -276,17 +284,21 @@ export const createSampleOrdersColumns = (options?: {
       meta: {
         className: cn('sticky md:table-cell start-0 z-10 rounded-tl-[inherit]'),
       },
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label='选择行'
-          className='translate-y-[2px]'
-        />
-      ),
+      cell: ({ row }) => {
+        return (
+          <div className='flex items-center gap-2'>
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label='选择行'
+              className='translate-y-[2px]'
+            />
+          </div>
+        )
+      },
       enableSorting: false,
       enableHiding: false,
-      size: 50,
+      size: 80,
     },
     {
       accessorKey: 'orderNumber',
@@ -311,7 +323,8 @@ export const createSampleOrdersColumns = (options?: {
       id: 'sku',
       header: 'SKU',
       cell: ({ row }) => {
-        const order = row.original as SampleOrder & {
+        const order = row.original as SampleOrderTableRow & {
+          sku?: string
           lingItems?: Array<{
             hzkj_product_name_en?:
               | { GLang?: string; zh_CN?: string }
@@ -364,10 +377,17 @@ export const createSampleOrdersColumns = (options?: {
       id: 'cost',
       header: 'Cost',
       cell: ({ row }) => {
-        const order = row.original as SampleOrder & {
+        const order = row.original as SampleOrderTableRow & {
           hzkj_total_amount?: number
           hzkj_fre_quo_amount?: number
           totalQty?: number
+          sku?: string
+          cost?: {
+            total?: number
+            product?: number
+            shipping?: number
+            qty?: number
+          }
         }
         const total =
           order.hzkj_total_amount ??
@@ -396,7 +416,7 @@ export const createSampleOrdersColumns = (options?: {
     },
     {
       id: 'address',
-      header: 'Address',
+      header: 'Customer',
       cell: ({ row }) => {
         const order = row.original
         const customerName = order.hzkj_customer_name?.GLang || '---'
@@ -416,7 +436,17 @@ export const createSampleOrdersColumns = (options?: {
                 <Edit className='h-3 w-3' />
               </Button>
             </div>
-            <div>{order.hzkj_country_code || order.address.country}</div>
+            <div>
+              {order.hzkj_country_code ||
+                order.country ||
+                (typeof order.address === 'object' &&
+                order.address &&
+                'country' in order.address
+                  ? String(
+                      (order.address as { country?: string }).country ?? ''
+                    )
+                  : '')}
+            </div>
           </div>
         )
       },
@@ -458,6 +488,66 @@ export const createSampleOrdersColumns = (options?: {
         )
       },
       size: 180,
+    },
+    {
+      id: 'shippingCost',
+      header: 'Shipping Cost',
+      cell: ({ row }) => {
+        const order = row.original
+        const fulfillmentStatus = String(
+          (order as any).hzkj_orderstatus ?? ''
+        ).toLowerCase()
+        const isPaid =
+          fulfillmentStatus === '2' ||
+          fulfillmentStatus === '3' ||
+          fulfillmentStatus === '4'
+        const hasChannel = order.hzkj_customer_channel_number
+        const rawShippingCost = order.hzkj_fre_quo_amount
+        const shippingCostNumber =
+          rawShippingCost === null || rawShippingCost === undefined
+            ? NaN
+            : Number(rawShippingCost)
+        const shippingCostDisplay = Number.isFinite(shippingCostNumber)
+          ? `$${shippingCostNumber.toFixed(2)}`
+          : '---'
+
+        // 已付款订单：允许查看价格和渠道，但不允许再修改物流渠道
+        if (isPaid) {
+          return (
+            <div className='-mx-1 w-full space-y-1 px-1 py-0.5 text-left text-sm'>
+              <div>{shippingCostDisplay}</div>
+              {hasChannel ? (
+                <div className='text-muted-foreground text-xs'>
+                  {toDisplayString(order.hzkj_customer_channel_number)}
+                </div>
+              ) : (
+                <div className='text-xs text-red-500'>[please select]</div>
+              )}
+            </div>
+          )
+        }
+
+        return (
+          <button
+            type='button'
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelectShippingMethod?.(order)
+            }}
+            className='hover:bg-muted/50 -mx-1 w-full space-y-1 rounded px-1 py-0.5 text-left text-sm'
+          >
+            <div>{shippingCostDisplay}</div>
+            {hasChannel ? (
+              <div className='text-muted-foreground text-xs'>
+                {toDisplayString(order.hzkj_customer_channel_number)}
+              </div>
+            ) : (
+              <div className='text-xs text-red-500'>[please select]</div>
+            )}
+          </button>
+        )
+      },
+      size: 150,
     },
     {
       accessorKey: 'status',
@@ -586,7 +676,13 @@ export const createSampleOrdersColumns = (options?: {
     },
     {
       id: 'logistics',
-      accessorFn: (row) => row.shippingMethod || '',
+      /** Order：logistics（来自 hzkj_deliveryway）；mock SampleOrder 曾用 shippingMethod */
+      accessorFn: (row) =>
+        row.logistics ||
+        String(
+          (row as SampleOrderTableRow & { shippingMethod?: string })
+            .shippingMethod ?? ''
+        ),
       header: () => null,
       cell: () => null,
       enableHiding: false,

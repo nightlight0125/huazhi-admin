@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { useStoreProducts } from './store-products-provider'
 
 export function StoreProductsPrimaryButtons() {
-  const { setOpen, setSearchKeyword } = useStoreProducts()
+  const { setSearchKeyword } = useStoreProducts()
   const [searchValue, setSearchValue] = useState('')
 
   const handleSearch = () => {
@@ -21,7 +21,7 @@ export function StoreProductsPrimaryButtons() {
           placeholder='enter store product\name\ID'
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className='border-border focus-visible:ring-ring h-8 min-w-[200px] flex-1 rounded-md shadow-sm focus-visible:ring-2'
+          className='border-border focus-visible:ring-ring h-8 min-w-[400px] flex-1 rounded-md shadow-sm focus-visible:ring-2'
         />
         <Button
           onClick={handleSearch}
@@ -31,13 +31,6 @@ export function StoreProductsPrimaryButtons() {
           Search
         </Button>
       </div>
-      <Button
-        variant='outline'
-        className='space-x-1'
-        onClick={() => setOpen('import')}
-      >
-        <span>Import Store Product</span>
-      </Button>
     </div>
   )
 }

@@ -16,7 +16,8 @@ export const walletRecordSchema = z.object({
   amount: z.number(), // 金额（与 hzkj_amountfield 同步，供排序等）
   /** 后端资金记录金额字段，列表展示以此为准 */
   hzkj_amountfield: z.number().optional(),
-  cashback: z.number().optional(), // 返现
+  /** 后端返现等金额：hzkj_amountfield2 */
+  hzkj_amountfield2: z.number().optional(),
   notes: z.string().optional(), // 备注
   status: walletRecordStatusSchema, // 充值状态
   hzkj_status: z.string().optional(), // 后端原始状态，直接展示

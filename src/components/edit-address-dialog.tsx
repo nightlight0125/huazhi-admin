@@ -27,6 +27,8 @@ export interface AddressData {
   address2?: string
   city: string
   country: string
+  /** 州/省：updateSalOutOrder 请求体传 stateProvince；订单列表回填来自 hzkj_state */
+  stateProvince?: string
   province?: string
   postalCode: string
   phoneNumber: string
@@ -57,6 +59,7 @@ interface EditAddressDialogProps {
     email?: string
     shippingOrigin?: string
     taxId?: string
+    stateProvince?: string
     countryId?: number
   }
   onConfirm: (addressData: AddressData) => void
@@ -83,6 +86,7 @@ export function EditAddressDialog({
   const [address2, setAddress2] = useState('')
   const [city, setCity] = useState('')
   const [country, setCountry] = useState('')
+  const [stateProvince, setStateProvince] = useState('')
   const [postcode, setPostcode] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -125,6 +129,7 @@ export function EditAddressDialog({
       setCountryId(
         initialData.countryId ?? getCountryId(countryValue) ?? undefined
       )
+      setStateProvince(initialData.stateProvince || '')
       setPostcode(initialData.postalCode || '')
       setPhone(initialData.phoneNumber || '')
       setEmail(initialData.email || '')
@@ -166,6 +171,7 @@ export function EditAddressDialog({
       address2: address2.trim() || undefined,
       city: city.trim(),
       country: countryLabel,
+      stateProvince: stateProvince.trim() || undefined,
       province: undefined,
       postalCode: postcode.trim(),
       phoneNumber: phone.trim(),
@@ -202,6 +208,7 @@ export function EditAddressDialog({
             initialData.country ||
             ''
       setCountry(countryValue)
+      setStateProvince(initialData.stateProvince || '')
       setPostcode(initialData.postalCode || '')
       setPhone(initialData.phoneNumber || '')
       setEmail(initialData.email || '')
@@ -273,6 +280,7 @@ export function EditAddressDialog({
                 onValueChange={(value) => {
                   setCountry(value)
                   setCountryId(getCountryId(value))
+                  setStateProvince('')
                 }}
                 disabled={isLoadingCountries}
               >
@@ -294,6 +302,16 @@ export function EditAddressDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='stateProvince'>State</Label>
+              <Input
+                id='stateProvince'
+                placeholder='Please enter state'
+                value={stateProvince}
+                onChange={(e) => setStateProvince(e.target.value)}
+              />
             </div>
 
             <div className='space-y-2'>
@@ -320,9 +338,7 @@ export function EditAddressDialog({
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='taxId'>
-                Tax ID <span className='text-red-500'>*</span>
-              </Label>
+              <Label htmlFor='taxId'>Tax ID</Label>
               <Input
                 id='taxId'
                 placeholder='Please enter the tax id.'

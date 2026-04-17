@@ -256,17 +256,26 @@ export async function memberSignUp(
     operatorId?: string
   }
 ): Promise<SignUpResponse> {
-  const requestData: SignUpRequest = {
-    member: {
-      email,
-      name,
-      phone,
-      password,
-      emailCode,
-      customerId: referral?.customerId,
-      operatorId: referral?.operatorId,
-    },
+  const member: SignUpRequest['member'] = {
+    email,
+    name,
+    phone,
+    password,
+    emailCode,
   }
+  // 后端约定为字符串；显式 String，避免运行时为 number 时 JSON 序列化成数字
+  const cid =
+    referral?.customerId != null && String(referral.customerId).trim() !== ''
+      ? String(referral.customerId).trim()
+      : ''
+  const oid =
+    referral?.operatorId != null && String(referral.operatorId).trim() !== ''
+      ? String(referral.operatorId).trim()
+      : ''
+  if (cid) member.customerId = cid
+  if (oid) member.operatorId = oid
+
+  const requestData: SignUpRequest = { member }
 
   const response = await apiClient.post<SignUpResponse>(
     '/v2/hzkj/base/member/add',

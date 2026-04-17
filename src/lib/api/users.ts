@@ -788,6 +788,7 @@ export interface AddressItem {
   hzkj_phone_number?: string
   hzkj_emailfield?: string
   hzkj_bill_city?: string
+  hzkj_bill_state?: string
   hzkj_bill_adress?: string
   hzkj_bill_adress2?: string
   hzkj_textfield3?: string
@@ -798,6 +799,7 @@ export interface AddressItem {
   hzkj_phone?: string
   hzkj_adress_emailfield?: string
   hzkj_city?: string
+  hzkj_state?: string
   hzkj_address2?: string
   hzkj_textfield?: string
   hzkj_tax_id1?: string
@@ -1024,6 +1026,7 @@ export interface UpdateBillAddressRequest {
     hzkj_phone_number?: string
     hzkj_emailfield?: string
     hzkj_bill_city?: string
+    hzkj_bill_state?: string
     hzkj_bill_adress?: string
     hzkj_bill_adress2?: string
     hzkj_textfield3?: string
@@ -1076,6 +1079,7 @@ export interface UpdateAddressRequest {
     hzkj_phone?: string
     hzkj_adress_emailfield?: string
     hzkj_city?: string
+    hzkj_state?: string
     hzkj_textfield?: string
     hzkj_address2?: string
     hzkj_textfield1?: string

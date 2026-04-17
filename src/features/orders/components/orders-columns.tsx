@@ -216,8 +216,8 @@ function OrderRestoreCell({ row, onRestore }: OrderRestoreCellProps) {
         desc={
           <>
             <p className='mb-2'>
-              This order will return to awaiting payment. You can continue checkout
-              after restoring.
+              This order will return to awaiting payment. You can continue
+              checkout after restoring.
             </p>
             <p className='text-muted-foreground text-sm'>
               Order Number: <strong>{order.orderNumber}</strong>

@@ -569,7 +569,7 @@ export function PackagingProductsGrid({
         }
       />
       {/* Product Grid */}
-      <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6'>
+      <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'>
         {isLoading ? (
           <div className='col-span-full flex h-96 items-center justify-center'>
             <div className='flex items-center gap-2'>
@@ -587,7 +587,7 @@ export function PackagingProductsGrid({
             return (
               <div
                 key={product.id}
-                className='group bg-card relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:shadow-md'
+                className='group bg-card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border transition-all hover:shadow-md'
                 onClick={() =>
                   nav({
                     to: '/products/$productId',
@@ -596,7 +596,7 @@ export function PackagingProductsGrid({
                   })
                 }
               >
-                <div className='relative aspect-[5/4] overflow-hidden bg-gray-100'>
+                <div className='relative aspect-[5/4] shrink-0 overflow-hidden bg-gray-100'>
                   <img
                     src={product.image}
                     alt={product.name}
@@ -604,14 +604,28 @@ export function PackagingProductsGrid({
                   />
                 </div>
 
-                <div className='space-y-1.5 p-2.5'>
-                  <div className='text-base'>{product.name}</div>
-                  <div className='text-base font-bold'>
+                <div className='flex min-h-0 flex-1 flex-col gap-1.5 p-2.5'>
+                  <h3
+                    className='overflow-hidden text-sm font-semibold break-words'
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      lineHeight: '1.5',
+                      maxHeight: '3em',
+                      transform: 'translateZ(0)',
+                    }}
+                  >
+                    {product.name.trim().replace(/\s+/g, ' ')}
+                  </h3>
+                  <div className='text-muted-foreground text-xs'>
+                    {product.sku}
+                  </div>
+                  <div className='mt-auto text-base font-bold text-orange-500'>
                     ${product.price.toFixed(2)}
                   </div>
-                  <p className='text-muted-foreground line-clamp-2 text-xs leading-tight'>
-                    {product.description}
-                  </p>
                 </div>
               </div>
             )

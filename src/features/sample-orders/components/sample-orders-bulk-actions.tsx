@@ -15,10 +15,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
-import { type SampleOrder } from '../data/schema'
+import { type SampleOrderTableRow } from '../data/schema'
 
 interface SampleOrdersBulkActionsProps {
-  table: Table<SampleOrder>
+  table: Table<SampleOrderTableRow>
 }
 
 export function SampleOrdersBulkActions({
