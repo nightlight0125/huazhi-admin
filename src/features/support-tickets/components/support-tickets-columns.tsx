@@ -379,8 +379,7 @@ export const createSupportTicketsColumns = (options?: {
           ? parseInt(String(statusValue), 10)
           : null
 
-        // 根据数字映射状态
-        // 取消 → 0, 待支付 → 1, 已支付 → 2, 处理中 → 3, 已发货 → 4
+        // 与 Tab 状态保持一致：待处理 → 0, 处理中 → 1, 处理完成 → 2, 已补发 → 3
         let statusLabel = 'Unknown'
         let statusClassName =
           'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
@@ -388,27 +387,22 @@ export const createSupportTicketsColumns = (options?: {
         if (statusNumber !== null && !isNaN(statusNumber)) {
           switch (statusNumber) {
             case 0:
-              statusLabel = 'Cancelled'
-              statusClassName =
-                'border-transparent bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 capitalize'
-              break
-            case 1:
-              statusLabel = 'Awaiting Payment'
+              statusLabel = 'Pending'
               statusClassName =
                 'border-transparent bg-orange-500 text-white dark:bg-orange-500 dark:text-white capitalize'
               break
+            case 1:
+              statusLabel = 'In Progress'
+              statusClassName =
+                'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white capitalize'
+              break
             case 2:
-              statusLabel = 'Paid'
+              statusLabel = 'Completed'
               statusClassName =
                 'border-transparent bg-blue-500 text-white dark:bg-blue-500 dark:text-white capitalize'
               break
             case 3:
-              statusLabel = 'Processing'
-              statusClassName =
-                'border-transparent bg-purple-500 text-white dark:bg-purple-500 dark:text-white capitalize'
-              break
-            case 4:
-              statusLabel = 'Shipped'
+              statusLabel = 'Reshipped'
               statusClassName =
                 'border-transparent bg-green-500 text-white dark:bg-green-500 dark:text-white capitalize'
               break

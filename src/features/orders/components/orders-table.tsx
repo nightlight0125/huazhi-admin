@@ -666,7 +666,7 @@ export function OrdersTable({
     }
   }
 
-  /** 删除订单中一行明细：当前产品行对应的销售单，调用 deleteSalOutOrder 删除整单 */
+  /** 删除订单中一行明细：调用 deleteSalOutOrder，flag=1 表示删除行明细 */
   const handleDeleteOrderLine = async (
     orderId: string,
     _lineItem: OrderProduct
@@ -682,7 +682,7 @@ export function OrdersTable({
       await deleteOrder({
         customerId: String(customerId),
         orderId,
-        flag: 0,
+        flag: 1,
       })
 
       toast.success('Order deleted successfully')

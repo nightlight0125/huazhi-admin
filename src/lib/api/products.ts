@@ -1166,6 +1166,7 @@ export interface BuyProductRequest {
   phone: string
   countryId: string
   admindivisionId: string
+  stateProvince?: string
   city: string
   address1: string
   address2: string
@@ -1220,6 +1221,7 @@ export interface BuyProductByWallRequest {
   phone: string
   countryId: string
   adminDivisionId: string
+  stateProvince?: string
   city: string
   address1: string
   address2: string

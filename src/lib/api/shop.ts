@@ -45,7 +45,37 @@ export interface ShopListItem {
   createtime?: string
   bindtime?: string
   enable?: string
+  /** 后端店铺类型，如 Offline */
+  typeNumber?: string
   [key: string]: unknown
+}
+
+const SHOP_TYPE_KEYS = [
+  'typeNumber',
+  'TypeNumber',
+  'hzkj_type_number',
+  'hzkj_typenumber',
+  'typNumber',
+  'type_number',
+] as const
+
+/** 从列表项中读取店铺类型（兼容多种后端字段名），未识别时返回空串 */
+export function getShopTypeLabel(shop: ShopListItem): string {
+  const r = shop as Record<string, unknown>
+  for (const k of SHOP_TYPE_KEYS) {
+    const v = r[k]
+    if (v != null && v !== '') return String(v).trim()
+  }
+  return ''
+}
+
+/** 仅线下店：type 为 Offline（大小写不敏感）；若无 type 字段则看 platform 是否为 offline */
+export function isOfflineShopListItem(shop: ShopListItem): boolean {
+  const tn = getShopTypeLabel(shop)
+  if (tn !== '') {
+    return tn.toLowerCase() === 'offline'
+  }
+  return String(shop.platform ?? '').trim().toLowerCase() === 'offline'
 }
 
 // 获取用户店铺列表请求参数

@@ -11,6 +11,10 @@ const searchSchema = z.object({
     .union([z.string(), z.number()])
     .transform((value) => String(value))
     .optional(),
+  userId: z
+    .union([z.string(), z.number()])
+    .transform((value) => String(value))
+    .optional(),
 })
 
 export const Route = createFileRoute('/(auth)/staff-login')({
@@ -21,6 +25,7 @@ export const Route = createFileRoute('/(auth)/staff-login')({
       search: {
         redirect: search.redirect,
         accountId: search.accountId,
+        userId: search.userId,
         bizUserId: search.bizUserId,
       },
       replace: true,

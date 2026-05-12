@@ -39,7 +39,9 @@ const formSchema = z.object({
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
+  /** 与 userId 二选一，均会作为 idLogin 的第一个参数传给后端 */
   accountId?: string
+  userId?: string
   bizUserId?: string
   /** 邀请注册：透传到 /sign-up */
   customerId?: string
@@ -50,6 +52,7 @@ export function UserAuthForm({
   className,
   redirectTo,
   accountId,
+  userId,
   bizUserId,
   customerId,
   operatorId,
@@ -63,8 +66,8 @@ export function UserAuthForm({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: '2745592586@qq.com',
-      password: '123456',
+      email: '',
+      password: '',
       rememberMe: true,
     },
   })
@@ -80,9 +83,7 @@ export function UserAuthForm({
       const { token: tokenFromApi, expiresAtMs } =
         extractTokenAndExpiryFromLoginResponse(loginResponse)
       const finalToken =
-        tokenFromApi ||
-        loginResponse.token ||
-        loginResponse.access_token
+        tokenFromApi || loginResponse.token || loginResponse.access_token
 
       if (!finalToken || finalToken.trim() === '') {
         throw new Error('Failed to get valid token. Please try again.')
@@ -187,9 +188,16 @@ export function UserAuthForm({
   }
 
   useEffect(() => {
+    const idForIdLogin =
+      (typeof accountId === 'string' && accountId.trim() !== ''
+        ? accountId.trim()
+        : null) ??
+      (typeof userId === 'string' && userId.trim() !== ''
+        ? userId.trim()
+        : null)
+
     const canAutoLogin =
-      typeof accountId === 'string' &&
-      accountId.trim() !== '' &&
+      idForIdLogin !== null &&
       typeof bizUserId === 'string' &&
       bizUserId.trim() !== ''
 
@@ -202,7 +210,7 @@ export function UserAuthForm({
       const loadingToast = toast.loading('Signing in...')
 
       try {
-        const loginResponse = await idLogin(accountId!, bizUserId!)
+        const loginResponse = await idLogin(idForIdLogin, bizUserId!.trim())
         const { token: idToken, expiresAtMs: idExpires } =
           extractTokenAndExpiryFromLoginResponse(loginResponse)
         const finalToken =
@@ -232,11 +240,11 @@ export function UserAuthForm({
         }
 
         const user = {
-          accountNo: userData.accountId || userData.id || accountId,
+          accountNo: userData.accountId || userData.id || idForIdLogin,
           email: userData.email || '',
           role: ['user'],
           id: userData.user?.id || userData.id || bizUserId || '',
-          username: userData.user?.username || accountId || '',
+          username: userData.user?.username || idForIdLogin || '',
           roleId: userData.roleId || userData.user?.roleId || '',
           hzkj_whatsapp1:
             userData.user?.hzkj_whatsapp1 || userData.hzkj_whatsapp1 || '',
@@ -274,7 +282,7 @@ export function UserAuthForm({
     }
 
     void runAutoLogin()
-  }, [accountId, auth, bizUserId, navigate, redirectTo])
+  }, [accountId, userId, auth, bizUserId, navigate, redirectTo])
 
   return (
     <Form {...form}>
@@ -339,12 +347,8 @@ export function UserAuthForm({
           <Link
             to='/sign-up'
             search={{
-              ...(customerId
-                ? { customerId: String(customerId) }
-                : {}),
-              ...(operatorId
-                ? { operatorId: String(operatorId) }
-                : {}),
+              ...(customerId ? { customerId: String(customerId) } : {}),
+              ...(operatorId ? { operatorId: String(operatorId) } : {}),
             }}
             className='text-muted-foreground hover:text-foreground underline underline-offset-4'
           >

@@ -8,6 +8,11 @@ const searchSchema = z.object({
     .union([z.string(), z.number()])
     .transform((value) => String(value))
     .optional(),
+  /** 与 idLogin 的 userId 一致；与 accountId 二选一即可 */
+  userId: z
+    .union([z.string(), z.number()])
+    .transform((value) => String(value))
+    .optional(),
   bizUserId: z
     .union([z.string(), z.number()])
     .transform((value) => String(value))

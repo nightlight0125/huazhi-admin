@@ -391,7 +391,7 @@ export async function addBTOrder(
 export interface DeleteOrderRequest {
   customerId: string
   orderId: string
-  /** 删除行明细等场景后端约定，例如 0 表示删除行记录 */
+  /** 与后端 deleteSalOutOrder 约定，例如删除展开行「Delete line item」时传 1 */
   flag?: number
 }
 

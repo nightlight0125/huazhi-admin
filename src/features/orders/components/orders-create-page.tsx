@@ -10,7 +10,11 @@ import { useAuthStore } from '@/stores/auth-store'
 import { queryCountry, type CountryItem } from '@/lib/api/logistics'
 import { addBTOrder } from '@/lib/api/orders'
 import { resolvePictureUrl } from '@/lib/resolve-picture-url'
-import { getUserShopList, type ShopListItem } from '@/lib/api/shop'
+import {
+  getUserShopList,
+  isOfflineShopListItem,
+  type ShopListItem,
+} from '@/lib/api/shop'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -108,7 +112,10 @@ export function OrdersCreatePage() {
           pageSize: 100,
         })
         setShopList(
-          list.filter((shop) => String(shop.enable ?? '1') !== '0')
+          list.filter((shop) => {
+            if (String(shop.enable ?? '1') === '0') return false
+            return isOfflineShopListItem(shop)
+          })
         )
       } catch (error) {
         toast.error(
@@ -183,6 +190,15 @@ export function OrdersCreatePage() {
       products: [],
     },
   })
+
+  useEffect(() => {
+    const current = form.getValues('store')
+    if (!current) return
+    const allowed = new Set(shopList.map((s) => String(s.id)))
+    if (!allowed.has(current)) {
+      form.setValue('store', '')
+    }
+  }, [shopList, form])
 
   const {
     fields: productFields,
@@ -390,7 +406,10 @@ export function OrdersCreatePage() {
                         </FormControl>
                         <SelectContent>
                           {shopList.map((shop) => (
-                            <SelectItem key={shop.id} value={shop.id}>
+                            <SelectItem
+                              key={String(shop.id)}
+                              value={String(shop.id)}
+                            >
                               {shop.name}
                             </SelectItem>
                           ))}

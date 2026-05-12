@@ -28,8 +28,8 @@ import {
   PackagingConnectionTable,
   usePackagingConnectionTable,
 } from './components/packaging-connection-table'
-import { prefetchDefaultProductThumb } from './default-product-thumb'
 import { type PackagingProduct, type StoreSku } from './data/schema'
+import { prefetchDefaultProductThumb } from './default-product-thumb'
 
 // Transform OdPdPackageListItem to StoreSku
 function transformOdPdPackageToStoreSku(item: OdPdPackageListItem): StoreSku {
@@ -127,13 +127,9 @@ export function PackagingConnection() {
   }
 
   const handleAddNewPackaging = () => {
-    const firstRow = packagingData[0]
-    if (!firstRow) {
-      toast.error('No data')
-      return
-    }
+    const firstRow = packagingData[0] ?? null
     setAddNewPackagingMode(true)
-    setSelectedStoreSku(firstRow as StoreSku)
+    setSelectedStoreSku(firstRow as StoreSku | null)
     setConnectDialogOpen(true)
   }
 

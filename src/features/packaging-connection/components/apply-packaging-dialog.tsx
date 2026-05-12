@@ -97,7 +97,10 @@ export function ApplyPackagingDialog({
         const options = await getUserShopOptions(String(userId), 0, 100)
         setShopOptions(options)
         if (options.length > 0) {
-          const raw = storeSku as Record<string, unknown>
+          const raw: Record<string, unknown> =
+            storeSku && typeof storeSku === 'object'
+              ? (storeSku as unknown as Record<string, unknown>)
+              : {}
           const storeShopId = String(
             raw.hzkj_od_pd_shop_id ??
               raw.hzkj_pk_shop_id ??
@@ -137,7 +140,7 @@ export function ApplyPackagingDialog({
 
   // 当选择的类型变化时，调用API获取包装产品列表
   useEffect(() => {
-    if (!open || !storeSku) return
+    if (!open) return
 
     const customerId = auth.user?.customerId
     if (!customerId) return
@@ -158,8 +161,7 @@ export function ApplyPackagingDialog({
             hzkj_pack_material_id:
               materialIds.length > 0 ? materialIds : undefined,
             hzkj_cus_id: String(customerId),
-            // hzkj_good_hzkj_goodtype_id: storeSku.id,
-            hzkj_good_hzkj_goodtype_id: '2355273729791020032',
+            hzkj_good_hzkj_goodtype_id: String(storeSku?.id || ''),
           },
           pageSize: 100,
           pageNo: 1,
@@ -179,7 +181,14 @@ export function ApplyPackagingDialog({
     }
 
     void fetchPackagingProducts()
-  }, [open, storeSku, selectedTypes, skuSearch, auth.user?.customerId])
+  }, [
+    open,
+    storeSku,
+    hideProductDetails,
+    selectedTypes,
+    skuSearch,
+    auth.user?.customerId,
+  ])
 
   // 过滤包装产品（使用从API获取的数据）
   const filteredProducts = useMemo(() => {
@@ -212,7 +221,7 @@ export function ApplyPackagingDialog({
   }
 
   const handleConfirm = async () => {
-    if (!storeSku) return
+    if (!hideProductDetails && !storeSku) return
 
     const customerId = auth.user?.customerId
     if (!customerId) {
@@ -235,7 +244,7 @@ export function ApplyPackagingDialog({
     }
 
     try {
-      const orderProductId = String(storeSku.id || '')
+      const orderProductId = String(storeSku?.id || '')
       const packageId = String(
         selectedProduct.id ||
           selectedProduct.hzkj_shop_package_id ||
@@ -248,9 +257,7 @@ export function ApplyPackagingDialog({
           data: [
             {
               hzkj_shop_id: String(selectedShopId),
-              hzkj_shop_pk_entry: [
-                { hzkj_shop_package_id: packageId },
-              ],
+              hzkj_shop_pk_entry: [{ hzkj_shop_package_id: packageId }],
             },
           ],
         })
@@ -304,7 +311,7 @@ export function ApplyPackagingDialog({
     onOpenChange(false)
   }
 
-  if (!storeSku) {
+  if (!hideProductDetails && !storeSku) {
     return null
   }
 
@@ -326,11 +333,13 @@ export function ApplyPackagingDialog({
               <div className='flex items-center gap-3'>
                 <div className='relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border'>
                   <img
-                    src={storeSku.hzkj_variant_picture || storeSku.image || ''}
+                    src={
+                      storeSku?.hzkj_variant_picture || storeSku?.image || ''
+                    }
                     alt={
-                      storeSku.hzkj_local_sku_hzkj_name ||
-                      storeSku.hzkj_shop_package_hzkj_name ||
-                      storeSku.name ||
+                      storeSku?.hzkj_local_sku_hzkj_name ||
+                      storeSku?.hzkj_shop_package_hzkj_name ||
+                      storeSku?.name ||
                       ''
                     }
                     className='h-full w-full object-cover'
@@ -342,19 +351,19 @@ export function ApplyPackagingDialog({
                 </div>
                 <div className='flex flex-col gap-1'>
                   <div className='text-sm font-medium'>
-                    {storeSku.hzkj_local_sku_hzkj_name ||
-                      storeSku.hzkj_shop_package_hzkj_name ||
-                      storeSku.name}
+                    {storeSku?.hzkj_local_sku_hzkj_name ||
+                      storeSku?.hzkj_shop_package_hzkj_name ||
+                      storeSku?.name}
                   </div>
                   <div className='text-muted-foreground text-xs'>
                     SKU:{' '}
-                    {storeSku.hzkj_shop_sku ||
-                      storeSku.hzkj_shop_package_number ||
-                      storeSku.sku}
+                    {storeSku?.hzkj_shop_sku ||
+                      storeSku?.hzkj_shop_package_number ||
+                      storeSku?.sku}
                   </div>
                   <div className='text-muted-foreground text-xs'>
                     Variant ID:{' '}
-                    {storeSku.hzkj_variantid || storeSku.variantId || '---'}
+                    {storeSku?.hzkj_variantid || storeSku?.variantId || '---'}
                   </div>
                   <div className='mt-2 flex items-center gap-2'>
                     <Checkbox

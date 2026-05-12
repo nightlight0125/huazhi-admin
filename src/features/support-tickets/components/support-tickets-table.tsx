@@ -35,11 +35,10 @@ import { SupportTicketsReasonDialog } from './support-tickets-reason-dialog'
 // 订单状态选项配置
 const orderStatusOptions = [
   { value: 'all', label: 'All', statusValue: undefined },
-  { value: 'shipped', label: 'Shipped', statusValue: '4' },
-  { value: 'processing', label: 'Processing', statusValue: '3' },
-  { value: 'paid', label: 'Paid', statusValue: '2' },
-  { value: 'pending_payment', label: 'Pending Payment', statusValue: '1' },
-  { value: 'cancelled', label: 'Cancelled', statusValue: '0' },
+  { value: 'pending', label: 'Pending', statusValue: '0' },
+  { value: 'in_progress', label: 'In Progress', statusValue: '1' },
+  { value: 'completed', label: 'Completed', statusValue: '2' },
+  { value: 'reshipped', label: 'Reshipped', statusValue: '3' },
 ] as const
 
 type SupportTicketsTableProps = {
@@ -330,7 +329,7 @@ export function SupportTicketsTable({
         onValueChange={handleTabChange}
         className='w-full'
       >
-        <TabsList className='grid w-full grid-cols-6'>
+        <TabsList className='grid w-full grid-cols-5'>
           {orderStatusOptions.map((option) => (
             <TabsTrigger key={option.value} value={option.value}>
               {option.label}

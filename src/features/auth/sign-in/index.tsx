@@ -15,10 +15,16 @@ const reasons = [
 ]
 
 export function SignIn() {
-  const { redirect, accountId, bizUserId, customerId: cid, operatorId: oid } =
-    useSearch({
-      from: '/(auth)/sign-in',
-    })
+  const {
+    redirect,
+    accountId,
+    userId,
+    bizUserId,
+    customerId: cid,
+    operatorId: oid,
+  } = useSearch({
+    from: '/(auth)/sign-in',
+  })
   const { customerId, operatorId } = useMemo(
     () => mergeInviteIdsFromRoute(cid, oid),
     [cid, oid]
@@ -116,6 +122,7 @@ export function SignIn() {
             <UserAuthForm
               redirectTo={redirect}
               accountId={accountId}
+              userId={userId}
               bizUserId={bizUserId}
               customerId={customerId}
               operatorId={operatorId}
